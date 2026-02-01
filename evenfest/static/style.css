@@ -1,0 +1,233 @@
+/* Базовые стили */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+        url('background.png') center/cover no-repeat fixed;
+    color: #e0e0e0;
+    min-height: 100vh;
+}
+
+/* Боковое меню */
+.sidebar {
+    min-height: 100vh;
+    padding: 0;
+    border-right: 1px solid #333;
+}
+
+.sidebar-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding-top: 20px;
+}
+
+.nav-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+}
+
+.nav-logo h1 {
+    color: #6f42c1;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.nav-logo p {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+/* Навигация */
+.nav-link {
+    color: #ccc;
+    padding: 12px 20px;
+    margin: 2px 0;
+    transition: all 0.3s;
+    border-radius: 0;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: #fff;
+    background-color: rgba(111, 66, 193, 0.2);
+    border-left: 3px solid #6f42c1;
+}
+
+.nav-link.active {
+    color: #fff;
+    background-color: rgba(111, 66, 193, 0.3);
+    border-left: 3px solid #6f42c1;
+    font-weight: bold;
+}
+
+.nav-link i {
+    font-size: 1.1rem;
+}
+
+/* Бейджи */
+.badge-custom {
+    background-color: #6f42c1;
+    color: white;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Основной контент */
+.main-content {
+    padding: 30px;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.content-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #333;
+}
+
+.page-header h2 {
+    color: #6f42c1;
+    font-weight: bold;
+}
+
+/* Карточки */
+.card {
+    border-radius: 8px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.news-card {
+    background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+    border: 1px solid #333;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.news-card:hover {
+    border-color: #6f42c1;
+    box-shadow: 0 0 15px rgba(111, 66, 193, 0.3);
+}
+
+.news-date {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+/* Списки */
+.feature-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.feature-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+    position: relative;
+    padding-left: 25px;
+}
+
+.feature-list li:before {
+    content: "✓";
+    color: #6f42c1;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .sidebar {
+        min-height: auto;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        z-index: 1000;
+        border-top: 1px solid #333;
+        border-right: none;
+    }
+    
+    .sidebar-sticky {
+        height: auto;
+        padding: 10px;
+    }
+    
+    .nav-logo {
+        display: none;
+    }
+    
+    .main-content {
+        padding: 20px;
+        margin-bottom: 70px;
+    }
+    
+    .nav {
+        flex-direction: row !important;
+        justify-content: space-around;
+    }
+    
+    .nav-item {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .nav-link {
+        padding: 8px 5px;
+        font-size: 0.8rem;
+    }
+    
+    .nav-link i {
+        display: block;
+        margin: 0 auto 5px;
+        font-size: 1.2rem;
+    }
+    
+    .badge-custom {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        display: inline-block;
+        margin-left: 5px;
+    }
+    
+    .sidebar .card {
+        display: none;
+    }
+}
+
+/* Прокрутка */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #6f42c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #5a32a3;
+}

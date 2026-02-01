@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNAKE</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <!-- Наш CSS файл -->
+    <link rel="stylesheet" href="snake/static/style.css">
+    <!-- Иконка страницы через Bootstrap Icons -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>🐍</text></svg>">
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <!-- Игровой интерфейс -->
+        <div class="game-ui">
+            <div class="stats-bar">
+                <div class="stat">
+                    <span class="stat-label">SCORE</span>
+                    <span id="score" class="stat-value neon-green">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">LEVEL</span>
+                    <span id="level" class="stat-value neon-blue">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">LENGTH</span>
+                    <span id="length" class="stat-value neon-pink">3</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="startBtn" class="btn-control" title="Start (Space)">
+                    <i class="bi bi-play-fill"></i>
+                </button>
+                <button id="pauseBtn" class="btn-control" title="Pause (P)">
+                    <i class="bi bi-pause-fill"></i>
+                </button>
+                <button id="restartBtn" class="btn-control" title="Restart (R)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button id="fullscreenBtn" class="btn-control" title="Fullscreen (F)">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Игровое поле -->
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Экран старта -->
+            <div id="startScreen" class="overlay-screen">
+                <div class="overlay-content">
+                    <h1 class="neon-title">SNAKE</h1>
+                    <div class="instructions">
+                        <p>USE <span class="neon-key">W A S D</span> TO MOVE</p>
+                        <p>PRESS <span class="neon-key">SPACE</span> TO START</p>
+                        <p>TELEPORT THROUGH WALLS</p>
+                    </div>
+                    <button id="startGameBtn" class="btn-neon-large">
+                        <i class="bi bi-play-circle"></i> START GAME
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Экран паузы -->
+            <div id="pauseScreen" class="overlay-screen" style="display: none;">
+                <div class="overlay-content">
+                    <h2 class="neon-title">PAUSED</h2>
+                    <p class="game-info-text">PRESS <span class="neon-key">P</span> TO CONTINUE</p>
+                    <button id="resumeBtn" class="btn-neon-large">
+                        <i class="bi bi-play-circle"></i> RESUME
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Экран окончания игры -->
+            <div id="gameOverScreen" class="overlay-screen" style="display: none;">
+                <div class="overlay-content">
+                    <h2 class="neon-title-red">GAME OVER</h2>
+                    <div class="final-stats">
+                        <div class="final-stat">
+                            <span>SCORE</span>
+                            <span id="finalScore" class="neon-green">0</span>
+                        </div>
+                        <div class="final-stat">
+                            <span>LEVEL</span>
+                            <span id="finalLevel" class="neon-blue">1</span>
+                        </div>
+                        <div class="final-stat">
+                            <span>LENGTH</span>
+                            <span id="finalLength" class="neon-pink">3</span>
+                        </div>
+                    </div>
+                    <button id="playAgainBtn" class="btn-neon-large">
+                        <i class="bi bi-arrow-clockwise"></i> PLAY AGAIN
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Индикатор направления -->
+            <div id="directionIndicator" class="direction-indicator">
+                <div class="arrow up"><i class="bi bi-caret-up-fill"></i></div>
+                <div class="arrow left"><i class="bi bi-caret-left-fill"></i></div>
+                <div class="arrow down"><i class="bi bi-caret-down-fill"></i></div>
+                <div class="arrow right"><i class="bi bi-caret-right-fill"></i></div>
+            </div>
+        </div>
+        
+        <!-- Эффекты частиц -->
+        <canvas id="particlesCanvas"></canvas>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Наш JS файл -->
+    <script src="snake/scripts/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Новости{% endblock %}
+
+{% block sidebar_card %}
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="page-header">
+        <h2><i class="bi bi-newspaper me-2"></i>Новости сообщества</h2>
+        <p class="text-muted">Следите за последними событиями в мире косплея и фотосессий</p>
+    </div>
+    
+    <div class="content-text">
+        {% if page_content %}
+            {{ page_content|safe }}
+        {% else %}
+            <p>Контент скоро появится...</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}  
