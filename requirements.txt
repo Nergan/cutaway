@@ -5,3 +5,4 @@ docx2pdf==0.1.8
 python-multipart==0.0.6
 Jinja2==3.1.2
 motor==3.7.1
+certifi==2025.10.5
