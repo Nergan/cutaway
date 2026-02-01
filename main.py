@@ -1,6 +1,6 @@
 from json import load
 from os.path import exists, join
-from os import listdir, makedirs
+from os import listdir, makedirs, environ
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException, UploadFile, Form, File
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse
@@ -8,8 +8,23 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from docx2pdf import convert
 from aiofiles import open as aiopen
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+import certifi
  
  
+load_dotenv()
+
+# MongoDB подключение
+MONGO_URL = environ.get("MONGODB_URI", "mongodb://localhost:27017")
+client = AsyncIOMotorClient(
+    MONGO_URL,
+    tls=True,
+    tlsAllowInvalidCertificates=True
+)
+db = client.toadbin  # база данных
+codes_collection = db.codes  # коллекция для кодов
+
 app = FastAPI()
 app.mount("/evenfest/static", StaticFiles(directory="evenfest/static"), name="evenfest")
 app.mount('/snake/static', StaticFiles(directory="snake/static"), name="snake-static")
@@ -80,23 +95,20 @@ async def toadpage(request: Request):
             "is_readonly": False
         }
     )
-
+    
 @app.get("/toadbin/{code_id}")
 async def toadbin_codeview(request: Request, code_id: str):
-    file_path = join(toad_code_dir, f"{code_id}.txt")
+    # Ищем в MongoDB
+    doc = await codes_collection.find_one({"code_id": code_id})
     
-    if not exists(file_path):
+    if not doc:
         raise HTTPException(status_code=404, detail="Code not found")
     
-    with open(file_path, 'r', encoding='utf-8') as f:
-        code_content = f.read()
-    
-    # Здесь будет рендеринг шаблона с кодом
     return toadbin.TemplateResponse(
         "toadbin.html",
         {
             "request": request,
-            "code": code_content,
+            "code": doc["content"],
             "code_id": code_id
         }
     )
@@ -124,34 +136,25 @@ async def toad_backgrounds():
     
 @app.get("/api/existing-ids")
 async def toad_ids():
-    if not exists(toad_code_dir):
-        return []
-    
-    # Получаем все файлы .txt в папке
-    files = [f for f in listdir(toad_code_dir) if f.endswith('.txt')]
-    
-    # Извлекаем ID из имен файлов (без .txt)
-    ids = [int(f.replace('.txt', '')) for f in files]
-    
-    print(ids)
-    
+    # Получаем все ID из MongoDB
+    cursor = codes_collection.find({}, {"code_id": 1})
+    docs = await cursor.to_list(length=1000)
+    ids = [int(doc["code_id"]) for doc in docs if doc.get("code_id", "").isdigit()]
     return ids
 
 @app.post("/api/save")
 async def toad_save(request: dict):
-    """Сохраняет код в файл"""
+    """Сохраняет код в MongoDB"""
     try:
         code_id = request.get('id')
         code_content = request.get('code')
         
-        # Проверяем, что папка существует
-        if not exists(toad_code_dir):
-            makedirs(toad_code_dir)
-        
-        # Сохраняем код в файл
-        file_path = join(toad_code_dir, f"{code_id}.txt")
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(code_content)
+        # Upsert - обновить если есть, создать если нет
+        await codes_collection.update_one(
+            {"code_id": str(code_id)},
+            {"$set": {"code_id": str(code_id), "content": code_content}},
+            upsert=True
+        )
         
         return {"status": "success", "id": code_id}
         
