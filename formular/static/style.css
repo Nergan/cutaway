@@ -1,0 +1,413 @@
+:root {
+    --black: #000000;
+    --dark-gray: #0a0a0a;
+    --gray: #1a1a1a;
+    --light-gray: #2a2a2a;
+    --orange: #ff6b35;
+    --orange-dark: #e55a2b;
+    --orange-light: #ff8c5a;
+    --text-light: #e0e0e0;
+    --text-muted: #888888;
+}
+
+* {
+    font-family: 'MedievalSharp', cursive, 'Segoe UI', system-ui;
+}
+
+body {
+    background-color: var(--black);
+    color: var(--text-light);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(26, 26, 26, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(10, 10, 10, 0.8) 0%, transparent 50%);
+    z-index: -1;
+}
+
+/* Typography */
+.gothic-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 3.5rem;
+    font-weight: bold;
+    color: var(--text-light);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    position: relative;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.gothic-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--orange), transparent);
+}
+
+.section-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 1.5rem;
+    color: var(--text-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    position: relative;
+    padding-bottom: 10px;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 1px;
+    background: var(--orange);
+}
+
+.gothic-label {
+    font-family: 'MedievalSharp', cursive;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.gothic-text {
+    font-family: 'MedievalSharp', cursive;
+    letter-spacing: 1px;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Card Styles */
+.upload-zone,
+.download-zone,
+.conversion-panel {
+    background: linear-gradient(145deg, var(--dark-gray), var(--gray));
+    border: 1px solid var(--light-gray);
+    border-radius: 4px;
+    min-height: 400px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.upload-zone:hover,
+.download-zone:hover,
+.conversion-panel:hover {
+    border-color: var(--orange);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+}
+
+.upload-zone::before,
+.download-zone::before,
+.conversion-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: var(--orange);
+    transition: left 0.5s ease;
+}
+
+.upload-zone:hover::before,
+.download-zone:hover::before,
+.conversion-panel:hover::before {
+    left: 100%;
+}
+
+/* Icons */
+.icon-wrapper {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    border: 2px solid var(--light-gray);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.icon-large {
+    font-size: 2.5rem;
+    color: var(--text-light);
+    transition: all 0.3s ease;
+}
+
+.upload-zone:hover .icon-wrapper {
+    border-color: var(--orange);
+}
+
+.upload-zone:hover .icon-large {
+    color: var(--orange);
+}
+
+.download-zone:hover .icon-wrapper {
+    border-color: var(--orange);
+}
+
+.download-zone:hover .icon-large {
+    color: var(--orange);
+}
+
+.conversion-panel:hover .icon-wrapper {
+    border-color: var(--orange);
+}
+
+.conversion-panel:hover .icon-large {
+    color: var(--orange);
+}
+
+/* Buttons */
+.btn-orange {
+    background: linear-gradient(145deg, var(--orange), var(--orange-dark));
+    border: 1px solid var(--orange);
+    color: var(--black);
+    font-family: 'MedievalSharp', cursive;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    border-radius: 2px;
+}
+
+.btn-orange:hover {
+    background: linear-gradient(145deg, var(--orange-light), var(--orange));
+    border-color: var(--orange-light);
+    color: var(--black);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
+}
+
+.btn-orange:active {
+    transform: translateY(0);
+}
+
+.btn-orange-outline {
+    background: transparent;
+    border: 1px solid var(--orange);
+    color: var(--orange);
+    font-family: 'MedievalSharp', cursive;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    border-radius: 2px;
+}
+
+.btn-orange-outline:hover {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: var(--orange-light);
+    color: var(--orange-light);
+    transform: translateY(-2px);
+}
+
+/* Form Elements */
+.gothic-select {
+    background-color: var(--dark-gray);
+    border: 1px solid var(--light-gray);
+    color: var(--text-light);
+    font-family: 'MedievalSharp', cursive;
+    border-radius: 2px;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+
+.gothic-select:focus {
+    background-color: var(--gray);
+    border-color: var(--orange);
+    color: var(--text-light);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    outline: none;
+}
+
+.arrow-container {
+    margin: 20px 0;
+}
+
+.arrow-icon {
+    font-size: 1.5rem;
+    color: var(--orange);
+}
+
+.text-success {
+    color: var(--orange) !important;
+}
+
+.text-primary {
+    color: var(--orange-light) !important;
+}
+
+/* Status Bar */
+.status-bar {
+    background: var(--dark-gray);
+    border: 1px solid var(--light-gray);
+    border-radius: 2px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.ready {
+    background-color: var(--orange);
+    box-shadow: 0 0 10px var(--orange);
+}
+
+.status-dot.processing {
+    background-color: var(--text-muted);
+}
+
+.status-dot.complete {
+    background-color: var(--light-gray);
+}
+
+/* File Info */
+#fileInfo, #downloadInfo {
+    background: var(--dark-gray);
+    border: 1px solid var(--light-gray);
+    border-radius: 2px;
+    padding: 10px;
+    font-size: 0.85rem;
+    word-break: break-all;
+    min-height: 60px;
+}
+
+/* Alerts (для convert.js) */
+.alert {
+    background: var(--dark-gray);
+    border: 1px solid var(--light-gray);
+    border-radius: 2px;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.alert-success {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: var(--orange);
+}
+
+.alert-info {
+    background: rgba(255, 107, 53, 0.05);
+    border-color: var(--orange-light);
+}
+
+.alert-danger {
+    background: rgba(255, 0, 0, 0.1);
+    border-color: #ff4444;
+}
+
+/* Download Button */
+.btn-success {
+    background: linear-gradient(145deg, var(--orange), var(--orange-dark));
+    border: 1px solid var(--orange);
+    color: var(--black);
+    font-family: 'MedievalSharp', cursive;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    border-radius: 2px;
+}
+
+.btn-success:hover {
+    background: linear-gradient(145deg, var(--orange-light), var(--orange));
+    border-color: var(--orange-light);
+    color: var(--black);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
+}
+
+/* Drag & Drop */
+.upload-zone.dragover {
+    border-color: var(--orange);
+    background: rgba(255, 107, 53, 0.05);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--dark-gray);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--orange);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--orange-light);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .gothic-title {
+        font-size: 2.5rem;
+    }
+    
+    .upload-zone,
+    .download-zone,
+    .conversion-panel {
+        min-height: 350px;
+        margin-bottom: 20px;
+    }
+    
+    .icon-wrapper {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .icon-large {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .gothic-title {
+        font-size: 2rem;
+        letter-spacing: 2px;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+    }
+    
+    .row.g-4 {
+        margin: 0;
+    }
+}

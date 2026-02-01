@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}О нас{% endblock %}
+
+{% block sidebar_card %}
+{#
+<div class="mt-5 px-3">
+    <div class="card bg-dark border-secondary">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-chat-dots me-2"></i>Контакты</h5>
+            <p class="card-text small"><i class="bi bi-envelope me-1"></i> info@cosplayworld.ru</p>
+            <p class="card-text small"><i class="bi bi-telephone me-1"></i> +7 (999) 123-45-67</p>
+            <a href="#" class="btn btn-sm btn-outline-primary mt-2">Написать нам</a>
+        </div>
+    </div>
+</div>
+#}
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="page-header">
+        <h2><i class="bi bi-info-circle me-2"></i>О нашем сообществе</h2>
+        <p class="text-muted">Узнайте больше о EVENFEST</p>
+    </div>
+    
+    <div class="content-text">
+        {% if page_content %}
+            {{ page_content|safe }}
+        {% else %}
+            <p>Контент скоро появится...</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
