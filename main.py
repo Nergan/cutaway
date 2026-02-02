@@ -1,6 +1,6 @@
 from json import load
 from os.path import exists, join
-from os import listdir, makedirs, environ
+from os import listdir, makedirs, environ, unlink
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException, UploadFile, Form, File
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse, Response
@@ -68,7 +68,7 @@ async def convert_docx_to_pdf(docx_filepath: str) -> bytes:
     finally:
         # Удаляем временный PDF файл
         try:
-            os.unlink(pdf_temp_path)
+            unlink(pdf_temp_path)
         except:
             pass
     
@@ -221,7 +221,7 @@ async def formular_convert(
         finally:
             # Удаляем временный файл после конвертации
             try:
-                os.unlink(docx_temp_path)
+                unlink(docx_temp_path)
             except:
                 pass
         
