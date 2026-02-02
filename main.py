@@ -3,7 +3,7 @@ from os.path import exists, join
 from os import listdir, makedirs, environ
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException, UploadFile, Form, File
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from docx2pdf import convert
@@ -11,6 +11,10 @@ from aiofiles import open as aiopen
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 import certifi
+from tempfile import NamedTemporaryFile
+from docx import Document
+from asyncio import get_event_loop
+from urllib.parse import quote
  
  
 load_dotenv()
@@ -46,6 +50,29 @@ def load_data(path):
         with open(file_path, encoding="utf-8") as f:
             return load(f)
     raise Exception(f'{path} not found')
+
+
+async def convert_docx_to_pdf(docx_filepath: str) -> bytes:
+    # Создаем временный файл для PDF
+    with NamedTemporaryFile(suffix='.pdf', delete=False) as pdf_temp:
+        pdf_temp_path = pdf_temp.name
+    
+    try:
+        # Запускаем конвертацию в отдельном потоке, чтобы избежать блокировок
+        loop = get_event_loop()
+        await loop.run_in_executor(None, convert, docx_filepath, pdf_temp_path)
+        
+        # Читаем PDF
+        with open(pdf_temp_path, 'rb') as f:
+            pdf_content = f.read()
+    finally:
+        # Удаляем временный PDF файл
+        try:
+            os.unlink(pdf_temp_path)
+        except:
+            pass
+    
+    return pdf_content
  
  
 # main page
@@ -174,25 +201,38 @@ async def formular_convert(
     from_format: str = Form(...),
     to_format: str = Form(...)
 ): 
-    # Проверяем что файл загружен
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
     
-    newname = '.'.join(file.filename.split('.')[:-1]) + f".{to_format}"
-    
-    file_path = join('formular/static/files', file.filename)
-    async with aiopen(file_path, 'wb') as out_file:
-        content = await file.read()
-        await out_file.write(content)
+    original_name = file.filename
+    # Получаем имя без расширения и добавляем новое расширение
+    name_without_ext = original_name.rsplit('.', 1)[0]
+    new_name = f"{name_without_ext}.{to_format}"
     
     if from_format == 'docx' and to_format == 'pdf':
-        convert(
-            f'formular/static/files/{file.filename}',
-            f'formular/static/files/{newname}'
+        # Создаем временные файлы с уникальными именами
+        with NamedTemporaryFile(suffix='.docx', delete=False) as docx_temp:
+            docx_temp.write(await file.read())
+            docx_temp_path = docx_temp.name
+        
+        try:
+            # Конвертируем
+            pdf_bytes = await convert_docx_to_pdf(docx_temp_path)
+        finally:
+            # Удаляем временный файл после конвертации
+            try:
+                os.unlink(docx_temp_path)
+            except:
+                pass
+        
+        # Кодируем имя файла для безопасного использования в заголовке
+        encoded_filename = quote(new_name)
+        
+        # Возвращаем файл как ответ
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            }
         )
-    
-    return JSONResponse({
-        "success": True,
-        "filename": newname,
-        "download_url": f"/formular/static/files/{newname}"
-    })

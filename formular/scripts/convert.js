@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toFormat = document.getElementById('toFormat');
 
     let selectedFile = null;
+    let currentBlobUrl = null;
 
     // Drag and drop functionality
     uploadZone.addEventListener('dragover', (e) => {
@@ -48,7 +49,6 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        // Auto-detect format from extension
         const ext = file.name.split('.').pop().toLowerCase();
         if (ext) {
             fromFormat.value = ext;
@@ -70,6 +70,11 @@ document.addEventListener('DOMContentLoaded', function() {
         convertBtn.disabled = true;
         convertBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Converting...';
 
+        if (currentBlobUrl) {
+            URL.revokeObjectURL(currentBlobUrl);
+            currentBlobUrl = null;
+        }
+
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('from_format', fromFormat.value);
@@ -82,34 +87,55 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || errorData.message || `Server error: ${response.status}`);
+                } catch {
+                    throw new Error(`Server error: ${response.status}`);
+                }
             }
 
-            // Получаем JSON-ответ вместо blob
-            const result = await response.json();
+            const blob = await response.blob();
             
-            if (result.success) {
-                // Используем имя файла из ответа
-                const filename = result.filename;
-                const downloadUrl = result.download_url;
-                
-                // Создаем ссылку для скачивания
-                downloadLink.href = downloadUrl;
-                downloadLink.download = filename;
-                downloadLink.classList.remove('d-none');
-                
-                downloadInfo.innerHTML = `
-                    <div class="alert alert-info d-flex align-items-center" role="alert">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        <div>
-                            Converted to <strong>${toFormat.value.toUpperCase()}</strong><br>
-                            <small>Ready to download: ${filename}</small>
-                        </div>
-                    </div>
-                `;
+            let filename;
+            const contentDisposition = response.headers.get('Content-Disposition');
+            
+            // Пытаемся извлечь имя файла из заголовка
+            if (contentDisposition) {
+                // Пробуем разные форматы заголовка
+                let match = contentDisposition.match(/filename\*?=UTF-8''([^;]+)/i);
+                if (match && match[1]) {
+                    // Декодируем URL-encoded имя файла
+                    filename = decodeURIComponent(match[1]);
+                } else {
+                    match = contentDisposition.match(/filename="?([^"]+)"?/i);
+                    if (match && match[1]) {
+                        filename = match[1];
+                    } else {
+                        // Генерируем имя файла на основе исходного
+                        filename = selectedFile.name.replace(/\.[^/.]+$/, "") + `.${toFormat.value}`;
+                    }
+                }
             } else {
-                throw new Error(result.message || "Conversion failed");
+                // Генерируем имя файла на основе исходного
+                filename = selectedFile.name.replace(/\.[^/.]+$/, "") + `.${toFormat.value}`;
             }
+            
+            currentBlobUrl = URL.createObjectURL(blob);
+            
+            downloadLink.href = currentBlobUrl;
+            downloadLink.download = filename;
+            downloadLink.classList.remove('d-none');
+            
+            downloadInfo.innerHTML = `
+                <div class="alert alert-info d-flex align-items-center" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>
+                        Converted to <strong>${toFormat.value.toUpperCase()}</strong><br>
+                        <small>Ready to download: ${filename}</small>
+                    </div>
+                </div>
+            `;
 
         } catch (error) {
             console.error('Error:', error);
@@ -119,13 +145,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div>Conversion failed: ${error.message}</div>
                 </div>
             `;
+            downloadLink.classList.add('d-none');
         } finally {
             convertBtn.disabled = false;
             convertBtn.innerHTML = '<i class="bi bi-lightning-charge me-2"></i>Convert';
         }
     });
 
-    // Format selection change
     fromFormat.addEventListener('change', updateConversionDirection);
     toFormat.addEventListener('change', updateConversionDirection);
 
@@ -140,4 +166,10 @@ document.addEventListener('DOMContentLoaded', function() {
             arrow.classList.add('text-primary');
         }
     }
+    
+    window.addEventListener('beforeunload', () => {
+        if (currentBlobUrl) {
+            URL.revokeObjectURL(currentBlobUrl);
+        }
+    });
 });
