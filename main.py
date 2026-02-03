@@ -174,25 +174,29 @@ async def formular_convert(
     from_format: str = Form(...),
     to_format: str = Form(...)
 ): 
-    # Проверяем что файл загружен
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
+    # # Проверяем что файл загружен
+    # if not file.filename:
+    #     raise HTTPException(status_code=400, detail="No file provided")
     
-    newname = '.'.join(file.filename.split('.')[:-1]) + f".{to_format}"
+    # newname = '.'.join(file.filename.split('.')[:-1]) + f".{to_format}"
     
-    file_path = join('formular/static/files', file.filename)
-    async with aiopen(file_path, 'wb') as out_file:
-        content = await file.read()
-        await out_file.write(content)
+    # file_path = join('formular/static/files', file.filename)
+    # async with aiopen(file_path, 'wb') as out_file:
+    #     content = await file.read()
+    #     await out_file.write(content)
     
-    if from_format == 'docx' and to_format == 'pdf':
-        convert(
-            f'formular/static/files/{file.filename}',
-            f'formular/static/files/{newname}'
-        )
+    # if from_format == 'docx' and to_format == 'pdf':
+    #     convert(
+    #         f'formular/static/files/{file.filename}',
+    #         f'formular/static/files/{newname}'
+    #     )
+    
+    # return JSONResponse({
+    #     "success": True,
+    #     "filename": newname,
+    #     "download_url": f"/formular/static/files/{newname}"
+    # })
     
     return JSONResponse({
-        "success": True,
-        "filename": newname,
-        "download_url": f"/formular/static/files/{newname}"
+        'tst': 'tst'
     })
