@@ -1,17 +1,23 @@
+from io import BytesIO
 from json import load
-from os.path import exists, join
-from os import listdir, makedirs, environ
+from os import environ
+from os.path import exists
 from pathlib import Path
-from fastapi import FastAPI, Request, HTTPException, UploadFile, Form, File
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from aiofiles import open as aiopen
+from urllib.parse import quote
+
 from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from motor.motor_asyncio import AsyncIOMotorClient
-import certifi
- 
- 
+from docx import Document
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import inch
+
+
 load_dotenv()
 
 # MongoDB подключение
@@ -37,22 +43,99 @@ toadbin = Jinja2Templates(directory="toadbin")
 
 toad_background_dir = Path("toadbin/static/backgrounds")
 toad_code_dir = Path("toadbin/codes")
- 
- 
+
+
 def load_data(path):
     file_path = Path(path)
     if file_path.exists():
         with open(file_path, encoding="utf-8") as f:
             return load(f)
     raise Exception(f'{path} not found')
- 
- 
+
+
+async def convert_docx_to_pdf(docx_content: bytes) -> bytes:
+    """
+    Конвертирует DOCX в PDF без создания временных файлов и без зависимости от MS Office/LibreOffice.
+    Использует библиотеки, работающие исключительно в памяти.
+    """
+    try:        
+        # Читаем DOCX из байтов
+        docx_file = BytesIO(docx_content)
+        doc = Document(docx_file)
+        
+        # Создаем PDF в памяти
+        pdf_buffer = BytesIO()
+        
+        # Создаем PDF документ
+        pdf = SimpleDocTemplate(
+            pdf_buffer, 
+            pagesize=letter,
+            rightMargin=72, 
+            leftMargin=72,
+            topMargin=72, 
+            bottomMargin=72
+        )
+        
+        # Собираем элементы для PDF
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Настройка шрифта для поддержки Unicode символов
+        try:
+            # Пробуем использовать шрифт, поддерживающий Unicode
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            
+            # Регистрируем шрифт DejaVu (должен быть установлен в системе)
+            # Если нет, fallback на стандартный шрифт
+            try:
+                pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
+                styles['Normal'].fontName = 'DejaVu'
+            except:
+                # Если DejaVu не найден, пробуем Arial Unicode MS (для Windows)
+                try:
+                    pdfmetrics.registerFont(TTFont('ArialUnicode', 'arialuni.ttf'))
+                    styles['Normal'].fontName = 'ArialUnicode'
+                except:
+                    # Используем стандартный шрифт
+                    pass
+        except ImportError:
+            # Если нет reportlab.pdfbase, используем стандартные шрифты
+            pass
+        
+        # Конвертируем параграфы
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():  # Игнорируем пустые параграфы
+                # Сохраняем стили: жирный, курсив, подчеркивание
+                text = paragraph.text
+                
+                # Добавляем параграф в PDF
+                p = Paragraph(text.replace('\n', '<br/>'), styles['Normal'])
+                story.append(p)
+                story.append(Spacer(1, 12))  # Добавляем отступ между параграфами
+        
+        # Строим PDF
+        pdf.build(story)
+        
+        # Получаем байты PDF
+        pdf_buffer.seek(0)
+        pdf_bytes = pdf_buffer.read()
+        
+        return pdf_bytes
+        
+    except Exception as e:
+        # Логируем ошибку для отладки
+        import logging
+        logging.error(f"PDF conversion error: {str(e)}")
+        raise Exception(f"PDF conversion failed: {str(e)}")
+
+
 # main page
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return FileResponse("index.html")
- 
- 
+
+
 # evenfest
 @app.get("/evenfest", response_class=HTMLResponse)
 @app.get("/evenfest/{page_name}", response_class=HTMLResponse)
@@ -173,29 +256,34 @@ async def formular_convert(
     from_format: str = Form(...),
     to_format: str = Form(...)
 ): 
-    # # Проверяем что файл загружен
-    # if not file.filename:
-    #     raise HTTPException(status_code=400, detail="No file provided")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
     
-    # newname = '.'.join(file.filename.split('.')[:-1]) + f".{to_format}"
+    original_name = file.filename
+    # Получаем имя без расширения и добавляем новое расширение
+    name_without_ext = original_name.rsplit('.', 1)[0]
+    new_name = f"{name_without_ext}.{to_format}"
     
-    # file_path = join('formular/static/files', file.filename)
-    # async with aiopen(file_path, 'wb') as out_file:
-    #     content = await file.read()
-    #     await out_file.write(content)
+    # Кодируем имя файла для безопасного использования в заголовке
+    encoded_filename = quote(new_name)
     
-    # if from_format == 'docx' and to_format == 'pdf':
-    #     convert(
-    #         f'formular/static/files/{file.filename}',
-    #         f'formular/static/files/{newname}'
-    #     )
-    
-    # return JSONResponse({
-    #     "success": True,
-    #     "filename": newname,
-    #     "download_url": f"/formular/static/files/{newname}"
-    # })
-    
-    return JSONResponse({
-        'tst': 'tst'
-    })
+    if from_format == 'docx' and to_format == 'pdf':
+        try:
+            # Читаем содержимое файла
+            content = await file.read()
+            
+            # Конвертируем в память без создания файлов
+            pdf_bytes = await convert_docx_to_pdf(content)
+            
+            # Возвращаем файл как ответ
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+                }
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Conversion error: {str(e)}")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported conversion format")

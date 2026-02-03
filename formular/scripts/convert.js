@@ -97,6 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const blob = await response.blob();
             
+            // Проверяем, что это действительно PDF
+            if (blob.type !== 'application/pdf' && toFormat.value === 'pdf') {
+                throw new Error('Invalid file returned from server');
+            }
+            
             let filename;
             const contentDisposition = response.headers.get('Content-Disposition');
             
@@ -142,7 +147,10 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadInfo.innerHTML = `
                 <div class="alert alert-danger d-flex align-items-center" role="alert">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <div>Conversion failed: ${error.message}</div>
+                    <div>
+                        <strong>Conversion failed</strong><br>
+                        <small>${error.message}</small>
+                    </div>
                 </div>
             `;
             downloadLink.classList.add('d-none');
