@@ -1,5 +1,5 @@
 # Nargan's Projects Portfolio
-_Этот проект задеплоен на `nargan.vercel.app`_  
+_Этот проект задеплоен на [nargan.vercel.app](nargan.vercel.app)_  
 Проект представляет собой многофункциональное веб-портфолио, состоящее из нескольких интерактивных приложений:
 
 - **SNAKE** — просто змейка
@@ -11,5 +11,3 @@ _Этот проект задеплоен на `nargan.vercel.app`_
 Все приложения объединены в единую платформу с адаптивным дизайном. Проект реализован на FastAPI с использованием современных веб-технологий (HTML5, CSS3, JavaScript ES6+, Canvas API).
 
 **Технологический стек:** FastAPI, Bootstrap 5, JavaScript ES6+, Canvas API, Highlight.js, docx2pdf, MongoDB
-
-tst
