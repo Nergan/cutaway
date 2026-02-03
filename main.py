@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request, HTTPException, UploadFile, Form, File
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from docx2pdf import convert
 from aiofiles import open as aiopen
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
