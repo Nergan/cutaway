@@ -78,6 +78,41 @@ html, body {
     color: rgba(255, 255, 255, 0.6);
 }
 
+/* Кнопка копирования кода */
+.copy-code-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-code-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.copy-code-btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.copy-code-btn.copied {
+    background: rgba(40, 167, 69, 0.2);
+    border-color: rgba(40, 167, 69, 0.4);
+    color: #28a745;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .container-fluid {
@@ -97,6 +132,11 @@ html, body {
     .header h1 {
         font-size: 1.25rem;
     }
+    
+    .copy-code-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
 }
 
 @media (max-width: 576px) {
@@ -114,6 +154,11 @@ html, body {
     .footer > div {
         width: 100%;
         justify-content: space-between !important;
+    }
+    
+    .copy-code-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
     }
 }
 

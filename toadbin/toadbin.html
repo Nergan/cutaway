@@ -149,6 +149,13 @@
                             </span>
                         {% endif %}
                     </h1>
+                    
+                    <!-- Кнопка копирования кода (только при наличии code_id) -->
+                    {% if code_id %}
+                    <button id="copyCodeButton" class="copy-code-btn" title="Copy code to clipboard">
+                        <i class="bi bi-copy"></i>
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             
