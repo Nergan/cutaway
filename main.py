@@ -285,5 +285,35 @@ async def formular_convert(
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Conversion error: {str(e)}")
+    if from_format == 'html' and to_format == 'pdf':
+        
+        from playwright.sync_api import sync_playwright
+
+        def html_to_pdf(html_bytes: bytes) -> bytes:
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                page = browser.new_page()
+                
+                # Загружаем HTML из байтов
+                page.set_content(html_bytes.decode('utf-8'))
+                
+                # Генерируем PDF через браузерный механизм печати
+                pdf_bytes = page.pdf()
+                
+                browser.close()
+                return pdf_bytes
+        
+        new_name = f"{name_without_ext}.{to_format}"
+        encoded_filename = quote(new_name)
+        
+        html_bytes = html_to_pdf(file.read())
+        return Response(
+                content=html_bytes,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+                }
+            )
+        
     else:
         raise HTTPException(status_code=400, detail="Unsupported conversion format")
