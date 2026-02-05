@@ -240,3 +240,33 @@ html, body {
 ::selection {
 	background-color: rgba(255, 255, 0, 0.3);
 }
+
+/* Дополнительные стили для мобильных */
+@media (max-width: 768px) {
+  .header {
+    position: relative;
+  }
+  
+  .copy-code-btn {
+    position: absolute !important;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    background: #28a745 !important;
+    color: white !important;
+    width: 60px;
+    height: 60px;
+    border-radius: 50% !important;
+    border: 2px solid white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .header .d-flex {
+    padding-right: 70px;
+    position: relative;
+  }
+}
