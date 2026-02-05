@@ -1,14 +1,59 @@
+// Функция для копирования текста с fallback
+function copyToClipboard(text) {
+  // Пробуем современный Clipboard API
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  } else {
+    // Fallback для HTTP и старых браузеров
+    return new Promise((resolve, reject) => {
+      try {
+        // Создаем временный textarea
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        
+        // Стили, чтобы элемент не был виден
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.style.opacity = '0';
+        textArea.style.pointerEvents = 'none';
+        
+        document.body.appendChild(textArea);
+        
+        // Выделяем и копируем
+        textArea.select();
+        textArea.setSelectionRange(0, textArea.value.length);
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          resolve();
+        } else {
+          reject(new Error('Не удалось скопировать текст'));
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+}
+
+// Обработка элементов с классом copyable-text
 document.querySelectorAll('.copyable-text').forEach(element => {
-  element.addEventListener('click', async (event) => {
-    // Копируем содержимое элемента, на который кликнули
-    const textToCopy = event.currentTarget.textContent;
+  // Добавляем обработчик для click (десктоп) и touchstart (мобильные)
+  const handleCopy = async (event) => {
+    // Предотвращаем стандартное поведение для touch
+    if (event.type === 'touchstart') {
+      event.preventDefault();
+    }
     
-    // Сохраняем исходный текст для восстановления
+    const textToCopy = element.getAttribute('data-clipboard-text') || element.textContent;
     const originalText = element.textContent;
+    const originalColor = element.style.color;
     
     try {
-      // Используем современный Clipboard API
-      await navigator.clipboard.writeText(textToCopy);
+      await copyToClipboard(textToCopy);
       
       // Визуальная обратная связь
       element.textContent = 'Copied!';
@@ -17,7 +62,7 @@ document.querySelectorAll('.copyable-text').forEach(element => {
       // Возвращаем исходный текст через 2 секунды
       setTimeout(() => {
         element.textContent = originalText;
-        element.style.color = '';
+        element.style.color = originalColor;
       }, 2000);
       
     } catch (err) {
@@ -27,37 +72,46 @@ document.querySelectorAll('.copyable-text').forEach(element => {
       
       setTimeout(() => {
         element.textContent = originalText;
-        element.style.color = '';
+        element.style.color = originalColor;
       }, 2000);
     }
-  });
+  };
+  
+  // Добавляем оба обработчика
+  element.addEventListener('click', handleCopy);
+  element.addEventListener('touchstart', handleCopy, { passive: false });
 });
 
 // Обработка кнопки копирования кода
 const copyCodeButton = document.getElementById('copyCodeButton');
 if (copyCodeButton) {
-  copyCodeButton.addEventListener('click', async () => {
+  const handleCopyCode = async (event) => {
+    // Предотвращаем стандартное поведение для touch
+    if (event.type === 'touchstart') {
+      event.preventDefault();
+    }
+    
     const codeInput = document.getElementById('codeInput');
     if (!codeInput) return;
     
     const codeToCopy = codeInput.value;
     const originalHTML = copyCodeButton.innerHTML;
     const originalTitle = copyCodeButton.getAttribute('title');
+    const originalClass = copyCodeButton.className;
     
     try {
-      // Используем современный Clipboard API
-      await navigator.clipboard.writeText(codeToCopy);
+      await copyToClipboard(codeToCopy);
       
       // Визуальная обратная связь
       copyCodeButton.innerHTML = '<i class="bi bi-check2"></i>';
       copyCodeButton.setAttribute('title', 'Code copied!');
-      copyCodeButton.classList.add('copied');
+      copyCodeButton.className = originalClass + ' copied';
       
       // Возвращаем исходное состояние через 2 секунды
       setTimeout(() => {
         copyCodeButton.innerHTML = originalHTML;
         copyCodeButton.setAttribute('title', originalTitle);
-        copyCodeButton.classList.remove('copied');
+        copyCodeButton.className = originalClass;
       }, 2000);
       
     } catch (err) {
@@ -70,5 +124,27 @@ if (copyCodeButton) {
         copyCodeButton.setAttribute('title', originalTitle);
       }, 2000);
     }
-  });
+  };
+  
+  // Добавляем оба обработчика
+  copyCodeButton.addEventListener('click', handleCopyCode);
+  copyCodeButton.addEventListener('touchstart', handleCopyCode, { passive: false });
 }
+
+// Также добавим стиль для улучшения touch-обработки на мобильных
+const style = document.createElement('style');
+style.textContent = `
+  .copyable-text, #copyCodeButton {
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.3);
+    tap-highlight-color: rgba(0, 255, 0, 0.3);
+    user-select: none;
+  }
+  
+  @media (max-width: 768px) {
+    .copyable-text, #copyCodeButton {
+      min-height: 44px; /* Минимальный размер для touch-целей */
+      min-width: 44px;
+    }
+  }
+`;
+document.head.appendChild(style);
