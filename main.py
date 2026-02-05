@@ -287,26 +287,22 @@ async def formular_convert(
             raise HTTPException(status_code=500, detail=f"Conversion error: {str(e)}")
     if from_format == 'html' and to_format == 'pdf':
         
-        from playwright.sync_api import sync_playwright
+        from playwright.async_api import async_playwright
+        from asyncio import run
 
-        def html_to_pdf(html_bytes: bytes) -> bytes:
-            with sync_playwright() as p:
-                browser = p.chromium.launch()
-                page = browser.new_page()
-                
-                # Загружаем HTML из байтов
-                page.set_content(html_bytes.decode('utf-8'))
-                
-                # Генерируем PDF через браузерный механизм печати
-                pdf_bytes = page.pdf()
-                
-                browser.close()
+        async def html_to_pdf(html_bytes: bytes) -> bytes:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(channel="chrome", headless=True)
+                page = await browser.new_page()
+                await page.set_content(html_bytes.decode('utf-8'))
+                pdf_bytes = await page.pdf()
+                await browser.close()
                 return pdf_bytes
         
         new_name = f"{name_without_ext}.{to_format}"
         encoded_filename = quote(new_name)
         
-        html_bytes = html_to_pdf(file.read())
+        html_bytes = run(html_to_pdf(file.read()))
         return Response(
                 content=html_bytes,
                 media_type="text/html",
