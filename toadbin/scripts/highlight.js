@@ -31,10 +31,10 @@
         textarea.dataset.hljsProcessed = 'true';
 
         const wrapper = document.createElement('div');
+        wrapper.className = 'code-editor-wrapper';
         wrapper.style.position = 'relative';
-        wrapper.style.display = 'inline-block';
-        wrapper.style.width = textarea.offsetWidth + 'px';
-        wrapper.style.height = textarea.offsetHeight + 'px';
+        wrapper.style.height = '100%';          // ← явная высота, чтобы проценты работали
+        wrapper.style.width = '100%';            // для надёжности
 
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
@@ -49,9 +49,6 @@
         }
     }
 
-    // =========================
-    // READ MODE (textarea disabled)
-    // =========================
     function setupReadOnly(textarea, wrapper) {
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -61,7 +58,7 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
+        pre.style.margin = '0';
         pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
@@ -75,12 +72,12 @@
         pre.style.lineHeight = style.lineHeight;
         pre.style.boxSizing = style.boxSizing;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
-        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
+        pre.style.overflowWrap = style.overflowWrap;
+        pre.style.wordWrap = style.wordWrap;
 
         const codeElement = document.createElement('code');
         codeElement.textContent = textarea.value || '';
-        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
+        codeElement.style.margin = '0';
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
@@ -91,9 +88,6 @@
         hljs.highlightElement(codeElement);
     }
 
-    // =========================
-    // EDIT MODE
-    // =========================
     function setupEditable(textarea, wrapper) {
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -103,7 +97,7 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
+        pre.style.margin = '0';
         pre.style.pointerEvents = 'none';
         pre.style.overflow = 'hidden';
         pre.style.whiteSpace = 'pre-wrap';
@@ -118,11 +112,11 @@
         pre.style.boxSizing = style.boxSizing;
         pre.style.border = style.border;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
-        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
+        pre.style.overflowWrap = style.overflowWrap;
+        pre.style.wordWrap = style.wordWrap;
 
         const codeElement = document.createElement('code');
-        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
+        codeElement.style.margin = '0';
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
