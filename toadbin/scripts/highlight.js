@@ -54,12 +54,10 @@
         // Создаём общую обёртку для всех режимов
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
-        wrapper.style.position = 'relative'; // Обеспечим относительное позиционирование
-
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Настроим текстовое поле для работы внутри обёртки
+        // Настраиваем текстовое поле для работы внутри обёртки
         textarea.style.width = '100%';
         textarea.style.height = '100%';
         textarea.style.display = ''; // сброс возможного скрытия
@@ -105,8 +103,11 @@
         wrapper.appendChild(pre);
     }
 
-    // Режим редактирования (главная страница)
+    // Режим редактирования (главная страница) – исправленная версия
     function setupEditable(textarea, wrapper) {
+        // Обрезаем содержимое, выходящее за пределы wrapper (для transform-прокрутки)
+        wrapper.style.overflow = 'hidden';
+
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -119,10 +120,11 @@
         pre.style.padding = '0';
         pre.style.border = 'none';
         pre.style.background = 'transparent';
-        pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'auto';
+        pre.style.pointerEvents = 'none';   // клики проходят сквозь на textarea
+        pre.style.overflow = 'hidden';       // собственный скроллбар не показываем
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
+        // transform будет управлять положением содержимого
 
         // Копируем стили из textarea для точного совпадения текста
         const style = window.getComputedStyle(textarea);
@@ -133,6 +135,7 @@
         pre.style.paddingRight = style.paddingRight;
         pre.style.paddingBottom = style.paddingBottom;
         pre.style.paddingLeft = style.paddingLeft;
+        // Копируем толщину границы (делаем прозрачной)
         pre.style.borderTopWidth = style.borderTopWidth;
         pre.style.borderRightWidth = style.borderRightWidth;
         pre.style.borderBottomWidth = style.borderBottomWidth;
@@ -166,29 +169,22 @@
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
+            // После обновления контента восстанавливаем синхронизацию прокрутки
+            syncScroll();
         }
 
-        // Синхронизация прокрутки
+        // Синхронизация прокрутки через transform (без собственного скроллбара pre)
         function syncScroll() {
-            // Проверка, что прокрутка существует и синхронизация нужна
-            if (textarea.scrollHeight !== pre.scrollHeight || textarea.scrollTop !== pre.scrollTop) {
-                pre.scrollTop = textarea.scrollTop;
-                pre.scrollLeft = textarea.scrollLeft;
-            }
-        }
-
-        // Проверяем, если textarea пустое
-        if (textarea.value.trim() === '') {
-            pre.style.height = 'auto'; // предотвращает сжимание поля в случае пустого ввода
-            pre.style.overflow = 'hidden'; // скроллбар будет скрыт, если поле пустое
-        } else {
-            pre.style.height = '100%';
-            pre.style.overflow = 'auto';
+            const scrollTop = textarea.scrollTop;
+            const scrollLeft = textarea.scrollLeft;
+            pre.style.transform = `translateY(-${scrollTop}px) translateX(-${scrollLeft}px)`;
         }
 
         updateHighlight();
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
+        // Начальная синхронизация (на случай, если браузер восстановил позицию)
+        setTimeout(syncScroll, 0);
     }
 
     // Запуск
