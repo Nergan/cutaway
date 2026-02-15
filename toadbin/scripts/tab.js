@@ -1,4 +1,4 @@
-// tab.js - добавляет поддержку клавиш Tab и Shift + Tab в поле ввода кода
+// tab.js - добавляет поддержку клавиш Tab, Shift + Tab и автозакрытие скобок в поле ввода кода
 (function() {
     'use strict';
 
@@ -10,7 +10,17 @@
         }
 
         const indent = '    '; // 4 пробела
+        const closingPairs = {
+            '(': ')',
+            '[': ']',
+            '{': '}',
+            '<': '>',
+            "'": "'",
+            '"': '"',
+            '`': '`'
+        };
 
+        // Обработчик нажатия клавиш
         codeInput.addEventListener('keydown', function(event) {
             const start = this.selectionStart;
             const end = this.selectionEnd;
@@ -86,9 +96,49 @@
 
                 // Вызываем событие input для обновления подсветки и счётчика символов
                 this.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (event.key === 'Enter') {
+                // Обработка Enter: вставка отступа при открывающих/закрывающих скобках
+                event.preventDefault();
+
+                const currentChar = value.charAt(start - 1);
+                const nextChar = value.charAt(start);
+                
+                if (currentChar === '{' || currentChar === '[' || currentChar === '(' || currentChar === '"' || currentChar === "'" || currentChar === "`") {
+                    // Если это открывающая скобка или кавычка
+                    const newLine = '\n' + indent + value.substring(start);
+                    this.value = value.substring(0, start) + newLine;
+                    this.selectionStart = this.selectionEnd = start + indent.length + 1;
+                } else if (currentChar === '}' || currentChar === ']' || currentChar === ')' || currentChar === '"' || currentChar === "'" || currentChar === "`") {
+                    // Если это закрывающая скобка или кавычка
+                    const newLine = '\n' + value.substring(start);
+                    this.value = value.substring(0, start) + newLine;
+                    this.selectionStart = this.selectionEnd = start + indent.length;
+                } else {
+                    // Для всех других случаев просто вставляем новую строку с отступом
+                    this.value = value.substring(0, start) + '\n' + indent + value.substring(start);
+                    this.selectionStart = this.selectionEnd = start + indent.length + 1;
+                }
+
+                this.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (closingPairs[event.key]) {
+                // Автозакрытие скобок и кавычек
+                event.preventDefault();
+
+                const cursorPosition = this.selectionStart;
+                const currentChar = value.charAt(cursorPosition - 1);
+
+                if (closingPairs[currentChar] && value.charAt(cursorPosition) !== closingPairs[currentChar]) {
+                    this.value = value.substring(0, cursorPosition) + closingPairs[currentChar] + value.substring(cursorPosition);
+                    this.selectionStart = this.selectionEnd = cursorPosition;
+                } else {
+                    this.value = value.substring(0, cursorPosition) + event.key + closingPairs[event.key] + value.substring(cursorPosition);
+                    this.selectionStart = this.selectionEnd = cursorPosition + 1;
+                }
+
+                this.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
 
-        console.log('Toadbin tab script loaded. Tab now indents (Shift+Tab removes indentation, multi-line supported).');
+        console.log('Toadbin tab script loaded. Tab, Shift+Tab, Auto-closing brackets, and Enter with indentation now supported.');
     });
 })();
