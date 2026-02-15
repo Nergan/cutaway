@@ -54,6 +54,8 @@
         // Создаём общую обёртку для всех режимов
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
+        // --- ИСПРАВЛЕНИЕ: добавляем позиционирование, чтобы абсолютный pre в режиме редактирования оставался внутри обёртки
+        wrapper.style.position = 'relative';
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
@@ -118,7 +120,6 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        // Убираем overflow: auto, чтобы pre не создавал собственный скроллбар
         pre.style.overflow = 'hidden';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
