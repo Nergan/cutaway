@@ -1,4 +1,4 @@
-z(function() {
+(function() {
     'use strict';
 
     // Загружаем тему highlight.js, если ещё не загружена
@@ -75,14 +75,11 @@ z(function() {
         textarea.style.display = 'none';
 
         const code = textarea.value;
-        const result = hljs.highlightAuto(code);
 
         const pre = document.createElement('pre');
         pre.className = 'hljs';
         const codeElement = document.createElement('code');
-        codeElement.className = result.language ? `language-${result.language}` : '';
-        codeElement.innerHTML = result.value;
-        codeElement.style.background = 'transparent';
+        codeElement.textContent = code; // устанавливаем текст как есть
         pre.appendChild(codeElement);
 
         // Копируем стили из textarea для совпадения размеров и отступов
@@ -101,6 +98,19 @@ z(function() {
         pre.style.wordWrap = 'break-word';
 
         wrapper.appendChild(pre);
+
+        // Применяем подсветку синтаксиса
+        if (typeof hljs !== 'undefined') {
+            hljs.highlightElement(codeElement);
+        } else {
+            // Если hljs ещё не загрузился (маловероятно), ждём
+            const checkHLJS = setInterval(() => {
+                if (typeof hljs !== 'undefined') {
+                    clearInterval(checkHLJS);
+                    hljs.highlightElement(codeElement);
+                }
+            }, 50);
+        }
     }
 
     // Режим редактирования (главная страница)
@@ -168,7 +178,6 @@ z(function() {
             codeElement.innerHTML = result.value;
 
             // Обновляем высоту highlightDiv, чтобы она соответствовала высоте контента
-            // Это нужно для правильного позиционирования при прокрутке
             highlightDiv.style.height = textarea.scrollHeight + 'px';
         }
 
@@ -179,22 +188,19 @@ z(function() {
 
         // Начальное обновление
         updateHighlight();
-        // Устанавливаем начальную высоту
         highlightDiv.style.height = textarea.scrollHeight + 'px';
 
         // Отслеживаем изменения текста и прокрутки
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
 
-        // Также обновляем высоту при изменении размеров textarea (например, при изменении контента)
-        // Используем ResizeObserver, если доступен, или просто при input обновляем высоту
+        // Обновляем высоту при изменении размеров textarea
         if (window.ResizeObserver) {
             const resizeObserver = new ResizeObserver(() => {
                 highlightDiv.style.height = textarea.scrollHeight + 'px';
             });
             resizeObserver.observe(textarea);
         } else {
-            // fallback: при input уже обновляется, но для изменения размера окна можно добавить
             window.addEventListener('resize', () => {
                 highlightDiv.style.height = textarea.scrollHeight + 'px';
             });
