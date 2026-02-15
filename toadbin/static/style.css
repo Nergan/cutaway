@@ -289,7 +289,6 @@ html, body {
     width: 100%;
 }
 
-/* Скругление углов для pre с подсветкой в режиме только для чтения */
 .code-editor-wrapper pre.hljs {
-    border-radius: 6px; /* соответствует border-radius элемента .code-editor */
+    border-radius: 6px; /* такое же скругление, как у .code-editor */
 }
