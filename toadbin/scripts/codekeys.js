@@ -30,7 +30,6 @@
                 starts[i] = currentPos;
                 currentPos += lines[i].length + 1; // +1 за \n
             }
-            // Находим строку, содержащую pos (включая позицию на \n)
             for (let i = 0; i < lines.length; i++) {
                 const lineEnd = starts[i] + lines[i].length;
                 if (pos >= starts[i] && pos <= lineEnd) {
@@ -42,7 +41,6 @@
                     };
                 }
             }
-            // Если pos за пределами (например, в конце текста без \n)
             const lastLineIndex = lines.length - 1;
             return {
                 lineIndex: lastLineIndex,
@@ -54,8 +52,6 @@
 
         // Безопасная вставка текста через execCommand (сохраняет историю undo)
         function insertTextAtSelection(text) {
-            // execCommand('insertText', false, text) заменяет текущее выделение текстом
-            // и добавляет действие в историю undo
             if (document.execCommand('insertText', false, text)) {
                 return true;
             } else {
@@ -103,7 +99,7 @@
                             const newEnd = lineInfo.lineStart + line.length;
                             this.setSelectionRange(newStart, newEnd); // выделяем всю строку
                             insertTextAtSelection(newLine); // заменяем на строку без отступа
-                            // Восстанавливаем курсор примерно на том же месте (с учётом удалённого отступа)
+                            // Восстанавливаем курсор примерно на том же месте
                             const newCursor = lineInfo.lineStart + Math.max(0, start - lineInfo.lineStart - indent.length);
                             this.setSelectionRange(newCursor, newCursor);
                         }
@@ -118,28 +114,19 @@
                     let firstLine = startInfo.lineIndex;
                     let lastLine = endInfo.lineIndex;
 
-                    // Сохраняем оригинальные строки для расчёта новых позиций
                     const originalLines = lines.slice(firstLine, lastLine + 1);
                     const modifiedLines = originalLines.map(line => 
                         line.startsWith(indent) ? line.substring(indent.length) : line
                     );
 
-                    // Заменяем выделенный диапазон новыми строками
                     const before = value.substring(0, startInfo.lineStart);
-                    const after = value.substring(endInfo.lineStart + endInfo.line.length + (lastLine < lines.length - 1 ? 1 : 0)); // + \n если не последняя
+                    const after = value.substring(endInfo.lineStart + endInfo.line.length + (lastLine < lines.length - 1 ? 1 : 0));
                     const newText = modifiedLines.join('\n');
-                    const fullText = before + newText + after;
-
-                    // Устанавливаем выделение на весь диапазон строк и заменяем
                     const rangeStart = startInfo.lineStart;
-                    const rangeEnd = endInfo.lineStart + endInfo.line.length + (lastLine - firstLine); // приблизительно, но лучше точно
+                    const rangeEnd = endInfo.lineStart + endInfo.line.length + (lastLine - firstLine);
                     this.setSelectionRange(rangeStart, rangeEnd);
                     insertTextAtSelection(newText);
-
-                    // Восстанавливаем выделение на ту же область (приблизительно)
-                    // Новые позиции: начало остаётся тем же, конец сдвигается на разницу длин
-                    const newEndPos = rangeStart + newText.length;
-                    this.setSelectionRange(rangeStart, newEndPos);
+                    this.setSelectionRange(rangeStart, rangeStart + newText.length);
                 } else {
                     // Tab без Shift: добавляем отступ в начало каждой затронутой строки
                     if (start === end) {
@@ -177,42 +164,58 @@
 
                 const before = value.substring(0, start);
                 const after = value.substring(end);
-
-                // Проверяем специальный случай: курсор между открывающей и закрывающей скобками (например, {|})
                 const prevChar = before.slice(-1);
                 const nextChar = after[0] || '';
 
+                // Случай: курсор между открывающей и закрывающей скобками (например, {|})
                 if (openBrackets.includes(prevChar) && closeBrackets.includes(nextChar) && bracketPairs[prevChar] === nextChar) {
-                    // Случай: {|} 
-                    const lineInfo = getLineInfo(value, start - 1);
+                    const openPos = start - 1;
+                    const closePos = start; // позиция закрывающей скобки (сразу после курсора)
+                    // Получаем отступ строки, где находится открывающая скобка
+                    const lineInfo = getLineInfo(value, openPos);
                     const leadingWhitespace = lineInfo.line.match(/^\s*/)[0];
 
-                    // Формируем новый текст: открывающая скобка, \n, отступ+indent, \n, отступ и закрывающая скобка
-                    const newText = before + '\n' + leadingWhitespace + indent + '\n' + leadingWhitespace + nextChar + after.slice(1);
-                    // Заменяем текущее выделение (нулевой длины) на новый текст
+                    // Новая конструкция: открывающая скобка + \n + отступ+indent + \n + отступ + закрывающая скобка
+                    const newText = prevChar + '\n' + leadingWhitespace + indent + '\n' + leadingWhitespace + nextChar;
+
+                    // Выделяем диапазон от openPos до closePos+1 (включая закрывающую скобку)
+                    this.setSelectionRange(openPos, closePos + 1);
                     insertTextAtSelection(newText);
-                    // Устанавливаем курсор на второй строке после отступа
-                    const newCursorPos = before.length + 1 + leadingWhitespace.length + indent.length;
+
+                    // Устанавливаем курсор на вторую строку после отступа
+                    const newCursorPos = openPos + 1 + leadingWhitespace.length + indent.length;
                     this.setSelectionRange(newCursorPos, newCursorPos);
                     return;
                 }
 
-                // Специальный случай: перед курсором двоеточие (с возможными пробелами)
+                // Случай: перед курсором двоеточие с возможными пробелами
                 if (/:\s*$/.test(before)) {
+                    const colonPos = before.lastIndexOf(':');
+                    if (colonPos === -1) return; // не должно случиться
+
+                    const afterColonPos = colonPos + 1; // позиция сразу после двоеточия
+                    // Получаем информацию о текущей строке
                     const lineInfo = getLineInfo(value, start);
+                    const lineStart = lineInfo.lineStart;
+                    const lineEnd = lineStart + lineInfo.line.length; // конец строки (без \n)
+
+                    // Текст после курсора до конца строки
+                    const afterText = value.substring(start, lineEnd);
+                    // Убираем начальные пробелы
+                    const afterTrimmed = afterText.trimStart();
+
+                    // Отступ текущей строки
                     const leadingWhitespace = lineInfo.line.match(/^\s*/)[0];
-                    
-                    // Удаляем пробелы в конце before (после двоеточия)
-                    const beforeTrimmed = before.replace(/\s+$/, '');
-                    // Удаляем начальные пробелы из after
-                    const afterTrimmed = after.trimStart();
-                    
-                    // Формируем новый текст: before без пробелов + \n + отступ + indent + after без пробелов
-                    const newText = beforeTrimmed + '\n' + leadingWhitespace + indent + afterTrimmed;
+
+                    // Новый текст: \n + отступ + indent + afterTrimmed
+                    const newText = '\n' + leadingWhitespace + indent + afterTrimmed;
+
+                    // Заменяем диапазон от afterColonPos до lineEnd
+                    this.setSelectionRange(afterColonPos, lineEnd);
                     insertTextAtSelection(newText);
-                    
-                    // Курсор ставим после отступа на новой строке, перед afterTrimmed
-                    const newCursorPos = beforeTrimmed.length + 1 + leadingWhitespace.length + indent.length;
+
+                    // Курсор ставим после отступа, перед afterTrimmed
+                    const newCursorPos = afterColonPos + 1 + leadingWhitespace.length + indent.length;
                     this.setSelectionRange(newCursorPos, newCursorPos);
                     return;
                 }
@@ -222,7 +225,7 @@
                 const leadingWhitespace = lineInfo.line.match(/^\s*/)[0];
                 const newText = '\n' + leadingWhitespace;
                 insertTextAtSelection(newText);
-                // Курсор остаётся после вставленного отступа (автоматически после execCommand)
+                // Курсор автоматически оказывается после вставленного отступа (execCommand ставит его в конец)
                 return;
             }
 
