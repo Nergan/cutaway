@@ -205,7 +205,7 @@ async def toad_backgrounds():
         # Получаем список файлов GIF
         gif_files = []
         for file in toad_background_dir.iterdir():
-            if file.is_file() and file.suffix.lower() == '.gif':
+            if file.is_file() and file.suffix.lower() == '.mp4':
                 gif_files.append(file.name)
         
         # Сортируем для удобства
