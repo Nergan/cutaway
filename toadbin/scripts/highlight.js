@@ -31,20 +31,16 @@
         textarea.dataset.hljsProcessed = 'true';
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'code-editor-wrapper';
         wrapper.style.position = 'relative';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.width = textarea.offsetWidth + 'px';
+        wrapper.style.height = textarea.offsetHeight + 'px';
 
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Делаем textarea абсолютной, чтобы она не влияла на размеры wrapper
-        textarea.style.position = 'absolute';
-        textarea.style.top = '0';
-        textarea.style.left = '0';
         textarea.style.width = '100%';
         textarea.style.height = '100%';
-        textarea.style.margin = '0';
-        textarea.style.boxSizing = 'border-box';
 
         if (textarea.disabled) {
             setupReadOnly(textarea, wrapper);
@@ -53,6 +49,9 @@
         }
     }
 
+    // =========================
+    // READ MODE (textarea disabled)
+    // =========================
     function setupReadOnly(textarea, wrapper) {
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -62,7 +61,7 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';
+        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
         pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
@@ -76,12 +75,12 @@
         pre.style.lineHeight = style.lineHeight;
         pre.style.boxSizing = style.boxSizing;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;
-        pre.style.wordWrap = style.wordWrap;
+        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
+        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
 
         const codeElement = document.createElement('code');
         codeElement.textContent = textarea.value || '';
-        codeElement.style.margin = '0';
+        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
@@ -92,6 +91,9 @@
         hljs.highlightElement(codeElement);
     }
 
+    // =========================
+    // EDIT MODE
+    // =========================
     function setupEditable(textarea, wrapper) {
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -101,12 +103,11 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';
+        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
         pre.style.pointerEvents = 'none';
         pre.style.overflow = 'hidden';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
-        pre.style.zIndex = '0'; // ниже textarea
 
         const style = window.getComputedStyle(textarea);
 
@@ -117,21 +118,21 @@
         pre.style.boxSizing = style.boxSizing;
         pre.style.border = style.border;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;
-        pre.style.wordWrap = style.wordWrap;
+        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
+        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
 
         const codeElement = document.createElement('code');
-        codeElement.style.margin = '0';
+        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
         wrapper.insertBefore(pre, textarea);
 
-        // Настройки для textarea (уже абсолютная)
         textarea.style.background = 'transparent';
         textarea.style.color = 'transparent';
         textarea.style.caretColor = '#ffffff';
-        textarea.style.zIndex = '1'; // выше pre
+        textarea.style.position = 'relative';
+        textarea.style.zIndex = '1';
 
         function updateHighlight() {
             const code = textarea.value;
