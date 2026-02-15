@@ -9,24 +9,40 @@
             return;
         }
 
+        const indent = '    '; // 4 пробела
+
         codeInput.addEventListener('keydown', function(event) {
-            // Проверяем, что нажата клавиша Tab без модификаторов
             if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-                event.preventDefault(); // Предотвращаем потерю фокуса
+                event.preventDefault();
 
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
                 const value = this.value;
 
-                // Вставляем символ табуляции в позицию курсора
-                // Если текст выделен, он заменяется на табуляцию
-                this.value = value.substring(0, start) + '    ' + value.substring(end);
+                // Если есть выделение, проверяем, многострочное ли оно
+                if (start !== end) {
+                    const selectedText = value.substring(start, end);
+                    if (selectedText.includes('\n')) {
+                        // Многострочное выделение: добавляем отступ перед каждой строкой
+                        const lines = selectedText.split('\n');
+                        const indentedLines = lines.map(line => indent + line);
+                        const indentedText = indentedLines.join('\n');
 
-                // Возвращаем курсор после вставленного символа
-                this.selectionStart = this.selectionEnd = start + 4;
+                        this.value = value.substring(0, start) + indentedText + value.substring(end);
+
+                        // Выделяем весь изменённый блок
+                        this.selectionStart = start;
+                        this.selectionEnd = start + indentedText.length;
+                        return;
+                    }
+                }
+
+                // Если выделение отсутствует или однострочное: вставляем отступ в позицию курсора
+                this.value = value.substring(0, start) + indent + value.substring(end);
+                this.selectionStart = this.selectionEnd = start + indent.length;
             }
         });
 
-        console.log('Toadbin tab script loaded. Tab key now inserts a tab character.');
+        console.log('Toadbin tab script loaded. Tab now indents with 4 spaces (multi-line supported).');
     });
 })();
