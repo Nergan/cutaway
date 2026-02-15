@@ -1,4 +1,4 @@
-// tab.js - добавляет поддержку клавиш Tab, Shift + Tab и автозакрытие скобок в поле ввода кода
+// tab.js - добавляет поддержку клавиш Tab, Shift + Tab, автозакрытие скобок и правильное поведение при Enter в поле ввода кода
 (function() {
     'use strict';
 
@@ -34,7 +34,7 @@
                     let newValue, newCursorStart, newCursorEnd;
 
                     if (start !== end) {
-                        // Если выделен несколько строк
+                        // Если выделено несколько строк
                         const selectedText = value.substring(start, end);
                         const lines = selectedText.split('\n');
                         const unindentedLines = lines.map(line => {
@@ -103,13 +103,15 @@
                 const currentChar = value.charAt(start - 1);
                 const nextChar = value.charAt(start);
                 
-                if (currentChar === '{' || currentChar === '[' || currentChar === '(' || currentChar === '"' || currentChar === "'" || currentChar === "`") {
-                    // Если это открывающая скобка или кавычка
+                // Проверяем, если символ перед курсором является открывающей скобкой, добавляем отступ в новой строке
+                if (['{', '[', '(', '"', "'", '`'].includes(currentChar)) {
+                    // Вставляем новую строку с отступом
                     const newLine = '\n' + indent + value.substring(start);
                     this.value = value.substring(0, start) + newLine;
                     this.selectionStart = this.selectionEnd = start + indent.length + 1;
-                } else if (currentChar === '}' || currentChar === ']' || currentChar === ')' || currentChar === '"' || currentChar === "'" || currentChar === "`") {
-                    // Если это закрывающая скобка или кавычка
+                }
+                // Проверяем, если символ перед курсором является закрывающей скобкой, тоже вставляем новую строку с отступом
+                else if (['}', ']', ')', '"', "'", '`'].includes(currentChar)) {
                     const newLine = '\n' + value.substring(start);
                     this.value = value.substring(0, start) + newLine;
                     this.selectionStart = this.selectionEnd = start + indent.length;
