@@ -186,6 +186,16 @@
             pre.style.overflow = 'auto';
         }
 
+        // Убедимся, что синхронизация прокрутки работает стабильно
+        const scrollSyncInterval = setInterval(() => {
+            syncScroll();
+        }, 100); // обновляем прокрутку каждую 1/10 секунды
+
+        // Останавливаем синхронизацию, когда textarea не активен
+        textarea.addEventListener('blur', () => {
+            clearInterval(scrollSyncInterval);
+        });
+
         updateHighlight();
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
