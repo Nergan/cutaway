@@ -54,12 +54,14 @@
         // Создаём общую обёртку для всех режимов
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
+        // ИСПРАВЛЕНИЕ: задаём относительное позиционирование, чтобы абсолютно позиционированный pre
+        // привязывался к wrapper, а не к окну
         wrapper.style.position = 'relative';
 
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Настраиваем текстовое поле для работы внутри обёртки
+        // Настроим текстовое поле для работы внутри обёртки
         textarea.style.width = '100%';
         textarea.style.height = '100%';
         textarea.style.display = ''; // сброс возможного скрытия
@@ -76,7 +78,7 @@
         // Скрываем текстовое поле
         textarea.style.display = 'none';
 
-        const code = textarea.value || ''; // Обработка пустого значения
+        const code = textarea.value;
         const result = hljs.highlightAuto(code);
 
         const pre = document.createElement('pre');
@@ -101,9 +103,6 @@
         pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
-
-        // Устанавливаем минимальную высоту для pre, чтобы прокрутка всегда была доступна
-        pre.style.minHeight = '100px';
 
         wrapper.appendChild(pre);
     }
@@ -136,6 +135,7 @@
         pre.style.paddingRight = style.paddingRight;
         pre.style.paddingBottom = style.paddingBottom;
         pre.style.paddingLeft = style.paddingLeft;
+        // Копируем толщину границы (делаем прозрачной)
         pre.style.borderTopWidth = style.borderTopWidth;
         pre.style.borderRightWidth = style.borderRightWidth;
         pre.style.borderBottomWidth = style.borderBottomWidth;
@@ -165,7 +165,7 @@
 
         // Функция обновления подсветки
         function updateHighlight() {
-            const code = textarea.value || ''; // Обработка пустого значения
+            const code = textarea.value;
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
@@ -175,6 +175,15 @@
         function syncScroll() {
             pre.scrollTop = textarea.scrollTop;
             pre.scrollLeft = textarea.scrollLeft;
+        }
+
+        // Обработка пустого поля (проверка на пустоту и установка корректного стиля)
+        if (textarea.value.trim() === '') {
+            pre.style.height = 'auto'; // предотвращает сжимание поля в случае пустого ввода
+            pre.style.overflow = 'hidden'; // скроллбар будет скрыт, если поле пустое
+        } else {
+            pre.style.height = '100%';
+            pre.style.overflow = 'auto';
         }
 
         updateHighlight();
