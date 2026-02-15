@@ -1,23 +1,21 @@
 (function() {
     'use strict';
 
-    // Добавляем стили для скрытия скроллбара у блока подсветки в режиме редактирования
-    function addNoScrollbarStyle() {
-        if (document.getElementById('hljs-editable-scrollbar-hide')) return;
-        const style = document.createElement('style');
-        style.id = 'hljs-editable-scrollbar-hide';
-        style.textContent = `
-            .editable-pre {
-                overflow: auto !important;
-                scrollbar-width: none !important;        /* Firefox */
-                -ms-overflow-style: none !important;     /* IE/Edge */
-            }
-            .editable-pre::-webkit-scrollbar {
-                display: none !important;                 /* Chrome/Safari/Opera */
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    // Добавляем стили для скрытия скроллбара у pre в режиме редактирования
+    const style = document.createElement('style');
+    style.textContent = `
+        .hljs-editable {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        .hljs-editable::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+        .hljs-readonly {
+            /* скроллбар остаётся видимым по умолчанию */
+        }
+    `;
+    document.head.appendChild(style);
 
     // Загружаем тему highlight.js, если ещё не загружена
     function loadTheme() {
@@ -96,7 +94,7 @@
         const result = hljs.highlightAuto(code);
 
         const pre = document.createElement('pre');
-        pre.className = 'hljs';
+        pre.className = 'hljs hljs-readonly'; // добавляем класс для чтения
         const codeElement = document.createElement('code');
         codeElement.className = result.language ? `language-${result.language}` : '';
         codeElement.innerHTML = result.value;
@@ -123,12 +121,9 @@
 
     // Режим редактирования (главная страница)
     function setupEditable(textarea, wrapper) {
-        // Добавляем глобальный стиль для скрытия скроллбара (один раз)
-        addNoScrollbarStyle();
-
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
-        pre.className = 'hljs editable-pre'; // добавляем специальный класс
+        pre.className = 'hljs hljs-editable'; // добавляем класс для редактирования (скроллбар скрыт)
         pre.style.position = 'absolute';
         pre.style.top = '0';
         pre.style.left = '0';
@@ -139,7 +134,7 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'auto';          // обязательно auto для программной прокрутки
+        pre.style.overflow = 'auto'; // прокрутка остаётся для синхронизации
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
