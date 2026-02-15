@@ -40,8 +40,26 @@
         document.head.appendChild(script);
     }
 
+    // Добавляем стили для скрытия скроллбара у pre в режиме редактирования
+    function addScrollbarHidingStyle() {
+        if (document.getElementById('hljs-edit-scrollbar-hide')) return;
+        const style = document.createElement('style');
+        style.id = 'hljs-edit-scrollbar-hide';
+        style.textContent = `
+            .code-editor-pre {
+                scrollbar-width: none;        /* Firefox */
+                -ms-overflow-style: none;     /* IE/Edge */
+            }
+            .code-editor-pre::-webkit-scrollbar {
+                display: none;                 /* Chrome/Safari */
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     // Инициализация всех текстовых полей
     function init() {
+        addScrollbarHidingStyle();
         document.querySelectorAll('.code-editor').forEach(setupTextarea);
     }
 
@@ -107,7 +125,7 @@
     function setupEditable(textarea, wrapper) {
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
-        pre.className = 'hljs';
+        pre.className = 'hljs code-editor-pre';  // добавлен класс для скрытия скроллбара
         pre.style.position = 'absolute';
         pre.style.top = '0';
         pre.style.left = '0';
@@ -118,7 +136,7 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'auto';
+        pre.style.overflow = 'auto';          // прокрутка остаётся, но скроллбар скрыт через CSS
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
