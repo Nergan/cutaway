@@ -20,7 +20,7 @@
 
                 // Вставляем символ табуляции в позицию курсора
                 // Если текст выделен, он заменяется на табуляцию
-                this.value = value.substring(0, start) + '\t' + value.substring(end);
+                this.value = value.substring(0, start) + '    ' + value.substring(end);
 
                 // Возвращаем курсор после вставленного символа
                 this.selectionStart = this.selectionEnd = start + 1;
