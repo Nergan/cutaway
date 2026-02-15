@@ -54,9 +54,7 @@
         // Создаём общую обёртку для всех режимов
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
-        // ИСПРАВЛЕНИЕ: задаём относительное позиционирование, чтобы абсолютно позиционированный pre
-        // привязывался к wrapper, а не к окну
-        wrapper.style.position = 'relative';
+        wrapper.style.position = 'relative'; // Обеспечим относительное позиционирование
 
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
@@ -135,7 +133,6 @@
         pre.style.paddingRight = style.paddingRight;
         pre.style.paddingBottom = style.paddingBottom;
         pre.style.paddingLeft = style.paddingLeft;
-        // Копируем толщину границы (делаем прозрачной)
         pre.style.borderTopWidth = style.borderTopWidth;
         pre.style.borderRightWidth = style.borderRightWidth;
         pre.style.borderBottomWidth = style.borderBottomWidth;
@@ -173,11 +170,14 @@
 
         // Синхронизация прокрутки
         function syncScroll() {
-            pre.scrollTop = textarea.scrollTop;
-            pre.scrollLeft = textarea.scrollLeft;
+            // Проверка, что прокрутка существует и синхронизация нужна
+            if (textarea.scrollHeight !== pre.scrollHeight || textarea.scrollTop !== pre.scrollTop) {
+                pre.scrollTop = textarea.scrollTop;
+                pre.scrollLeft = textarea.scrollLeft;
+            }
         }
 
-        // Обработка пустого поля (проверка на пустоту и установка корректного стиля)
+        // Проверяем, если textarea пустое
         if (textarea.value.trim() === '') {
             pre.style.height = 'auto'; // предотвращает сжимание поля в случае пустого ввода
             pre.style.overflow = 'hidden'; // скроллбар будет скрыт, если поле пустое
@@ -185,16 +185,6 @@
             pre.style.height = '100%';
             pre.style.overflow = 'auto';
         }
-
-        // Убедимся, что синхронизация прокрутки работает стабильно
-        const scrollSyncInterval = setInterval(() => {
-            syncScroll();
-        }, 100); // обновляем прокрутку каждую 1/10 секунды
-
-        // Останавливаем синхронизацию, когда textarea не активен
-        textarea.addEventListener('blur', () => {
-            clearInterval(scrollSyncInterval);
-        });
 
         updateHighlight();
         textarea.addEventListener('input', updateHighlight);
