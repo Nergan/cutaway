@@ -59,17 +59,10 @@
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // !!! ИСПРАВЛЕНИЕ: сохраняем исходные размеры textarea и применяем их к wrapper,
-        // чтобы предотвратить схлопывание при скрытии или изменении стилей.
-        const originalWidth = textarea.offsetWidth;
-        const originalHeight = textarea.offsetHeight;
-        if (originalWidth > 0) wrapper.style.width = originalWidth + 'px';
-        if (originalHeight > 0) wrapper.style.height = originalHeight + 'px';
-
-        // Больше не принудительно задаём width/height: 100% для textarea,
-        // оставляем исходные размеры, чтобы не ломать скроллбары.
-        // textarea.style.width = '100%';   // <-- удалено
-        // textarea.style.height = '100%';  // <-- удалено
+        // Настраиваем текстовое поле для работы внутри обёртки
+        textarea.style.width = '100%';
+        textarea.style.height = '100%';
+        textarea.style.display = '';
 
         if (isReadOnly) {
             setupReadOnly(textarea, wrapper);
@@ -80,7 +73,9 @@
 
     // Режим только для чтения (code_id)
     function setupReadOnly(textarea, wrapper) {
-        // Сначала получаем код и создаём pre
+        // Скрываем текстовое поле
+        textarea.style.display = 'none';
+
         const code = textarea.value;
         const result = hljs.highlightAuto(code);
 
@@ -108,17 +103,10 @@
         pre.style.wordWrap = 'break-word';
 
         wrapper.appendChild(pre);
-
-        // Скрываем текстовое поле только после того, как pre уже добавлен,
-        // чтобы wrapper не схлопнулся (размеры wrapper уже зафиксированы)
-        textarea.style.display = 'none';
     }
 
     // Режим редактирования (главная страница)
     function setupEditable(textarea, wrapper) {
-        // Запрещаем ручное изменение размера, чтобы не сломать синхронизацию
-        textarea.style.resize = 'none';
-
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -132,7 +120,7 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'auto';
+        pre.style.overflow = 'hidden';          // ИСПРАВЛЕНО: скрываем скроллбар pre
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
