@@ -30,16 +30,15 @@
         if (textarea.dataset.hljsProcessed) return;
         textarea.dataset.hljsProcessed = 'true';
 
-        // Создаём обёртку и сразу даём ей класс для адаптивности
         const wrapper = document.createElement('div');
-        wrapper.className = 'code-editor-wrapper';   // ← теперь используем существующий CSS-класс
-        wrapper.style.position = 'relative';         // нужно для абсолютного позиционирования pre
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.width = textarea.offsetWidth + 'px';
+        wrapper.style.height = textarea.offsetHeight + 'px';
 
-        // Вставляем обёртку перед textarea и перемещаем textarea внутрь
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Текст внутри обёртки занимает 100% её размеров (управляется CSS)
         textarea.style.width = '100%';
         textarea.style.height = '100%';
 
@@ -62,7 +61,7 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';
+        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
         pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
@@ -74,14 +73,14 @@
         pre.style.fontFamily = style.fontFamily;
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
-        pre.style.boxSizing = style.boxSizing;           // важно для правильных размеров
+        pre.style.boxSizing = style.boxSizing;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;
-        pre.style.wordWrap = style.wordWrap;
+        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
+        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
 
         const codeElement = document.createElement('code');
         codeElement.textContent = textarea.value || '';
-        codeElement.style.margin = '0';
+        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
@@ -104,7 +103,7 @@
         pre.style.left = '0';
         pre.style.right = '0';
         pre.style.bottom = '0';
-        pre.style.margin = '0';
+        pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
         pre.style.pointerEvents = 'none';
         pre.style.overflow = 'hidden';
         pre.style.whiteSpace = 'pre-wrap';
@@ -116,14 +115,14 @@
         pre.style.fontFamily = style.fontFamily;
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
-        pre.style.boxSizing = style.boxSizing;           // копируем box-sizing
+        pre.style.boxSizing = style.boxSizing;
         pre.style.border = style.border;
         pre.style.borderRadius = style.borderRadius;
-        pre.style.overflowWrap = style.overflowWrap;
-        pre.style.wordWrap = style.wordWrap;
+        pre.style.overflowWrap = style.overflowWrap;      // FIX: копируем переносы
+        pre.style.wordWrap = style.wordWrap;              // FIX: для старых браузеров
 
         const codeElement = document.createElement('code');
-        codeElement.style.margin = '0';
+        codeElement.style.margin = '0';                    // FIX: сбрасываем отступы у code
         codeElement.style.padding = '0';
         pre.appendChild(codeElement);
 
