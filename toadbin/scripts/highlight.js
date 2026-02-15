@@ -1,7 +1,20 @@
 (function() {
     'use strict';
 
-    // Загружаем тему highlight.js, если ещё не загружена
+    // Стили для скрытия скроллбара у pre в режиме редактирования (если понадобятся)
+    const style = document.createElement('style');
+    style.textContent = `
+        .hljs-editable {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .hljs-editable::-webkit-scrollbar {
+            display: none;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Загружаем тему highlight.js
     function loadTheme() {
         if (!document.querySelector('link[href*="highlight.js/11.8.0/styles/github-dark.min.css"]')) {
             const link = document.createElement('link');
@@ -11,7 +24,7 @@
         }
     }
 
-    // Загружаем основной скрипт highlight.js и дополнительные языки
+    // Загружаем основной скрипт и дополнительные языки
     function loadHighlightJs(callback) {
         if (typeof hljs !== 'undefined') {
             callback();
@@ -51,16 +64,16 @@
 
         const isReadOnly = textarea.disabled;
 
-        // Создаём общую обёртку для всех режимов
+        // Создаём обёртку
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Настраиваем текстовое поле для работы внутри обёртки
+        // Сбрасываем стили
         textarea.style.width = '100%';
         textarea.style.height = '100%';
-        textarea.style.display = ''; // сброс возможного скрытия
+        textarea.style.display = '';
 
         if (isReadOnly) {
             setupReadOnly(textarea, wrapper);
@@ -69,20 +82,19 @@
         }
     }
 
-    // Режим только для чтения (code_id)
+    // Режим только для чтения (с подсветкой)
     function setupReadOnly(textarea, wrapper) {
-        // Скрываем текстовое поле
         textarea.style.display = 'none';
 
         const code = textarea.value;
 
         const pre = document.createElement('pre');
-        pre.className = 'hljs';
+        pre.className = 'hljs hljs-readonly';
         const codeElement = document.createElement('code');
-        codeElement.textContent = code; // устанавливаем текст как есть
+        codeElement.textContent = code; // исходный текст
         pre.appendChild(codeElement);
 
-        // Копируем стили из textarea для совпадения размеров и отступов
+        // Копируем стили из textarea
         const style = window.getComputedStyle(textarea);
         pre.style.margin = '0';
         pre.style.padding = style.padding;
@@ -99,23 +111,20 @@
 
         wrapper.appendChild(pre);
 
-        // Применяем подсветку синтаксиса
-        if (typeof hljs !== 'undefined') {
-            hljs.highlightElement(codeElement);
-        } else {
-            // Если hljs ещё не загрузился (маловероятно), ждём
-            const checkHLJS = setInterval(() => {
-                if (typeof hljs !== 'undefined') {
-                    clearInterval(checkHLJS);
-                    hljs.highlightElement(codeElement);
-                }
-            }, 50);
+        // Подсветка с ожиданием загрузки hljs
+        function applyHighlight() {
+            if (typeof hljs !== 'undefined') {
+                hljs.highlightElement(codeElement);
+            } else {
+                setTimeout(applyHighlight, 50);
+            }
         }
+        applyHighlight();
     }
 
-    // Режим редактирования (главная страница)
+    // Режим редактирования (с прокруткой через transform)
     function setupEditable(textarea, wrapper) {
-        // Создаём div для подсветки (без собственной прокрутки)
+        // Контейнер для подсвеченного кода (без собственной прокрутки)
         const highlightDiv = document.createElement('div');
         highlightDiv.className = 'hljs';
         highlightDiv.style.position = 'absolute';
@@ -127,12 +136,12 @@
         highlightDiv.style.padding = '0';
         highlightDiv.style.border = 'none';
         highlightDiv.style.background = 'transparent';
-        highlightDiv.style.pointerEvents = 'none'; // клики проходят к textarea
-        highlightDiv.style.overflow = 'hidden'; // нет прокрутки
+        highlightDiv.style.pointerEvents = 'none';
+        highlightDiv.style.overflow = 'hidden';
         highlightDiv.style.whiteSpace = 'pre-wrap';
         highlightDiv.style.wordWrap = 'break-word';
 
-        // Копируем стили из textarea для точного совпадения текста
+        // Копируем стили текста из textarea
         const style = window.getComputedStyle(textarea);
         highlightDiv.style.fontFamily = style.fontFamily;
         highlightDiv.style.fontSize = style.fontSize;
@@ -141,7 +150,6 @@
         highlightDiv.style.paddingRight = style.paddingRight;
         highlightDiv.style.paddingBottom = style.paddingBottom;
         highlightDiv.style.paddingLeft = style.paddingLeft;
-        // Копируем толщину границы (делаем прозрачной)
         highlightDiv.style.borderTopWidth = style.borderTopWidth;
         highlightDiv.style.borderRightWidth = style.borderRightWidth;
         highlightDiv.style.borderBottomWidth = style.borderBottomWidth;
@@ -156,13 +164,12 @@
         highlightDiv.style.borderLeftColor = 'transparent';
         highlightDiv.style.boxSizing = style.boxSizing;
 
-        // Внутренний элемент для подсвеченного кода
         const codeElement = document.createElement('code');
         codeElement.style.background = 'transparent';
         highlightDiv.appendChild(codeElement);
         wrapper.appendChild(highlightDiv);
 
-        // Настраиваем текстовое поле
+        // Настройка textarea
         textarea.style.background = 'transparent';
         textarea.style.color = 'transparent';
         textarea.style.caretColor = 'white';
@@ -170,31 +177,27 @@
         textarea.style.zIndex = '1';
         textarea.style.backgroundColor = 'transparent';
 
-        // Функция обновления подсветки и высоты
+        // Обновление подсветки
         function updateHighlight() {
             const code = textarea.value;
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
-
-            // Обновляем высоту highlightDiv, чтобы она соответствовала высоте контента
             highlightDiv.style.height = textarea.scrollHeight + 'px';
         }
 
-        // Синхронизация прокрутки сдвигом highlightDiv
+        // Синхронизация прокрутки
         function syncScroll() {
             highlightDiv.style.transform = `translateY(-${textarea.scrollTop}px)`;
         }
 
-        // Начальное обновление
         updateHighlight();
         highlightDiv.style.height = textarea.scrollHeight + 'px';
 
-        // Отслеживаем изменения текста и прокрутки
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
 
-        // Обновляем высоту при изменении размеров textarea
+        // Обновление высоты при изменении размеров
         if (window.ResizeObserver) {
             const resizeObserver = new ResizeObserver(() => {
                 highlightDiv.style.height = textarea.scrollHeight + 'px';
