@@ -70,7 +70,7 @@
         const style = window.getComputedStyle(textarea);
 
         pre.style.padding = style.padding;
-        pre.style.border = style.border;
+        pre.style.border = style.border; 
         pre.style.fontFamily = style.fontFamily;
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
@@ -114,6 +114,8 @@
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
         pre.style.boxSizing = style.boxSizing;
+        pre.style.border = style.border;
+        pre.style.borderRadius = style.borderRadius;
 
         const codeElement = document.createElement('code');
         pre.appendChild(codeElement);
