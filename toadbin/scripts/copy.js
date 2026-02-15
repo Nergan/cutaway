@@ -204,61 +204,6 @@ if (copyCodeButton) {
   copyCodeButton.addEventListener('touchend', (e) => e.preventDefault());
 }
 
-// Добавляем стили для мобильных
-const mobileStyles = document.createElement('style');
-mobileStyles.textContent = `
-  /* Улучшения для мобильных */
-  .copyable-text, #copyCodeButton {
-    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.3);
-    tap-highlight-color: rgba(0, 255, 0, 0.3);
-    user-select: none;
-    cursor: pointer;
-  }
-  
-  @media (max-width: 768px) {
-    .copyable-text, #copyCodeButton {
-      min-height: 48px !important;
-      min-width: 48px !important;
-      padding: 12px !important;
-    }
-    
-    #copyCodeButton {
-      position: relative !important;
-      z-index: 100 !important;
-      background: rgba(40, 167, 69, 0.9) !important;
-      border: 2px solid white !important;
-      border-radius: 50% !important;
-      width: 60px !important;
-      height: 60px !important;
-      font-size: 1.5rem !important;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-    }
-    
-    /* Убедимся, что кнопка всегда видна */
-    .header .d-flex {
-      position: relative;
-      padding-right: 70px !important;
-    }
-    
-    #copyCodeButton {
-      position: absolute !important;
-      top: 50% !important;
-      right: 0 !important;
-      transform: translateY(-50%) !important;
-    }
-  }
-  
-  /* Для очень маленьких экранов */
-  @media (max-width: 576px) {
-    #copyCodeButton {
-      width: 50px !important;
-      height: 50px !important;
-      font-size: 1.2rem !important;
-    }
-  }
-`;
-document.head.appendChild(mobileStyles);
-
 // Дополнительно: для iOS добавляем специальную обработку
 if (navigator.userAgent.match(/ipad|iphone|ipod/i)) {
   // iOS часто требует явного user gesture для копирования
