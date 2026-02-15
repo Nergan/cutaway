@@ -1,21 +1,5 @@
-(function() {
+z(function() {
     'use strict';
-
-    // Добавляем стили для скрытия скроллбара у pre в режиме редактирования
-    const style = document.createElement('style');
-    style.textContent = `
-        .hljs-editable {
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* IE/Edge */
-        }
-        .hljs-editable::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
-        }
-        .hljs-readonly {
-            /* скроллбар остаётся видимым по умолчанию */
-        }
-    `;
-    document.head.appendChild(style);
 
     // Загружаем тему highlight.js, если ещё не загружена
     function loadTheme() {
@@ -94,7 +78,7 @@
         const result = hljs.highlightAuto(code);
 
         const pre = document.createElement('pre');
-        pre.className = 'hljs hljs-readonly'; // добавляем класс для чтения
+        pre.className = 'hljs';
         const codeElement = document.createElement('code');
         codeElement.className = result.language ? `language-${result.language}` : '';
         codeElement.innerHTML = result.value;
@@ -121,51 +105,52 @@
 
     // Режим редактирования (главная страница)
     function setupEditable(textarea, wrapper) {
-        // Создаём pre для подсветки
-        const pre = document.createElement('pre');
-        pre.className = 'hljs hljs-editable'; // добавляем класс для редактирования (скроллбар скрыт)
-        pre.style.position = 'absolute';
-        pre.style.top = '0';
-        pre.style.left = '0';
-        pre.style.right = '0';
-        pre.style.bottom = '0';
-        pre.style.margin = '0';
-        pre.style.padding = '0';
-        pre.style.border = 'none';
-        pre.style.background = 'transparent';
-        pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'auto'; // прокрутка остаётся для синхронизации
-        pre.style.whiteSpace = 'pre-wrap';
-        pre.style.wordWrap = 'break-word';
+        // Создаём div для подсветки (без собственной прокрутки)
+        const highlightDiv = document.createElement('div');
+        highlightDiv.className = 'hljs';
+        highlightDiv.style.position = 'absolute';
+        highlightDiv.style.top = '0';
+        highlightDiv.style.left = '0';
+        highlightDiv.style.right = '0';
+        highlightDiv.style.bottom = '0';
+        highlightDiv.style.margin = '0';
+        highlightDiv.style.padding = '0';
+        highlightDiv.style.border = 'none';
+        highlightDiv.style.background = 'transparent';
+        highlightDiv.style.pointerEvents = 'none'; // клики проходят к textarea
+        highlightDiv.style.overflow = 'hidden'; // нет прокрутки
+        highlightDiv.style.whiteSpace = 'pre-wrap';
+        highlightDiv.style.wordWrap = 'break-word';
 
         // Копируем стили из textarea для точного совпадения текста
         const style = window.getComputedStyle(textarea);
-        pre.style.fontFamily = style.fontFamily;
-        pre.style.fontSize = style.fontSize;
-        pre.style.lineHeight = style.lineHeight;
-        pre.style.paddingTop = style.paddingTop;
-        pre.style.paddingRight = style.paddingRight;
-        pre.style.paddingBottom = style.paddingBottom;
-        pre.style.paddingLeft = style.paddingLeft;
+        highlightDiv.style.fontFamily = style.fontFamily;
+        highlightDiv.style.fontSize = style.fontSize;
+        highlightDiv.style.lineHeight = style.lineHeight;
+        highlightDiv.style.paddingTop = style.paddingTop;
+        highlightDiv.style.paddingRight = style.paddingRight;
+        highlightDiv.style.paddingBottom = style.paddingBottom;
+        highlightDiv.style.paddingLeft = style.paddingLeft;
         // Копируем толщину границы (делаем прозрачной)
-        pre.style.borderTopWidth = style.borderTopWidth;
-        pre.style.borderRightWidth = style.borderRightWidth;
-        pre.style.borderBottomWidth = style.borderBottomWidth;
-        pre.style.borderLeftWidth = style.borderLeftWidth;
-        pre.style.borderTopStyle = 'solid';
-        pre.style.borderRightStyle = 'solid';
-        pre.style.borderBottomStyle = 'solid';
-        pre.style.borderLeftStyle = 'solid';
-        pre.style.borderTopColor = 'transparent';
-        pre.style.borderRightColor = 'transparent';
-        pre.style.borderBottomColor = 'transparent';
-        pre.style.borderLeftColor = 'transparent';
-        pre.style.boxSizing = style.boxSizing;
+        highlightDiv.style.borderTopWidth = style.borderTopWidth;
+        highlightDiv.style.borderRightWidth = style.borderRightWidth;
+        highlightDiv.style.borderBottomWidth = style.borderBottomWidth;
+        highlightDiv.style.borderLeftWidth = style.borderLeftWidth;
+        highlightDiv.style.borderTopStyle = 'solid';
+        highlightDiv.style.borderRightStyle = 'solid';
+        highlightDiv.style.borderBottomStyle = 'solid';
+        highlightDiv.style.borderLeftStyle = 'solid';
+        highlightDiv.style.borderTopColor = 'transparent';
+        highlightDiv.style.borderRightColor = 'transparent';
+        highlightDiv.style.borderBottomColor = 'transparent';
+        highlightDiv.style.borderLeftColor = 'transparent';
+        highlightDiv.style.boxSizing = style.boxSizing;
 
+        // Внутренний элемент для подсвеченного кода
         const codeElement = document.createElement('code');
         codeElement.style.background = 'transparent';
-        pre.appendChild(codeElement);
-        wrapper.appendChild(pre);
+        highlightDiv.appendChild(codeElement);
+        wrapper.appendChild(highlightDiv);
 
         // Настраиваем текстовое поле
         textarea.style.background = 'transparent';
@@ -175,23 +160,45 @@
         textarea.style.zIndex = '1';
         textarea.style.backgroundColor = 'transparent';
 
-        // Функция обновления подсветки
+        // Функция обновления подсветки и высоты
         function updateHighlight() {
             const code = textarea.value;
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
+
+            // Обновляем высоту highlightDiv, чтобы она соответствовала высоте контента
+            // Это нужно для правильного позиционирования при прокрутке
+            highlightDiv.style.height = textarea.scrollHeight + 'px';
         }
 
-        // Синхронизация прокрутки
+        // Синхронизация прокрутки сдвигом highlightDiv
         function syncScroll() {
-            pre.scrollTop = textarea.scrollTop;
-            pre.scrollLeft = textarea.scrollLeft;
+            highlightDiv.style.transform = `translateY(-${textarea.scrollTop}px)`;
         }
 
+        // Начальное обновление
         updateHighlight();
+        // Устанавливаем начальную высоту
+        highlightDiv.style.height = textarea.scrollHeight + 'px';
+
+        // Отслеживаем изменения текста и прокрутки
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
+
+        // Также обновляем высоту при изменении размеров textarea (например, при изменении контента)
+        // Используем ResizeObserver, если доступен, или просто при input обновляем высоту
+        if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+                highlightDiv.style.height = textarea.scrollHeight + 'px';
+            });
+            resizeObserver.observe(textarea);
+        } else {
+            // fallback: при input уже обновляется, но для изменения размера окна можно добавить
+            window.addEventListener('resize', () => {
+                highlightDiv.style.height = textarea.scrollHeight + 'px';
+            });
+        }
     }
 
     // Запуск
