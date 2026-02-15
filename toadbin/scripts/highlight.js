@@ -50,14 +50,18 @@
         textarea.dataset.hljsProcessed = 'true';
 
         const isReadOnly = textarea.disabled;
+        // Сохраняем позицию прокрутки до перемещения
+        const oldScrollTop = textarea.scrollTop;
 
-        // Создаём общую обёртку для всех режимов
+        // Создаём обёртку и перемещаем в неё textarea
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
-        // --- ИСПРАВЛЕНИЕ: добавляем позиционирование, чтобы абсолютный pre в режиме редактирования оставался внутри обёртки
-        wrapper.style.position = 'relative';
+        wrapper.style.position = 'relative'; // необходимо для абсолютного позиционирования pre
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
+
+        // Восстанавливаем прокрутку после перемещения
+        textarea.scrollTop = oldScrollTop;
 
         // Настраиваем текстовое поле для работы внутри обёртки
         textarea.style.width = '100%';
@@ -107,6 +111,9 @@
 
     // Режим редактирования (главная страница)
     function setupEditable(textarea, wrapper) {
+        // Сохраняем текущую прокрутку перед изменениями
+        const oldScrollTop = textarea.scrollTop;
+
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -120,7 +127,7 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'hidden';
+        pre.style.overflow = 'hidden'; // не создаём собственный скроллбар
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
@@ -133,7 +140,6 @@
         pre.style.paddingRight = style.paddingRight;
         pre.style.paddingBottom = style.paddingBottom;
         pre.style.paddingLeft = style.paddingLeft;
-        // Копируем толщину границы (делаем прозрачной)
         pre.style.borderTopWidth = style.borderTopWidth;
         pre.style.borderRightWidth = style.borderRightWidth;
         pre.style.borderBottomWidth = style.borderBottomWidth;
@@ -161,21 +167,30 @@
         textarea.style.zIndex = '1';
         textarea.style.backgroundColor = 'transparent';
 
-        // Функция обновления подсветки
+        // Восстанавливаем прокрутку после добавления pre
+        textarea.scrollTop = oldScrollTop;
+
+        // Функция обновления подсветки с сохранением прокрутки
         function updateHighlight() {
+            const currentScrollTop = textarea.scrollTop; // сохраняем
             const code = textarea.value;
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
+            // Восстанавливаем прокрутку (на случай сброса)
+            textarea.scrollTop = currentScrollTop;
         }
 
-        // Синхронизация прокрутки
+        // Синхронизация прокрутки pre с textarea
         function syncScroll() {
             pre.scrollTop = textarea.scrollTop;
             pre.scrollLeft = textarea.scrollLeft;
         }
 
+        // Первоначальное обновление
         updateHighlight();
+
+        // Обработчики событий
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
     }
