@@ -103,11 +103,8 @@
         wrapper.appendChild(pre);
     }
 
-    // Режим редактирования (главная страница) – исправленная версия
+    // Режим редактирования (главная страница)
     function setupEditable(textarea, wrapper) {
-        // Обрезаем содержимое, выходящее за пределы wrapper (для transform-прокрутки)
-        wrapper.style.overflow = 'hidden';
-
         // Создаём pre для подсветки
         const pre = document.createElement('pre');
         pre.className = 'hljs';
@@ -120,11 +117,10 @@
         pre.style.padding = '0';
         pre.style.border = 'none';
         pre.style.background = 'transparent';
-        pre.style.pointerEvents = 'none';   // клики проходят сквозь на textarea
-        pre.style.overflow = 'hidden';       // собственный скроллбар не показываем
+        pre.style.pointerEvents = 'none';
+        pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
-        // transform будет управлять положением содержимого
 
         // Копируем стили из textarea для точного совпадения текста
         const style = window.getComputedStyle(textarea);
@@ -169,22 +165,17 @@
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
-            // После обновления контента восстанавливаем синхронизацию прокрутки
-            syncScroll();
         }
 
-        // Синхронизация прокрутки через transform (без собственного скроллбара pre)
+        // Синхронизация прокрутки
         function syncScroll() {
-            const scrollTop = textarea.scrollTop;
-            const scrollLeft = textarea.scrollLeft;
-            pre.style.transform = `translateY(-${scrollTop}px) translateX(-${scrollLeft}px)`;
+            pre.scrollTop = textarea.scrollTop;
+            pre.scrollLeft = textarea.scrollLeft;
         }
 
         updateHighlight();
         textarea.addEventListener('input', updateHighlight);
         textarea.addEventListener('scroll', syncScroll);
-        // Начальная синхронизация (на случай, если браузер восстановил позицию)
-        setTimeout(syncScroll, 0);
     }
 
     // Запуск
