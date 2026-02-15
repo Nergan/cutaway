@@ -40,43 +40,38 @@
         document.head.appendChild(script);
     }
 
-    // Инициализация всех текстовых полей
+    // Инициализация: применяем подсветку только к заблокированным полям
     function init() {
-        document.querySelectorAll('.code-editor').forEach(setupTextarea);
+        document.querySelectorAll('.code-editor').forEach(textarea => {
+            // Если поле уже обработано – пропускаем
+            if (textarea.dataset.hljsProcessed === 'true') return;
+
+            // Применяем подсветку только для disabled (режим чтения)
+            if (textarea.disabled) {
+                setupReadOnly(textarea);
+            }
+            // Для редактируемых полей ничего не делаем — они остаются обычными textarea
+        });
     }
 
-    function setupTextarea(textarea) {
-        if (textarea.dataset.hljsProcessed === 'true') return;
+    // Режим только для чтения (code_id присутствует)
+    function setupReadOnly(textarea) {
+        // Помечаем как обработанное
         textarea.dataset.hljsProcessed = 'true';
 
-        const isReadOnly = textarea.disabled;
-        // Сохраняем позицию прокрутки до перемещения
+        // Сохраняем текущую прокрутку (на всякий случай, хотя в read-only она не критична)
         const oldScrollTop = textarea.scrollTop;
 
         // Создаём обёртку и перемещаем в неё textarea
-        let wrapper = document.createElement('div');
+        const wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
-        wrapper.style.position = 'relative'; // необходимо для абсолютного позиционирования pre
+        wrapper.style.position = 'relative'; // для возможных будущих нужд
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // Восстанавливаем прокрутку после перемещения
+        // Восстанавливаем прокрутку (если вдруг сбросилась)
         textarea.scrollTop = oldScrollTop;
 
-        // Настраиваем текстовое поле для работы внутри обёртки
-        textarea.style.width = '100%';
-        textarea.style.height = '100%';
-        textarea.style.display = ''; // сброс возможного скрытия
-
-        if (isReadOnly) {
-            setupReadOnly(textarea, wrapper);
-        } else {
-            setupEditable(textarea, wrapper);
-        }
-    }
-
-    // Режим только для чтения (code_id)
-    function setupReadOnly(textarea, wrapper) {
         // Скрываем текстовое поле
         textarea.style.display = 'none';
 
@@ -107,92 +102,6 @@
         pre.style.wordWrap = 'break-word';
 
         wrapper.appendChild(pre);
-    }
-
-    // Режим редактирования (главная страница)
-    function setupEditable(textarea, wrapper) {
-        // Сохраняем текущую прокрутку перед изменениями
-        const oldScrollTop = textarea.scrollTop;
-
-        // Создаём pre для подсветки
-        const pre = document.createElement('pre');
-        pre.className = 'hljs';
-        pre.style.position = 'absolute';
-        pre.style.top = '0';
-        pre.style.left = '0';
-        pre.style.right = '0';
-        pre.style.bottom = '0';
-        pre.style.margin = '0';
-        pre.style.padding = '0';
-        pre.style.border = 'none';
-        pre.style.background = 'transparent';
-        pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'hidden'; // не создаём собственный скроллбар
-        pre.style.whiteSpace = 'pre-wrap';
-        pre.style.wordWrap = 'break-word';
-
-        // Копируем стили из textarea для точного совпадения текста
-        const style = window.getComputedStyle(textarea);
-        pre.style.fontFamily = style.fontFamily;
-        pre.style.fontSize = style.fontSize;
-        pre.style.lineHeight = style.lineHeight;
-        pre.style.paddingTop = style.paddingTop;
-        pre.style.paddingRight = style.paddingRight;
-        pre.style.paddingBottom = style.paddingBottom;
-        pre.style.paddingLeft = style.paddingLeft;
-        pre.style.borderTopWidth = style.borderTopWidth;
-        pre.style.borderRightWidth = style.borderRightWidth;
-        pre.style.borderBottomWidth = style.borderBottomWidth;
-        pre.style.borderLeftWidth = style.borderLeftWidth;
-        pre.style.borderTopStyle = 'solid';
-        pre.style.borderRightStyle = 'solid';
-        pre.style.borderBottomStyle = 'solid';
-        pre.style.borderLeftStyle = 'solid';
-        pre.style.borderTopColor = 'transparent';
-        pre.style.borderRightColor = 'transparent';
-        pre.style.borderBottomColor = 'transparent';
-        pre.style.borderLeftColor = 'transparent';
-        pre.style.boxSizing = style.boxSizing;
-
-        const codeElement = document.createElement('code');
-        codeElement.style.background = 'transparent';
-        pre.appendChild(codeElement);
-        wrapper.appendChild(pre);
-
-        // Настраиваем текстовое поле
-        textarea.style.background = 'transparent';
-        textarea.style.color = 'transparent';
-        textarea.style.caretColor = 'white';
-        textarea.style.position = 'relative';
-        textarea.style.zIndex = '1';
-        textarea.style.backgroundColor = 'transparent';
-
-        // Восстанавливаем прокрутку после добавления pre
-        textarea.scrollTop = oldScrollTop;
-
-        // Функция обновления подсветки с сохранением прокрутки
-        function updateHighlight() {
-            const currentScrollTop = textarea.scrollTop; // сохраняем
-            const code = textarea.value;
-            const result = hljs.highlightAuto(code);
-            codeElement.className = result.language ? `language-${result.language}` : '';
-            codeElement.innerHTML = result.value;
-            // Восстанавливаем прокрутку (на случай сброса)
-            textarea.scrollTop = currentScrollTop;
-        }
-
-        // Синхронизация прокрутки pre с textarea
-        function syncScroll() {
-            pre.scrollTop = textarea.scrollTop;
-            pre.scrollLeft = textarea.scrollLeft;
-        }
-
-        // Первоначальное обновление
-        updateHighlight();
-
-        // Обработчики событий
-        textarea.addEventListener('input', updateHighlight);
-        textarea.addEventListener('scroll', syncScroll);
     }
 
     // Запуск
