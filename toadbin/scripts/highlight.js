@@ -62,7 +62,7 @@
         // Настраиваем текстовое поле для работы внутри обёртки
         textarea.style.width = '100%';
         textarea.style.height = '100%';
-        textarea.style.display = '';
+        textarea.style.display = ''; // сброс возможного скрытия
 
         if (isReadOnly) {
             setupReadOnly(textarea, wrapper);
@@ -76,7 +76,7 @@
         // Скрываем текстовое поле
         textarea.style.display = 'none';
 
-        const code = textarea.value;
+        const code = textarea.value || ''; // Обработка пустого значения
         const result = hljs.highlightAuto(code);
 
         const pre = document.createElement('pre');
@@ -120,7 +120,7 @@
         pre.style.border = 'none';
         pre.style.background = 'transparent';
         pre.style.pointerEvents = 'none';
-        pre.style.overflow = 'hidden';          // ИСПРАВЛЕНО: скрываем скроллбар pre
+        pre.style.overflow = 'auto';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
@@ -133,7 +133,6 @@
         pre.style.paddingRight = style.paddingRight;
         pre.style.paddingBottom = style.paddingBottom;
         pre.style.paddingLeft = style.paddingLeft;
-        // Копируем толщину границы (делаем прозрачной)
         pre.style.borderTopWidth = style.borderTopWidth;
         pre.style.borderRightWidth = style.borderRightWidth;
         pre.style.borderBottomWidth = style.borderBottomWidth;
@@ -163,7 +162,7 @@
 
         // Функция обновления подсветки
         function updateHighlight() {
-            const code = textarea.value;
+            const code = textarea.value || ''; // Обработка пустого значения
             const result = hljs.highlightAuto(code);
             codeElement.className = result.language ? `language-${result.language}` : '';
             codeElement.innerHTML = result.value;
