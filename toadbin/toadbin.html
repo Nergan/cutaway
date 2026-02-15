@@ -21,10 +21,6 @@
     <!-- Элегантные шрифты (Garamond + альтернативы) -->
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Playfair+Display:wght@400;500&family=Cinzel:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- CodeMirror for syntax highlighting while editing -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/darcula.min.css">
-    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/toadbin/static/style.css">
     
@@ -210,66 +206,6 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- CodeMirror core and modes -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/display/placeholder.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/php/php.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sql/sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/shell/shell.min.js"></script>
-    
-    {% if not code_id %}
-    <script>
-        // Инициализация CodeMirror на странице создания
-        document.addEventListener('DOMContentLoaded', function() {
-            const textarea = document.getElementById('codeInput');
-            if (textarea) {
-                window.codeMirrorEditor = CodeMirror.fromTextArea(textarea, {
-                    lineNumbers: true,
-                    mode: 'auto',
-                    theme: 'darcula',
-                    indentUnit: 4,
-                    tabSize: 4,
-                    lineWrapping: true,
-                    placeholder: textarea.placeholder,
-                    autoCloseBrackets: true,
-                    matchBrackets: true,
-                    extraKeys: {
-                        'Ctrl-S': function(cm) {
-                            if (typeof window.saveCode === 'function') {
-                                window.saveCode();
-                            }
-                            return false; // предотвращаем всплытие и стандартное поведение
-                        }
-                    }
-                });
-
-                // Обновление счётчика символов
-                window.codeMirrorEditor.on('change', function() {
-                    const count = window.codeMirrorEditor.getValue().length;
-                    const charCount = document.getElementById('charCount');
-                    if (charCount) {
-                        charCount.textContent = `${count} character${count !== 1 ? 's' : ''}`;
-                    }
-                });
-
-                // Начальное обновление счётчика
-                const initialCount = window.codeMirrorEditor.getValue().length;
-                const charCount = document.getElementById('charCount');
-                if (charCount) {
-                    charCount.textContent = `${initialCount} character${initialCount !== 1 ? 's' : ''}`;
-                }
-            }
-        });
-    </script>
-    {% endif %}
-    
-    <!-- Общие скрипты -->
     <script src="/toadbin/scripts/random background.js"></script>
     <script src="/toadbin/scripts/character counter.js"></script>
     {% if not code_id %}
