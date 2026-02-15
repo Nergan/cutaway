@@ -18,7 +18,6 @@
 
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
-
         script.onload = callback;
         document.head.appendChild(script);
     }
@@ -31,56 +30,67 @@
         if (textarea.dataset.hljsProcessed) return;
         textarea.dataset.hljsProcessed = 'true';
 
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.width = textarea.offsetWidth + 'px';
+        wrapper.style.height = textarea.offsetHeight + 'px';
+
+        textarea.parentNode.insertBefore(wrapper, textarea);
+        wrapper.appendChild(textarea);
+
+        textarea.style.width = '100%';
+        textarea.style.height = '100%';
+
         if (textarea.disabled) {
-            setupReadOnly(textarea);
+            setupReadOnly(textarea, wrapper);
         } else {
-            setupEditable(textarea);
+            setupEditable(textarea, wrapper);
         }
     }
 
-    // =============================
-    // READ MODE (СТАБИЛЬНЫЙ)
-    // =============================
-    function setupReadOnly(textarea) {
+    // =========================
+    // READ MODE (textarea остаётся)
+    // =========================
+    function setupReadOnly(textarea, wrapper) {
 
         const pre = document.createElement('pre');
         pre.className = 'hljs';
 
+        pre.style.position = 'absolute';
+        pre.style.top = '0';
+        pre.style.left = '0';
+        pre.style.right = '0';
+        pre.style.bottom = '0';
+        pre.style.margin = '0';
+        pre.style.overflow = 'auto';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.wordWrap = 'break-word';
+
         const style = window.getComputedStyle(textarea);
 
-        pre.style.margin = style.margin;
         pre.style.padding = style.padding;
         pre.style.border = style.border;
         pre.style.fontFamily = style.fontFamily;
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
-        pre.style.whiteSpace = 'pre-wrap';
-        pre.style.wordWrap = 'break-word';
-        pre.style.overflow = 'auto';
-        pre.style.height = textarea.offsetHeight + 'px';
-        pre.style.boxSizing = 'border-box';
+        pre.style.boxSizing = style.boxSizing;
 
         const codeElement = document.createElement('code');
         codeElement.textContent = textarea.value || '';
         pre.appendChild(codeElement);
 
-        textarea.parentNode.replaceChild(pre, textarea);
+        wrapper.appendChild(pre);
+
+        textarea.style.visibility = 'hidden';
 
         hljs.highlightElement(codeElement);
     }
 
-    // =============================
-    // EDIT MODE (СТАБИЛЬНЫЙ)
-    // =============================
-    function setupEditable(textarea) {
-
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'relative';
-        wrapper.style.width = '100%';
-        wrapper.style.height = '100%';
-
-        textarea.parentNode.insertBefore(wrapper, textarea);
-        wrapper.appendChild(textarea);
+    // =========================
+    // EDIT MODE
+    // =========================
+    function setupEditable(textarea, wrapper) {
 
         const pre = document.createElement('pre');
         pre.className = 'hljs';
