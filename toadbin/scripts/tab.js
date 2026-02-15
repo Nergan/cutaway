@@ -100,9 +100,10 @@
                 event.preventDefault();
 
                 const currentChar = value.charAt(start - 1);
-                
+
                 // Если перед курсором открывающая скобка, вставляем новую строку с отступом
                 if (['{', '[', '(', '"', "'", '`'].includes(currentChar)) {
+                    // Добавляем новую строку с отступом после открывающей скобки
                     const newLine = '\n' + indent + value.substring(start);
                     this.value = value.substring(0, start) + newLine;
                     this.selectionStart = this.selectionEnd = start + indent.length + 1;
