@@ -33,8 +33,8 @@
         const wrapper = document.createElement('div');
         wrapper.style.position = 'relative';
         wrapper.style.display = 'inline-block';
-        wrapper.style.width = textarea.offsetWidth + 'px';
-        wrapper.style.height = textarea.offsetHeight + 'px';
+        wrapper.style.width = '100%';
+        wrapper.style.height = '100%';
 
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
@@ -62,7 +62,7 @@
         pre.style.right = '0';
         pre.style.bottom = '0';
         pre.style.margin = '0';                          // FIX: убираем возможный браузерный margin
-        pre.style.overflow = 'auto';
+        pre.style.overflow = 'auto';                     // FIX: корректная прокрутка
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
