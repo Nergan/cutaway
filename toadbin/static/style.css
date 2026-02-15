@@ -271,3 +271,20 @@ html, body {
   }
 }
 
+/* Прозрачный фон для highlight.js pre и code */
+.hljs, .hljs code {
+    background: transparent !important;
+}
+
+/* Для режима редактирования: pre не должен получать события */
+.code-editor-wrapper pre.hljs {
+    pointer-events: none;
+}
+
+/* Обёртка для редактора, занимает место в flex-контейнере */
+.code-editor-wrapper {
+    flex: 1 1 auto;
+    position: relative;
+    min-height: 0;
+    width: 100%;
+}
