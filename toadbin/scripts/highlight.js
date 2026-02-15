@@ -54,6 +54,10 @@
         // Создаём общую обёртку для всех режимов
         let wrapper = document.createElement('div');
         wrapper.className = 'code-editor-wrapper';
+        // !!! ИСПРАВЛЕНИЕ: задаём относительное позиционирование, чтобы абсолютно позиционированный pre
+        // привязывался к wrapper, а не к окну
+        wrapper.style.position = 'relative';
+
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
