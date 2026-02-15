@@ -102,6 +102,9 @@
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.wordWrap = 'break-word';
 
+        // Устанавливаем минимальную высоту для pre, чтобы прокрутка всегда была доступна
+        pre.style.minHeight = '100px';
+
         wrapper.appendChild(pre);
     }
 
