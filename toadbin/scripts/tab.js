@@ -19,7 +19,8 @@
                 const end = this.selectionEnd;
                 const value = this.value;
 
-                // Если есть выделение, проверяем, многострочное ли оно
+                let newValue, newCursorStart, newCursorEnd;
+
                 if (start !== end) {
                     const selectedText = value.substring(start, end);
                     if (selectedText.includes('\n')) {
@@ -28,18 +29,29 @@
                         const indentedLines = lines.map(line => indent + line);
                         const indentedText = indentedLines.join('\n');
 
-                        this.value = value.substring(0, start) + indentedText + value.substring(end);
-
-                        // Выделяем весь изменённый блок
-                        this.selectionStart = start;
-                        this.selectionEnd = start + indentedText.length;
-                        return;
+                        newValue = value.substring(0, start) + indentedText + value.substring(end);
+                        newCursorStart = start;
+                        newCursorEnd = start + indentedText.length;
+                    } else {
+                        // Однострочное выделение: заменяем выделенный текст отступом
+                        newValue = value.substring(0, start) + indent + value.substring(end);
+                        newCursorStart = start + indent.length;
+                        newCursorEnd = newCursorStart;
                     }
+                } else {
+                    // Без выделения: вставляем отступ в позицию курсора
+                    newValue = value.substring(0, start) + indent + value.substring(end);
+                    newCursorStart = start + indent.length;
+                    newCursorEnd = newCursorStart;
                 }
 
-                // Если выделение отсутствует или однострочное: вставляем отступ в позицию курсора
-                this.value = value.substring(0, start) + indent + value.substring(end);
-                this.selectionStart = this.selectionEnd = start + indent.length;
+                // Применяем изменения
+                this.value = newValue;
+                this.selectionStart = newCursorStart;
+                this.selectionEnd = newCursorEnd;
+
+                // Вызываем событие input для обновления подсветки и счётчика символов
+                this.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
 
