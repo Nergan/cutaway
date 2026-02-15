@@ -289,6 +289,3 @@ html, body {
     width: 100%;
 }
 
-.code-editor-wrapper pre.hljs {
-    border-radius: 6px; /* такое же скругление, как у .code-editor */
-}

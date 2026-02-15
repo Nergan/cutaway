@@ -75,6 +75,7 @@
         pre.style.fontSize = style.fontSize;
         pre.style.lineHeight = style.lineHeight;
         pre.style.boxSizing = style.boxSizing;
+        pre.style.borderRadius = style.borderRadius;
 
         const codeElement = document.createElement('code');
         codeElement.textContent = textarea.value || '';
