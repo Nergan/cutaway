@@ -1,4 +1,3 @@
-// tab.js - добавляет поддержку клавиш Tab, Shift + Tab, автозакрытие скобок и правильное поведение при Enter в поле ввода кода
 (function() {
     'use strict';
 
@@ -26,15 +25,16 @@
             const end = this.selectionEnd;
             const value = this.value;
 
+            // Обработка Tab
             if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
                 event.preventDefault();
-                
+
                 if (event.shiftKey) {
-                    // Обработка Shift + Tab: удаляем отступ
+                    // Shift + Tab: удаляем отступ
                     let newValue, newCursorStart, newCursorEnd;
 
                     if (start !== end) {
-                        // Если выделено несколько строк
+                        // Многострочное выделение: удаляем отступ перед каждой строкой
                         const selectedText = value.substring(start, end);
                         const lines = selectedText.split('\n');
                         const unindentedLines = lines.map(line => {
@@ -47,7 +47,7 @@
                         newCursorStart = start;
                         newCursorEnd = start + unindentedText.length;
                     } else {
-                        // Если выделена одна строка
+                        // Однострочное выделение: удаляем один отступ
                         const line = value.substring(start, end);
                         const unindentedLine = line.startsWith(indent) ? line.substring(indent.length) : line;
                         
@@ -61,7 +61,7 @@
                     this.selectionStart = newCursorStart;
                     this.selectionEnd = newCursorEnd;
                 } else {
-                    // Обработка обычного Tab: добавляем отступ
+                    // Обычный Tab: добавляем отступ
                     let newValue, newCursorStart, newCursorEnd;
 
                     if (start !== end) {
@@ -76,7 +76,7 @@
                             newCursorStart = start;
                             newCursorEnd = start + indentedText.length;
                         } else {
-                            // Однострочное выделение: заменяем выделенный текст отступом
+                            // Однострочное выделение: добавляем отступ в начало строки
                             newValue = value.substring(0, start) + indent + value.substring(end);
                             newCursorStart = start + indent.length;
                             newCursorEnd = newCursorStart;
@@ -94,29 +94,25 @@
                     this.selectionEnd = newCursorEnd;
                 }
 
-                // Вызываем событие input для обновления подсветки и счётчика символов
                 this.dispatchEvent(new Event('input', { bubbles: true }));
             } else if (event.key === 'Enter') {
                 // Обработка Enter: вставка отступа при открывающих/закрывающих скобках
                 event.preventDefault();
 
                 const currentChar = value.charAt(start - 1);
-                const nextChar = value.charAt(start);
                 
-                // Проверяем, если символ перед курсором является открывающей скобкой, добавляем отступ в новой строке
+                // Если перед курсором открывающая скобка, вставляем новую строку с отступом
                 if (['{', '[', '(', '"', "'", '`'].includes(currentChar)) {
-                    // Вставляем новую строку с отступом
                     const newLine = '\n' + indent + value.substring(start);
                     this.value = value.substring(0, start) + newLine;
                     this.selectionStart = this.selectionEnd = start + indent.length + 1;
-                }
-                // Проверяем, если символ перед курсором является закрывающей скобкой, тоже вставляем новую строку с отступом
-                else if (['}', ']', ')', '"', "'", '`'].includes(currentChar)) {
+                } else if (['}', ']', ')', '"', "'", '`'].includes(currentChar)) {
+                    // Если перед курсором закрывающая скобка, вставляем новую строку с отступом
                     const newLine = '\n' + value.substring(start);
                     this.value = value.substring(0, start) + newLine;
                     this.selectionStart = this.selectionEnd = start + indent.length;
                 } else {
-                    // Для всех других случаев просто вставляем новую строку с отступом
+                    // Вставляем новую строку с отступом для других случаев
                     this.value = value.substring(0, start) + '\n' + indent + value.substring(start);
                     this.selectionStart = this.selectionEnd = start + indent.length + 1;
                 }
