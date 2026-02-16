@@ -31,6 +31,7 @@ client = AsyncIOMotorClient(
 )
 db = client.toadbin  # база данных
 codes_collection = db.codes  # коллекция для кодов
+stats_db = client["main-page"] # бд для счётчика
 
 app = FastAPI()
 app.mount("/evenfest/static", StaticFiles(directory="evenfest/static"), name="evenfest")
@@ -50,34 +51,6 @@ toad_code_dir = Path("toadbin/codes")
 class TrackRequest(BaseModel):
     uuid: str
 
-@app.post("/api/track")
-async def track_visitor(request: TrackRequest):
-    # Пытаемся вставить UUID в коллекцию visitors, если он новый
-    result = await db.visitors.update_one(
-        {"_id": request.uuid},
-        {"$setOnInsert": {"_id": request.uuid, "first_seen": datetime.utcnow()}},
-        upsert=True
-    )
-    # Если был вставлен новый документ, увеличиваем счётчик уникальных посетителей
-    if result.upserted_id is not None:
-        await db.stats.update_one(
-            {"_id": "unique_visitors"},
-            {"$inc": {"count": 1}}
-        )
-    # Получаем текущее значение счётчика
-    counter_doc = await db.stats.find_one({"_id": "unique_visitors"})
-    count = counter_doc["count"] if counter_doc else 0
-    return {"count": count}
-
-
-# Ensure stats collection has a counter document
-async def init_counter():
-    await db.stats.update_one(
-        {"_id": "unique_visitors"},
-        {"$setOnInsert": {"count": 0}},
-        upsert=True
-    )
-
 
 def load_data(path):
     file_path = Path(path)
@@ -85,6 +58,14 @@ def load_data(path):
         with open(file_path, encoding="utf-8") as f:
             return load(f)
     raise Exception(f'{path} not found')
+
+
+async def init_counter():
+    await stats_db.stats.update_one(
+        {"_id": "unique_visitors"},
+        {"$setOnInsert": {"count": 0}},
+        upsert=True
+    )
 
 
 async def convert_docx_to_pdf(docx_content: bytes) -> bytes:
@@ -165,14 +146,33 @@ async def convert_docx_to_pdf(docx_content: bytes) -> bytes:
 
 
 # main page
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return FileResponse("index.html")
 
-
 @app.on_event("startup")
 async def startup_event():
     await init_counter()
+    
+@app.post("/api/track")
+async def track_visitor(request: TrackRequest):
+    # Пытаемся вставить UUID в коллекцию visitors (в отдельной БД)
+    result = await stats_db.visitors.update_one(
+        {"_id": request.uuid},
+        {"$setOnInsert": {"_id": request.uuid, "first_seen": datetime.utcnow()}},
+        upsert=True
+    )
+    # Если UUID новый, увеличиваем счётчик уникальных посетителей
+    if result.upserted_id is not None:
+        await stats_db.stats.update_one(
+            {"_id": "unique_visitors"},
+            {"$inc": {"count": 1}}
+        )
+    # Получаем текущее значение счётчика
+    counter_doc = await stats_db.stats.find_one({"_id": "unique_visitors"})
+    count = counter_doc["count"] if counter_doc else 0
+    return {"count": count}
 
 
 # evenfest
