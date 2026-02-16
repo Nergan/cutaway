@@ -12,6 +12,7 @@
     <!-- Пиксельный шрифт -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&display=swap" rel="stylesheet">
     <style>
+        /* все стили остались без изменений */
         :root {
             --bg-dark: #0a0a0a;
             --card-bg: #151515;
@@ -112,7 +113,7 @@
         .custom-icon {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Масштабирует с сохранением пропорций, не обрезая */
+            object-fit: contain;
             z-index: 2;
             position: relative;
         }
@@ -337,8 +338,8 @@
     <div class="container-fluid">
         <!-- Заголовок и контакты -->
         <div class="header-section">
-            <h1 class="welcome-text">Welcome to the Nargan's website, here you will find some of my pet-projects.</h1>
-            <p class="job-text">And also, I'm looking for a job..</p>
+            <h1 class="welcome-text" data-i18n="welcome">Welcome to the Nargan's website, here you will find some of my pet-projects.</h1>
+            <p class="job-text" data-i18n="job">And also, I'm looking for a job..</p>
             <div class="contacts">
                 <a href="https://github.com/Nergan" target="_blank" class="contact-link github">
                     <i class="bi bi-github"></i>
@@ -363,10 +364,10 @@
                                 <div class="project-icon icon-1">
                                     <img src="evenfest/static/favicon.png" alt="<icon>" class="custom-icon">
                                 </div>
-                                <h5 class="card-title">evenfest</h5>
-                                <p class="card-text">сайт сообщества косплееров</p>
+                                <h5 class="card-title" data-i18n="project1_title">evenfest</h5>
+                                <p class="card-text" data-i18n="project1_desc">cosplay community website</p>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge badge-category badge-web glow-on-hover">art</span>
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project1_category">art</span>
                                     <div class="corner-decoration">
                                         <i class="bi bi-arrow-up-right"></i>
                                     </div>
@@ -384,10 +385,10 @@
                                 <div class="project-icon icon-2">
                                     <img src="https://psv4.userapi.com/s/v1/d2/AArGNCyJ26rCvrn3VEmn6UZBf2w6S44kTJ8WMu1mTdRB66TIwCw5c6N2Arb6cX6v25ZxfO62p3AMxzPOY2ddNsq1sUHxLNiDanZJg4fBBE1G0R7NhZcwQOG41K1EHW3HvhpYBIwMDtlQ/snack.png" alt="<icon>" class="custom-icon">
                                 </div>
-                                <h5 class="card-title">snake</h5>
-                                <p class="card-text">just snake</p>
+                                <h5 class="card-title" data-i18n="project2_title">snake</h5>
+                                <p class="card-text" data-i18n="project2_desc">just snake</p>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge badge-category badge-web glow-on-hover">game</span>
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project2_category">game</span>
                                     <div class="corner-decoration">
                                         <i class="bi bi-arrow-up-right"></i>
                                     </div>
@@ -405,10 +406,10 @@
                                 <div class="project-icon icon-3">
                                     <img src="toadbin/static/favicon.png" alt="<icon>" class="custom-icon">
                                 </div>
-                                <h5 class="card-title"><span style="color: lime">toad</span>bin</h5>
-                                <p class="card-text">like katbin, but with syntax highlighting</p>
+                                <h5 class="card-title" data-i18n="project3_title"><span style="color: lime">toad</span>bin</h5>
+                                <p class="card-text" data-i18n="project3_desc">like katbin, but with syntax highlighting</p>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge badge-category badge-web glow-on-hover">dev</span>
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project3_category">dev</span>
                                     <div class="corner-decoration">
                                         <i class="bi bi-arrow-up-right"></i>
                                     </div>
@@ -426,10 +427,10 @@
                                 <div class="project-icon icon-4">
                                     <img src="https://psv4.userapi.com/s/v1/d2/uPNf4YkJEgjiSfKWiEGEfZLNsIeT_SUcTUffey6aQCd8esM5q0hohMDpwwEnkAyGMVuRMGEdXWAIin6ORJi25mXbVD4GMzPHgoqztjAwtvxF5yiIunh9PGioVKNlBDSrEDumWCCe5Qfi/4fXPwfOEs2AsfKfA-jpk34fiA0Ljj-pChGsNHoTiWoKb_mZbVe6R_8Avww9LIINEExrBnkAUb2SZ3TAcFW_Ey61M_2.png" alt="<icon>" class="custom-icon">
                                 </div>
-                                <h5 class="card-title">scriptura</h5>
-                                <p class="card-text">telegram bot (not working)</p>
+                                <h5 class="card-title" data-i18n="project4_title">scriptura</h5>
+                                <p class="card-text" data-i18n="project4_desc">telegram bot (not working)</p>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge badge-category badge-web glow-on-hover">ai</span>
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project4_category">ai</span>
                                     <div class="corner-decoration">
                                         <i class="bi bi-arrow-up-right"></i>
                                     </div>
@@ -447,10 +448,10 @@
                                 <div class="project-icon icon-5">
                                     <img src="https://cdn-icons-png.flaticon.com/512/9687/9687524.png" alt="<icon>" class="custom-icon">
                                 </div>
-                                <h5 class="card-title">formular</h5>
-                                <p class="card-text">any to any (not working)</p>
+                                <h5 class="card-title" data-i18n="project5_title">formular</h5>
+                                <p class="card-text" data-i18n="project5_desc">any to any (not working)</p>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <span class="badge badge-category badge-web glow-on-hover">doc</span>
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project5_category">doc</span>
                                     <div class="corner-decoration">
                                         <i class="bi bi-arrow-up-right"></i>
                                     </div>
@@ -463,10 +464,87 @@
         </div>
     </div>
     
-    <!-- Bootstrap JS (опционально, для интерактивных элементов) -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Небольшой скрипт для дополнительных эффектов -->
+    <!-- Встроенный скрипт для интернационализации -->
+    <script>
+        // lang.js встроен сюда
+        const translations = {
+          en: {
+            welcome: "Welcome to the Nargan's website, here you will find some of my pet-projects.",
+            job: "And also, I'm looking for a job..",
+            project1_title: "evenfest",
+            project1_desc: "cosplay community website",
+            project1_category: "art",
+            project2_title: "snake",
+            project2_desc: "just snake",
+            project2_category: "game",
+            project3_title: '<span style="color: lime">toad</span>bin',
+            project3_desc: "like katbin, but with syntax highlighting",
+            project3_category: "dev",
+            project4_title: "scriptura",
+            project4_desc: "telegram bot (not working)",
+            project4_category: "ai",
+            project5_title: "formular",
+            project5_desc: "any to any (not working)",
+            project5_category: "doc"
+          },
+          ru: {
+            welcome: "Добро пожаловать на сайт Наргана, здесь вы найдете некоторые из моих пет-проектов.",
+            job: "А ещё я ищу работу..",
+            project1_title: "evenfest",
+            project1_desc: "сайт сообщества косплееров",
+            project1_category: "арт",
+            project2_title: "snake",
+            project2_desc: "просто змейка",
+            project2_category: "игра",
+            project3_title: '<span style="color: lime">toad</span>bin',
+            project3_desc: "как katbin, но с подсветкой синтаксиса",
+            project3_category: "разработка",
+            project4_title: "scriptura",
+            project4_desc: "телеграм бот (не работает)",
+            project4_category: "ИИ",
+            project5_title: "formular",
+            project5_desc: "конвертер файлов (не работает)",
+            project5_category: "документы"
+          }
+        };
+
+        function setLanguage(lang) {
+          // Если запрошенного языка нет, используем en
+          if (!translations[lang]) {
+            lang = 'en';
+          }
+          const elements = document.querySelectorAll('[data-i18n]');
+          elements.forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang][key]) {
+              el.innerHTML = translations[lang][key];
+            } else if (translations['en'][key]) {
+              // fallback to english if key missing in selected language
+              el.innerHTML = translations['en'][key];
+            }
+            // else leave as is
+          });
+        }
+
+        function detectLanguage() {
+          // Проверяем язык браузера
+          const browserLang = navigator.language || navigator.userLanguage;
+          if (browserLang && browserLang.toLowerCase().startsWith('ru')) {
+            return 'ru';
+          }
+          return 'en';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+          const lang = detectLanguage();
+          setLanguage(lang);
+        });
+    </script>
+
+    <!-- Скрипт для дополнительных эффектов (оставлен без изменений) -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Добавляем случайную задержку для анимации появления карточек
