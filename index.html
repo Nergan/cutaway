@@ -12,7 +12,7 @@
     <!-- Пиксельный шрифт -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&display=swap" rel="stylesheet">
     <style>
-        /* все стили остались без изменений, добавляем класс для счётчика */
+        /* все стили остались без изменений */
         :root {
             --bg-dark: #0a0a0a;
             --card-bg: #151515;
@@ -287,7 +287,7 @@
             opacity: 0.7;
         }
         
-        /* Стили для счётчика посетителей */
+        /* Стили для счётчика посетителей (полупрозрачный с блюром) */
         .visitor-counter {
             position: fixed;
             bottom: 20px;
@@ -295,11 +295,11 @@
             color: var(--text-secondary);
             font-size: 0.8rem;
             background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
             padding: 5px 10px;
             border-radius: 8px;
             border: 1px solid var(--card-border);
             z-index: 1000;
-            backdrop-filter: blur(4px);
             font-family: 'Silkscreen', 'Press Start 2P', monospace;
         }
         
