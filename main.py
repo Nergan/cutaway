@@ -4,6 +4,8 @@ from os import environ
 from os.path import exists
 from pathlib import Path
 from urllib.parse import quote
+from datetime import datetime
+from pydantic import BaseModel
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -43,6 +45,38 @@ toadbin = Jinja2Templates(directory="toadbin")
 
 toad_background_dir = Path("toadbin/static/backgrounds")
 toad_code_dir = Path("toadbin/codes")
+
+
+class TrackRequest(BaseModel):
+    uuid: str
+
+@app.post("/api/track")
+async def track_visitor(request: TrackRequest):
+    # Пытаемся вставить UUID в коллекцию visitors, если он новый
+    result = await db.visitors.update_one(
+        {"_id": request.uuid},
+        {"$setOnInsert": {"_id": request.uuid, "first_seen": datetime.utcnow()}},
+        upsert=True
+    )
+    # Если был вставлен новый документ, увеличиваем счётчик уникальных посетителей
+    if result.upserted_id is not None:
+        await db.stats.update_one(
+            {"_id": "unique_visitors"},
+            {"$inc": {"count": 1}}
+        )
+    # Получаем текущее значение счётчика
+    counter_doc = await db.stats.find_one({"_id": "unique_visitors"})
+    count = counter_doc["count"] if counter_doc else 0
+    return {"count": count}
+
+
+# Ensure stats collection has a counter document
+async def init_counter():
+    await db.stats.update_one(
+        {"_id": "unique_visitors"},
+        {"$setOnInsert": {"count": 0}},
+        upsert=True
+    )
 
 
 def load_data(path):
@@ -134,6 +168,11 @@ async def convert_docx_to_pdf(docx_content: bytes) -> bytes:
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return FileResponse("index.html")
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_counter()
 
 
 # evenfest
