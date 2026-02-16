@@ -287,21 +287,28 @@
             opacity: 0.7;
         }
         
-        /* Стили для счётчика посетителей (полупрозрачный с блюром) */
+        /* ===== ИСПРАВЛЕННЫЙ СЧЁТЧИК ===== */
         .visitor-counter {
             position: fixed;
             bottom: 20px;
             right: 20px;
             color: var(--text-secondary);
             font-size: 0.8rem;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
+            background-color: rgba(30, 30, 30, 0.25); /* более прозрачный фон */
+            -webkit-backdrop-filter: blur(5px);      /* для Safari */
+            backdrop-filter: blur(5px);              /* размытие */
             padding: 5px 10px;
             border-radius: 8px;
             border: 1px solid var(--card-border);
             z-index: 1000;
             font-family: 'Silkscreen', 'Press Start 2P', monospace;
+            transition: background-color 0.2s;
         }
+        /* при наведении можно сделать чуть плотнее */
+        .visitor-counter:hover {
+            background-color: rgba(40, 40, 40, 0.4);
+        }
+        /* ================================= */
         
         /* Адаптивные отступы */
         @media (max-width: 768px) {
@@ -487,7 +494,6 @@
     
     <!-- Встроенный скрипт для интернационализации и скрытия проекта scriptura для российских пользователей -->
     <script>
-        // lang.js встроен сюда
         const translations = {
           en: {
             welcome: "Welcome to the Nargan's website, here you will find some of my pet-projects.",
@@ -552,7 +558,6 @@
           return 'en';
         }
 
-        // Функция для получения или создания UUID посетителя
         function getVisitorId() {
             let visitorId = localStorage.getItem('visitorId');
             if (!visitorId) {
@@ -562,7 +567,6 @@
             return visitorId;
         }
 
-        // Функция для отправки UUID на сервер и обновления счётчика
         async function trackVisitor() {
             const visitorId = getVisitorId();
             const counterEl = document.getElementById('visitor-counter');
@@ -588,7 +592,6 @@
           const lang = detectLanguage();
           setLanguage(lang);
 
-          // Скрываем проект scriptura для российских пользователей
           if (lang === 'ru') {
             const projectToHide = document.querySelector('[data-project="scriptura"]');
             if (projectToHide) {
@@ -596,21 +599,18 @@
             }
           }
           
-          // Запускаем трекинг посетителя
           trackVisitor();
         });
     </script>
 
-    <!-- Скрипт для дополнительных эффектов (оставлен без изменений) -->
+    <!-- Скрипт для дополнительных эффектов -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Добавляем случайную задержку для анимации появления карточек
             const cards = document.querySelectorAll('.project-card');
             cards.forEach((card, index) => {
                 card.style.animationDelay = `${index * 0.05}s`;
             });
             
-            // Эффект при наведении на иконку
             const icons = document.querySelectorAll('.project-icon');
             icons.forEach(icon => {
                 icon.addEventListener('mouseenter', function() {
