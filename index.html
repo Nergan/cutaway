@@ -419,8 +419,8 @@
                     </a>
                 </div>
 
-                <!-- Проект 4 -->
-                <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <!-- Проект 4 (scriptura) -->
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3" data-project="scriptura">
                     <a href="https://t.me/scripturachat_bot" class="project-link">
                         <div class="project-card">
                             <div class="card-body">
@@ -467,7 +467,7 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Встроенный скрипт для интернационализации -->
+    <!-- Встроенный скрипт для интернационализации и скрытия проекта scriptura для российских пользователей -->
     <script>
         // lang.js встроен сюда
         const translations = {
@@ -491,14 +491,14 @@
             project5_category: "doc"
           },
           ru: {
-            welcome: "Добро пожаловать на сайт Наргана, здесь вы найдете некоторые из моих пет-проектов.",
+            welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
             job: "А ещё я ищу работу..",
             project1_title: "evenfest",
             project1_desc: "сайт сообщества косплееров",
-            project1_category: "арт",
-            project2_title: "snake",
+            project1_category: "творчество",
+            project2_title: "змейка",
             project2_desc: "просто змейка",
-            project2_category: "игра",
+            project2_category: "игры",
             project3_title: '<span style="color: lime">toad</span>bin',
             project3_desc: "как katbin, но с подсветкой синтаксиса",
             project3_category: "разработка",
@@ -507,7 +507,7 @@
             project4_category: "ИИ",
             project5_title: "formular",
             project5_desc: "конвертер файлов (не работает)",
-            project5_category: "документы"
+            project5_category: "прикладные задачи"
           }
         };
 
@@ -541,6 +541,14 @@
         document.addEventListener('DOMContentLoaded', function() {
           const lang = detectLanguage();
           setLanguage(lang);
+
+          // Скрываем проект scriptura для российских пользователей
+          if (lang === 'ru') {
+            const projectToHide = document.querySelector('[data-project="scriptura"]');
+            if (projectToHide) {
+              projectToHide.style.display = 'none';
+            }
+          }
         });
     </script>
 
