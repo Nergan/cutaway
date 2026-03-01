@@ -45,7 +45,6 @@ evenfest = Jinja2Templates(directory="evenfest/templates")
 toadbin = Jinja2Templates(directory="toadbin")
 
 toad_background_dir = Path("toadbin/static/backgrounds")
-toad_code_dir = Path("toadbin/codes")
 
 
 class TrackRequest(BaseModel):
