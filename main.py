@@ -352,3 +352,10 @@ async def formular_convert(
         
     else:
         raise HTTPException(status_code=400, detail="Unsupported conversion format")
+    
+    
+# jitsi room
+
+@app.get("/jisti-room", response_class=HTMLResponse)
+async def jitsiroom(request: Request):
+    return FileResponse("/jitsi room/jitsi room.html")
