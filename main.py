@@ -357,4 +357,4 @@ async def formular_convert(
 
 @app.get("/jitsi-room", response_class=HTMLResponse)
 async def jitsiroom(request: Request):
-    return FileResponse("/jitsi room/jitsi room.html")
+    return FileResponse("jitsi room/jitsi room.html")
