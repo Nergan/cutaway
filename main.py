@@ -126,15 +126,13 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
     script_tag.string = """
     (function() {
         var lastUrl = location.href;
-        // Проверяем изменение URL каждые 300 мс
         setInterval(function() {
             if (location.href !== lastUrl) {
                 lastUrl = location.href;
-                window.parent.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
+                window.top.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
             }
         }, 300);
-        // Отправляем текущий URL при загрузке страницы
-        window.parent.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
+        window.top.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
     })();
     """
     soup.body.append(script_tag)
