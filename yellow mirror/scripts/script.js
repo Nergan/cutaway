@@ -12,10 +12,7 @@
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
     let rafId = null;
-    const maxOffset = 25;
-
-    // Переменная для отслеживания последнего src iframe (для polling)
-    let lastIframeSrc = iframe.src;
+    const maxOffset = 25; // максимальное смещение в процентах
 
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
@@ -82,16 +79,17 @@
         return urlPattern.test(trimmed);
     }
 
-    // ---------- Проверка на самоссылку (текущая страница) ----------
+    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ (полное совпадение URL) ----------
     function isSelfUrl(inputStr) {
         try {
             let urlString = inputStr.trim();
             if (!/^https?:\/\//i.test(urlString)) {
-                urlString = 'https://' + urlString;
+                urlString = 'https://' + urlString; // добавляем схему для парсинга
             }
             const inputUrl = new URL(urlString);
             const currentUrl = new URL(window.location.href);
 
+            // Сравниваем host (хост:порт, регистронезависимо) и путь + query + hash
             const sameHost = inputUrl.host.toLowerCase() === currentUrl.host.toLowerCase();
             const samePath = inputUrl.pathname === currentUrl.pathname;
             const sameSearch = inputUrl.search === currentUrl.search;
@@ -99,66 +97,11 @@
 
             return sameHost && samePath && sameSearch && sameHash;
         } catch {
-            return false;
+            return false; // при ошибке парсинга считаем, что не сам
         }
     }
 
-    // ---------- Преобразование полного URL в укороченный вид (без протокола и www) ----------
-    function shortenUrl(fullUrl) {
-        try {
-            const url = new URL(fullUrl);
-            let host = url.hostname;
-            if (host.startsWith('www.')) {
-                host = host.slice(4);
-            }
-            // Возвращаем host + путь + поиск + хеш (путь всегда начинается с /)
-            return host + url.pathname + url.search + url.hash;
-        } catch {
-            return fullUrl;
-        }
-    }
-
-    // ---------- Извлечение целевого URL из прокси-ссылки iframe ----------
-    function extractTargetFromProxySrc(proxySrc) {
-        try {
-            // Если src пустой или about:blank, возвращаем null
-            if (!proxySrc || proxySrc === 'about:blank') return null;
-
-            // Создаём URL относительно текущего origin (на случай, если src абсолютный)
-            const url = new URL(proxySrc, window.location.origin);
-            const target = url.searchParams.get('target');
-            return target ? decodeURIComponent(target) : null;
-        } catch (e) {
-            console.warn('Не удалось распарсить src iframe:', e);
-            return null;
-        }
-    }
-
-    // ---------- Обновление поля ввода из текущего iframe ----------
-    function updateInputFromIframe() {
-        const proxySrc = iframe.src;
-        if (!proxySrc || proxySrc === 'about:blank') return;
-
-        const targetUrl = extractTargetFromProxySrc(proxySrc);
-        if (targetUrl) {
-            const short = shortenUrl(targetUrl);
-            input.value = short;
-            updateValidity();
-        }
-    }
-
-    // Слушаем загрузку iframe (срабатывает при навигации)
-    iframe.addEventListener('load', updateInputFromIframe);
-
-    // ---------- Polling для отслеживания изменения src (для случаев, когда load не срабатывает) ----------
-    setInterval(() => {
-        if (iframe.src !== lastIframeSrc) {
-            lastIframeSrc = iframe.src;
-            updateInputFromIframe();
-        }
-    }, 300);
-
-    // ---------- Обновление состояния кнопки ----------
+    // ---------- Обновление состояния валидности и кнопки ----------
     function updateValidity() {
         const trimmed = input.value.trim();
         const validFormat = isValidUrl(trimmed);
