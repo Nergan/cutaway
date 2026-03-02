@@ -226,21 +226,4 @@
             return raw;
         }
     }
-
-    // ---------- Обработка вставки из буфера (опционально, для удобства) ----------
-    input.addEventListener('paste', (e) => {
-        e.preventDefault(); // отключаем стандартную вставку
-
-        // Получаем текст из буфера
-        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-
-        // Преобразуем в домен
-        const simplified = simplifyToDomain(pastedText);
-
-        // Заменяем всё содержимое поля
-        input.value = simplified;
-
-        // Обновляем состояние валидности и кнопки
-        updateValidity();
-    });
 })();
