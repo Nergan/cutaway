@@ -27,24 +27,32 @@
         stopMouseTracking();
     }
 
+    // При старте показываем заглушку
     showSplash();
+
+    // Скрываем при успешной загрузке или ошибке
     iframe.addEventListener('load', hideSplash);
     iframe.addEventListener('error', hideSplash);
 
     // ---------- Отслеживание мыши для движения слоя ----------
     function handleMouseMove(e) {
         if (!splashLayer || splash.style.display === 'none') return;
+
         const x = (e.clientX / window.innerWidth) * 2 - 1;
         const y = (e.clientY / window.innerHeight) * 2 - 1;
+
         targetX = -x * maxOffset;
         targetY = -y * maxOffset;
     }
 
     function updateLayerTransform() {
         if (!splashLayer || splash.style.display === 'none') return;
+
         currentX += (targetX - currentX) * 0.1;
         currentY += (targetY - currentY) * 0.1;
+
         splashLayer.style.transform = `translate(${currentX}%, ${currentY}%)`;
+
         rafId = requestAnimationFrame(updateLayerTransform);
     }
 
@@ -79,17 +87,16 @@
         return urlPattern.test(trimmed);
     }
 
-    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ (полное совпадение URL) ----------
+    // ---------- Проверка на самоссылку (текущая страница) ----------
     function isSelfUrl(inputStr) {
         try {
             let urlString = inputStr.trim();
             if (!/^https?:\/\//i.test(urlString)) {
-                urlString = 'https://' + urlString; // добавляем схему для парсинга
+                urlString = 'https://' + urlString;
             }
             const inputUrl = new URL(urlString);
             const currentUrl = new URL(window.location.href);
 
-            // Сравниваем host (хост:порт, регистронезависимо) и путь + query + hash
             const sameHost = inputUrl.host.toLowerCase() === currentUrl.host.toLowerCase();
             const samePath = inputUrl.pathname === currentUrl.pathname;
             const sameSearch = inputUrl.search === currentUrl.search;
@@ -97,11 +104,52 @@
 
             return sameHost && samePath && sameSearch && sameHash;
         } catch {
-            return false; // при ошибке парсинга считаем, что не сам
+            return false;
         }
     }
 
-    // ---------- Обновление состояния валидности и кнопки ----------
+    // ---------- Преобразование полного URL в укороченный вид (без протокола и www) ----------
+    function shortenUrl(fullUrl) {
+        try {
+            const url = new URL(fullUrl);
+            let host = url.hostname;
+            if (host.startsWith('www.')) {
+                host = host.slice(4);
+            }
+            return host + url.pathname + url.search + url.hash;
+        } catch {
+            return fullUrl;
+        }
+    }
+
+    // ---------- Извлечение целевого URL из прокси-ссылки iframe ----------
+    function extractTargetFromProxySrc(proxySrc) {
+        try {
+            const url = new URL(proxySrc, window.location.origin);
+            const target = url.searchParams.get('target');
+            return target ? decodeURIComponent(target) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    // ---------- Обновление поля ввода из текущего iframe ----------
+    function updateInputFromIframe() {
+        const proxySrc = iframe.src;
+        if (proxySrc && proxySrc !== 'about:blank') {
+            const targetUrl = extractTargetFromProxySrc(proxySrc);
+            if (targetUrl) {
+                const short = shortenUrl(targetUrl);
+                input.value = short;
+                updateValidity();
+            }
+        }
+    }
+
+    // Слушаем загрузку iframe для обновления поля
+    iframe.addEventListener('load', updateInputFromIframe);
+
+    // ---------- Обновление состояния кнопки ----------
     function updateValidity() {
         const trimmed = input.value.trim();
         const validFormat = isValidUrl(trimmed);
@@ -165,7 +213,7 @@
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        iframe.src = `/mirror/?target=${encodeURIComponent(url)}`;
+        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
     }
 
     button.addEventListener('click', loadSite);
