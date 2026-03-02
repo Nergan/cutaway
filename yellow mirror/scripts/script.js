@@ -154,7 +154,7 @@
             url = 'https://' + url;
         }
         // Используем прокси-эндпоинт
-        iframe.src = `/mirror/?target=${encodeURIComponent(url)}`;
+        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
     }
 
     button.addEventListener('click', loadSite);
