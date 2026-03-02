@@ -37,19 +37,19 @@ db = client.toadbin  # база данных
 codes_collection = db.codes  # коллекция для кодов
 stats_db = client["main-page"] # бд для счётчика
 
-# # Настройки прокси
-# PROXY_TIMEOUT = 10.0  # секунд
-# MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
-# ALLOWED_SCHEMES = {"http", "https"}
-# DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
+# Настройки прокси
+PROXY_TIMEOUT = 10.0  # секунд
+MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
+ALLOWED_SCHEMES = {"http", "https"}
+DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
 
-# # HTTP-клиент для прокси (один на приложение, но в serverless это не обязательно)
-# proxy_client = httpx.AsyncClient(
-#     timeout=PROXY_TIMEOUT,
-#     follow_redirects=True,
-#     max_redirects=5,
-#     limits=httpx.Limits(max_response_body=MAX_RESPONSE_SIZE)
-# )
+# HTTP-клиент для прокси (один на приложение, но в serverless это не обязательно)
+proxy_client = httpx.AsyncClient(
+    timeout=PROXY_TIMEOUT,
+    follow_redirects=True,
+    max_redirects=5,
+    limits=httpx.Limits(max_response_body=MAX_RESPONSE_SIZE)
+)
 
 app = FastAPI()
 app.mount("/evenfest/static", StaticFiles(directory="evenfest/static"), name="evenfest")
