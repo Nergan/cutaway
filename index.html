@@ -245,6 +245,10 @@
         .icon-8 { 
             background: linear-gradient(135deg, #ff0066, #cc0052);
         }
+        /* Новый класс для чёрного фона иконки */
+        .icon-black {
+            background: black;
+        }
         
         /* Стили для категорий с неоновым эффектом */
         .badge-web { 
@@ -480,6 +484,29 @@
                         </div>
                     </a>
                 </div>
+
+                <!-- Проект 6: yellow mirror (новый) -->
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                    <a href="/yellow-mirror" class="project-link">
+                        <div class="project-card">
+                            <div class="card-body">
+                                <div class="project-icon icon-black">
+                                    <!-- Иконка глобуса (жёлтая) через SVG data URI -->
+                                    <img src="/yellow mirror/static/favicon.png" alt="Globe" width="24" height="24">
+                                </div>
+                                <h5 class="card-title" data-i18n="project6_title">yellow mirror</h5>
+                                <p class="card-text" data-i18n="project6_desc">simple web browser</p>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge badge-category badge-web glow-on-hover" data-i18n="project6_category">web</span>
+                                    <div class="corner-decoration">
+                                        <i class="bi bi-arrow-up-right"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <!-- Конец новых проектов -->
             </div>
         </div>
     </div>
@@ -510,7 +537,11 @@
             project4_category: "ai",
             project5_title: "formular",
             project5_desc: "any to any (not working)",
-            project5_category: "doc"
+            project5_category: "doc",
+            // Новый проект
+            project6_title: "yellow mirror",
+            project6_desc: "web mirror",
+            project6_category: "web"
           },
           ru: {
             welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
@@ -529,7 +560,11 @@
             project4_category: "ИИ",
             project5_title: "formular",
             project5_desc: "конвертер файлов (не работает)",
-            project5_category: "прикладные задачи"
+            project5_category: "прикладные задачи",
+            // Новый проект
+            project6_title: "yellow mirror",
+            project6_desc: "веб зеркало",
+            project6_category: "веб"
           }
         };
 
