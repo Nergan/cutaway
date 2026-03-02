@@ -183,4 +183,49 @@
     iframe.addEventListener('error', () => {
         console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
     });
+
+    // ---------- Упрощение URL до домена при вставке ----------
+    /**
+     * Извлекает домен из сырой строки URL (удаляет протокол, путь, параметры и www)
+     * @param {string} raw - строка, которую вставил пользователь
+     * @returns {string} упрощённый домен или исходная строка, если парсинг не удался
+     */
+    function simplifyToDomain(raw) {
+        const trimmed = raw.trim();
+        if (!trimmed) return raw;
+
+        // Добавляем схему, если её нет, для корректного парсинга
+        let urlString = trimmed;
+        if (!/^https?:\/\//i.test(urlString)) {
+            urlString = 'https://' + urlString;
+        }
+
+        try {
+            const url = new URL(urlString);
+            let hostname = url.hostname;
+            // Убираем www. (регистронезависимо)
+            hostname = hostname.replace(/^www\./i, '');
+            return hostname;
+        } catch {
+            // Если не удалось распарсить, оставляем как есть
+            return raw;
+        }
+    }
+
+    // Обработчик вставки из буфера обмена
+    input.addEventListener('paste', (e) => {
+        e.preventDefault(); // отключаем стандартную вставку
+
+        // Получаем текст из буфера
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+
+        // Преобразуем в домен
+        const simplified = simplifyToDomain(pastedText);
+
+        // Заменяем всё содержимое поля
+        input.value = simplified;
+
+        // Обновляем состояние валидности и кнопки
+        updateValidity();
+    });
 })();
