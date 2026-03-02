@@ -436,7 +436,7 @@ async def formular_convert(
 async def jitsiroom(request: Request):
     return FileResponse("yellow mirror/yellow mirror.html")
 
-@app.api_route("api/yellow-mirror/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+@app.api_route("/api/yellow-mirror/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def proxy(request: Request):
     target_url = request.query_params.get("target")
     if not target_url:
