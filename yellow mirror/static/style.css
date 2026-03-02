@@ -1,0 +1,280 @@
+/* ---------- CSS-переменные ---------- */
+:root {
+    --panel-bg: rgba(15, 15, 15, 0.5);
+    --panel-highlight: rgba(255, 193, 7, 0.2);
+    --button-hover-bg: rgba(255, 193, 7, 0.25);
+    --minimized-bar-bg: rgba(0, 0, 0, 0.7);
+    --minimized-bar-hover: rgba(255, 193, 7, 0.3);
+    --selection-bg: rgba(255, 215, 0, 0.5);
+    --icon-color: #FFC107;
+    --placeholder-color: rgba(255, 255, 255, 0.5);
+    --input-border-focus: rgba(255, 255, 0, 0.7);
+    --text-color: white;
+    --invalid-text: #aaa;
+}
+
+/* ---------- Базовые стили ---------- */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+/* IFrame на весь экран */
+#site-frame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: black;
+    z-index: 1;
+}
+
+/* ---------- Анимированный фон-заглушка ---------- */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    z-index: 5;
+    pointer-events: none;          /* клики проходят сквозь на панель */
+    overflow: hidden;
+    transition: opacity 0.3s ease;
+}
+
+/* Слой с эффектами, который двигается за мышью */
+.splash-layer {
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
+    will-change: transform;
+}
+
+/* Основной слой с мягкими жёлтыми пятнами */
+.splash-layer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 193, 7, 0.2) 0%, transparent 10%),
+        radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.2) 0%, transparent 15%),
+        radial-gradient(circle at 40% 80%, rgba(255, 193, 7, 0.15) 0%, transparent 12%),
+        radial-gradient(circle at 90% 20%, rgba(255, 193, 7, 0.25) 0%, transparent 18%),
+        radial-gradient(circle at 10% 60%, rgba(255, 193, 7, 0.2) 0%, transparent 14%),
+        radial-gradient(circle at 70% 40%, rgba(255, 193, 7, 0.15) 0%, transparent 10%),
+        radial-gradient(circle at 30% 90%, rgba(255, 193, 7, 0.2) 0%, transparent 16%);
+    background-size: 200% 200%;
+    animation: moveSignals 12s infinite alternate ease-in-out;
+    filter: blur(8px);
+}
+
+/* Дополнительный слой с мелкими мерцающими точками */
+.splash-layer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 255, 0, 0.1) 1px, transparent 1px),
+        radial-gradient(circle at 90% 50%, rgba(255, 193, 7, 0.1) 1px, transparent 1px),
+        radial-gradient(circle at 30% 70%, rgba(255, 200, 0, 0.1) 1px, transparent 1px),
+        radial-gradient(circle at 70% 30%, rgba(255, 215, 0, 0.1) 1px, transparent 1px),
+        radial-gradient(circle at 50% 80%, rgba(255, 193, 7, 0.1) 1px, transparent 1px);
+    background-size: 200px 200px;
+    animation: sparkle 4s infinite alternate;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Анимация перемещения крупных пятен */
+@keyframes moveSignals {
+    0% {
+        transform: translate(0, 0);
+        opacity: 0.5;
+    }
+    25% {
+        transform: translate(5%, 5%);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translate(-5%, -5%);
+        opacity: 0.4;
+    }
+    75% {
+        transform: translate(8%, -3%);
+        opacity: 0.7;
+    }
+    100% {
+        transform: translate(-8%, 8%);
+        opacity: 0.5;
+    }
+}
+
+/* Анимация мерцания мелких точек */
+@keyframes sparkle {
+    0% {
+        opacity: 0.2;
+        background-size: 180px 180px;
+    }
+    50% {
+        opacity: 0.5;
+        background-size: 220px 220px;
+    }
+    100% {
+        opacity: 0.2;
+        background-size: 180px 180px;
+    }
+}
+
+/* ---------- Панель и минимизированная полоска ---------- */
+.panel-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.expanded-panel,
+.minimized-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    box-sizing: border-box;
+    transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s;
+}
+
+.expanded-panel {
+    background: var(--panel-bg);
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    pointer-events: auto;
+    cursor: pointer;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.expanded-panel.collapsed {
+    opacity: 0;
+    transform: translateY(100%);
+    pointer-events: none;
+}
+
+.expanded-panel.panel-highlight {
+    background: var(--panel-highlight);
+}
+
+.expanded-panel input {
+    flex: 1;
+    max-width: 600px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    color: var(--text-color);
+    font-size: 16px;
+    outline: none;
+    cursor: text;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.expanded-panel input::selection {
+    background: var(--selection-bg);
+    color: black;
+}
+.expanded-panel input::-moz-selection {
+    background: var(--selection-bg);
+    color: black;
+}
+
+.expanded-panel input.invalid {
+    color: var(--invalid-text);
+}
+
+.expanded-panel input::placeholder {
+    color: var(--placeholder-color);
+}
+
+.expanded-panel input:focus {
+    border-color: var(--input-border-focus);
+}
+
+.expanded-panel button {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    color: var(--icon-color);
+    font-size: 24px;
+}
+
+.expanded-panel button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: auto;
+}
+
+.expanded-panel button:not(:disabled):hover {
+    background: var(--button-hover-bg);
+    border-color: var(--icon-color);
+}
+
+.expanded-panel button i {
+    color: inherit;
+}
+
+.minimized-bar {
+    background: var(--minimized-bar-bg);
+    height: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(100%);
+}
+
+.minimized-bar.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.minimized-bar:hover {
+    background: var(--minimized-bar-hover);
+}
+
+/* ---------- Адаптация для мобильных ---------- */
+@media (max-width: 600px) {
+    .expanded-panel input {
+        max-width: none;
+    }
+}
