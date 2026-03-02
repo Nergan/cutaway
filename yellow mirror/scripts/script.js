@@ -216,6 +216,21 @@
     iframe.addEventListener('load', handleIframeLoad);
     iframe.addEventListener('error', handleIframeError);
 
+    // ---------- Обработка сообщений от iframe (SPA-навигация) ----------
+    window.addEventListener('message', (event) => {
+        // Проверяем тип сообщения
+        if (event.data && event.data.type === 'iframe-navigation') {
+            const url = event.data.url;
+            if (url) {
+                // Обновляем поле ввода
+                input.value = simplifyUrl(url);
+                updateValidity();
+                // Обновляем query-параметр в адресной строке
+                setBrowserUrlTarget(url);
+            }
+        }
+    });
+
     // ---------- Загрузка сайта через прокси (по вводу пользователя) ----------
     function loadSite() {
         const trimmed = input.value.trim();
