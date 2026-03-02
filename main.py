@@ -3,10 +3,9 @@ from json import load
 from os import environ
 from os.path import exists
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 from datetime import datetime
 from pydantic import BaseModel
-from urllib.parse import urljoin, urlparse, quote
 import asyncio
 
 import httpx
@@ -22,7 +21,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
-
 
 load_dotenv()
 
@@ -43,12 +41,12 @@ MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
 ALLOWED_SCHEMES = {"http", "https"}
 DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
 
-# HTTP-клиент для прокси
+# HTTP-клиент для прокси (автоследование редиректам отключено)
 proxy_client = httpx.AsyncClient(
     timeout=PROXY_TIMEOUT,
-    follow_redirects=True,
+    follow_redirects=False,          # ← отключаем автоматические редиректы
     max_redirects=5,
-    limits=httpx.Limits()  # убрали max_response_body
+    limits=httpx.Limits()            # убрали max_response_body
 )
 
 app = FastAPI()
@@ -90,7 +88,7 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
     """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
     soup = BeautifulSoup(html, 'lxml')
     
-    # Замена ссылок (как и раньше)
+    # Замена ссылок
     for tag, attr in [('a', 'href'), ('link', 'href'), ('script', 'src'),
                       ('img', 'src'), ('iframe', 'src'), ('form', 'action')]:
         for element in soup.find_all(tag, **{attr: True}):
@@ -117,8 +115,12 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 new_style.append(part)
         element['style'] = ''.join(new_style)
     
+    # Удаление meta-тегов с Content-Security-Policy
+    for meta in soup.find_all('meta', attrs={'http-equiv': True}):
+        if meta.get('http-equiv', '').lower() == 'content-security-policy':
+            meta.decompose()
+    
     # Внедрение скрипта для уведомления родителя об изменении URL
-    # Добавляем в конец body, чтобы скрипт выполнился после загрузки DOM
     if not soup.body:
         soup.html.append(soup.new_tag('body'))
     
@@ -487,8 +489,27 @@ async def proxy(request: Request):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
     
+    # Обработка редиректов (3xx)
+    if resp.status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get("location")
+        if not location:
+            raise HTTPException(status_code=502, detail="Redirect without Location header")
+        
+        # Преобразуем Location в абсолютный URL относительно текущего URL (resp.url)
+        absolute_location = urljoin(str(resp.url), location)
+        
+        # Создаём новый прокси-URL с целевым адресом после редиректа
+        new_proxy_url = make_proxy_url(absolute_location)
+        
+        # Возвращаем редирект (iframe сам загрузит новый прокси-URL)
+        return RedirectResponse(url=new_proxy_url, status_code=resp.status_code)
+    
     # Определяем тип контента
     content_type = resp.headers.get("content-type", "").lower()
+    
+    # Заголовки, которые нужно исключить из ответа
+    exclude_headers = ["content-length", "content-encoding", "content-security-policy", "content-security-policy-report-only"]
+    filtered_headers = {k: v for k, v in resp.headers.items() if k.lower() not in exclude_headers}
     
     # Если это HTML, модифицируем
     if "text/html" in content_type:
@@ -498,14 +519,14 @@ async def proxy(request: Request):
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
-            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+            headers=filtered_headers
         )
     else:
         # Для других типов возвращаем как есть
         return Response(
             content=resp.content,
             status_code=resp.status_code,
-            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+            headers=filtered_headers
         )
         
 @app.on_event("shutdown")
