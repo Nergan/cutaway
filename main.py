@@ -43,12 +43,12 @@ MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
 ALLOWED_SCHEMES = {"http", "https"}
 DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
 
-# HTTP-клиент для прокси (один на приложение, но в serverless это не обязательно)
+# HTTP-клиент для прокси
 proxy_client = httpx.AsyncClient(
     timeout=PROXY_TIMEOUT,
     follow_redirects=True,
     max_redirects=5,
-    limits=httpx.Limits(max_response_body=MAX_RESPONSE_SIZE)
+    limits=httpx.Limits()  # убрали max_response_body
 )
 
 app = FastAPI()
