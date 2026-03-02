@@ -148,13 +148,13 @@
     // ---------- Загрузка сайта ----------
     function loadSite() {
     if (!isValidUrl(input.value)) return;
-    showSplash();
-    let url = input.value.trim();
-    if (!url.match(/^https?:\/\//i)) {
-        url = 'https://' + url;
-    }
-    // Используем прокси-эндпоинт
-    iframe.src = `/mirror/?target=${encodeURIComponent(url)}`;
+        showSplash();
+        let url = input.value.trim();
+        if (!url.match(/^https?:\/\//i)) {
+            url = 'https://' + url;
+        }
+        // Используем прокси-эндпоинт
+        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
     }
 
     button.addEventListener('click', loadSite);
