@@ -118,41 +118,26 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
         element['style'] = ''.join(new_style)
     
     # Внедрение скрипта для уведомления родителя об изменении URL
-    if not soup.head:
-        soup.html.insert(0, soup.new_tag('head'))
+    # Добавляем в конец body, чтобы скрипт выполнился после загрузки DOM
+    if not soup.body:
+        soup.html.append(soup.new_tag('body'))
     
     script_tag = soup.new_tag('script')
     script_tag.string = """
     (function() {
-        // Сохраняем оригинальные методы истории
-        const originalPushState = history.pushState;
-        const originalReplaceState = history.replaceState;
-
-        function notifyParent() {
-            // Отправляем текущий URL родительскому окну
-            window.parent.postMessage({ type: 'iframe-navigation', url: window.location.href }, '*');
-        }
-
-        // Переопределяем pushState
-        history.pushState = function() {
-            originalPushState.apply(this, arguments);
-            notifyParent();
-        };
-
-        // Переопределяем replaceState
-        history.replaceState = function() {
-            originalReplaceState.apply(this, arguments);
-            notifyParent();
-        };
-
-        // Слушаем события навигации (назад/вперёд)
-        window.addEventListener('popstate', notifyParent);
-
+        var lastUrl = location.href;
+        // Проверяем изменение URL каждые 300 мс
+        setInterval(function() {
+            if (location.href !== lastUrl) {
+                lastUrl = location.href;
+                window.parent.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
+            }
+        }, 300);
         // Отправляем текущий URL при загрузке страницы
-        notifyParent();
+        window.parent.postMessage({ type: 'iframe-navigation', url: lastUrl }, '*');
     })();
     """
-    soup.head.append(script_tag)
+    soup.body.append(script_tag)
     
     return str(soup)
 
