@@ -107,7 +107,6 @@
     }
 
     input.addEventListener('input', updateValidity);
-    updateValidity();
 
     // ---------- Подсветка панели ----------
     function isInteractiveElement(el) {
@@ -152,35 +151,52 @@
 
     // ---------- Упрощение URL (удаление протокола и www) ----------
     function simplifyUrl(url) {
-        // Удаляем протокол http:// или https://
         let simplified = url.replace(/^https?:\/\//i, '');
-        // Удаляем www. в начале
         simplified = simplified.replace(/^www\./i, '');
         return simplified;
     }
 
+    // ---------- Получение текущего target из адресной строки ----------
+    function getTargetFromUrl() {
+        return new URL(window.location.href).searchParams.get('target');
+    }
+
     // ---------- Обновление адресной строки (query-параметр target) ----------
-    function updateBrowserUrl(targetUrl) {
+    function setBrowserUrlTarget(target) {
         const url = new URL(window.location.href);
-        url.searchParams.set('target', targetUrl);
+        if (target) {
+            url.searchParams.set('target', target);
+        } else {
+            url.searchParams.delete('target');
+        }
         window.history.pushState({}, '', url);
+    }
+
+    // ---------- Загрузка целевого сайта в iframe ----------
+    function loadTarget(target) {
+        if (!target) return;
+        showSplash();
+        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(target)}`;
     }
 
     // ---------- Обработка загрузки iframe ----------
     function handleIframeLoad() {
         hideSplash();
 
-        // Получаем целевой URL из src iframe (параметр target)
         try {
             const iframeSrc = iframe.src;
             const urlParams = new URL(iframeSrc).searchParams;
-            const target = urlParams.get('target');
-            if (target) {
+            const loadedTarget = urlParams.get('target');
+            if (loadedTarget) {
                 // Обновляем поле ввода
-                input.value = simplifyUrl(target);
+                input.value = simplifyUrl(loadedTarget);
                 updateValidity();
-                // Обновляем адресную строку
-                updateBrowserUrl(target);
+
+                // Синхронизируем адресную строку (если она не совпадает)
+                const currentTarget = getTargetFromUrl();
+                if (currentTarget !== loadedTarget) {
+                    setBrowserUrlTarget(loadedTarget);
+                }
             }
         } catch (e) {
             console.warn('Не удалось обработать src iframe', e);
@@ -195,30 +211,16 @@
     iframe.addEventListener('load', handleIframeLoad);
     iframe.addEventListener('error', handleIframeError);
 
-    // ---------- Инициализация из URL (если есть параметр target) ----------
-    function initFromUrl() {
-        const urlParams = new URL(window.location.href).searchParams;
-        const target = urlParams.get('target');
-        if (target) {
-            showSplash();
-            iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(target)}`;
-            // Поле ввода обновится после загрузки в handleIframeLoad
-        } else {
-            // Если параметра нет, просто показываем заглушку (она уже видна)
-        }
-    }
-
-    // ---------- Загрузка сайта через прокси ----------
+    // ---------- Загрузка сайта через прокси (по вводу пользователя) ----------
     function loadSite() {
         const trimmed = input.value.trim();
         if (!isValidUrl(trimmed) || isSelfUrl(trimmed)) return;
 
-        showSplash();
         let url = trimmed;
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
+        loadTarget(url);
     }
 
     button.addEventListener('click', loadSite);
@@ -226,14 +228,29 @@
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const trimmed = input.value.trim();
-            if (isValidUrl(trimmed) && !isSelfUrl(trimmed)) {
-                loadSite();
-            }
+            loadSite();
         }
     });
 
-    // Запускаем инициализацию после того, как все обработчики установлены
-    showSplash(); // показываем заглушку при старте
-    initFromUrl();
+    // ---------- Обработка навигации браузера (вперёд/назад) ----------
+    window.addEventListener('popstate', () => {
+        const target = getTargetFromUrl();
+        if (target) {
+            loadTarget(target);
+        } else {
+            // Если параметра нет, показываем заглушку
+            iframe.src = 'about:blank';
+            showSplash();
+            input.value = '';
+            updateValidity();
+        }
+    });
+
+    // ---------- Инициализация при загрузке страницы ----------
+    showSplash(); // показываем заглушку по умолчанию
+
+    const initialTarget = getTargetFromUrl();
+    if (initialTarget) {
+        loadTarget(initialTarget);
+    }
 })();
