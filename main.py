@@ -7,6 +7,11 @@ from urllib.parse import quote
 from datetime import datetime
 from pydantic import BaseModel
 
+import httpx
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse, quote
+import asyncio
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -33,6 +38,20 @@ db = client.toadbin  # база данных
 codes_collection = db.codes  # коллекция для кодов
 stats_db = client["main-page"] # бд для счётчика
 
+# Настройки прокси
+PROXY_TIMEOUT = 10.0  # секунд
+MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
+ALLOWED_SCHEMES = {"http", "https"}
+DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
+
+# HTTP-клиент для прокси (один на приложение, но в serverless это не обязательно)
+proxy_client = httpx.AsyncClient(
+    timeout=PROXY_TIMEOUT,
+    follow_redirects=True,
+    max_redirects=5,
+    limits=httpx.Limits(max_response_body=MAX_RESPONSE_SIZE)
+)
+
 app = FastAPI()
 app.mount("/evenfest/static", StaticFiles(directory="evenfest/static"), name="evenfest")
 app.mount('/snake/static', StaticFiles(directory="snake/static"), name="snake-static")
@@ -51,6 +70,63 @@ toad_background_dir = Path("toadbin/static/backgrounds")
 
 class TrackRequest(BaseModel):
     uuid: str
+
+
+def is_safe_url(url: str) -> bool:
+    """Проверяет, что URL допустим для проксирования."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ALLOWED_SCHEMES:
+        return False
+    # Проверка на локальные адреса (упрощённо)
+    netloc = parsed.netloc.split(':')[0]
+    if netloc in DISALLOWED_IPS or netloc.startswith(('127.', '192.168.', '10.')):
+        return False
+    return True
+
+def make_proxy_url(target: str) -> str:
+    """Создаёт прокси-URL для заданного целевого URL."""
+    return f"/mirror/?target={quote(target, safe='')}"
+
+def replace_urls_in_html(html: str, base_url: str) -> str:
+    """Заменяет все ссылки в HTML на прокси-версии."""
+    soup = BeautifulSoup(html, 'lxml')
+    
+    # Теги с атрибутами src, href, action
+    for tag, attr in [('a', 'href'), ('link', 'href'), ('script', 'src'),
+                      ('img', 'src'), ('iframe', 'src'), ('form', 'action')]:
+        for element in soup.find_all(tag, **{attr: True}):
+            original = element[attr]
+            if original and not original.startswith('#') and not original.startswith('data:'):
+                absolute = urljoin(base_url, original)
+                if is_safe_url(absolute):
+                    element[attr] = make_proxy_url(absolute)
+    
+    # Атрибуты style (inline CSS)
+    for element in soup.find_all(style=True):
+        style = element['style']
+        # Простейшая замена url(...)
+        # Можно улучшить, но для демо сойдёт
+        new_style = []
+        for part in style.split('url('):
+            if part and ')' in part:
+                before, rest = part.split(')', 1)
+                url_candidate = before.strip('\'" ')
+                absolute = urljoin(base_url, url_candidate)
+                if is_safe_url(absolute):
+                    new_style.append(f"url({make_proxy_url(absolute)}){rest}")
+                else:
+                    new_style.append(f"url({before}){rest}")
+            else:
+                new_style.append(part)
+        element['style'] = ''.join(new_style)
+    
+    # Теги <style>
+    for style_tag in soup.find_all('style'):
+        if style_tag.string:
+            css = style_tag.string
+            # Здесь тоже можно заменить url(...) аналогично, но пропустим для краткости
+    
+    return str(soup)
 
 
 def load_data(path):
@@ -360,3 +436,65 @@ async def formular_convert(
 @app.get("/yellow-mirror", response_class=HTMLResponse)
 async def jitsiroom(request: Request):
     return FileResponse("yellow mirror/yellow mirror.html")
+
+@app.api_route("api/yellow-mirror/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def proxy(request: Request):
+    target_url = request.query_params.get("target")
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
+    
+    if not is_safe_url(target_url):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+    
+    # Подготовка заголовков для целевого запроса
+    headers = dict(request.headers)
+    # Убираем заголовки, которые могут помешать
+    headers.pop("host", None)
+    headers.pop("content-length", None)
+    headers.pop("connection", None)
+    headers.pop("accept-encoding", None)  # чтобы получить несжатый ответ (или довериться httpx)
+    
+    # Получаем тело запроса, если есть
+    body = None
+    if request.method in ["POST", "PUT", "PATCH"]:
+        body = await request.body()
+    
+    # Выполняем запрос к целевому сайту
+    try:
+        resp = await proxy_client.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            content=body,
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Target server timeout")
+    except httpx.TooManyRedirects:
+        raise HTTPException(status_code=502, detail="Too many redirects")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
+    
+    # Определяем тип контента
+    content_type = resp.headers.get("content-type", "").lower()
+    
+    # Если это HTML, модифицируем
+    if "text/html" in content_type:
+        html_content = resp.text  # httpx автоматически декодирует
+        modified_html = replace_urls_in_html(html_content, str(resp.url))
+        # Возвращаем модифицированный HTML
+        return Response(
+            content=modified_html.encode('utf-8'),
+            status_code=resp.status_code,
+            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+        )
+    else:
+        # Для других типов возвращаем как есть
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+        )
+        
+@app.on_event("shutdown")
+async def shutdown_event():
+    await proxy_client.aclose()
