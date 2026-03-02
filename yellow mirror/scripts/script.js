@@ -17,52 +17,38 @@
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
         splash.style.display = 'block';
-        // Отключаем pointer-events на iframe, чтобы мышь проходила сквозь него
         iframe.style.pointerEvents = 'none';
         startMouseTracking();
     }
 
     function hideSplash() {
         splash.style.display = 'none';
-        // Возвращаем iframe интерактивность
         iframe.style.pointerEvents = 'auto';
         stopMouseTracking();
     }
 
-    // При старте показываем заглушку
     showSplash();
-
-    // Скрываем при успешной загрузке или ошибке
     iframe.addEventListener('load', hideSplash);
     iframe.addEventListener('error', hideSplash);
 
     // ---------- Отслеживание мыши для движения слоя ----------
     function handleMouseMove(e) {
         if (!splashLayer || splash.style.display === 'none') return;
-
-        // Нормализованные координаты от -1 до 1 (центр экрана = 0)
         const x = (e.clientX / window.innerWidth) * 2 - 1;
         const y = (e.clientY / window.innerHeight) * 2 - 1;
-
-        // Инвертируем направление: слой движется в противоположную сторону от мыши
         targetX = -x * maxOffset;
         targetY = -y * maxOffset;
     }
 
     function updateLayerTransform() {
         if (!splashLayer || splash.style.display === 'none') return;
-
-        // Плавное приближение к цели
         currentX += (targetX - currentX) * 0.1;
         currentY += (targetY - currentY) * 0.1;
-
         splashLayer.style.transform = `translate(${currentX}%, ${currentY}%)`;
-
         rafId = requestAnimationFrame(updateLayerTransform);
     }
 
     function startMouseTracking() {
-        // Используем document, чтобы ловить события, проходящие через iframe с pointer-events: none
         document.addEventListener('mousemove', handleMouseMove);
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(updateLayerTransform);
@@ -74,53 +60,18 @@
             cancelAnimationFrame(rafId);
             rafId = null;
         }
-        // Сброс позиции слоя при скрытии
         if (splashLayer) {
             splashLayer.style.transform = 'translate(0%, 0%)';
         }
         currentX = 0; currentY = 0; targetX = 0; targetY = 0;
     }
 
-    // Обработка изменения размера окна
     window.addEventListener('resize', () => {
         targetX = 0;
         targetY = 0;
     });
 
-    // ---------- Валидация URL (новая функция для извлечения домена) ----------
-    function getHostnameFromInput(str) {
-        try {
-            let urlString = str.trim();
-            if (!/^https?:\/\//i.test(urlString)) {
-                urlString = 'http://' + urlString; // добавляем схему для парсинга
-            }
-            const url = new URL(urlString);
-            return url.hostname;
-        } catch {
-            return null;
-        }
-    }
-
-    // ---------- Проверка, не ведёт ли ссылка на текущий сайт (прокси) ----------
-    function isSelfUrl(str) {
-        const hostname = getHostnameFromInput(str);
-        if (!hostname) return false;
-
-        const currentHost = window.location.hostname;
-        const localHosts = ['localhost', '127.0.0.1', '::1'];
-        if (localHosts.includes(hostname)) return true;
-
-        // Проверка, является ли текущий хост IP-адресом
-        const isCurrentIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(currentHost);
-        if (isCurrentIp) {
-            return hostname === currentHost;
-        } else {
-            // Для доменов: точное совпадение или поддомен
-            return hostname === currentHost || hostname.endsWith('.' + currentHost);
-        }
-    }
-
-    // ---------- Базовая проверка формата URL ----------
+    // ---------- Валидация URL ----------
     function isValidUrl(str) {
         const trimmed = str.trim();
         if (trimmed === '' || /\s/.test(trimmed)) return false;
@@ -128,7 +79,29 @@
         return urlPattern.test(trimmed);
     }
 
-    // ---------- Обновление состояния валидности и кнопки (с учётом самоссылок) ----------
+    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ (полное совпадение URL) ----------
+    function isSelfUrl(inputStr) {
+        try {
+            let urlString = inputStr.trim();
+            if (!/^https?:\/\//i.test(urlString)) {
+                urlString = 'https://' + urlString; // добавляем схему для парсинга
+            }
+            const inputUrl = new URL(urlString);
+            const currentUrl = new URL(window.location.href);
+
+            // Сравниваем host (хост:порт, регистронезависимо) и путь + query + hash
+            const sameHost = inputUrl.host.toLowerCase() === currentUrl.host.toLowerCase();
+            const samePath = inputUrl.pathname === currentUrl.pathname;
+            const sameSearch = inputUrl.search === currentUrl.search;
+            const sameHash = inputUrl.hash === currentUrl.hash;
+
+            return sameHost && samePath && sameSearch && sameHash;
+        } catch {
+            return false; // при ошибке парсинга считаем, что не сам
+        }
+    }
+
+    // ---------- Обновление состояния валидности и кнопки ----------
     function updateValidity() {
         const trimmed = input.value.trim();
         const validFormat = isValidUrl(trimmed);
@@ -139,7 +112,7 @@
     }
 
     input.addEventListener('input', updateValidity);
-    updateValidity(); // начальная проверка
+    updateValidity();
 
     // ---------- Подсветка панели ----------
     function isInteractiveElement(el) {
