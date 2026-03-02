@@ -8,12 +8,11 @@
     const splash = document.getElementById('splash');
     const splashLayer = document.querySelector('.splash-layer');
 
-    // Переменные для анимации движения слоя и хранения последнего загруженного URL
+    // Переменные для анимации движения слоя
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
     let rafId = null;
-    const maxOffset = 25; // максимальное смещение в процентах
-    let lastLoadedUrl = null; // полный URL последнего успешно загруженного сайта
+    const maxOffset = 25;
 
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
@@ -26,26 +25,6 @@
         splash.style.display = 'none';
         iframe.style.pointerEvents = 'auto';
         stopMouseTracking();
-    }
-
-    showSplash();
-    iframe.addEventListener('load', handleIframeLoad);
-    iframe.addEventListener('error', handleIframeError);
-
-    // ---------- Обработка событий iframe ----------
-    function handleIframeLoad() {
-        hideSplash();
-        // После успешной загрузки показываем в поле упрощённый URL (без протокола и www)
-        if (lastLoadedUrl) {
-            input.value = simplifyUrl(lastLoadedUrl);
-            updateValidity(); // обновляем состояние кнопки (должна остаться активной)
-        }
-    }
-
-    function handleIframeError() {
-        hideSplash();
-        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
-        // При ошибке не меняем поле ввода
     }
 
     // ---------- Отслеживание мыши для движения слоя ----------
@@ -96,17 +75,16 @@
         return urlPattern.test(trimmed);
     }
 
-    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ (полное совпадение URL) ----------
+    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ ----------
     function isSelfUrl(inputStr) {
         try {
             let urlString = inputStr.trim();
             if (!/^https?:\/\//i.test(urlString)) {
-                urlString = 'https://' + urlString; // добавляем схему для парсинга
+                urlString = 'https://' + urlString;
             }
             const inputUrl = new URL(urlString);
             const currentUrl = new URL(window.location.href);
 
-            // Сравниваем host (хост:порт, регистронезависимо) и путь + query + hash
             const sameHost = inputUrl.host.toLowerCase() === currentUrl.host.toLowerCase();
             const samePath = inputUrl.pathname === currentUrl.pathname;
             const sameSearch = inputUrl.search === currentUrl.search;
@@ -114,7 +92,7 @@
 
             return sameHost && samePath && sameSearch && sameHash;
         } catch {
-            return false; // при ошибке парсинга считаем, что не сам
+            return false;
         }
     }
 
@@ -172,6 +150,64 @@
 
     minimizedBar.addEventListener('click', expandPanel);
 
+    // ---------- Упрощение URL (удаление протокола и www) ----------
+    function simplifyUrl(url) {
+        // Удаляем протокол http:// или https://
+        let simplified = url.replace(/^https?:\/\//i, '');
+        // Удаляем www. в начале
+        simplified = simplified.replace(/^www\./i, '');
+        return simplified;
+    }
+
+    // ---------- Обновление адресной строки (query-параметр target) ----------
+    function updateBrowserUrl(targetUrl) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('target', targetUrl);
+        window.history.pushState({}, '', url);
+    }
+
+    // ---------- Обработка загрузки iframe ----------
+    function handleIframeLoad() {
+        hideSplash();
+
+        // Получаем целевой URL из src iframe (параметр target)
+        try {
+            const iframeSrc = iframe.src;
+            const urlParams = new URL(iframeSrc).searchParams;
+            const target = urlParams.get('target');
+            if (target) {
+                // Обновляем поле ввода
+                input.value = simplifyUrl(target);
+                updateValidity();
+                // Обновляем адресную строку
+                updateBrowserUrl(target);
+            }
+        } catch (e) {
+            console.warn('Не удалось обработать src iframe', e);
+        }
+    }
+
+    function handleIframeError() {
+        hideSplash();
+        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
+    }
+
+    iframe.addEventListener('load', handleIframeLoad);
+    iframe.addEventListener('error', handleIframeError);
+
+    // ---------- Инициализация из URL (если есть параметр target) ----------
+    function initFromUrl() {
+        const urlParams = new URL(window.location.href).searchParams;
+        const target = urlParams.get('target');
+        if (target) {
+            showSplash();
+            iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(target)}`;
+            // Поле ввода обновится после загрузки в handleIframeLoad
+        } else {
+            // Если параметра нет, просто показываем заглушку (она уже видна)
+        }
+    }
+
     // ---------- Загрузка сайта через прокси ----------
     function loadSite() {
         const trimmed = input.value.trim();
@@ -182,8 +218,6 @@
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        // Сохраняем полный URL для последующего форматирования поля
-        lastLoadedUrl = url;
         iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
     }
 
@@ -199,17 +233,7 @@
         }
     });
 
-    // ---------- Упрощение URL (удаление протокола и www) ----------
-    /**
-     * Удаляет протокол (http://, https://) и поддомен www. из URL, сохраняя путь, параметры и якорь.
-     * @param {string} url - полный или частичный URL
-     * @returns {string} упрощённый вид (example.com/foo/bar?baz=1#qux)
-     */
-    function simplifyUrl(url) {
-        // Сначала удаляем протокол
-        let simplified = url.replace(/^https?:\/\//i, '');
-        // Затем удаляем www. в начале (если есть)
-        simplified = simplified.replace(/^www\./i, '');
-        return simplified;
-    }
+    // Запускаем инициализацию после того, как все обработчики установлены
+    showSplash(); // показываем заглушку при старте
+    initFromUrl();
 })();
