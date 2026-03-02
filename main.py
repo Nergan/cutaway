@@ -87,10 +87,10 @@ def make_proxy_url(target: str) -> str:
     return f"/api/yellow-mirror/?target={quote(target, safe='')}"
 
 def replace_urls_in_html(html: str, base_url: str) -> str:
-    """Заменяет все ссылки в HTML на прокси-версии."""
+    """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
     soup = BeautifulSoup(html, 'lxml')
     
-    # Теги с атрибутами src, href, action
+    # Замена ссылок (как и раньше)
     for tag, attr in [('a', 'href'), ('link', 'href'), ('script', 'src'),
                       ('img', 'src'), ('iframe', 'src'), ('form', 'action')]:
         for element in soup.find_all(tag, **{attr: True}):
@@ -100,11 +100,9 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 if is_safe_url(absolute):
                     element[attr] = make_proxy_url(absolute)
     
-    # Атрибуты style (inline CSS)
+    # Обработка inline-стилей (упрощённо)
     for element in soup.find_all(style=True):
         style = element['style']
-        # Простейшая замена url(...)
-        # Можно улучшить, но для демо сойдёт
         new_style = []
         for part in style.split('url('):
             if part and ')' in part:
@@ -119,11 +117,42 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 new_style.append(part)
         element['style'] = ''.join(new_style)
     
-    # Теги <style>
-    for style_tag in soup.find_all('style'):
-        if style_tag.string:
-            css = style_tag.string
-            # Здесь тоже можно заменить url(...) аналогично, но пропустим для краткости
+    # Внедрение скрипта для уведомления родителя об изменении URL
+    if not soup.head:
+        soup.html.insert(0, soup.new_tag('head'))
+    
+    script_tag = soup.new_tag('script')
+    script_tag.string = """
+    (function() {
+        // Сохраняем оригинальные методы истории
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+
+        function notifyParent() {
+            // Отправляем текущий URL родительскому окну
+            window.parent.postMessage({ type: 'iframe-navigation', url: window.location.href }, '*');
+        }
+
+        // Переопределяем pushState
+        history.pushState = function() {
+            originalPushState.apply(this, arguments);
+            notifyParent();
+        };
+
+        // Переопределяем replaceState
+        history.replaceState = function() {
+            originalReplaceState.apply(this, arguments);
+            notifyParent();
+        };
+
+        // Слушаем события навигации (назад/вперёд)
+        window.addEventListener('popstate', notifyParent);
+
+        // Отправляем текущий URL при загрузке страницы
+        notifyParent();
+    })();
+    """
+    soup.head.append(script_tag)
     
     return str(soup)
 
