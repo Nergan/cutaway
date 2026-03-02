@@ -436,64 +436,64 @@ async def formular_convert(
 async def jitsiroom(request: Request):
     return FileResponse("yellow mirror/yellow mirror.html")
 
-# @app.api_route("api/yellow-mirror/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-# async def proxy(request: Request):
-#     target_url = request.query_params.get("target")
-#     if not target_url:
-#         raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
+@app.api_route("api/yellow-mirror/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def proxy(request: Request):
+    target_url = request.query_params.get("target")
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
     
-#     if not is_safe_url(target_url):
-#         raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+    if not is_safe_url(target_url):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
     
-#     # Подготовка заголовков для целевого запроса
-#     headers = dict(request.headers)
-#     # Убираем заголовки, которые могут помешать
-#     headers.pop("host", None)
-#     headers.pop("content-length", None)
-#     headers.pop("connection", None)
-#     headers.pop("accept-encoding", None)  # чтобы получить несжатый ответ (или довериться httpx)
+    # Подготовка заголовков для целевого запроса
+    headers = dict(request.headers)
+    # Убираем заголовки, которые могут помешать
+    headers.pop("host", None)
+    headers.pop("content-length", None)
+    headers.pop("connection", None)
+    headers.pop("accept-encoding", None)  # чтобы получить несжатый ответ (или довериться httpx)
     
-#     # Получаем тело запроса, если есть
-#     body = None
-#     if request.method in ["POST", "PUT", "PATCH"]:
-#         body = await request.body()
+    # Получаем тело запроса, если есть
+    body = None
+    if request.method in ["POST", "PUT", "PATCH"]:
+        body = await request.body()
     
-#     # Выполняем запрос к целевому сайту
-#     try:
-#         resp = await proxy_client.request(
-#             method=request.method,
-#             url=target_url,
-#             headers=headers,
-#             content=body,
-#         )
-#     except httpx.TimeoutException:
-#         raise HTTPException(status_code=504, detail="Target server timeout")
-#     except httpx.TooManyRedirects:
-#         raise HTTPException(status_code=502, detail="Too many redirects")
-#     except httpx.HTTPError as e:
-#         raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
+    # Выполняем запрос к целевому сайту
+    try:
+        resp = await proxy_client.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            content=body,
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Target server timeout")
+    except httpx.TooManyRedirects:
+        raise HTTPException(status_code=502, detail="Too many redirects")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
     
-#     # Определяем тип контента
-#     content_type = resp.headers.get("content-type", "").lower()
+    # Определяем тип контента
+    content_type = resp.headers.get("content-type", "").lower()
     
-#     # Если это HTML, модифицируем
-#     if "text/html" in content_type:
-#         html_content = resp.text  # httpx автоматически декодирует
-#         modified_html = replace_urls_in_html(html_content, str(resp.url))
-#         # Возвращаем модифицированный HTML
-#         return Response(
-#             content=modified_html.encode('utf-8'),
-#             status_code=resp.status_code,
-#             headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
-#         )
-#     else:
-#         # Для других типов возвращаем как есть
-#         return Response(
-#             content=resp.content,
-#             status_code=resp.status_code,
-#             headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
-#         )
+    # Если это HTML, модифицируем
+    if "text/html" in content_type:
+        html_content = resp.text  # httpx автоматически декодирует
+        modified_html = replace_urls_in_html(html_content, str(resp.url))
+        # Возвращаем модифицированный HTML
+        return Response(
+            content=modified_html.encode('utf-8'),
+            status_code=resp.status_code,
+            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+        )
+    else:
+        # Для других типов возвращаем как есть
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+        )
         
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     await proxy_client.aclose()
+@app.on_event("shutdown")
+async def shutdown_event():
+    await proxy_client.aclose()
