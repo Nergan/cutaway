@@ -184,22 +184,27 @@
         hideSplash();
 
         try {
-            const iframeSrc = iframe.src;
-            const urlParams = new URL(iframeSrc).searchParams;
-            const loadedTarget = urlParams.get('target');
-            if (loadedTarget) {
-                // Обновляем поле ввода
-                input.value = simplifyUrl(loadedTarget);
-                updateValidity();
+            const currentIframeSrc = iframe.src;
 
-                // Синхронизируем адресную строку (если она не совпадает)
-                const currentTarget = getTargetFromUrl();
-                if (currentTarget !== loadedTarget) {
-                    setBrowserUrlTarget(loadedTarget);
-                }
+            // Определяем реальный целевой URL
+            let targetUrl = currentIframeSrc;
+            if (currentIframeSrc.includes('/api/yellow-mirror/')) {
+                const urlParams = new URL(currentIframeSrc).searchParams;
+                const target = urlParams.get('target');
+                if (target) targetUrl = target;
+            }
+
+            // Обновляем поле ввода
+            input.value = simplifyUrl(targetUrl);
+            updateValidity();
+
+            // Синхронизируем адресную строку
+            const currentTarget = getTargetFromUrl();
+            if (currentTarget !== targetUrl) {
+                setBrowserUrlTarget(targetUrl);
             }
         } catch (e) {
-            console.warn('Не удалось обработать src iframe', e);
+            console.warn('Не удалось обработать загрузку iframe', e);
         }
     }
 
