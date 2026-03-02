@@ -12,7 +12,10 @@
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
     let rafId = null;
-    const maxOffset = 25; // максимальное смещение в процентах
+    const maxOffset = 25;
+
+    // Переменная для отслеживания последнего src iframe (для polling)
+    let lastIframeSrc = iframe.src;
 
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
@@ -27,32 +30,24 @@
         stopMouseTracking();
     }
 
-    // При старте показываем заглушку
     showSplash();
-
-    // Скрываем при успешной загрузке или ошибке
     iframe.addEventListener('load', hideSplash);
     iframe.addEventListener('error', hideSplash);
 
     // ---------- Отслеживание мыши для движения слоя ----------
     function handleMouseMove(e) {
         if (!splashLayer || splash.style.display === 'none') return;
-
         const x = (e.clientX / window.innerWidth) * 2 - 1;
         const y = (e.clientY / window.innerHeight) * 2 - 1;
-
         targetX = -x * maxOffset;
         targetY = -y * maxOffset;
     }
 
     function updateLayerTransform() {
         if (!splashLayer || splash.style.display === 'none') return;
-
         currentX += (targetX - currentX) * 0.1;
         currentY += (targetY - currentY) * 0.1;
-
         splashLayer.style.transform = `translate(${currentX}%, ${currentY}%)`;
-
         rafId = requestAnimationFrame(updateLayerTransform);
     }
 
@@ -116,6 +111,7 @@
             if (host.startsWith('www.')) {
                 host = host.slice(4);
             }
+            // Возвращаем host + путь + поиск + хеш (путь всегда начинается с /)
             return host + url.pathname + url.search + url.hash;
         } catch {
             return fullUrl;
@@ -125,10 +121,15 @@
     // ---------- Извлечение целевого URL из прокси-ссылки iframe ----------
     function extractTargetFromProxySrc(proxySrc) {
         try {
+            // Если src пустой или about:blank, возвращаем null
+            if (!proxySrc || proxySrc === 'about:blank') return null;
+
+            // Создаём URL относительно текущего origin (на случай, если src абсолютный)
             const url = new URL(proxySrc, window.location.origin);
             const target = url.searchParams.get('target');
             return target ? decodeURIComponent(target) : null;
-        } catch {
+        } catch (e) {
+            console.warn('Не удалось распарсить src iframe:', e);
             return null;
         }
     }
@@ -136,18 +137,26 @@
     // ---------- Обновление поля ввода из текущего iframe ----------
     function updateInputFromIframe() {
         const proxySrc = iframe.src;
-        if (proxySrc && proxySrc !== 'about:blank') {
-            const targetUrl = extractTargetFromProxySrc(proxySrc);
-            if (targetUrl) {
-                const short = shortenUrl(targetUrl);
-                input.value = short;
-                updateValidity();
-            }
+        if (!proxySrc || proxySrc === 'about:blank') return;
+
+        const targetUrl = extractTargetFromProxySrc(proxySrc);
+        if (targetUrl) {
+            const short = shortenUrl(targetUrl);
+            input.value = short;
+            updateValidity();
         }
     }
 
-    // Слушаем загрузку iframe для обновления поля
+    // Слушаем загрузку iframe (срабатывает при навигации)
     iframe.addEventListener('load', updateInputFromIframe);
+
+    // ---------- Polling для отслеживания изменения src (для случаев, когда load не срабатывает) ----------
+    setInterval(() => {
+        if (iframe.src !== lastIframeSrc) {
+            lastIframeSrc = iframe.src;
+            updateInputFromIframe();
+        }
+    }, 300);
 
     // ---------- Обновление состояния кнопки ----------
     function updateValidity() {
