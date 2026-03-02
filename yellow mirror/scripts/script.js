@@ -8,11 +8,12 @@
     const splash = document.getElementById('splash');
     const splashLayer = document.querySelector('.splash-layer');
 
-    // Переменные для анимации движения слоя
+    // Переменные для анимации движения слоя и хранения последнего загруженного URL
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
     let rafId = null;
     const maxOffset = 25; // максимальное смещение в процентах
+    let lastLoadedUrl = null; // полный URL последнего успешно загруженного сайта
 
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
@@ -28,8 +29,24 @@
     }
 
     showSplash();
-    iframe.addEventListener('load', hideSplash);
-    iframe.addEventListener('error', hideSplash);
+    iframe.addEventListener('load', handleIframeLoad);
+    iframe.addEventListener('error', handleIframeError);
+
+    // ---------- Обработка событий iframe ----------
+    function handleIframeLoad() {
+        hideSplash();
+        // После успешной загрузки показываем в поле упрощённый домен
+        if (lastLoadedUrl) {
+            input.value = simplifyToDomain(lastLoadedUrl);
+            updateValidity(); // обновляем состояние кнопки (должна остаться активной)
+        }
+    }
+
+    function handleIframeError() {
+        hideSplash();
+        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
+        // При ошибке не меняем поле ввода
+    }
 
     // ---------- Отслеживание мыши для движения слоя ----------
     function handleMouseMove(e) {
@@ -165,6 +182,8 @@
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
+        // Сохраняем полный URL для последующего форматирования поля
+        lastLoadedUrl = url;
         iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
     }
 
@@ -180,11 +199,7 @@
         }
     });
 
-    iframe.addEventListener('error', () => {
-        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
-    });
-
-    // ---------- Упрощение URL до домена при вставке ----------
+    // ---------- Упрощение URL до домена ----------
     /**
      * Извлекает домен из сырой строки URL (удаляет протокол, путь, параметры и www)
      * @param {string} raw - строка, которую вставил пользователь
@@ -212,7 +227,7 @@
         }
     }
 
-    // Обработчик вставки из буфера обмена
+    // ---------- Обработка вставки из буфера (опционально, для удобства) ----------
     input.addEventListener('paste', (e) => {
         e.preventDefault(); // отключаем стандартную вставку
 
