@@ -6,8 +6,8 @@ from pathlib import Path
 from urllib.parse import quote
 from datetime import datetime
 from pydantic import BaseModel
-# from urllib.parse import urljoin, urlparse, quote
-# import asyncio
+from urllib.parse import urljoin, urlparse, quote
+import asyncio
 
 # import httpx
 # from bs4 import BeautifulSoup
