@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from urllib.parse import urljoin, urlparse, quote
 import asyncio
 
-# import httpx
+import httpx
 # from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
