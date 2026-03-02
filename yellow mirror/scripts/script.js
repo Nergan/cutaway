@@ -35,9 +35,9 @@
     // ---------- Обработка событий iframe ----------
     function handleIframeLoad() {
         hideSplash();
-        // После успешной загрузки показываем в поле упрощённый домен с путём
+        // После успешной загрузки показываем в поле упрощённый URL (без протокола и www)
         if (lastLoadedUrl) {
-            input.value = simplifyToDomain(lastLoadedUrl);
+            input.value = simplifyUrl(lastLoadedUrl);
             updateValidity(); // обновляем состояние кнопки (должна остаться активной)
         }
     }
@@ -199,40 +199,17 @@
         }
     });
 
-    // ---------- Упрощение URL до домена с сохранением пути, параметров и якоря ----------
+    // ---------- Упрощение URL (удаление протокола и www) ----------
     /**
-     * Извлекает из URL домен (с портом) и путь, удаляя протокол и www
-     * @param {string} raw - полный URL
+     * Удаляет протокол (http://, https://) и поддомен www. из URL, сохраняя путь, параметры и якорь.
+     * @param {string} url - полный или частичный URL
      * @returns {string} упрощённый вид (example.com/foo/bar?baz=1#qux)
      */
-    function simplifyToDomain(raw) {
-        const trimmed = raw.trim();
-        if (!trimmed) return raw;
-
-        // Добавляем схему, если её нет, для корректного парсинга
-        let urlString = trimmed;
-        if (!/^https?:\/\//i.test(urlString)) {
-            urlString = 'https://' + urlString;
-        }
-
-        try {
-            const url = new URL(urlString);
-            let host = url.host; // включает порт, если есть
-            // Убираем www. (регистронезависимо)
-            host = host.replace(/^www\./i, '');
-
-            // Формируем результат: host + путь + поиск + хеш
-            let result = host + url.pathname + url.search + url.hash;
-
-            // Если путь состоит только из "/" и нет query/hash, убираем слеш
-            if (url.pathname === '/' && !url.search && !url.hash) {
-                result = host;
-            }
-
-            return result;
-        } catch {
-            // Если не удалось распарсить, оставляем как есть
-            return raw;
-        }
+    function simplifyUrl(url) {
+        // Сначала удаляем протокол
+        let simplified = url.replace(/^https?:\/\//i, '');
+        // Затем удаляем www. в начале (если есть)
+        simplified = simplified.replace(/^www\./i, '');
+        return simplified;
     }
 })();
