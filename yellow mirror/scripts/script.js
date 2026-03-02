@@ -35,7 +35,7 @@
     // ---------- Обработка событий iframe ----------
     function handleIframeLoad() {
         hideSplash();
-        // После успешной загрузки показываем в поле упрощённый домен
+        // После успешной загрузки показываем в поле упрощённый домен с путём
         if (lastLoadedUrl) {
             input.value = simplifyToDomain(lastLoadedUrl);
             updateValidity(); // обновляем состояние кнопки (должна остаться активной)
@@ -199,11 +199,11 @@
         }
     });
 
-    // ---------- Упрощение URL до домена ----------
+    // ---------- Упрощение URL до домена с сохранением пути, параметров и якоря ----------
     /**
-     * Извлекает домен из сырой строки URL (удаляет протокол, путь, параметры и www)
-     * @param {string} raw - строка, которую вставил пользователь
-     * @returns {string} упрощённый домен или исходная строка, если парсинг не удался
+     * Извлекает из URL домен (с портом) и путь, удаляя протокол и www
+     * @param {string} raw - полный URL
+     * @returns {string} упрощённый вид (example.com/foo/bar?baz=1#qux)
      */
     function simplifyToDomain(raw) {
         const trimmed = raw.trim();
@@ -217,10 +217,19 @@
 
         try {
             const url = new URL(urlString);
-            let hostname = url.hostname;
+            let host = url.host; // включает порт, если есть
             // Убираем www. (регистронезависимо)
-            hostname = hostname.replace(/^www\./i, '');
-            return hostname;
+            host = host.replace(/^www\./i, '');
+
+            // Формируем результат: host + путь + поиск + хеш
+            let result = host + url.pathname + url.search + url.hash;
+
+            // Если путь состоит только из "/" и нет query/hash, убираем слеш
+            if (url.pathname === '/' && !url.search && !url.hash) {
+                result = host;
+            }
+
+            return result;
         } catch {
             // Если не удалось распарсить, оставляем как есть
             return raw;
