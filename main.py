@@ -41,6 +41,8 @@ app.mount('/toadbin/static', StaticFiles(directory="toadbin/static"), name="toad
 app.mount('/toadbin/scripts', StaticFiles(directory="toadbin/scripts"), name="toadbin-scripts")
 app.mount('/formular/static', StaticFiles(directory="formular/static"), name="formular-static")
 app.mount('/formular/scripts', StaticFiles(directory="formular/scripts"), name="formular-scripts")
+app.mount('/yellow mirror/static', StaticFiles(directory="yellow mirror/static"), name="yellow-mirror-static")
+app.mount('/yellow mirror/scripts', StaticFiles(directory="yellow mirror/scripts"), name="yellow-mirror-scripts")
 evenfest = Jinja2Templates(directory="evenfest/templates")
 toadbin = Jinja2Templates(directory="toadbin")
 
@@ -353,8 +355,8 @@ async def formular_convert(
         raise HTTPException(status_code=400, detail="Unsupported conversion format")
     
     
-# jitsi room
+# yellow mirror
 
-@app.get("/jitsi-room", response_class=HTMLResponse)
+@app.get("/yellow-mirror", response_class=HTMLResponse)
 async def jitsiroom(request: Request):
-    return FileResponse("jitsi room/jitsi room.html")
+    return FileResponse("yellow mirror/yellow mirror.html")
