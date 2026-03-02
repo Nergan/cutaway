@@ -84,7 +84,7 @@ def is_safe_url(url: str) -> bool:
 
 def make_proxy_url(target: str) -> str:
     """Создаёт прокси-URL для заданного целевого URL."""
-    return f"/mirror/?target={quote(target, safe='')}"
+    return f"/api/yellow-mirror/?target={quote(target, safe='')}"
 
 def replace_urls_in_html(html: str, base_url: str) -> str:
     """Заменяет все ссылки в HTML на прокси-версии."""
