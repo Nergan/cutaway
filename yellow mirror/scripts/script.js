@@ -87,7 +87,40 @@
         targetY = 0;
     });
 
-    // ---------- Валидация URL ----------
+    // ---------- Валидация URL (новая функция для извлечения домена) ----------
+    function getHostnameFromInput(str) {
+        try {
+            let urlString = str.trim();
+            if (!/^https?:\/\//i.test(urlString)) {
+                urlString = 'http://' + urlString; // добавляем схему для парсинга
+            }
+            const url = new URL(urlString);
+            return url.hostname;
+        } catch {
+            return null;
+        }
+    }
+
+    // ---------- Проверка, не ведёт ли ссылка на текущий сайт (прокси) ----------
+    function isSelfUrl(str) {
+        const hostname = getHostnameFromInput(str);
+        if (!hostname) return false;
+
+        const currentHost = window.location.hostname;
+        const localHosts = ['localhost', '127.0.0.1', '::1'];
+        if (localHosts.includes(hostname)) return true;
+
+        // Проверка, является ли текущий хост IP-адресом
+        const isCurrentIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(currentHost);
+        if (isCurrentIp) {
+            return hostname === currentHost;
+        } else {
+            // Для доменов: точное совпадение или поддомен
+            return hostname === currentHost || hostname.endsWith('.' + currentHost);
+        }
+    }
+
+    // ---------- Базовая проверка формата URL ----------
     function isValidUrl(str) {
         const trimmed = str.trim();
         if (trimmed === '' || /\s/.test(trimmed)) return false;
@@ -95,14 +128,18 @@
         return urlPattern.test(trimmed);
     }
 
+    // ---------- Обновление состояния валидности и кнопки (с учётом самоссылок) ----------
     function updateValidity() {
-        const valid = isValidUrl(input.value);
+        const trimmed = input.value.trim();
+        const validFormat = isValidUrl(trimmed);
+        const self = isSelfUrl(trimmed);
+        const valid = validFormat && !self;
         button.disabled = !valid;
         input.classList.toggle('invalid', !valid);
     }
 
     input.addEventListener('input', updateValidity);
-    updateValidity();
+    updateValidity(); // начальная проверка
 
     // ---------- Подсветка панели ----------
     function isInteractiveElement(el) {
@@ -145,16 +182,17 @@
 
     minimizedBar.addEventListener('click', expandPanel);
 
-    // ---------- Загрузка сайта ----------
+    // ---------- Загрузка сайта через прокси ----------
     function loadSite() {
-    if (!isValidUrl(input.value)) return;
+        const trimmed = input.value.trim();
+        if (!isValidUrl(trimmed) || isSelfUrl(trimmed)) return;
+
         showSplash();
-        let url = input.value.trim();
+        let url = trimmed;
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        // Используем прокси-эндпоинт
-        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(url)}`;
+        iframe.src = `/mirror/?target=${encodeURIComponent(url)}`;
     }
 
     button.addEventListener('click', loadSite);
@@ -162,7 +200,8 @@
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (isValidUrl(input.value)) {
+            const trimmed = input.value.trim();
+            if (isValidUrl(trimmed) && !isSelfUrl(trimmed)) {
                 loadSite();
             }
         }
