@@ -3,7 +3,7 @@ from json import load
 from os import environ
 from os.path import exists
 from pathlib import Path
-from urllib.parse import quote, urljoin
+from urllib.parse import quote, urljoin, urlparse
 from datetime import datetime
 from pydantic import BaseModel
 import asyncio
