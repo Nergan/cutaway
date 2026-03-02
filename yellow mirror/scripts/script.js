@@ -185,9 +185,8 @@
 
         try {
             const currentIframeSrc = iframe.src;
-
-            // Определяем реальный целевой URL
             let targetUrl = currentIframeSrc;
+
             if (currentIframeSrc.includes('/api/yellow-mirror/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
@@ -199,10 +198,7 @@
             updateValidity();
 
             // Синхронизируем адресную строку
-            const currentTarget = getTargetFromUrl();
-            if (currentTarget !== targetUrl) {
-                setBrowserUrlTarget(targetUrl);
-            }
+            setBrowserUrlTarget(targetUrl);
         } catch (e) {
             console.warn('Не удалось обработать загрузку iframe', e);
         }
@@ -218,15 +214,28 @@
 
     // ---------- Обработка сообщений от iframe (SPA-навигация) ----------
     window.addEventListener('message', (event) => {
-        // Проверяем тип сообщения
         if (event.data && event.data.type === 'iframe-navigation') {
-            const url = event.data.url;
-            if (url) {
+            const frameUrl = event.data.url;
+            try {
+                const urlObj = new URL(frameUrl, window.location.origin);
+                let targetUrl = frameUrl;
+
+                // Если это наш прокси-эндпоинт, извлекаем параметр target
+                if (urlObj.pathname === '/api/yellow-mirror/' || urlObj.pathname.startsWith('/api/yellow-mirror')) {
+                    const target = urlObj.searchParams.get('target');
+                    if (target) {
+                        targetUrl = target;
+                    }
+                }
+
                 // Обновляем поле ввода
-                input.value = simplifyUrl(url);
+                input.value = simplifyUrl(targetUrl);
                 updateValidity();
+
                 // Обновляем query-параметр в адресной строке
-                setBrowserUrlTarget(url);
+                setBrowserUrlTarget(targetUrl);
+            } catch (e) {
+                console.warn('Не удалось обработать сообщение от iframe', e);
             }
         }
     });
