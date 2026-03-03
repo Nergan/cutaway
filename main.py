@@ -549,7 +549,7 @@ async def proxy(request: Request):
                 url=internal_path,
                 headers=headers,
                 content=body,
-                follow_redirects=False  # редиректы обработаем сами
+                follow_redirects=True  # ИСПРАВЛЕНО: теперь следуем редиректам, как для внешних запросов
             )
 
         # Обрабатываем ответ как обычно (модификация HTML и т.д.)
