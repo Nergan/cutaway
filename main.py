@@ -523,8 +523,23 @@ async def proxy(request: Request):
         # Если путь запроса ведёт на сам прокси-эндпоинт – предотвращаем зацикливание
         if parsed_target.path.startswith("/api/yellow-mirror"):
             raise HTTPException(status_code=400, detail="Recursive proxy call detected")
-        # Редиректим на целевой URL (выходим из прокси)
-        return RedirectResponse(url=target_url, status_code=302)
+
+        # Возвращаем HTML-страницу, которая перенаправит верхнее окно на целевой URL
+        # Это гарантирует, что даже внутри iframe мы выйдем на чистую страницу
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+        window.top.location.href = {repr(target_url)};
+    </script>
+</head>
+<body>
+    Redirecting to <a href="{target_url}">{target_url}</a>...
+</body>
+</html>"""
+        return HTMLResponse(content=html_content, status_code=200)
 
     # Для внешних сайтов используем обычный прокси-клиент с привязкой к IP
     # Получаем IP клиента для сессионного клиента
