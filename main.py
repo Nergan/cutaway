@@ -125,8 +125,12 @@ def make_proxy_url(target: str) -> str:
     """Создаёт прокси-URL для заданного целевого URL."""
     return f"/api/yellow-mirror/?target={quote(target, safe='')}"
 
-def replace_urls_in_html(html: str, base_url: str) -> str:
-    """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
+def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
+    """
+    Заменяет все ссылки на внешние ресурсы прокси-версиями,
+    а ссылки на наш собственный домен оставляет как есть, добавляя target="_top".
+    Также внедряет скрипт для отслеживания навигации.
+    """
     soup = BeautifulSoup(html, 'lxml')
     
     # Замена ссылок
@@ -134,10 +138,20 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                       ('img', 'src'), ('iframe', 'src'), ('form', 'action')]:
         for element in soup.find_all(tag, **{attr: True}):
             original = element[attr]
-            if original and not original.startswith('#') and not original.startswith('data:'):
-                absolute = urljoin(base_url, original)
-                if is_safe_url(absolute):
-                    element[attr] = make_proxy_url(absolute)
+            if not original or original.startswith('#') or original.startswith('data:'):
+                continue
+            absolute = urljoin(base_url, original)
+            parsed = urlparse(absolute)
+            # Если ссылка ведёт на наш собственный домен
+            if parsed.hostname and parsed.hostname.lower() == our_domain.lower():
+                # Для ссылок (a) добавляем target="_top", чтобы покинуть iframe
+                if tag == 'a':
+                    element['target'] = '_top'
+                # Для форм тоже можно добавить target, но оставим как есть
+                # Не заменяем href/src на прокси
+                continue
+            if is_safe_url(absolute):
+                element[attr] = make_proxy_url(absolute)
     
     # Обработка inline-стилей (упрощённо)
     for element in soup.find_all(style=True):
@@ -148,7 +162,11 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 before, rest = part.split(')', 1)
                 url_candidate = before.strip('\'" ')
                 absolute = urljoin(base_url, url_candidate)
-                if is_safe_url(absolute):
+                parsed = urlparse(absolute)
+                if parsed.hostname and parsed.hostname.lower() == our_domain.lower():
+                    # Оставляем как есть
+                    new_style.append(f"url({before}){rest}")
+                elif is_safe_url(absolute):
                     new_style.append(f"url({make_proxy_url(absolute)}){rest}")
                 else:
                     new_style.append(f"url({before}){rest}")
@@ -549,7 +567,7 @@ async def proxy(request: Request):
                 url=internal_path,
                 headers=headers,
                 content=body,
-                follow_redirects=True  # ИСПРАВЛЕНО: теперь следуем редиректам, как для внешних запросов
+                follow_redirects=True  # следуем редиректам, как для внешних запросов
             )
 
         # Обрабатываем ответ как обычно (модификация HTML и т.д.)
@@ -570,8 +588,8 @@ async def proxy(request: Request):
 
         content_type = resp.headers.get("content-type", "").lower()
         if "text/html" in content_type:
-            # Модифицируем HTML, подставляя прокси-ссылки
-            modified_html = replace_urls_in_html(resp.text, str(resp.url))
+            # Модифицируем HTML, подставляя прокси-ссылки и обрабатывая ссылки на наш домен
+            modified_html = replace_urls_in_html(resp.text, str(resp.url), our_host)
             return Response(
                 content=modified_html.encode('utf-8'),
                 status_code=resp.status_code,
@@ -642,7 +660,7 @@ async def proxy(request: Request):
     
     if "text/html" in content_type:
         html_content = resp.text
-        modified_html = replace_urls_in_html(html_content, str(resp.url))
+        modified_html = replace_urls_in_html(html_content, str(resp.url), our_host)
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
