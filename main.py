@@ -135,7 +135,7 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                     # Проверяем, ведёт ли ссылка на наше приложение
                     parsed_abs = urlparse(absolute)
                     abs_host = parsed_abs.netloc.split(':')[0]
-                    abs_path = parsed_abs.path.rstrip('/')
+                    abs_path = parsed_abs.path.rstrip('/')  # нормализуем путь (убираем завершающий слеш)
                     
                     if (abs_host.lower() == our_host.lower() and 
                         abs_path == our_app_path and
