@@ -121,14 +121,19 @@ def is_safe_url(url: str) -> bool:
         return False
     return True
 
-def make_proxy_url(target: str) -> str:
-    """Создаёт прокси-URL для заданного целевого URL."""
-    return f"/api/yellow-mirror/?target={quote(target, safe='')}"
+def make_proxy_url(target: str, exit_internal: bool = False) -> str:
+    """Создаёт прокси-URL для заданного целевого URL.
+       Если exit_internal=True, добавляет параметр exit=1 для выхода из iframe."""
+    base = f"/api/yellow-mirror/?target={quote(target, safe='')}"
+    if exit_internal:
+        base += "&exit=1"
+    return base
 
 def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
     """
-    Заменяет все ссылки на внешние ресурсы прокси-версиями,
-    а ссылки на наш собственный домен оставляет как есть, добавляя target="_top".
+    Заменяет ссылки на внешние ресурсы прокси-версиями.
+    Ссылки на наш собственный домен заменяются на прокси с параметром exit=1,
+    чтобы при клике происходил выход из iframe.
     Также внедряет скрипт для отслеживания навигации.
     """
     soup = BeautifulSoup(html, 'lxml')
@@ -142,14 +147,17 @@ def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
                 continue
             absolute = urljoin(base_url, original)
             parsed = urlparse(absolute)
+            
             # Если ссылка ведёт на наш собственный домен
             if parsed.hostname and parsed.hostname.lower() == our_domain.lower():
-                # Для ссылок (a) добавляем target="_top", чтобы покинуть iframe
+                # Заменяем на прокси с параметром exit=1
+                element[attr] = make_proxy_url(absolute, exit_internal=True)
+                # Для ссылок дополнительно устанавливаем target="_top" для надёжности
                 if tag == 'a':
                     element['target'] = '_top'
-                # Для форм тоже можно добавить target, но оставим как есть
-                # Не заменяем href/src на прокси
                 continue
+            
+            # Для внешних ссылок заменяем на обычный прокси
             if is_safe_url(absolute):
                 element[attr] = make_proxy_url(absolute)
     
@@ -164,7 +172,8 @@ def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
                 absolute = urljoin(base_url, url_candidate)
                 parsed = urlparse(absolute)
                 if parsed.hostname and parsed.hostname.lower() == our_domain.lower():
-                    # Оставляем как есть
+                    # Для внутренних ресурсов в стилях пока оставляем как есть,
+                    # но можно также заменить на прокси с exit, если необходимо.
                     new_style.append(f"url({before}){rest}")
                 elif is_safe_url(absolute):
                     new_style.append(f"url({make_proxy_url(absolute)}){rest}")
@@ -532,6 +541,12 @@ async def proxy(request: Request):
     
     if not is_safe_url(target_url):
         raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # Проверяем, есть ли параметр exit=1 (означает, что нужно выйти из iframe)
+    exit_flag = request.query_params.get("exit") == "1"
+    if exit_flag:
+        # Выполняем редирект на целевой URL (без каких-либо параметров прокси)
+        return RedirectResponse(url=target_url, status_code=302)
 
     # Проверяем, не ведёт ли target на наш собственный сайт
     parsed_target = urlparse(target_url)
