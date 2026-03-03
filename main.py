@@ -125,8 +125,9 @@ def make_proxy_url(target: str) -> str:
     """Создаёт прокси-URL для заданного целевого URL."""
     return f"/api/yellow-mirror/?target={quote(target, safe='')}"
 
-def replace_urls_in_html(html: str, base_url: str) -> str:
-    """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
+def replace_urls_in_html(html: str, base_url: str, our_host: str) -> str:
+    """Заменяет все ссылки в HTML на прокси-версии, внедряет скрипт для отслеживания навигации
+       и добавляет target="_top" для ссылок на наш собственный хост."""
     soup = BeautifulSoup(html, 'lxml')
     
     # Замена ссылок
@@ -138,6 +139,9 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 absolute = urljoin(base_url, original)
                 if is_safe_url(absolute):
                     element[attr] = make_proxy_url(absolute)
+                    # Для ссылок на наш собственный хост добавляем target="_top"
+                    if tag == 'a' and urlparse(absolute).hostname == our_host:
+                        element['target'] = '_top'
     
     # Обработка inline-стилей (упрощённо)
     for element in soup.find_all(style=True):
@@ -549,10 +553,9 @@ async def proxy(request: Request):
                 url=internal_path,
                 headers=headers,
                 content=body,
-                follow_redirects=True  # ИСПРАВЛЕНО: теперь следуем редиректам, как для внешних запросов
+                follow_redirects=True  # следуем редиректам, как для внешних запросов
             )
 
-        # Обрабатываем ответ как обычно (модификация HTML и т.д.)
         # Заголовки, которые нельзя передавать клиенту
         PROHIBITED_HEADERS = {
             "content-length",
@@ -570,8 +573,8 @@ async def proxy(request: Request):
 
         content_type = resp.headers.get("content-type", "").lower()
         if "text/html" in content_type:
-            # Модифицируем HTML, подставляя прокси-ссылки
-            modified_html = replace_urls_in_html(resp.text, str(resp.url))
+            # Модифицируем HTML, подставляя прокси-ссылки и добавляя target="_top" для наших ссылок
+            modified_html = replace_urls_in_html(resp.text, str(resp.url), our_host)
             return Response(
                 content=modified_html.encode('utf-8'),
                 status_code=resp.status_code,
@@ -642,7 +645,7 @@ async def proxy(request: Request):
     
     if "text/html" in content_type:
         html_content = resp.text
-        modified_html = replace_urls_in_html(html_content, str(resp.url))
+        modified_html = replace_urls_in_html(html_content, str(resp.url), our_host)
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
