@@ -134,7 +134,7 @@ def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
     Заменяет ссылки на внешние ресурсы прокси-версиями.
     Ссылки на наш собственный домен заменяются на прокси с параметром exit=1,
     чтобы при клике происходил выход из iframe.
-    Также внедряет скрипт для отслеживания навигации.
+    Также внедряет скрипты для отслеживания навигации и для перехвата динамических ссылок на наш домен.
     """
     soup = BeautifulSoup(html, 'lxml')
     
@@ -221,6 +221,29 @@ def replace_urls_in_html(html: str, base_url: str, our_domain: str) -> str:
     })();
     """
     soup.body.append(script_tag)
+    
+    # Дополнительный скрипт для перехвата кликов по внутренним ссылкам (на наш домен) и выхода из iframe
+    exit_script = soup.new_tag('script')
+    exit_script.string = """
+    (function() {
+        var origin = window.location.origin;
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a');
+            if (!link) return;
+            var href = link.getAttribute('href');
+            if (!href) return;
+            // Проверяем, ведёт ли ссылка на тот же origin
+            var isSameOrigin = href.startsWith('/') || href.startsWith(origin);
+            if (!isSameOrigin) return;
+            // Если это прокси-ссылка (содержит /api/yellow-mirror/?target=), не трогаем её
+            if (href.includes('/api/yellow-mirror/?target=')) return;
+            // Иначе перенаправляем верхнее окно
+            e.preventDefault();
+            window.top.location.href = href;
+        });
+    })();
+    """
+    soup.body.append(exit_script)
     
     return str(soup)
 
