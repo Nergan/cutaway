@@ -125,9 +125,8 @@ def make_proxy_url(target: str) -> str:
     """Создаёт прокси-URL для заданного целевого URL."""
     return f"/api/yellow-mirror/?target={quote(target, safe='')}"
 
-def replace_urls_in_html(html: str, base_url: str, our_host: str) -> str:
-    """Заменяет все ссылки в HTML на прокси-версии, внедряет скрипт для отслеживания навигации
-       и добавляет target="_top" для ссылок на наш собственный хост."""
+def replace_urls_in_html(html: str, base_url: str) -> str:
+    """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
     soup = BeautifulSoup(html, 'lxml')
     
     # Замена ссылок
@@ -139,9 +138,6 @@ def replace_urls_in_html(html: str, base_url: str, our_host: str) -> str:
                 absolute = urljoin(base_url, original)
                 if is_safe_url(absolute):
                     element[attr] = make_proxy_url(absolute)
-                    # Для ссылок на наш собственный хост добавляем target="_top"
-                    if tag == 'a' and urlparse(absolute).hostname == our_host:
-                        element['target'] = '_top'
     
     # Обработка inline-стилей (упрощённо)
     for element in soup.find_all(style=True):
@@ -527,65 +523,8 @@ async def proxy(request: Request):
         # Если путь запроса ведёт на сам прокси-эндпоинт – предотвращаем зацикливание
         if parsed_target.path.startswith("/api/yellow-mirror"):
             raise HTTPException(status_code=400, detail="Recursive proxy call detected")
-
-        # Внутренний запрос к нашему же приложению через ASGI-транспорт
-        async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url=f"{request.url.scheme}://{our_host}") as client:
-            # Копируем заголовки оригинального запроса, убирая ненужные
-            headers = dict(request.headers)
-            headers.pop("host", None)
-            headers.pop("content-length", None)
-            headers.pop("connection", None)
-            headers.pop("accept-encoding", None)  # чтобы не сжимать ответ
-
-            # Тело запроса (для POST и т.п.)
-            body = None
-            if request.method in ["POST", "PUT", "PATCH"]:
-                body = await request.body()
-
-            # Формируем путь и query для внутреннего запроса
-            internal_path = parsed_target.path
-            if parsed_target.query:
-                internal_path += "?" + parsed_target.query
-
-            # Выполняем запрос к нашему приложению
-            resp = await client.request(
-                method=request.method,
-                url=internal_path,
-                headers=headers,
-                content=body,
-                follow_redirects=True  # следуем редиректам, как для внешних запросов
-            )
-
-        # Заголовки, которые нельзя передавать клиенту
-        PROHIBITED_HEADERS = {
-            "content-length",
-            "content-encoding",
-            "content-security-policy",
-            "content-security-policy-report-only",
-            "x-frame-options",
-            "x-content-type-options",
-            "x-xss-protection",
-        }
-        filtered_headers = {
-            k: v for k, v in resp.headers.items()
-            if k.lower() not in PROHIBITED_HEADERS
-        }
-
-        content_type = resp.headers.get("content-type", "").lower()
-        if "text/html" in content_type:
-            # Модифицируем HTML, подставляя прокси-ссылки и добавляя target="_top" для наших ссылок
-            modified_html = replace_urls_in_html(resp.text, str(resp.url), our_host)
-            return Response(
-                content=modified_html.encode('utf-8'),
-                status_code=resp.status_code,
-                headers=filtered_headers
-            )
-        else:
-            return Response(
-                content=resp.content,
-                status_code=resp.status_code,
-                headers=filtered_headers
-            )
+        # Редиректим на целевой URL (выходим из прокси)
+        return RedirectResponse(url=target_url, status_code=302)
 
     # Для внешних сайтов используем обычный прокси-клиент с привязкой к IP
     # Получаем IP клиента для сессионного клиента
@@ -645,7 +584,7 @@ async def proxy(request: Request):
     
     if "text/html" in content_type:
         html_content = resp.text
-        modified_html = replace_urls_in_html(html_content, str(resp.url), our_host)
+        modified_html = replace_urls_in_html(html_content, str(resp.url))
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
