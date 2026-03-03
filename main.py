@@ -4,11 +4,12 @@ from os import environ
 from os.path import exists
 from pathlib import Path
 from urllib.parse import quote
-from datetime import datetime
-from pydantic import BaseModel
+from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse, quote
 import asyncio
+import random
 
+from pydantic import BaseModel
 import httpx
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -39,17 +40,54 @@ stats_db = client["main-page"] # бд для счётчика
 
 # Настройки прокси
 PROXY_TIMEOUT = 10.0  # секунд
-MAX_RESPONSE_SIZE = 4 * 1024 * 1024  # 4 МБ (ограничение Vercel)
 ALLOWED_SCHEMES = {"http", "https"}
 DISALLOWED_IPS = {"127.0.0.1", "localhost", "::1"}  # простейшая защита
 
-# HTTP-клиент для прокси
-proxy_client = httpx.AsyncClient(
-    timeout=PROXY_TIMEOUT,
-    follow_redirects=True,
-    max_redirects=5,
-    limits=httpx.Limits()  # убрали max_response_body
-)
+# Время жизни клиента для IP (в секундах)
+CLIENT_MAX_AGE = 600  # 10 минут
+
+# Список реальных User-Agent (браузеры)
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+]
+
+# Хранилище клиентов по IP: {ip: (client, last_used_timestamp, user_agent)}
+ip_clients = {}
+ip_clients_lock = asyncio.Lock()
+
+async def get_client_for_ip(ip: str) -> tuple[httpx.AsyncClient, str]:
+    """Возвращает HTTPX-клиент и User-Agent для указанного IP, создавая новый при необходимости."""
+    async with ip_clients_lock:
+        now = datetime.utcnow().timestamp()
+        # Очистка старых клиентов
+        to_delete = []
+        for stored_ip, (_, last_used, _) in ip_clients.items():
+            if now - last_used > CLIENT_MAX_AGE:
+                to_delete.append(stored_ip)
+        for stored_ip in to_delete:
+            client_to_close, _, _ = ip_clients.pop(stored_ip)
+            await client_to_close.aclose()
+        
+        # Получаем или создаём клиент для данного IP
+        if ip in ip_clients:
+            client, _, ua = ip_clients[ip]
+            ip_clients[ip] = (client, now, ua)  # обновляем время
+        else:
+            # Выбираем случайный User-Agent для этого IP
+            ua = random.choice(USER_AGENTS)
+            # Создаём новый клиент с поддержкой cookies
+            client = httpx.AsyncClient(
+                timeout=PROXY_TIMEOUT,
+                follow_redirects=True,
+                max_redirects=5,
+                limits=httpx.Limits(max_keepalive_connections=10)
+            )
+            ip_clients[ip] = (client, now, ua)
+        return client, ua
 
 app = FastAPI()
 app.mount("/evenfest/static", StaticFiles(directory="evenfest/static"), name="evenfest")
@@ -90,7 +128,7 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
     """Заменяет все ссылки в HTML на прокси-версии и внедряет скрипт для отслеживания навигации."""
     soup = BeautifulSoup(html, 'lxml')
     
-    # Замена ссылок (как и раньше)
+    # Замена ссылок
     for tag, attr in [('a', 'href'), ('link', 'href'), ('script', 'src'),
                       ('img', 'src'), ('iframe', 'src'), ('form', 'action')]:
         for element in soup.find_all(tag, **{attr: True}):
@@ -117,9 +155,28 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
                 new_style.append(part)
         element['style'] = ''.join(new_style)
     
+    # Добавляем минимальный резервный стиль для читаемости на случай, если сайт не задал свои цвета
+    style_tag = soup.new_tag('style')
+    style_tag.string = """
+        body { background-color: white; color: black; }
+    """
+    if soup.head:
+        soup.head.insert(0, style_tag)
+    else:
+        head = soup.new_tag('head')
+        head.append(style_tag)
+        if soup.html:
+            soup.html.insert(0, head)
+        else:
+            # Крайний случай – создаём html и head
+            html_tag = soup.new_tag('html')
+            html_tag.append(head)
+            soup.append(html_tag)
+    
     # Внедрение скрипта для уведомления родителя об изменении URL
-    # Добавляем в конец body, чтобы скрипт выполнился после загрузки DOM
     if not soup.body:
+        if not soup.html:
+            soup.append(soup.new_tag('html'))
         soup.html.append(soup.new_tag('body'))
     
     script_tag = soup.new_tag('script')
@@ -456,14 +513,37 @@ async def proxy(request: Request):
     
     if not is_safe_url(target_url):
         raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
+
+    # Проверяем, не ведёт ли target на наш собственный сайт
+    parsed_target = urlparse(target_url)
+    our_host = request.headers.get("host")
+    if our_host and parsed_target.netloc.lower() == our_host.lower():
+        # Редирект на исходный URL (без прокси)
+        return RedirectResponse(url=target_url, status_code=302)
     
-    # Подготовка заголовков для целевого запроса
+    # Получаем IP клиента для сессионного клиента
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # Получаем клиент и его постоянный User-Agent для этого IP
+    proxy_client, user_agent = await get_client_for_ip(client_ip)
+    
+    # Формируем заголовки для целевого запроса
     headers = dict(request.headers)
-    # Убираем заголовки, которые могут помешать
+    # Убираем заголовки, которые могут помешать или будут переопределены
     headers.pop("host", None)
     headers.pop("content-length", None)
     headers.pop("connection", None)
-    headers.pop("accept-encoding", None)  # чтобы получить несжатый ответ (или довериться httpx)
+    # Удаляем accept-encoding, чтобы сервер не сжимал ответ (избегаем проблем с распаковкой)
+    headers.pop("accept-encoding", None)
+    
+    # Устанавливаем постоянный User-Agent для этого IP
+    headers["user-agent"] = user_agent
+    
+    # Добавляем стандартные браузерные заголовки, если их нет
+    if "accept" not in headers:
+        headers["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+    if "accept-language" not in headers:
+        headers["accept-language"] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
     
     # Получаем тело запроса, если есть
     body = None
@@ -485,27 +565,48 @@ async def proxy(request: Request):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
     
+    # Заголовки, которые нельзя передавать клиенту (блокируют встраивание или выполнение скриптов)
+    PROHIBITED_HEADERS = {
+        "content-length",
+        "content-encoding",
+        "content-security-policy",
+        "content-security-policy-report-only",
+        "x-frame-options",
+        "x-content-type-options",
+        "x-xss-protection",
+    }
+    
+    # Фильтруем заголовки ответа
+    filtered_headers = {
+        k: v for k, v in resp.headers.items()
+        if k.lower() not in PROHIBITED_HEADERS
+    }
+    
     # Определяем тип контента
     content_type = resp.headers.get("content-type", "").lower()
     
     # Если это HTML, модифицируем
     if "text/html" in content_type:
-        html_content = resp.text  # httpx автоматически декодирует
+        html_content = resp.text  # httpx автоматически декодирует (ответ не сжат, т.к. мы убрали accept-encoding)
         modified_html = replace_urls_in_html(html_content, str(resp.url))
         # Возвращаем модифицированный HTML
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
-            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+            headers=filtered_headers
         )
     else:
         # Для других типов возвращаем как есть
         return Response(
             content=resp.content,
             status_code=resp.status_code,
-            headers={k: v for k, v in resp.headers.items() if k.lower() not in ["content-length", "content-encoding"]}
+            headers=filtered_headers
         )
         
 @app.on_event("shutdown")
 async def shutdown_event():
-    await proxy_client.aclose()
+    # Закрываем всех сохранённых клиентов при завершении приложения
+    async with ip_clients_lock:
+        for ip, (client, _, _) in ip_clients.items():
+            await client.aclose()
+        ip_clients.clear()

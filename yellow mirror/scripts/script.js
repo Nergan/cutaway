@@ -14,6 +14,9 @@
     let rafId = null;
     const maxOffset = 25;
 
+    // Флаг для предотвращения двойной обработки загрузки iframe
+    let ignoreNextLoad = false;
+
     // ---------- Управление заглушкой и iframe ----------
     function showSplash() {
         splash.style.display = 'block';
@@ -68,11 +71,96 @@
     });
 
     // ---------- Валидация URL ----------
+    // Проверка IPv4-адреса (4 октета, каждый от 0 до 255) с возможной завершающей точкой
+    function isValidIPv4(str) {
+        let s = str;
+        if (s.endsWith('.')) {
+            s = s.slice(0, -1);
+        }
+        const parts = s.split('.');
+        if (parts.length !== 4) return false;
+        return parts.every(part => {
+            if (!/^\d+$/.test(part)) return false;
+            const num = parseInt(part, 10);
+            return num >= 0 && num <= 255;
+        });
+    }
+
+    // Проверка IPv6-адреса (с возможностью одиночного hex-числа для обратной совместимости)
+    function isValidIPv6(str) {
+        let address = str.replace(/^\[|\]$/g, '');
+        // Добавлена альтернатива для одиночного числа (как было изначально)
+        const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,6}:$|^([0-9a-fA-F]{1,4}:){1,5}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,4}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4})?$|^([0-9a-fA-F]{1,4}:){1,3}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,2}$|^([0-9a-fA-F]{1,4}:){1,2}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,3}$|^[0-9a-fA-F]{1,4}::[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,4}$|^::[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,5}$|^[0-9a-fA-F]{1,4}$/;
+        return ipv6Regex.test(address);
+    }
+
+    function isIP(str) {
+        return isValidIPv4(str) || isValidIPv6(str);
+    }
+
+    // Проверка доменного имени: метки (кроме последней) могут содержать буквы, цифры, дефисы;
+    // последняя метка (TLD) должна состоять только из букв, длина >= 2.
+    // Исключение: "localhost" считается валидным доменом.
+    function isValidDomain(host) {
+        // Специальное исключение для localhost
+        if (host === "localhost") return true;
+
+        if (host.startsWith('.') || host.endsWith('.') || host.includes('..')) return false;
+        const labels = host.split('.');
+        if (labels.length < 2) return false; // должна быть хотя бы одна точка
+
+        // Проверяем все метки, кроме последней
+        for (let i = 0; i < labels.length - 1; i++) {
+            const label = labels[i];
+            if (label.length === 0) return false;
+            if (label.startsWith('-') || label.endsWith('-')) return false;
+            if (!/^[a-zA-Z0-9-]+$/.test(label)) return false;
+        }
+
+        // Проверка TLD (последняя метка): только буквы, длина >= 2
+        const tld = labels[labels.length - 1];
+        return tld.length >= 2 && /^[a-zA-Z]+$/.test(tld);
+    }
+
+    // Нормализация ввода: удаляем точку перед первым слешем или в конце строки
+    function normalizeInput(str) {
+        const slashIndex = str.indexOf('/');
+        if (slashIndex !== -1 && slashIndex > 0 && str[slashIndex - 1] === '.') {
+            return str.slice(0, slashIndex - 1) + str.slice(slashIndex);
+        }
+        if (str.endsWith('.')) {
+            return str.slice(0, -1);
+        }
+        return str;
+    }
+
+    // Основная проверка валидности URL
     function isValidUrl(str) {
         const trimmed = str.trim();
         if (trimmed === '' || /\s/.test(trimmed)) return false;
-        const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(:\d+)?(\/[^\s]*)?(\?[^\s]*)?(\#[^\s]*)?$/;
-        return urlPattern.test(trimmed);
+
+        // Если это IP (с возможной точкой в конце) – сразу валидно
+        if (isIP(trimmed)) return true;
+
+        // Нормализуем строку для парсинга (убираем точку перед слешем или в конце)
+        const normalized = normalizeInput(trimmed);
+
+        // Пытаемся распарсить как URL, добавляя протокол по умолчанию
+        let url;
+        try {
+            const urlString = /^https?:\/\//i.test(normalized) ? normalized : 'https://' + normalized;
+            url = new URL(urlString);
+        } catch {
+            return false;
+        }
+
+        const host = url.hostname;
+
+        // Если хост является IP – валидно
+        if (isIP(host)) return true;
+
+        // Проверяем, что хост является корректным доменным именем (с учётом localhost)
+        return isValidDomain(host);
     }
 
     // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ ----------
@@ -99,9 +187,7 @@
     // ---------- Обновление состояния валидности и кнопки ----------
     function updateValidity() {
         const trimmed = input.value.trim();
-        const validFormat = isValidUrl(trimmed);
-        const self = isSelfUrl(trimmed);
-        const valid = validFormat && !self;
+        const valid = isValidUrl(trimmed) && !isSelfUrl(trimmed);
         button.disabled = !valid;
         input.classList.toggle('invalid', !valid);
     }
@@ -149,37 +235,58 @@
 
     minimizedBar.addEventListener('click', expandPanel);
 
-    // ---------- Упрощение URL (удаление протокола и www) ----------
+    // ---------- Функции для работы с URL ----------
+    function normalizeUrl(url) {
+        if (!url) return url;
+        return url.replace(/\/$/, '');
+    }
+
     function simplifyUrl(url) {
-        let simplified = url.replace(/^https?:\/\//i, '');
+        if (!url) return '';
+        const normalized = normalizeUrl(url);
+        let simplified = normalized.replace(/^https?:\/\//i, '');
         simplified = simplified.replace(/^www\./i, '');
         return simplified;
     }
 
-    // ---------- Получение текущего target из адресной строки ----------
     function getTargetFromUrl() {
         return new URL(window.location.href).searchParams.get('target');
     }
 
-    // ---------- Обновление адресной строки (query-параметр target) ----------
-    function setBrowserUrlTarget(target) {
+    function replaceBrowserUrl(target) {
         const url = new URL(window.location.href);
-        if (target) {
-            url.searchParams.set('target', target);
+        const currentTarget = url.searchParams.get('target');
+        const normalizedTarget = target ? normalizeUrl(target) : target;
+        if (normalizedTarget === currentTarget) return;
+        if (normalizedTarget) {
+            url.searchParams.set('target', normalizedTarget);
+        } else {
+            url.searchParams.delete('target');
+        }
+        window.history.replaceState({}, '', url);
+    }
+
+    function pushBrowserUrl(target) {
+        const url = new URL(window.location.href);
+        const currentTarget = url.searchParams.get('target');
+        const normalizedTarget = target ? normalizeUrl(target) : target;
+        if (normalizedTarget === currentTarget) return;
+        if (normalizedTarget) {
+            url.searchParams.set('target', normalizedTarget);
         } else {
             url.searchParams.delete('target');
         }
         window.history.pushState({}, '', url);
     }
 
-    // ---------- Загрузка целевого сайта в iframe ----------
     function loadTarget(target) {
         if (!target) return;
+        const normalizedTarget = normalizeUrl(target);
+        ignoreNextLoad = false;
         showSplash();
-        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(target)}`;
+        iframe.src = `/api/yellow-mirror/?target=${encodeURIComponent(normalizedTarget)}`;
     }
 
-    // ---------- Обработка загрузки iframe ----------
     function handleIframeLoad() {
         hideSplash();
 
@@ -193,12 +300,13 @@
                 if (target) targetUrl = target;
             }
 
-            // Обновляем поле ввода
-            input.value = simplifyUrl(targetUrl);
-            updateValidity();
-
-            // Синхронизируем адресную строку
-            setBrowserUrlTarget(targetUrl);
+            setTimeout(() => {
+                if (ignoreNextLoad) {
+                    ignoreNextLoad = false;
+                } else {
+                    replaceBrowserUrl(targetUrl);
+                }
+            }, 0);
         } catch (e) {
             console.warn('Не удалось обработать загрузку iframe', e);
         }
@@ -212,35 +320,31 @@
     iframe.addEventListener('load', handleIframeLoad);
     iframe.addEventListener('error', handleIframeError);
 
-    // ---------- Обработка сообщений от iframe (SPA-навигация) ----------
     window.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'iframe-navigation') {
             const frameUrl = event.data.url;
             try {
-                const urlObj = new URL(frameUrl, window.location.origin);
                 let targetUrl = frameUrl;
-
-                // Если это наш прокси-эндпоинт, извлекаем параметр target
-                if (urlObj.pathname === '/api/yellow-mirror/' || urlObj.pathname.startsWith('/api/yellow-mirror')) {
+                if (frameUrl.includes('/api/yellow-mirror/')) {
+                    const urlObj = new URL(frameUrl, window.location.origin);
                     const target = urlObj.searchParams.get('target');
-                    if (target) {
-                        targetUrl = target;
-                    }
+                    if (target) targetUrl = target;
                 }
 
-                // Обновляем поле ввода
-                input.value = simplifyUrl(targetUrl);
+                const normalizedTarget = normalizeUrl(targetUrl);
+
+                input.value = simplifyUrl(normalizedTarget);
                 updateValidity();
 
-                // Обновляем query-параметр в адресной строке
-                setBrowserUrlTarget(targetUrl);
+                pushBrowserUrl(normalizedTarget);
+
+                ignoreNextLoad = true;
             } catch (e) {
                 console.warn('Не удалось обработать сообщение от iframe', e);
             }
         }
     });
 
-    // ---------- Загрузка сайта через прокси (по вводу пользователя) ----------
     function loadSite() {
         const trimmed = input.value.trim();
         if (!isValidUrl(trimmed) || isSelfUrl(trimmed)) return;
@@ -261,13 +365,11 @@
         }
     });
 
-    // ---------- Обработка навигации браузера (вперёд/назад) ----------
     window.addEventListener('popstate', () => {
         const target = getTargetFromUrl();
         if (target) {
             loadTarget(target);
         } else {
-            // Если параметра нет, показываем заглушку
             iframe.src = 'about:blank';
             showSplash();
             input.value = '';
@@ -275,11 +377,11 @@
         }
     });
 
-    // ---------- Инициализация при загрузке страницы ----------
-    showSplash(); // показываем заглушку по умолчанию
-
     const initialTarget = getTargetFromUrl();
     if (initialTarget) {
-        loadTarget(initialTarget);
+        const normalized = normalizeUrl(initialTarget);
+        input.value = simplifyUrl(normalized);
+        updateValidity();
+        loadTarget(normalized);
     }
 })();
