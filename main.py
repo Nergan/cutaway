@@ -524,22 +524,65 @@ async def proxy(request: Request):
         if parsed_target.path.startswith("/api/yellow-mirror"):
             raise HTTPException(status_code=400, detail="Recursive proxy call detected")
 
-        # Возвращаем HTML-страницу, которая перенаправит верхнее окно на целевой URL
-        # Это гарантирует, что даже внутри iframe мы выйдем на чистую страницу
-        html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Redirecting...</title>
-    <script>
-        window.top.location.href = {repr(target_url)};
-    </script>
-</head>
-<body>
-    Redirecting to <a href="{target_url}">{target_url}</a>...
-</body>
-</html>"""
-        return HTMLResponse(content=html_content, status_code=200)
+        # Внутренний запрос к нашему же приложению через ASGI-транспорт
+        async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url=f"{request.url.scheme}://{our_host}") as client:
+            # Копируем заголовки оригинального запроса, убирая ненужные
+            headers = dict(request.headers)
+            headers.pop("host", None)
+            headers.pop("content-length", None)
+            headers.pop("connection", None)
+            headers.pop("accept-encoding", None)  # чтобы не сжимать ответ
+
+            # Тело запроса (для POST и т.п.)
+            body = None
+            if request.method in ["POST", "PUT", "PATCH"]:
+                body = await request.body()
+
+            # Формируем путь и query для внутреннего запроса
+            internal_path = parsed_target.path
+            if parsed_target.query:
+                internal_path += "?" + parsed_target.query
+
+            # Выполняем запрос к нашему приложению
+            resp = await client.request(
+                method=request.method,
+                url=internal_path,
+                headers=headers,
+                content=body,
+                follow_redirects=True  # ИСПРАВЛЕНО: теперь следуем редиректам, как для внешних запросов
+            )
+
+        # Обрабатываем ответ как обычно (модификация HTML и т.д.)
+        # Заголовки, которые нельзя передавать клиенту
+        PROHIBITED_HEADERS = {
+            "content-length",
+            "content-encoding",
+            "content-security-policy",
+            "content-security-policy-report-only",
+            "x-frame-options",
+            "x-content-type-options",
+            "x-xss-protection",
+        }
+        filtered_headers = {
+            k: v for k, v in resp.headers.items()
+            if k.lower() not in PROHIBITED_HEADERS
+        }
+
+        content_type = resp.headers.get("content-type", "").lower()
+        if "text/html" in content_type:
+            # Модифицируем HTML, подставляя прокси-ссылки
+            modified_html = replace_urls_in_html(resp.text, str(resp.url))
+            return Response(
+                content=modified_html.encode('utf-8'),
+                status_code=resp.status_code,
+                headers=filtered_headers
+            )
+        else:
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=filtered_headers
+            )
 
     # Для внешних сайтов используем обычный прокси-клиент с привязкой к IP
     # Получаем IP клиента для сессионного клиента
