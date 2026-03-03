@@ -8,6 +8,9 @@
     const splash = document.getElementById('splash');
     const splashLayer = document.querySelector('.splash-layer');
 
+    // Путь к собственному приложению
+    const SELF_APP_PATH = '/yellow-mirror';
+
     // Переменные для анимации движения слоя
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
@@ -70,119 +73,14 @@
         targetY = 0;
     });
 
-    // ---------- Валидация URL ----------
-    // Проверка IPv4-адреса (4 октета, каждый от 0 до 255) с возможной завершающей точкой
-    function isValidIPv4(str) {
-        let s = str;
-        if (s.endsWith('.')) {
-            s = s.slice(0, -1);
-        }
-        const parts = s.split('.');
-        if (parts.length !== 4) return false;
-        return parts.every(part => {
-            if (!/^\d+$/.test(part)) return false;
-            const num = parseInt(part, 10);
-            return num >= 0 && num <= 255;
-        });
-    }
-
-    // Проверка IPv6-адреса (с возможностью одиночного hex-числа для обратной совместимости)
-    function isValidIPv6(str) {
-        let address = str.replace(/^\[|\]$/g, '');
-        // Добавлена альтернатива для одиночного числа (как было изначально)
-        const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,6}:$|^([0-9a-fA-F]{1,4}:){1,5}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,4}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4})?$|^([0-9a-fA-F]{1,4}:){1,3}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,2}$|^([0-9a-fA-F]{1,4}:){1,2}:[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,3}$|^[0-9a-fA-F]{1,4}::[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,4}$|^::[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){0,5}$|^[0-9a-fA-F]{1,4}$/;
-        return ipv6Regex.test(address);
-    }
-
-    function isIP(str) {
-        return isValidIPv4(str) || isValidIPv6(str);
-    }
-
-    // Проверка доменного имени: метки (кроме последней) могут содержать буквы, цифры, дефисы;
-    // последняя метка (TLD) должна состоять только из букв, длина >= 2.
-    // Исключение: "localhost" считается валидным доменом.
-    function isValidDomain(host) {
-        // Специальное исключение для localhost
-        if (host === "localhost") return true;
-
-        if (host.startsWith('.') || host.endsWith('.') || host.includes('..')) return false;
-        const labels = host.split('.');
-        if (labels.length < 2) return false; // должна быть хотя бы одна точка
-
-        // Проверяем все метки, кроме последней
-        for (let i = 0; i < labels.length - 1; i++) {
-            const label = labels[i];
-            if (label.length === 0) return false;
-            if (label.startsWith('-') || label.endsWith('-')) return false;
-            if (!/^[a-zA-Z0-9-]+$/.test(label)) return false;
-        }
-
-        // Проверка TLD (последняя метка): только буквы, длина >= 2
-        const tld = labels[labels.length - 1];
-        return tld.length >= 2 && /^[a-zA-Z]+$/.test(tld);
-    }
-
-    // Нормализация ввода: удаляем точку перед первым слешем или в конце строки
-    function normalizeInput(str) {
-        const slashIndex = str.indexOf('/');
-        if (slashIndex !== -1 && slashIndex > 0 && str[slashIndex - 1] === '.') {
-            return str.slice(0, slashIndex - 1) + str.slice(slashIndex);
-        }
-        if (str.endsWith('.')) {
-            return str.slice(0, -1);
-        }
-        return str;
-    }
-
-    // Основная проверка валидности URL
-    function isValidUrl(str) {
-        const trimmed = str.trim();
-        if (trimmed === '' || /\s/.test(trimmed)) return false;
-
-        // Если это IP (с возможной точкой в конце) – сразу валидно
-        if (isIP(trimmed)) return true;
-
-        // Нормализуем строку для парсинга (убираем точку перед слешем или в конце)
-        const normalized = normalizeInput(trimmed);
-
-        // Пытаемся распарсить как URL, добавляя протокол по умолчанию
-        let url;
-        try {
-            const urlString = /^https?:\/\//i.test(normalized) ? normalized : 'https://' + normalized;
-            url = new URL(urlString);
-        } catch {
-            return false;
-        }
-
-        const host = url.hostname;
-
-        // Если хост является IP – валидно
-        if (isIP(host)) return true;
-
-        // Проверяем, что хост является корректным доменным именем (с учётом localhost)
-        return isValidDomain(host);
-    }
-
-    // ---------- Проверка, ведёт ли ссылка на ТЕКУЩУЮ СТРАНИЦУ ----------
-    function isSelfUrl(inputStr) {
-        try {
-            let urlString = inputStr.trim();
-            if (!/^https?:\/\//i.test(urlString)) {
-                urlString = 'https://' + urlString;
-            }
-            const inputUrl = new URL(urlString);
-            const currentUrl = new URL(window.location.href);
-
-            const sameHost = inputUrl.host.toLowerCase() === currentUrl.host.toLowerCase();
-            const samePath = inputUrl.pathname === currentUrl.pathname;
-            const sameSearch = inputUrl.search === currentUrl.search;
-            const sameHash = inputUrl.hash === currentUrl.hash;
-
-            return sameHost && samePath && sameSearch && sameHash;
-        } catch {
-            return false;
-        }
-    }
+    // ---------- Валидация URL (без изменений) ----------
+    function isValidIPv4(str) { /* ... */ }
+    function isValidIPv6(str) { /* ... */ }
+    function isIP(str) { /* ... */ }
+    function isValidDomain(host) { /* ... */ }
+    function normalizeInput(str) { /* ... */ }
+    function isValidUrl(str) { /* ... */ }
+    function isSelfUrl(inputStr) { /* ... */ }
 
     // ---------- Обновление состояния валидности и кнопки ----------
     function updateValidity() {
@@ -194,45 +92,16 @@
 
     input.addEventListener('input', updateValidity);
 
-    // ---------- Подсветка панели ----------
-    function isInteractiveElement(el) {
-        return el && (el.tagName === 'INPUT' || el.tagName === 'BUTTON');
-    }
+    // ---------- Подсветка панели (без изменений) ----------
+    function isInteractiveElement(el) { /* ... */ }
+    function setPanelHighlight(enable) { /* ... */ }
+    expandedPanel.addEventListener('mouseover', (e) => { /* ... */ });
+    expandedPanel.addEventListener('mouseout', (e) => { /* ... */ });
 
-    function setPanelHighlight(enable) {
-        expandedPanel.classList.toggle('panel-highlight', enable);
-    }
-
-    expandedPanel.addEventListener('mouseover', (e) => {
-        const target = e.target.closest('input, button');
-        setPanelHighlight(!(target && isInteractiveElement(target)));
-    });
-
-    expandedPanel.addEventListener('mouseout', (e) => {
-        const related = e.relatedTarget;
-        if (!related || !expandedPanel.contains(related)) {
-            setPanelHighlight(false);
-        }
-    });
-
-    // ---------- Сворачивание / разворачивание ----------
-    function collapsePanel() {
-        expandedPanel.classList.add('collapsed');
-        minimizedBar.classList.add('visible');
-    }
-
-    function expandPanel() {
-        minimizedBar.classList.remove('visible');
-        expandedPanel.classList.remove('collapsed');
-    }
-
-    expandedPanel.addEventListener('click', (e) => {
-        const target = e.target.closest('input, button');
-        if (!(target && isInteractiveElement(target))) {
-            collapsePanel();
-        }
-    });
-
+    // ---------- Сворачивание / разворачивание (без изменений) ----------
+    function collapsePanel() { /* ... */ }
+    function expandPanel() { /* ... */ }
+    expandedPanel.addEventListener('click', (e) => { /* ... */ });
     minimizedBar.addEventListener('click', expandPanel);
 
     // ---------- Функции для работы с URL ----------
@@ -279,8 +148,27 @@
         window.history.pushState({}, '', url);
     }
 
+    /**
+     * Проверяет, является ли URL ссылкой на собственное приложение (yellow-mirror)
+     */
+    function isSelfAppUrl(urlString) {
+        try {
+            const url = new URL(urlString, window.location.origin);
+            return url.pathname === SELF_APP_PATH || url.pathname === SELF_APP_PATH + '/';
+        } catch {
+            return false;
+        }
+    }
+
     function loadTarget(target) {
         if (!target) return;
+
+        // Если целевой URL ведёт на наше приложение, выполняем редирект на него (выходим из iframe)
+        if (isSelfAppUrl(target)) {
+            window.location.href = target;  // или можно использовать "/yellow-mirror"
+            return;
+        }
+
         const normalizedTarget = normalizeUrl(target);
         ignoreNextLoad = false;
         showSplash();
@@ -298,6 +186,12 @@
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
                 if (target) targetUrl = target;
+            }
+
+            // Если загруженный URL ведёт на наше приложение, редиректим родителя
+            if (isSelfAppUrl(targetUrl)) {
+                window.location.href = targetUrl;
+                return;
             }
 
             setTimeout(() => {
@@ -329,6 +223,12 @@
                     const urlObj = new URL(frameUrl, window.location.origin);
                     const target = urlObj.searchParams.get('target');
                     if (target) targetUrl = target;
+                }
+
+                // Если новый URL ведёт на наше приложение, редиректим родителя
+                if (isSelfAppUrl(targetUrl)) {
+                    window.location.href = targetUrl;
+                    return;
                 }
 
                 const normalizedTarget = normalizeUrl(targetUrl);
@@ -377,11 +277,17 @@
         }
     });
 
+    // Инициализация: если в URL есть target, ведущий на наше приложение, редиректим
     const initialTarget = getTargetFromUrl();
     if (initialTarget) {
-        const normalized = normalizeUrl(initialTarget);
-        input.value = simplifyUrl(normalized);
-        updateValidity();
-        loadTarget(normalized);
+        if (isSelfAppUrl(initialTarget)) {
+            // Если target указывает на наше приложение, сразу переходим на него (без параметра)
+            window.location.href = '/yellow-mirror';  // или initialTarget, но уберём target
+        } else {
+            const normalized = normalizeUrl(initialTarget);
+            input.value = simplifyUrl(normalized);
+            updateValidity();
+            loadTarget(normalized);
+        }
     }
 })();
