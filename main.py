@@ -11,6 +11,7 @@ import random
 
 from pydantic import BaseModel
 import httpx
+from httpx import ASGITransport  # добавлено для внутренних запросов
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -516,11 +517,74 @@ async def proxy(request: Request):
 
     # Проверяем, не ведёт ли target на наш собственный сайт
     parsed_target = urlparse(target_url)
-    our_host = request.headers.get("host")
-    if our_host and parsed_target.netloc.lower() == our_host.lower():
-        # Редирект на исходный URL (без прокси)
-        return RedirectResponse(url=target_url, status_code=302)
-    
+    our_host = request.url.hostname  # текущий хост, на который пришёл запрос
+
+    if parsed_target.hostname and parsed_target.hostname.lower() == our_host.lower():
+        # Если путь запроса ведёт на сам прокси-эндпоинт – предотвращаем зацикливание
+        if parsed_target.path.startswith("/api/yellow-mirror"):
+            raise HTTPException(status_code=400, detail="Recursive proxy call detected")
+
+        # Внутренний запрос к нашему же приложению через ASGI-транспорт
+        async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url=f"{request.url.scheme}://{our_host}") as client:
+            # Копируем заголовки оригинального запроса, убирая ненужные
+            headers = dict(request.headers)
+            headers.pop("host", None)
+            headers.pop("content-length", None)
+            headers.pop("connection", None)
+            headers.pop("accept-encoding", None)  # чтобы не сжимать ответ
+
+            # Тело запроса (для POST и т.п.)
+            body = None
+            if request.method in ["POST", "PUT", "PATCH"]:
+                body = await request.body()
+
+            # Формируем путь и query для внутреннего запроса
+            internal_path = parsed_target.path
+            if parsed_target.query:
+                internal_path += "?" + parsed_target.query
+
+            # Выполняем запрос к нашему приложению
+            resp = await client.request(
+                method=request.method,
+                url=internal_path,
+                headers=headers,
+                content=body,
+                follow_redirects=True  # ИСПРАВЛЕНО: теперь следуем редиректам, как для внешних запросов
+            )
+
+        # Обрабатываем ответ как обычно (модификация HTML и т.д.)
+        # Заголовки, которые нельзя передавать клиенту
+        PROHIBITED_HEADERS = {
+            "content-length",
+            "content-encoding",
+            "content-security-policy",
+            "content-security-policy-report-only",
+            "x-frame-options",
+            "x-content-type-options",
+            "x-xss-protection",
+        }
+        filtered_headers = {
+            k: v for k, v in resp.headers.items()
+            if k.lower() not in PROHIBITED_HEADERS
+        }
+
+        content_type = resp.headers.get("content-type", "").lower()
+        if "text/html" in content_type:
+            # Модифицируем HTML, подставляя прокси-ссылки
+            modified_html = replace_urls_in_html(resp.text, str(resp.url))
+            return Response(
+                content=modified_html.encode('utf-8'),
+                status_code=resp.status_code,
+                headers=filtered_headers
+            )
+        else:
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=filtered_headers
+            )
+
+    # Для внешних сайтов используем обычный прокси-клиент с привязкой к IP
     # Получаем IP клиента для сессионного клиента
     client_ip = request.client.host if request.client else "unknown"
     
@@ -529,28 +593,21 @@ async def proxy(request: Request):
     
     # Формируем заголовки для целевого запроса
     headers = dict(request.headers)
-    # Убираем заголовки, которые могут помешать или будут переопределены
     headers.pop("host", None)
     headers.pop("content-length", None)
     headers.pop("connection", None)
-    # Удаляем accept-encoding, чтобы сервер не сжимал ответ (избегаем проблем с распаковкой)
     headers.pop("accept-encoding", None)
     
-    # Устанавливаем постоянный User-Agent для этого IP
     headers["user-agent"] = user_agent
-    
-    # Добавляем стандартные браузерные заголовки, если их нет
     if "accept" not in headers:
         headers["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
     if "accept-language" not in headers:
         headers["accept-language"] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
     
-    # Получаем тело запроса, если есть
     body = None
     if request.method in ["POST", "PUT", "PATCH"]:
         body = await request.body()
     
-    # Выполняем запрос к целевому сайту
     try:
         resp = await proxy_client.request(
             method=request.method,
@@ -565,7 +622,7 @@ async def proxy(request: Request):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
     
-    # Заголовки, которые нельзя передавать клиенту (блокируют встраивание или выполнение скриптов)
+    # Заголовки, которые нельзя передавать клиенту
     PROHIBITED_HEADERS = {
         "content-length",
         "content-encoding",
@@ -576,27 +633,22 @@ async def proxy(request: Request):
         "x-xss-protection",
     }
     
-    # Фильтруем заголовки ответа
     filtered_headers = {
         k: v for k, v in resp.headers.items()
         if k.lower() not in PROHIBITED_HEADERS
     }
     
-    # Определяем тип контента
     content_type = resp.headers.get("content-type", "").lower()
     
-    # Если это HTML, модифицируем
     if "text/html" in content_type:
-        html_content = resp.text  # httpx автоматически декодирует (ответ не сжат, т.к. мы убрали accept-encoding)
+        html_content = resp.text
         modified_html = replace_urls_in_html(html_content, str(resp.url))
-        # Возвращаем модифицированный HTML
         return Response(
             content=modified_html.encode('utf-8'),
             status_code=resp.status_code,
             headers=filtered_headers
         )
     else:
-        # Для других типов возвращаем как есть
         return Response(
             content=resp.content,
             status_code=resp.status_code,
