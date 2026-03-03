@@ -514,13 +514,26 @@ async def proxy(request: Request):
     if not is_safe_url(target_url):
         raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
 
-    # Проверяем, не ведёт ли target на наш собственный сайт
+    # MODIFIED: Проверяем, не ведёт ли target на наш собственный сайт (с учётом hostname и порта)
     parsed_target = urlparse(target_url)
-    our_host = request.headers.get("host")
-    if our_host and parsed_target.netloc.lower() == our_host.lower():
-        # Редирект на исходный URL (без прокси)
-        return RedirectResponse(url=target_url, status_code=302)
-    
+    our_hostname = request.url.hostname
+    target_hostname = parsed_target.hostname
+
+    if our_hostname and target_hostname and our_hostname.lower() == target_hostname.lower():
+        # Проверяем порт
+        our_port = request.url.port
+        target_port = parsed_target.port
+        # Считаем, что порты совпадают, если:
+        # - равны, или
+        # - один не указан, а другой является стандартным для схемы (80 для http, 443 для https)
+        scheme = parsed_target.scheme
+        default_port = 80 if scheme == 'http' else 443 if scheme == 'https' else None
+        if (our_port == target_port) or \
+           (our_port is None and target_port == default_port) or \
+           (target_port is None and our_port == default_port):
+            # Это наш сайт, делаем редирект на исходный URL (без прокси)
+            return RedirectResponse(url=target_url, status_code=302)
+
     # Получаем IP клиента для сессионного клиента
     client_ip = request.client.host if request.client else "unknown"
     
