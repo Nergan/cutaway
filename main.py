@@ -34,8 +34,8 @@ app.mount('/toadbin/static', StaticFiles(directory='toadbin/static'), name='toad
 app.mount('/toadbin/scripts', StaticFiles(directory='toadbin/scripts'), name='toadbin-scripts')
 app.mount('/formular/static', StaticFiles(directory='formular/static'), name='formular-static')
 app.mount('/formular/scripts', StaticFiles(directory='formular/scripts'), name='formular-scripts')
-app.mount('/yellow mirror/static', StaticFiles(directory='yellow mirror/static'), name='yellow-mirror-static')
-app.mount('/yellow mirror/scripts', StaticFiles(directory='yellow mirror/scripts'), name='yellow-mirror-scripts')
+app.mount('/yellow_mirror/static', StaticFiles(directory='yellow_mirror/static'), name='yellow-mirror-static')
+app.mount('/yellow_mirror/scripts', StaticFiles(directory='yellow_mirror/scripts'), name='yellow-mirror-scripts')
 
 # Подключение роутеров подпроектов
 app.include_router(evenfest_router)

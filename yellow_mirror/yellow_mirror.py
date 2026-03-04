@@ -138,7 +138,7 @@ def replace_urls_in_html(html: str, base_url: str) -> str:
 
 @router.get('/yellow-mirror', response_class=FileResponse)
 async def jitsiroom():
-    return FileResponse('yellow mirror/yellow mirror.html')
+    return FileResponse('yellow_mirror/yellow-mirror.html')
 
 
 @router.api_route('/api/yellow-mirror/', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
