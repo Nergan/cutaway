@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('to_format', toFormat.value);
 
         try {
-            const response = await fetch('/api/convert', {
+            const response = await fetch('./api/convert', {
                 method: 'POST',
                 body: formData
             });

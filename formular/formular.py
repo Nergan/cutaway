@@ -1,20 +1,28 @@
+from pathlib import Path
 from io import BytesIO
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse, Response
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import FileResponse, Response, RedirectResponse
 from docx import Document
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
 router = APIRouter()
+BASE_DIR = Path(__file__).parent
 
 
-@router.get('/formular', response_class=FileResponse)
+@router.get('/', response_class=FileResponse, name='formular_root')
 async def formular_page():
     """Страница конвертера документов."""
-    return FileResponse('formular/formular.html')
+    return FileResponse(BASE_DIR / 'formular.html')
+
+
+@router.get('/{rest_of_path:path}', include_in_schema=False)
+async def formular_fallback(request: Request):
+    """Редирект на главную страницу конвертера."""
+    return RedirectResponse(url=request.url_for('formular_root'))
 
 
 async def convert_docx_to_pdf(docx_content: bytes) -> bytes:

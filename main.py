@@ -5,8 +5,9 @@ from os import environ
 # Установленные библиотеки
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
@@ -38,11 +39,11 @@ app.mount('/yellow_mirror/static', StaticFiles(directory='yellow_mirror/static')
 app.mount('/yellow_mirror/scripts', StaticFiles(directory='yellow_mirror/scripts'), name='yellow-mirror-scripts')
 
 # Подключение роутеров подпроектов
-app.include_router(evenfest_router)
-app.include_router(snake_router)
-app.include_router(toadbin_router)
-app.include_router(formular_router)
-app.include_router(yellow_mirror_router)
+app.include_router(evenfest_router, prefix='/evenfest')
+app.include_router(snake_router, prefix='/snake')
+app.include_router(toadbin_router, prefix='/toadbin')
+app.include_router(formular_router, prefix='/formular')
+app.include_router(yellow_mirror_router, prefix='/yellow-mirror')
 
 
 class TrackRequest(BaseModel):
@@ -87,3 +88,9 @@ async def track_visitor(request: TrackRequest):
     counter_doc = await stats_db.stats.find_one({'_id': 'unique_visitors'})
     count = counter_doc['count'] if counter_doc else 0
     return {'count': count}
+
+
+# Обработчик 404: редирект на главную страницу
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    return RedirectResponse(url='/')

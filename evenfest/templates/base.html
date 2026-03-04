@@ -21,14 +21,12 @@
                         <p class="text-muted">Сообщество косплееров и фотографов</p>
                     </div>
                     
-                    <ul class="nav flex-column">
+                   <ul class="nav flex-column">
                         {% if menu %}
                             {% for item in menu %}
                             <li class="nav-item">
-                                {% set current_path = request.url.path %}
-                                {% set item_url = item.url %}
-                                {% set is_active = current_path == item_url %}
-                                <a class="nav-link {% if is_active %}active{% endif %}" href="{{ item_url }}">
+                                {% set page_url = url_for('evenfest_page', page_name=item.url) %}
+                                <a class="nav-link {% if request.url.path == page_url %}active{% endif %}" href="{{ page_url }}">
                                     <i class="bi {{ item.icon }} me-2"></i>{{ item.title }}
                                     {% if item.badge %}
                                     <span class="badge badge-custom rounded-pill">{{ item.badge }}</span>
@@ -38,7 +36,8 @@
                             {% endfor %}
                         {% else %}
                             <li class="nav-item">
-                                <a class="nav-link" href="/evenfest/news">
+                                {% set root_url = url_for('evenfest_root') %}
+                                <a class="nav-link {% if request.url.path == root_url %}active{% endif %}" href="{{ root_url }}">
                                     <i class="bi bi-house me-2"></i>Главная
                                 </a>
                             </li>
