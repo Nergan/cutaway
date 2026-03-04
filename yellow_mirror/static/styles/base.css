@@ -1,0 +1,37 @@
+/* ---------- CSS-переменные ---------- */
+:root {
+    --panel-bg: rgba(15, 15, 15, 0.5);
+    --panel-highlight: rgba(255, 193, 7, 0.2);
+    --button-hover-bg: rgba(255, 193, 7, 0.25);
+    --minimized-bar-bg: rgba(0, 0, 0, 0.7);
+    --minimized-bar-hover: rgba(255, 193, 7, 0.3);
+    --selection-bg: rgba(255, 215, 0, 0.5);
+    --icon-color: #FFC107;
+    --placeholder-color: rgba(255, 255, 255, 0.5);
+    --input-border-focus: rgba(255, 255, 0, 0.7);
+    --text-color: white;
+    --invalid-text: #aaa;
+}
+
+/* ---------- Базовые стили ---------- */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+/* IFrame на весь экран */
+#site-frame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+    z-index: 1;
+}
