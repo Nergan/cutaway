@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadRandomBackground() {
         try {
             // Запрашиваем список доступных фонов у сервера
-            const response = await fetch('/api/backgrounds');
+            const response = await fetch('./api/backgrounds');
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

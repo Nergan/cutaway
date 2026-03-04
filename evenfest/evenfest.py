@@ -1,37 +1,59 @@
-from fastapi import APIRouter, Request, HTTPException
+from pathlib import Path
+import json
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from json import load
-from os.path import exists
-from pathlib import Path
 
 router = APIRouter()
-templates = Jinja2Templates(directory='evenfest/templates')
+BASE_DIR = Path(__file__).parent
+templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
 
-def load_data(path: str) -> dict:
-    file_path = Path(path)
+def load_data() -> dict:
+    file_path = BASE_DIR / 'content.json'
     if file_path.exists():
         with open(file_path, encoding='utf-8') as f:
-            return load(f)
-    raise Exception(f'{path} not found')
+            return json.load(f)
+    raise Exception(f'{file_path} not found')
 
 
-@router.get('/evenfest', response_class=HTMLResponse)
-@router.get('/evenfest/{page_name}', response_class=HTMLResponse)
-async def evenpage(request: Request, page_name: str = 'news'):
-    if request.url.path.rstrip('/') == '/evenfest':
-        return RedirectResponse(url='/evenfest/news')
+def get_menu_pages() -> list[str]:
+    """Возвращает список допустимых имён страниц из меню."""
+    data = load_data()
+    return [item['url'] for item in data.get('menu', [])]
 
-    if not exists(f'evenfest/templates/{page_name}.html'):
-        raise HTTPException(status_code=404, detail='Страница не найдена')
 
-    data = load_data('evenfest/content.json')
+@router.get('/', response_class=HTMLResponse, name='evenfest_root')
+@router.get('/{page_name:path}', response_class=HTMLResponse, name='evenfest_page')
+async def evenpage(request: Request, page_name: str = ''):
+    root_path = request.scope.get('root_path', '').rstrip('/')
+    
+    # Если запрошен корень (пустой page_name или только root_path)
+    if not page_name or request.url.path.rstrip('/') == root_path:
+        return RedirectResponse(url=request.url_for('evenfest_page', page_name='news'))
+    
+    # Разбиваем путь на сегменты
+    segments = page_name.strip('/').split('/')
+    first_segment = segments[0] if segments else ''
+    
+    # Проверяем, существует ли шаблон для первого сегмента
+    template_path = BASE_DIR / 'templates' / f'{first_segment}.html'
+    if template_path.exists():
+        # Если первый сегмент валиден, но есть дополнительные сегменты, редиректим на него
+        if len(segments) > 1:
+            return RedirectResponse(url=request.url_for('evenfest_page', page_name=first_segment))
+        # Иначе отображаем страницу первого сегмента (нормальный случай)
+    else:
+        # Первый сегмент не существует — редирект на новости
+        return RedirectResponse(url=request.url_for('evenfest_page', page_name='news'))
+    
+    # Загружаем данные для отображения страницы (первый сегмент валиден)
+    data = load_data()
     return templates.TemplateResponse(
-        f'{page_name}.html',
+        f'{first_segment}.html',
         {
             'request': request,
             'menu': data.get('menu', []),
-            'page_content': data.get('content', {}).get(page_name, '')
+            'page_content': data.get('content', {}).get(first_segment, ''),
         }
     )

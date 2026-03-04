@@ -11,7 +11,7 @@
 
         async function getExistingIds() {
             try {
-                const response = await fetch('/api/existing-ids');
+                const response = await fetch('./api/existing-ids');
                 if (!response.ok) throw new Error('Failed to fetch existing IDs');
                 return await response.json();
             } catch (error) {
@@ -57,7 +57,7 @@
                 const existingIds = await getExistingIds();
                 const newId = generateUniqueId(existingIds);
                 
-                const response = await fetch('/api/save', {
+                const response = await fetch('./api/save', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({id: newId, code: code})

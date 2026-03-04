@@ -2,33 +2,33 @@
   "menu": [
     {
       "title": "Новости",
-      "url": "/evenfest/news",
+      "url": "news",
       "icon": "bi-newspaper",
       "badge": "5"
     },
     {
       "title": "О нас",
-      "url": "/evenfest/about",
+      "url": "about",
       "icon": "bi-info-circle"
     },
     {
       "title": "Для косплееров",
-      "url": "/evenfest/cosplayers",
+      "url": "cosplayers",
       "icon": "bi-person-badge"
     },
     {
       "title": "Для спец-гостей",
-      "url": "/evenfest/special-guests",
+      "url": "special-guests",
       "icon": "bi-star"
     },
     {
       "title": "Для фотографов",
-      "url": "/evenfest/photographers",
+      "url": "photographers",
       "icon": "bi-camera"
     },
     {
       "title": "Билеты",
-      "url": "/evenfest/tickets",
+      "url": "tickets",
       "icon": "bi-ticket-perforated"
     }
   ],
