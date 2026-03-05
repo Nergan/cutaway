@@ -105,12 +105,12 @@ YM.iframe = {
 
 /**
  * Показывает сообщение о блокировке на 5 секунд.
- * Не изменяет содержимое iframe.
+ * Не изменяет содержимое iframe и не скрывает сплэш.
  */
 YM.showBlockedMessage = function() {
     const msgEl = document.getElementById('error-message');
     if (!msgEl) return;
-    YM.splash.hide(); // скрываем заставку, если она активна
+    // НЕ скрываем сплэш — оставляем фон стартовой страницы или текущий контент
     msgEl.classList.remove('hidden');
     setTimeout(() => {
         msgEl.classList.add('hidden');
