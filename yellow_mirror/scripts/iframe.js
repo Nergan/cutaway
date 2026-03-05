@@ -26,8 +26,7 @@ YM.iframe = {
         try {
             const urlObj = new URL(target);
             if (urlObj.hostname.includes('startpage.com')) {
-                // Показываем сообщение, iframe остаётся нетронутым
-                YM.showBlockedMessage();
+                YM.showBlockedMessage(); // показываем сообщение, iframe не трогаем
                 return;
             }
         } catch (e) {
@@ -51,14 +50,12 @@ YM.iframe = {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
 
-            // Проверяем, что это наш прокси-URL
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
                 if (target) targetUrl = target;
             } else {
                 // Если это не прокси (например, about:blank), не обновляем URL
-                // Также игнорируем другие не-http схемы
                 const urlObj = new URL(currentIframeSrc, window.location.origin);
                 if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
                     return;
@@ -70,15 +67,11 @@ YM.iframe = {
                 return;
             }
 
-            // Не обновляем URL для about:blank
-            if (targetUrl === 'about:blank') return;
-
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
                     YM.iframe.ignoreNextLoad = false;
                 } else {
-                    // Используем pushState для добавления новой записи в историю
-                    // Это гарантирует, что главная страница останется в истории
+                    // Используем pushState, чтобы главная оставалась в истории
                     YM.pushBrowserUrl(targetUrl);
                 }
             }, 0);
@@ -145,14 +138,11 @@ window.addEventListener('message', (event) => {
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
 
-            // Обновляем поле ввода
             YM.elements.input.value = YM.simplifyUrl(normalizedTarget);
             YM.panel.updateValidity();
 
-            // Обновляем URL в адресной строке (pushState)
             YM.pushBrowserUrl(normalizedTarget);
 
-            // Устанавливаем флаг, чтобы следующий load не обновлял URL повторно
             YM.iframe.ignoreNextLoad = true;
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
