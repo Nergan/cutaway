@@ -2,7 +2,7 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
-    errorShown: false,   // флаг для предотвращения повторных сообщений
+    errorShown: false,
 
     loadTarget: function(target) {
         if (!target) return;
@@ -14,7 +14,7 @@ YM.iframe = {
 
         const normalizedTarget = YM.normalizeUrl(target);
         this.ignoreNextLoad = false;
-        this.errorShown = false;   // сбрасываем при новой загрузке
+        this.errorShown = false;
         YM.splash.show();
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
@@ -25,14 +25,24 @@ YM.iframe = {
         try {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
+            let isProxied = false;
 
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
-                if (target) targetUrl = target;
+                if (target) {
+                    targetUrl = target;
+                    isProxied = true;
+                }
             }
 
-            // Если загрузилась страница нашего приложения – считаем это ошибкой
+            const currentHost = window.location.host;
+            const iframeHost = new URL(currentIframeSrc).host;
+            if (iframeHost === currentHost && !isProxied) {
+                this.showErrorAndReset();
+                return;
+            }
+
             if (YM.isSelfAppUrl(targetUrl)) {
                 this.showErrorAndReset();
                 return;
@@ -59,9 +69,7 @@ YM.iframe = {
         if (this.errorShown) return;
         this.errorShown = true;
         YM.toast.show('Sorry, it is impossible to access the site', 5000);
-        // Очищаем iframe
         YM.elements.iframe.src = 'about:blank';
-        // Не обновляем URL в адресной строке
     },
 
     loadSite: function() {
@@ -81,13 +89,23 @@ window.addEventListener('message', (event) => {
         const frameUrl = event.data.url;
         try {
             let targetUrl = frameUrl;
+            let isProxied = false;
             if (frameUrl.includes('/api/')) {
                 const urlObj = new URL(frameUrl, window.location.origin);
                 const target = urlObj.searchParams.get('target');
-                if (target) targetUrl = target;
+                if (target) {
+                    targetUrl = target;
+                    isProxied = true;
+                }
             }
 
-            // Навигация внутри iframe на наше приложение – ошибка
+            const currentHost = window.location.host;
+            const frameHost = new URL(frameUrl, window.location.origin).host;
+            if (frameHost === currentHost && !isProxied) {
+                YM.iframe.showErrorAndReset();
+                return;
+            }
+
             if (YM.isSelfAppUrl(targetUrl)) {
                 YM.iframe.showErrorAndReset();
                 return;

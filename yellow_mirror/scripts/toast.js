@@ -7,7 +7,6 @@ YM.toast = {
     init: function() {
         this.element = document.getElementById('error-toast');
         if (!this.element) {
-            // Создаём элемент, если его нет (например, при кешировании старого HTML)
             this.element = document.createElement('div');
             this.element.id = 'error-toast';
             this.element.className = 'error-toast hidden';
