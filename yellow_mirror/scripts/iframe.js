@@ -15,8 +15,7 @@ YM.iframe = {
         try {
             const urlObj = new URL(target);
             if (urlObj.hostname.includes('startpage.com')) {
-                YM.elements.iframe.src = 'about:blank'; // очищаем iframe
-                YM.showBlockedMessage(); // покажет сообщение и скроет сплэш
+                YM.showBlockedMessage(); // покажет сообщение, iframe не меняется
                 return;
             }
         } catch (e) {
