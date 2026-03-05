@@ -67,17 +67,12 @@ YM.iframe = {
                 return;
             }
 
-            // Получаем текущий target из адресной строки
-            const currentTarget = YM.getTargetFromUrl();
-
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
                     YM.iframe.ignoreNextLoad = false;
                 } else {
-                    // Добавляем запись только если URL отличается от текущего
-                    if (targetUrl !== currentTarget) {
-                        YM.pushBrowserUrl(targetUrl);
-                    }
+                    // Используем pushState, чтобы главная оставалась в истории
+                    YM.pushBrowserUrl(targetUrl);
                 }
             }, 0);
         } catch (e) {
@@ -142,10 +137,6 @@ window.addEventListener('message', (event) => {
             }
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
-            const currentTarget = YM.getTargetFromUrl();
-
-            // Игнорируем, если URL не изменился
-            if (normalizedTarget === currentTarget) return;
 
             YM.elements.input.value = YM.simplifyUrl(normalizedTarget);
             YM.panel.updateValidity();
