@@ -1,59 +1,63 @@
+import os
 from pathlib import Path
-import json
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from motor.motor_asyncio import AsyncIOMotorClient
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
-
-def load_data() -> dict:
-    file_path = BASE_DIR / 'content.json'
-    if file_path.exists():
-        with open(file_path, encoding='utf-8') as f:
-            return json.load(f)
-    raise Exception(f'{file_path} not found')
+# Подключение к MongoDB (аналогично другим микросервисам)
+MONGO_URL = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017')
+client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
+db = client['evenfest']
+config_collection = db['config']
 
 
-def get_menu_pages() -> list[str]:
-    """Возвращает список допустимых имён страниц из меню."""
-    data = load_data()
-    return [item['url'] for item in data.get('menu', [])]
+async def get_config():
+    """Загружает конфигурацию (меню и контент) из MongoDB."""
+    config = await config_collection.find_one({'_id': 'main'})
+    if config is None:
+        # Если документа нет – возвращаем пустые структуры
+        return {'menu': [], 'content': {}}
+    return config
 
 
 @router.get('/', response_class=HTMLResponse, name='evenfest_root')
 @router.get('/{page_name:path}', response_class=HTMLResponse, name='evenfest_page')
 async def evenpage(request: Request, page_name: str = ''):
     root_path = request.scope.get('root_path', '').rstrip('/')
-    
-    # Если запрошен корень (пустой page_name или только root_path)
+
+    # Корневой URL → перенаправляем на страницу новостей
     if not page_name or request.url.path.rstrip('/') == root_path:
         return RedirectResponse(url=request.url_for('evenfest_page', page_name='news'))
-    
-    # Разбиваем путь на сегменты
+
     segments = page_name.strip('/').split('/')
     first_segment = segments[0] if segments else ''
-    
-    # Проверяем, существует ли шаблон для первого сегмента
+
+    # Проверяем существование шаблона для первого сегмента
     template_path = BASE_DIR / 'templates' / f'{first_segment}.html'
-    if template_path.exists():
-        # Если первый сегмент валиден, но есть дополнительные сегменты, редиректим на него
-        if len(segments) > 1:
-            return RedirectResponse(url=request.url_for('evenfest_page', page_name=first_segment))
-        # Иначе отображаем страницу первого сегмента (нормальный случай)
-    else:
-        # Первый сегмент не существует — редирект на новости
+    if not template_path.exists():
+        # Если шаблона нет – редирект на новости
         return RedirectResponse(url=request.url_for('evenfest_page', page_name='news'))
-    
-    # Загружаем данные для отображения страницы (первый сегмент валиден)
-    data = load_data()
+
+    # Если в пути больше одного сегмента – редиректим на первый (нормализация)
+    if len(segments) > 1:
+        return RedirectResponse(url=request.url_for('evenfest_page', page_name=first_segment))
+
+    # Получаем данные из MongoDB
+    config = await get_config()
+    menu = config.get('menu', [])
+    page_content = config.get('content', {}).get(first_segment, '')
+
     return templates.TemplateResponse(
         f'{first_segment}.html',
         {
             'request': request,
-            'menu': data.get('menu', []),
-            'page_content': data.get('content', {}).get(first_segment, ''),
+            'menu': menu,
+            'page_content': page_content,
         }
     )
