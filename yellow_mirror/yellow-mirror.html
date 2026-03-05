@@ -13,29 +13,14 @@
 <body>
     <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms" title="Просмотр сайта"></iframe>
 
-    <div id="splash" class="splash-screen">
-        <div class="splash-layer layer-1"></div>
-        <div class="splash-layer layer-2"></div>
-        <div class="splash-layer layer-3"></div>
-        <div class="splash-layer layer-4"></div>
-    </div>
+    <div id="splash" class="splash-screen">...</div>
 
-    <!-- Тост для ошибок -->
+    <!-- Тост для сообщений об ошибках -->
     <div id="error-toast" class="error-toast hidden">Sorry, it is impossible to access the site</div>
 
-    <div class="panel-container">
-        <div class="expanded-panel" id="expandedPanel">
-            <input type="text" id="url-input" placeholder="paste web link" class="invalid" />
-            <button id="load-site-btn" aria-label="Загрузить сайт" disabled>
-                <img src="/yellow_mirror/static/favicon.png" alt="Globe" width="24" height="24">
-            </button>
-        </div>
-        <div class="minimized-bar" id="minimizedBar"></div>
-    </div>
+    <div class="panel-container">...</div>
 
-    <!-- JavaScript модули -->
     <script src="/yellow_mirror/scripts/core.js"></script>
-    <script src="/yellow_mirror/scripts/toast.js"></script>
     <script src="/yellow_mirror/scripts/url.js"></script>
     <script src="/yellow_mirror/scripts/browser.js"></script>
     <script src="/yellow_mirror/scripts/dom.js"></script>
@@ -43,5 +28,8 @@
     <script src="/yellow_mirror/scripts/panel.js"></script>
     <script src="/yellow_mirror/scripts/iframe.js"></script>
     <script src="/yellow_mirror/scripts/init.js"></script>
+
+    <!-- Флаг, указывающий, что это главная страница Yellow Mirror -->
+    <script>window.YM_HOME_PAGE = true;</script>
 </body>
 </html>

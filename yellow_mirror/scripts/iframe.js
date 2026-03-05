@@ -2,10 +2,36 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
-    errorShown: false,
+    errorTimeout: null, // для автоматического скрытия тоста
+
+    // Показать сообщение об ошибке
+    showError: function(message) {
+        const toast = document.getElementById('error-toast');
+        if (!toast) return;
+        toast.textContent = message || 'Sorry, it is impossible to access the site';
+        toast.classList.remove('hidden');
+        toast.classList.add('visible');
+        if (this.errorTimeout) clearTimeout(this.errorTimeout);
+        this.errorTimeout = setTimeout(() => {
+            toast.classList.remove('visible');
+            toast.classList.add('hidden');
+        }, 5000);
+    },
+
+    // Скрыть сообщение об ошибке
+    hideError: function() {
+        const toast = document.getElementById('error-toast');
+        if (!toast) return;
+        toast.classList.remove('visible');
+        toast.classList.add('hidden');
+        if (this.errorTimeout) clearTimeout(this.errorTimeout);
+    },
 
     loadTarget: function(target) {
         if (!target) return;
+
+        // Скрываем предыдущее сообщение об ошибке
+        this.hideError();
 
         if (YM.isSelfAppUrl(target)) {
             window.location.href = target;
@@ -14,38 +40,37 @@ YM.iframe = {
 
         const normalizedTarget = YM.normalizeUrl(target);
         this.ignoreNextLoad = false;
-        this.errorShown = false;
         YM.splash.show();
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
 
     handleLoad: function() {
         YM.splash.hide();
+        YM.iframe.hideError(); // скрываем тост, если он был виден
+
+        // Проверяем, не загрузилась ли наша главная страница (из-за редиректа)
+        try {
+            const iframeWindow = YM.elements.iframe.contentWindow;
+            if (iframeWindow && iframeWindow.YM_HOME_PAGE) {
+                YM.iframe.showError('Sorry, it is impossible to access the site');
+                return; // Не обновляем URL, не меняем адресную строку
+            }
+        } catch (e) {
+            // Игнорируем ошибки доступа к contentWindow
+        }
 
         try {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
-            let isProxied = false;
 
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
-                if (target) {
-                    targetUrl = target;
-                    isProxied = true;
-                }
-            }
-
-            const currentHost = window.location.host;
-            const iframeHost = new URL(currentIframeSrc).host;
-
-            if (iframeHost === currentHost && !isProxied) {
-                this.showErrorAndReset();
-                return;
+                if (target) targetUrl = target;
             }
 
             if (YM.isSelfAppUrl(targetUrl)) {
-                this.showErrorAndReset();
+                window.location.href = targetUrl;
                 return;
             }
 
@@ -63,57 +88,29 @@ YM.iframe = {
 
     handleError: function() {
         YM.splash.hide();
-        this.showErrorAndReset();
+        YM.iframe.hideError();
+        YM.iframe.showError('Sorry, it is impossible to access the site');
+        // Не меняем URL, не редиректим
     },
 
-    showErrorAndReset: function() {
-        if (this.errorShown) return;
-        this.errorShown = true;
-        YM.toast.show('Sorry, it is impossible to access the site', 5000);
-        YM.elements.iframe.src = 'about:blank';
-        // Опционально: удалить параметр target из URL
-        // const url = new URL(window.location.href);
-        // url.searchParams.delete('target');
-        // window.history.replaceState({}, '', url);
-    },
-
-    loadSite: function() {
-        const trimmed = YM.elements.input.value.trim();
-        if (!YM.isValidUrl(trimmed) || YM.isSelfUrl(trimmed)) return;
-
-        let url = trimmed;
-        if (!url.match(/^https?:\/\//i)) {
-            url = 'https://' + url;
-        }
-        YM.iframe.loadTarget(url);
-    }
+    loadSite: function() { ... } // без изменений
 };
 
+// Обработчик сообщений от iframe
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
         try {
             let targetUrl = frameUrl;
-            let isProxied = false;
             if (frameUrl.includes('/api/')) {
                 const urlObj = new URL(frameUrl, window.location.origin);
                 const target = urlObj.searchParams.get('target');
-                if (target) {
-                    targetUrl = target;
-                    isProxied = true;
-                }
+                if (target) targetUrl = target;
             }
 
-            const currentHost = window.location.host;
-            const frameHost = new URL(frameUrl, window.location.origin).host;
-
-            if (frameHost === currentHost && !isProxied) {
-                YM.iframe.showErrorAndReset();
-                return;
-            }
-
+            // Если внутренняя навигация привела на главную страницу приложения — показываем ошибку
             if (YM.isSelfAppUrl(targetUrl)) {
-                YM.iframe.showErrorAndReset();
+                YM.iframe.showError('Sorry, it is impossible to access the site');
                 return;
             }
 
@@ -128,10 +125,5 @@ window.addEventListener('message', (event) => {
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
         }
-    }
-
-    // Новый обработчик для ошибок прокси
-    if (event.data && event.data.type === 'proxy-error') {
-        YM.iframe.showErrorAndReset();
     }
 });
