@@ -40,12 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
-            // Сбрасываем iframe на about:blank, но помечаем, что не нужно обновлять URL
-            YM.iframe.skipUrlUpdate = true;
-            YM.elements.iframe.src = 'about:blank';
+            // Возврат на главную: показываем сплэш, очищаем поле, НЕ меняем iframe
             YM.splash.show();
             YM.elements.input.value = '';
             YM.panel.updateValidity();
+            // Не трогаем iframe.src — оставляем как есть, сплэш перекроет
         }
     });
 

@@ -2,7 +2,6 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
-    skipUrlUpdate: false, // флаг для подавления обновления URL при искусственной загрузке
 
     /**
      * Загружает целевой URL в iframe через прокси.
@@ -46,12 +45,6 @@ YM.iframe = {
     handleLoad: function() {
         YM.splash.hide();
 
-        // Если установлен флаг пропуска обновления URL (например, для about:blank), сбрасываем его и выходим
-        if (this.skipUrlUpdate) {
-            this.skipUrlUpdate = false;
-            return;
-        }
-
         try {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
@@ -64,6 +57,11 @@ YM.iframe = {
 
             if (YM.isSelfAppUrl(targetUrl)) {
                 window.location.href = targetUrl;
+                return;
+            }
+
+            // Не обновляем URL для about:blank
+            if (targetUrl === 'about:blank') {
                 return;
             }
 
