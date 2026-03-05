@@ -128,3 +128,31 @@
 .minimized-bar:hover {
     background: var(--minimized-bar-hover);
 }
+
+/* ---------- Тост для ошибок ---------- */
+.error-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 16px;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+}
+
+.error-toast.visible {
+    opacity: 1;
+}
+
+.error-toast.hidden {
+    opacity: 0;
+}
