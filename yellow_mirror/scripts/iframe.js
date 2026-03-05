@@ -6,6 +6,12 @@ YM.iframe = {
     loadTarget: function(target) {
         if (!target) return;
 
+        // Игнорируем служебные схемы
+        if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
+            YM.splash.show();
+            return;
+        }
+
         if (YM.isSelfAppUrl(target)) {
             window.location.href = target;
             return;
@@ -15,8 +21,7 @@ YM.iframe = {
         try {
             const urlObj = new URL(target);
             if (urlObj.hostname.includes('startpage.com')) {
-                // Только показываем сообщение, НЕ скрываем сплэш, НЕ меняем iframe
-                YM.showBlockedMessage();
+                YM.showBlockedMessage(); // показываем сообщение, iframe не трогаем
                 return;
             }
         } catch (e) {
@@ -47,11 +52,15 @@ YM.iframe = {
                 return;
             }
 
+            // Не обновляем URL для about:blank
+            if (targetUrl === 'about:blank') return;
+
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
                     YM.iframe.ignoreNextLoad = false;
                 } else {
-                    YM.replaceBrowserUrl(targetUrl);
+                    // Используем pushState, чтобы каждая загрузка добавлялась в историю
+                    YM.pushBrowserUrl(targetUrl);
                 }
             }, 0);
         } catch (e) {
@@ -79,7 +88,6 @@ YM.iframe = {
 YM.showBlockedMessage = function() {
     const msgEl = document.getElementById('error-message');
     if (!msgEl) return;
-    // НЕ скрываем сплэш — оставляем фон стартовой страницы
     msgEl.classList.remove('hidden');
     setTimeout(() => {
         msgEl.classList.add('hidden');
