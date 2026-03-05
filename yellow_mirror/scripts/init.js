@@ -1,5 +1,8 @@
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
+    // Устанавливаем черный фон для iframe по умолчанию
+    YM.elements.iframe.src = 'data:text/html;charset=utf-8,%3Cbody%20style%3D%22background%3Ablack%3Bmargin%3A0%22%3E%3C/body%3E';
+
     // Привязываем обработчики к элементам
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
 
@@ -40,7 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
-            YM.elements.iframe.src = 'about:blank';
+            // Возвращаемся к черному фону
+            YM.elements.iframe.src = 'data:text/html;charset=utf-8,%3Cbody%20style%3D%22background%3Ablack%3Bmargin%3A0%22%3E%3C/body%3E';
             YM.splash.show();
             YM.elements.input.value = '';
             YM.panel.updateValidity();
