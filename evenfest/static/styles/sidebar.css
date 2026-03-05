@@ -1,0 +1,135 @@
+/* -------------------- Боковая панель -------------------- */
+.sidebar {
+    height: 100vh;
+    background: rgba(20, 25, 40, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right: 2px solid rgba(180, 154, 107, 0.3);
+    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.7);
+    width: 240px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.sidebar-sticky {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: 30px;
+}
+
+/* Логотип */
+.nav-logo {
+    text-align: center;
+    padding: 0 20px 20px;
+    border-bottom: 2px solid #b49a6b;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.nav-logo::before,
+.nav-logo::after {
+    content: '✧';
+    color: #b49a6b;
+    font-size: 1.2rem;
+    position: absolute;
+    bottom: -11px;
+    background: #1a1a2e;
+    padding: 0 10px;
+}
+
+.nav-logo::before {
+    left: 20%;
+}
+
+.nav-logo::after {
+    right: 20%;
+}
+
+.nav-logo h1 {
+    font-family: 'Cinzel Decorative', cursive;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    letter-spacing: 3px;
+    margin-bottom: 5px;
+    word-break: break-word;
+}
+
+.nav-logo p {
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: #b49a6b;
+    font-style: italic;
+    letter-spacing: 1px;
+}
+
+/* Пункты меню */
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 1rem;
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.nav-link i {
+    font-size: 1.3rem;
+    min-width: 30px;
+    text-align: center;
+    margin-right: 15px;
+    color: #b49a6b;
+    transition: color 0.2s;
+}
+
+.nav-text {
+    opacity: 1;
+}
+
+.nav-link:hover {
+    background: linear-gradient(90deg, rgba(180, 154, 107, 0.15), transparent);
+    border-left-color: #b49a6b;
+}
+
+.nav-link:hover i {
+    color: #d8c29b;
+}
+
+.nav-link.active {
+    background: linear-gradient(90deg, rgba(180, 154, 107, 0.2), transparent);
+    border-left-color: #b49a6b;
+    font-weight: 600;
+}
+
+/* Бейджи */
+.badge-custom {
+    background: #b49a6b;
+    color: #1a1a2e;
+    font-family: inherit;
+    font-size: 0.6rem;
+    margin-left: 10px;
+    border: 1px solid #e0e0e0;
+    padding: 4px 8px;
+}
+
+/* Ресайзер */
+.sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    width: 10px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    z-index: 200;
+    transition: background 0.2s;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active {
+    background: rgba(180, 154, 107, 0.3);
+}
