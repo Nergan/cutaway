@@ -124,11 +124,24 @@ async def proxy(request: Request):
             content=body,
         )
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail='Target server timeout')
+        # Возвращаем HTML с сообщением для клиента
+        return Response(
+            content="<script>window.top.postMessage({ type: 'proxy-error', reason: 'timeout' }, '*');</script>",
+            status_code=504,
+            media_type="text/html"
+        )
     except httpx.TooManyRedirects:
-        raise HTTPException(status_code=502, detail='Too many redirects')
+        return Response(
+            content="<script>window.top.postMessage({ type: 'proxy-error', reason: 'too-many-redirects' }, '*');</script>",
+            status_code=502,
+            media_type="text/html"
+        )
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f'Proxy error: {str(e)}')
+        return Response(
+            content=f"<script>window.top.postMessage({{ type: 'proxy-error', reason: '{str(e)}' }}, '*');</script>",
+            status_code=502,
+            media_type="text/html"
+        )
 
     prohibited_headers = {
         'content-length',

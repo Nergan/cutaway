@@ -13,14 +13,15 @@
 <body>
     <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms" title="Просмотр сайта"></iframe>
 
-    <div id="error-toast" class="error-toast hidden">Sorry, it is impossible to access the site</div>
-
     <div id="splash" class="splash-screen">
         <div class="splash-layer layer-1"></div>
         <div class="splash-layer layer-2"></div>
         <div class="splash-layer layer-3"></div>
         <div class="splash-layer layer-4"></div>
     </div>
+
+    <!-- Тост для ошибок -->
+    <div id="error-toast" class="error-toast hidden">Sorry, it is impossible to access the site</div>
 
     <div class="panel-container">
         <div class="expanded-panel" id="expandedPanel">
@@ -34,6 +35,7 @@
 
     <!-- JavaScript модули -->
     <script src="/yellow_mirror/scripts/core.js"></script>
+    <script src="/yellow_mirror/scripts/toast.js"></script>
     <script src="/yellow_mirror/scripts/url.js"></script>
     <script src="/yellow_mirror/scripts/browser.js"></script>
     <script src="/yellow_mirror/scripts/dom.js"></script>
@@ -41,6 +43,5 @@
     <script src="/yellow_mirror/scripts/panel.js"></script>
     <script src="/yellow_mirror/scripts/iframe.js"></script>
     <script src="/yellow_mirror/scripts/init.js"></script>
-    <script src="/yellow_mirror/scripts/toast.js"></script>
 </body>
 </html>
