@@ -1,6 +1,7 @@
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
-    // Не устанавливаем src для iframe — пусть будет about:blank по умолчанию
+    // НЕ УСТАНАВЛИВАЕМ src для iframe — пусть остаётся пустым.
+    // Сплэш перекроет пустой iframe, и мы не увидим белый фон.
 
     // Привязываем обработчики к элементам
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
@@ -24,9 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
-
     YM.elements.button.addEventListener('click', YM.iframe.loadSite);
-
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -42,13 +41,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
-            // Сбрасываем iframe на about:blank (будет чёрный фон благодаря CSS)
-            YM.elements.iframe.src = 'about:blank';
-            // Очищаем поле ввода
+            // Сбрасываем iframe (пустой) и показываем сплэш
+            YM.elements.iframe.src = 'about:blank'; // здесь можно оставить about:blank, но сплэш будет показан ниже
+            YM.splash.show();
             YM.elements.input.value = '';
             YM.panel.updateValidity();
-            // Показываем сплэш (опционально)
-            YM.splash.show();
         }
     });
 
@@ -63,5 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
             YM.panel.updateValidity();
             YM.iframe.loadTarget(normalized);
         }
+    } else {
+        // Если target нет, показываем сплэш (фон стартовой страницы)
+        YM.splash.show();
     }
 });
