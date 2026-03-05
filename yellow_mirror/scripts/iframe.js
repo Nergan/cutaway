@@ -15,9 +15,9 @@ YM.iframe = {
         try {
             const urlObj = new URL(target);
             if (urlObj.hostname.includes('startpage.com')) {
-                YM.splash.hide(); // скрываем заставку, если она была
-                YM.showBlockedMessage();
-                return; // не загружаем iframe
+                YM.elements.iframe.src = 'about:blank'; // очищаем iframe
+                YM.showBlockedMessage(); // покажет сообщение и скроет сплэш
+                return;
             }
         } catch (e) {
             // Если URL некорректен, проверка будет позже в isValidUrl
@@ -79,6 +79,7 @@ YM.iframe = {
 YM.showBlockedMessage = function() {
     const msgEl = document.getElementById('error-message');
     if (!msgEl) return;
+    YM.splash.hide(); // скрываем сплэш, если он был активен
     msgEl.classList.remove('hidden');
     setTimeout(() => {
         msgEl.classList.add('hidden');
