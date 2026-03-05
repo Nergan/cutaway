@@ -2,6 +2,7 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
+    errorShown: false,   // флаг для предотвращения повторных сообщений
 
     loadTarget: function(target) {
         if (!target) return;
@@ -13,6 +14,7 @@ YM.iframe = {
 
         const normalizedTarget = YM.normalizeUrl(target);
         this.ignoreNextLoad = false;
+        this.errorShown = false;   // сбрасываем при новой загрузке
         YM.splash.show();
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
@@ -30,8 +32,9 @@ YM.iframe = {
                 if (target) targetUrl = target;
             }
 
+            // Если загрузилась страница нашего приложения – считаем это ошибкой
             if (YM.isSelfAppUrl(targetUrl)) {
-                window.location.href = targetUrl;
+                this.showErrorAndReset();
                 return;
             }
 
@@ -49,9 +52,16 @@ YM.iframe = {
 
     handleError: function() {
         YM.splash.hide();
-        // Показываем сообщение об ошибке
+        this.showErrorAndReset();
+    },
+
+    showErrorAndReset: function() {
+        if (this.errorShown) return;
+        this.errorShown = true;
         YM.toast.show('Sorry, it is impossible to access the site', 5000);
-        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
+        // Очищаем iframe
+        YM.elements.iframe.src = 'about:blank';
+        // Не обновляем URL в адресной строке
     },
 
     loadSite: function() {
@@ -77,8 +87,9 @@ window.addEventListener('message', (event) => {
                 if (target) targetUrl = target;
             }
 
+            // Навигация внутри iframe на наше приложение – ошибка
             if (YM.isSelfAppUrl(targetUrl)) {
-                window.location.href = targetUrl;
+                YM.iframe.showErrorAndReset();
                 return;
             }
 

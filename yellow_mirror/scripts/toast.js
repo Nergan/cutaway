@@ -7,7 +7,12 @@ YM.toast = {
     init: function() {
         this.element = document.getElementById('error-toast');
         if (!this.element) {
-            console.warn('Toast element not found');
+            // Создаём элемент, если его нет (например, при кешировании старого HTML)
+            this.element = document.createElement('div');
+            this.element.id = 'error-toast';
+            this.element.className = 'error-toast hidden';
+            this.element.textContent = 'Sorry, it is impossible to access the site';
+            document.body.appendChild(this.element);
         }
     },
 
@@ -36,7 +41,6 @@ YM.toast = {
     }
 };
 
-// Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     YM.toast.init();
 });
