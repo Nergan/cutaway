@@ -45,10 +45,18 @@ YM.iframe = {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
 
+            // Проверяем, что это наш прокси-URL
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
                 if (target) targetUrl = target;
+            } else {
+                // Если это не прокси (например, about:blank), не обновляем URL
+                // Также игнорируем другие не-http схемы
+                const urlObj = new URL(currentIframeSrc, window.location.origin);
+                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                    return;
+                }
             }
 
             if (YM.isSelfAppUrl(targetUrl)) {
