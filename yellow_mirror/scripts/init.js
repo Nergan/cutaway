@@ -1,7 +1,6 @@
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
-    // НЕ УСТАНАВЛИВАЕМ src для iframe — пусть остаётся пустым.
-    // Сплэш перекроет пустой iframe, и мы не увидим белый фон.
+    // Не устанавливаем src для iframe — пусть остаётся пустым, сплэш перекроет
 
     // Привязываем обработчики к элементам
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
@@ -41,8 +40,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
-            // Сбрасываем iframe (пустой) и показываем сплэш
-            YM.elements.iframe.src = 'about:blank'; // здесь можно оставить about:blank, но сплэш будет показан ниже
+            // Сбрасываем iframe на about:blank, но помечаем, что не нужно обновлять URL
+            YM.iframe.skipUrlUpdate = true;
+            YM.elements.iframe.src = 'about:blank';
             YM.splash.show();
             YM.elements.input.value = '';
             YM.panel.updateValidity();
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
             YM.iframe.loadTarget(normalized);
         }
     } else {
-        // Если target нет, показываем сплэш (фон стартовой страницы)
+        // Если target нет, показываем сплэш
         YM.splash.show();
     }
 });

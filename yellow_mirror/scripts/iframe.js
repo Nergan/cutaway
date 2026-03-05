@@ -2,9 +2,21 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
+    skipUrlUpdate: false, // флаг для подавления обновления URL при искусственной загрузке
 
+    /**
+     * Загружает целевой URL в iframe через прокси.
+     * Если это startpage.com — показывает сообщение и ничего не загружает.
+     * Также игнорирует about:, data:, javascript: схемы.
+     */
     loadTarget: function(target) {
         if (!target) return;
+
+        // Игнорируем небезопасные/служебные схемы
+        if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
+            YM.splash.show(); // показываем сплэш, если нужно
+            return;
+        }
 
         if (YM.isSelfAppUrl(target)) {
             window.location.href = target;
@@ -15,8 +27,7 @@ YM.iframe = {
         try {
             const urlObj = new URL(target);
             if (urlObj.hostname.includes('startpage.com')) {
-                // Только показываем сообщение, НЕ скрываем сплэш, НЕ меняем iframe
-                YM.showBlockedMessage();
+                YM.showBlockedMessage(); // сообщение, iframe не трогаем
                 return;
             }
         } catch (e) {
@@ -29,8 +40,17 @@ YM.iframe = {
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
 
+    /**
+     * Обработчик успешной загрузки iframe.
+     */
     handleLoad: function() {
         YM.splash.hide();
+
+        // Если установлен флаг пропуска обновления URL (например, для about:blank), сбрасываем его и выходим
+        if (this.skipUrlUpdate) {
+            this.skipUrlUpdate = false;
+            return;
+        }
 
         try {
             const currentIframeSrc = YM.elements.iframe.src;
@@ -59,11 +79,17 @@ YM.iframe = {
         }
     },
 
+    /**
+     * Обработчик ошибки загрузки iframe.
+     */
     handleError: function() {
         YM.splash.hide();
         console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
     },
 
+    /**
+     * Загружает сайт из поля ввода.
+     */
     loadSite: function() {
         const trimmed = YM.elements.input.value.trim();
         if (!YM.isValidUrl(trimmed) || YM.isSelfUrl(trimmed)) return;
@@ -76,16 +102,22 @@ YM.iframe = {
     }
 };
 
+/**
+ * Показывает сообщение о блокировке на 5 секунд.
+ * Не изменяет содержимое iframe и не скрывает сплэш.
+ */
 YM.showBlockedMessage = function() {
     const msgEl = document.getElementById('error-message');
     if (!msgEl) return;
-    // НЕ скрываем сплэш — оставляем фон стартовой страницы
     msgEl.classList.remove('hidden');
     setTimeout(() => {
         msgEl.classList.add('hidden');
     }, 5000);
 };
 
+/**
+ * Слушатель сообщений от iframe (для навигации внутри прокси).
+ */
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
