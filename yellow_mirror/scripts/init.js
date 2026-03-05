@@ -1,11 +1,10 @@
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
-    // Устанавливаем начальное состояние iframe на about:blank.
-    // Благодаря CSS-правилу background: black в base.css, он будет чёрным.
-    YM.elements.iframe.src = 'about:blank';
+    // Не устанавливаем src для iframe — пусть будет about:blank по умолчанию
 
     // Привязываем обработчики к элементам
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
+
     YM.elements.expandedPanel.addEventListener('mouseover', (e) => {
         const target = e.target.closest('input, button');
         YM.panel.setHighlight(!(target && YM.panel.isInteractiveElement(target)));
@@ -16,20 +15,25 @@ document.addEventListener('DOMContentLoaded', function() {
             YM.panel.setHighlight(false);
         }
     });
+
     YM.elements.expandedPanel.addEventListener('click', (e) => {
         const target = e.target.closest('input, button');
         if (!(target && YM.panel.isInteractiveElement(target))) {
             YM.panel.collapse();
         }
     });
+
     YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
+
     YM.elements.button.addEventListener('click', YM.iframe.loadSite);
+
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             YM.iframe.loadSite();
         }
     });
+
     YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
     YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
 
@@ -40,9 +44,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Сбрасываем iframe на about:blank (будет чёрный фон благодаря CSS)
             YM.elements.iframe.src = 'about:blank';
-            YM.splash.show();
+            // Очищаем поле ввода
             YM.elements.input.value = '';
             YM.panel.updateValidity();
+            // Показываем сплэш (опционально)
+            YM.splash.show();
         }
     });
 
