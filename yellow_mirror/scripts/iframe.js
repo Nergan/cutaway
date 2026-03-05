@@ -49,8 +49,6 @@ YM.iframe = {
 
     handleError: function() {
         YM.splash.hide();
-        // Показываем сообщение об ошибке
-        YM.toast.show('Sorry, it is impossible to access the site', 5000);
         console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
     },
 
