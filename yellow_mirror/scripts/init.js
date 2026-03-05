@@ -41,8 +41,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
+            // Возврат на главную: заменяем текущую запись на главную,
+            // чтобы в истории не оставалось about:blank или других артефактов
+            YM.replaceBrowserUrl(null);
             // Сбрасываем iframe (пустой) и показываем сплэш
-            YM.elements.iframe.src = 'about:blank'; // здесь можно оставить about:blank, но сплэш будет показан ниже
+            YM.elements.iframe.src = 'about:blank';
             YM.splash.show();
             YM.elements.input.value = '';
             YM.panel.updateValidity();
@@ -61,7 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
             YM.iframe.loadTarget(normalized);
         }
     } else {
-        // Если target нет, показываем сплэш (фон стартовой страницы)
+        // Если target нет, заменяем текущую запись на главную (на случай, если в истории были левые записи)
+        YM.replaceBrowserUrl(null);
         YM.splash.show();
     }
 });

@@ -10,6 +10,12 @@ YM.iframe = {
     loadTarget: function(target) {
         if (!target) return;
 
+        // Игнорируем служебные схемы
+        if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
+            YM.splash.show();
+            return;
+        }
+
         // Если это внутренний путь приложения — редирект
         if (YM.isSelfAppUrl(target)) {
             window.location.href = target;
@@ -64,12 +70,16 @@ YM.iframe = {
                 return;
             }
 
-            // Обновляем URL в адресной строке после загрузки, если не игнорируем
+            // Не обновляем URL для about:blank
+            if (targetUrl === 'about:blank') return;
+
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
                     YM.iframe.ignoreNextLoad = false;
                 } else {
-                    YM.replaceBrowserUrl(targetUrl);
+                    // Используем pushState для добавления новой записи в историю
+                    // Это гарантирует, что главная страница останется в истории
+                    YM.pushBrowserUrl(targetUrl);
                 }
             }, 0);
         } catch (e) {
