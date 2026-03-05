@@ -27,6 +27,7 @@ YM.iframe = {
             let targetUrl = currentIframeSrc;
             let isProxied = false;
 
+            // Если src содержит /api/ и параметр target, значит это прокси-запрос
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 const target = urlParams.get('target');
@@ -38,23 +39,23 @@ YM.iframe = {
 
             const currentHost = window.location.host;
             const iframeHost = new URL(currentIframeSrc).host;
+
+            // Если iframe загрузил страницу с нашего домена, но это не прокси – ошибка
             if (iframeHost === currentHost && !isProxied) {
                 this.showErrorAndReset();
                 return;
             }
 
-            if (YM.isSelfAppUrl(targetUrl)) {
-                this.showErrorAndReset();
-                return;
+            // Обновляем URL в адресной строке только для успешных прокси-загрузок
+            if (isProxied) {
+                setTimeout(() => {
+                    if (YM.iframe.ignoreNextLoad) {
+                        YM.iframe.ignoreNextLoad = false;
+                    } else {
+                        YM.replaceBrowserUrl(targetUrl);
+                    }
+                }, 0);
             }
-
-            setTimeout(() => {
-                if (YM.iframe.ignoreNextLoad) {
-                    YM.iframe.ignoreNextLoad = false;
-                } else {
-                    YM.replaceBrowserUrl(targetUrl);
-                }
-            }, 0);
         } catch (e) {
             console.warn('Не удалось обработать загрузку iframe', e);
         }
@@ -70,6 +71,7 @@ YM.iframe = {
         this.errorShown = true;
         YM.toast.show('Sorry, it is impossible to access the site', 5000);
         YM.elements.iframe.src = 'about:blank';
+        // Не меняем URL в адресной строке
     },
 
     loadSite: function() {
@@ -101,12 +103,9 @@ window.addEventListener('message', (event) => {
 
             const currentHost = window.location.host;
             const frameHost = new URL(frameUrl, window.location.origin).host;
-            if (frameHost === currentHost && !isProxied) {
-                YM.iframe.showErrorAndReset();
-                return;
-            }
 
-            if (YM.isSelfAppUrl(targetUrl)) {
+            // Если навигация привела к странице нашего домена без прокси – ошибка
+            if (frameHost === currentHost && !isProxied) {
                 YM.iframe.showErrorAndReset();
                 return;
             }
