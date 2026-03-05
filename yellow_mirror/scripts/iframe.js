@@ -2,40 +2,25 @@ window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
-    errorTimeout: null, // для автоматического скрытия тоста
-
-    // Показать сообщение об ошибке
-    showError: function(message) {
-        const toast = document.getElementById('error-toast');
-        if (!toast) return;
-        toast.textContent = message || 'Sorry, it is impossible to access the site';
-        toast.classList.remove('hidden');
-        toast.classList.add('visible');
-        if (this.errorTimeout) clearTimeout(this.errorTimeout);
-        this.errorTimeout = setTimeout(() => {
-            toast.classList.remove('visible');
-            toast.classList.add('hidden');
-        }, 5000);
-    },
-
-    // Скрыть сообщение об ошибке
-    hideError: function() {
-        const toast = document.getElementById('error-toast');
-        if (!toast) return;
-        toast.classList.remove('visible');
-        toast.classList.add('hidden');
-        if (this.errorTimeout) clearTimeout(this.errorTimeout);
-    },
 
     loadTarget: function(target) {
         if (!target) return;
 
-        // Скрываем предыдущее сообщение об ошибке
-        this.hideError();
-
         if (YM.isSelfAppUrl(target)) {
             window.location.href = target;
             return;
+        }
+
+        // Блокировка для startpage.com
+        try {
+            const urlObj = new URL(target);
+            if (urlObj.hostname.includes('startpage.com')) {
+                YM.splash.hide(); // скрываем заставку, если она была
+                YM.showBlockedMessage();
+                return; // не загружаем iframe
+            }
+        } catch (e) {
+            // Если URL некорректен, проверка будет позже в isValidUrl
         }
 
         const normalizedTarget = YM.normalizeUrl(target);
@@ -46,18 +31,6 @@ YM.iframe = {
 
     handleLoad: function() {
         YM.splash.hide();
-        YM.iframe.hideError(); // скрываем тост, если он был виден
-
-        // Проверяем, не загрузилась ли наша главная страница (из-за редиректа)
-        try {
-            const iframeWindow = YM.elements.iframe.contentWindow;
-            if (iframeWindow && iframeWindow.YM_HOME_PAGE) {
-                YM.iframe.showError('Sorry, it is impossible to access the site');
-                return; // Не обновляем URL, не меняем адресную строку
-            }
-        } catch (e) {
-            // Игнорируем ошибки доступа к contentWindow
-        }
 
         try {
             const currentIframeSrc = YM.elements.iframe.src;
@@ -88,15 +61,30 @@ YM.iframe = {
 
     handleError: function() {
         YM.splash.hide();
-        YM.iframe.hideError();
-        YM.iframe.showError('Sorry, it is impossible to access the site');
-        // Не меняем URL, не редиректим
+        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
     },
 
-    loadSite: function() { ... } // без изменений
+    loadSite: function() {
+        const trimmed = YM.elements.input.value.trim();
+        if (!YM.isValidUrl(trimmed) || YM.isSelfUrl(trimmed)) return;
+
+        let url = trimmed;
+        if (!url.match(/^https?:\/\//i)) {
+            url = 'https://' + url;
+        }
+        YM.iframe.loadTarget(url);
+    }
 };
 
-// Обработчик сообщений от iframe
+YM.showBlockedMessage = function() {
+    const msgEl = document.getElementById('error-message');
+    if (!msgEl) return;
+    msgEl.classList.remove('hidden');
+    setTimeout(() => {
+        msgEl.classList.add('hidden');
+    }, 5000);
+};
+
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
@@ -108,9 +96,8 @@ window.addEventListener('message', (event) => {
                 if (target) targetUrl = target;
             }
 
-            // Если внутренняя навигация привела на главную страницу приложения — показываем ошибку
             if (YM.isSelfAppUrl(targetUrl)) {
-                YM.iframe.showError('Sorry, it is impossible to access the site');
+                window.location.href = targetUrl;
                 return;
             }
 
