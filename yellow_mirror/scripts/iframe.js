@@ -71,7 +71,10 @@ YM.iframe = {
         this.errorShown = true;
         YM.toast.show('Sorry, it is impossible to access the site', 5000);
         YM.elements.iframe.src = 'about:blank';
-        // Не меняем URL в адресной строке
+        // Очищаем параметр target из URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('target');
+        window.history.replaceState({}, '', url);
     },
 
     loadSite: function() {
