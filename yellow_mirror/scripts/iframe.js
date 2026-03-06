@@ -1,10 +1,14 @@
-// yellow_mirror/scripts/iframe.js (фрагменты)
+// yellow_mirror/scripts/iframe.js
 window.YM = window.YM || {};
 
 YM.iframe = {
     ignoreNextLoad: false,
 
-    loadTarget: function(target) {
+    /**
+     * Загружает целевой URL в iframe.
+     * options.fromHistory: true если вызов из popstate (не нужно менять историю)
+     */
+    loadTarget: function(target, options = {}) {
         if (!target) return;
 
         // Игнорируем служебные схемы
@@ -13,48 +17,63 @@ YM.iframe = {
         }
 
         const normalizedTarget = YM.normalizeUrl(target);
-        this.ignoreNextLoad = false;
+        // Если вызов не из истории, то предполагаем, что navigateTo уже вызвал pushState
+        // и мы должны игнорировать следующий load
+        if (!options.fromHistory) {
+            this.ignoreNextLoad = true;
+        }
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
 
     clear: function() {
-        // Очистить iframe (главная страница)
         YM.elements.iframe.src = 'about:blank';
+        // Сбрасываем флаг, чтобы при загрузке about:blank ничего не делать
+        this.ignoreNextLoad = false;
     },
 
     handleLoad: function() {
         try {
             const currentIframeSrc = YM.elements.iframe.src;
-            let targetUrl = currentIframeSrc;
+            let actualTarget = null;
 
             if (currentIframeSrc.includes('/api/')) {
                 const urlParams = new URL(currentIframeSrc).searchParams;
-                const target = urlParams.get('target');
-                if (target) targetUrl = target;
+                actualTarget = urlParams.get('target');
+            } else if (currentIframeSrc === 'about:blank') {
+                // Главная страница
+                this.ignoreNextLoad = false;
+                YM.elements.input.value = '';
+                YM.panel.updateValidity();
+                return;
             } else {
-                const urlObj = new URL(currentIframeSrc, window.location.origin);
-                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                    return; // не обновляем историю для about:blank и т.п.
-                }
+                // Не проксированный URL (маловероятно)
+                actualTarget = currentIframeSrc;
             }
 
-            // Синхронизируем URL, если это не внутренний переход
-            if (!this.ignoreNextLoad) {
-                YM.history.syncWithIframe(targetUrl);
-            } else {
-                this.ignoreNextLoad = false;
-            }
+            if (!actualTarget) return;
+
+            const normalizedActual = YM.normalizeUrl(actualTarget);
 
             // Обновляем поле ввода
-            YM.elements.input.value = YM.simplifyUrl(targetUrl);
+            YM.elements.input.value = YM.simplifyUrl(normalizedActual);
             YM.panel.updateValidity();
+
+            // Если это загрузка, которую мы инициировали сами (ignoreNextLoad), то не синхронизируем историю
+            if (this.ignoreNextLoad) {
+                this.ignoreNextLoad = false;
+                return;
+            }
+
+            // Иначе синхронизируем URL, если он не совпадает с текущим
+            YM.history.syncIfNeeded(normalizedActual);
         } catch (e) {
-            console.warn('Не удалось обработать загрузку iframe', e);
+            console.warn('Ошибка в handleLoad', e);
         }
     },
 
     handleError: function() {
         console.warn('Не удалось загрузить сайт в iframe.');
+        // Можно показать сообщение, но пока просто логируем
     },
 
     loadSite: function() {
@@ -63,7 +82,6 @@ YM.iframe = {
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        // Используем navigateTo для добавления записи
         YM.history.navigateTo(url);
     }
 };
@@ -81,12 +99,8 @@ window.addEventListener('message', (event) => {
             }
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
-
-            // Внутренняя навигация — добавляем запись в историю
+            // Это внутренняя навигация — добавляем запись в историю
             YM.history.navigateTo(normalizedTarget);
-
-            // Предотвращаем двойную обработку в handleLoad
-            YM.iframe.ignoreNextLoad = true;
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
         }

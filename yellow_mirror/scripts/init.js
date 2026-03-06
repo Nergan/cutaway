@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
     YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
     YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
 
-    // Обработка навигации по истории
     window.addEventListener('popstate', YM.history.onPopState);
 
     // Инициализация из URL
@@ -41,10 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
-        // Загружаем, но не добавляем запись (replaceState при необходимости)
-        YM.iframe.loadTarget(normalized);
-        // Синхронизируем URL (на случай, если он не совпадает)
-        YM.history.syncWithIframe(normalized);
+        // Загружаем, но не добавляем запись (так как это уже есть в истории)
+        YM.iframe.loadTarget(normalized, { fromHistory: true });
     } else {
         // Главная страница
         YM.iframe.clear();
