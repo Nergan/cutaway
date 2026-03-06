@@ -30,72 +30,14 @@ async def proxy(request: Request):
     if not target_url:
         raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
 
-    if not is_safe_url(target_url):
-        raise HTTPException(status_code=400, detail='Invalid or disallowed URL')
+    # Удалена проверка is_safe_url(target_url)
 
     proxy_base_url = str(request.url).split('?')[0]
 
     parsed_target = urlparse(target_url)
     our_host = request.url.hostname
 
-    if parsed_target.hostname and parsed_target.hostname.lower() == our_host.lower():
-        if parsed_target.path.startswith('/api/'):
-            raise HTTPException(status_code=400, detail='Recursive proxy call detected')
-
-        async with httpx.AsyncClient(
-            transport=ASGITransport(app=request.app),
-            base_url=f'{request.url.scheme}://{our_host}'
-        ) as client:
-            headers = dict(request.headers)
-            headers.pop('host', None)
-            headers.pop('content-length', None)
-            headers.pop('connection', None)
-            headers.pop('accept-encoding', None)
-
-            body = None
-            if request.method in ['POST', 'PUT', 'PATCH']:
-                body = await request.body()
-
-            internal_path = parsed_target.path
-            if parsed_target.query:
-                internal_path += '?' + parsed_target.query
-
-            resp = await client.request(
-                method=request.method,
-                url=internal_path,
-                headers=headers,
-                content=body,
-                follow_redirects=True
-            )
-
-        prohibited_headers = {
-            'content-length',
-            'content-encoding',
-            'content-security-policy',
-            'content-security-policy-report-only',
-            'x-frame-options',
-            'x-content-type-options',
-            'x-xss-protection',
-        }
-        filtered_headers = {
-            k: v for k, v in resp.headers.items()
-            if k.lower() not in prohibited_headers
-        }
-
-        content_type = resp.headers.get('content-type', '').lower()
-        if 'text/html' in content_type:
-            modified_html = replace_urls_in_html(resp.text, str(resp.url), proxy_base_url)
-            return Response(
-                content=modified_html.encode('utf-8'),
-                status_code=resp.status_code,
-                headers=filtered_headers
-            )
-        else:
-            return Response(
-                content=resp.content,
-                status_code=resp.status_code,
-                headers=filtered_headers
-            )
+    # Удалён блок предотвращения рекурсивных вызовов (проверка на /api/)
 
     client_ip = request.client.host if request.client else 'unknown'
     proxy_client, user_agent = await get_client_for_ip(client_ip)
@@ -160,10 +102,7 @@ async def proxy(request: Request):
         )
 
 
-@router.get('/{rest_of_path:path}', include_in_schema=False)
-async def ym_fallback(request: Request):
-    """Редирект на главную страницу yellow mirror."""
-    return RedirectResponse(url=request.url_for('ym_root'))
+# Удалён fallback-роутер (путь '/{rest_of_path:path}')
 
 
 async def shutdown_clients():

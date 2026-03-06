@@ -20,10 +20,8 @@ YM.panel = {
     },
 
     updateValidity: function() {
-        const trimmed = YM.elements.input.value.trim();
-        const valid = YM.isValidUrl(trimmed) && !YM.isSelfUrl(trimmed);
-        YM.elements.button.disabled = !valid;
-        YM.elements.input.classList.toggle('invalid', !valid);
+        // Всегда активная кнопка и белый текст (убраны проверки)
+        YM.elements.button.disabled = false;
+        YM.elements.input.classList.remove('invalid'); // убираем красный цвет, если был
     }
 };
-

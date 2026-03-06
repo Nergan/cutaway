@@ -50,14 +50,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация из URL
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
-        if (YM.isSelfAppUrl(initialTarget)) {
-            window.location.href = '/yellow-mirror';
-        } else {
-            const normalized = YM.normalizeUrl(initialTarget);
-            YM.elements.input.value = YM.simplifyUrl(normalized);
-            YM.panel.updateValidity();
-            YM.iframe.loadTarget(normalized);
-        }
+        // Убрана проверка на внутренний путь приложения
+        const normalized = YM.normalizeUrl(initialTarget);
+        YM.elements.input.value = YM.simplifyUrl(normalized);
+        YM.panel.updateValidity();
+        YM.iframe.loadTarget(normalized);
     } else {
         // Если target нет, показываем сплэш (фон стартовой страницы)
         YM.splash.show();
