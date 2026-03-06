@@ -35,22 +35,7 @@ def replace_urls_in_html(html: str, base_url: str, proxy_base_url: str) -> str:
                 new_style.append(part)
         element['style'] = ''.join(new_style)
 
-    # Добавляем стиль для белого фона (опционально)
-    style_tag = soup.new_tag('style')
-    style_tag.string = '''
-        body { background-color: white; color: black; }
-    '''
-    if soup.head:
-        soup.head.insert(0, style_tag)
-    else:
-        head = soup.new_tag('head')
-        head.append(style_tag)
-        if soup.html:
-            soup.html.insert(0, head)
-        else:
-            html_tag = soup.new_tag('html')
-            html_tag.append(head)
-            soup.append(html_tag)
+    # Удалён блок добавления стиля с белым фоном
 
     if not soup.body:
         if not soup.html:

@@ -5,33 +5,18 @@ YM.iframe = {
 
     /**
      * Загружает целевой URL в iframe через прокси.
-     * Если это startpage.com — показывает сообщение и ничего не загружает.
      */
     loadTarget: function(target) {
         if (!target) return;
 
-        // Игнорируем служебные схемы
+        // Игнорируем служебные схемы (безопасность на уровне браузера)
         if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
             YM.splash.show();
             return;
         }
 
-        // Если это внутренний путь приложения — редирект
-        if (YM.isSelfAppUrl(target)) {
-            window.location.href = target;
-            return;
-        }
-
-        // Блокировка для startpage.com
-        try {
-            const urlObj = new URL(target);
-            if (urlObj.hostname.includes('startpage.com')) {
-                YM.showBlockedMessage(); // показываем сообщение, iframe не трогаем
-                return;
-            }
-        } catch (e) {
-            // Некорректный URL — дальше проверит isValidUrl
-        }
+        // Убрана проверка на внутренний путь приложения
+        // Убрана блокировка startpage.com
 
         // Нормализуем URL и загружаем через прокси
         const normalizedTarget = YM.normalizeUrl(target);
@@ -62,16 +47,12 @@ YM.iframe = {
                 }
             }
 
-            if (YM.isSelfAppUrl(targetUrl)) {
-                window.location.href = targetUrl;
-                return;
-            }
+            // Убрана проверка на внутренний путь приложения
 
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
                     YM.iframe.ignoreNextLoad = false;
                 } else {
-                    // Используем pushState, чтобы главная оставалась в истории
                     YM.pushBrowserUrl(targetUrl);
                 }
             }, 0);
@@ -93,8 +74,7 @@ YM.iframe = {
      */
     loadSite: function() {
         const trimmed = YM.elements.input.value.trim();
-        if (!YM.isValidUrl(trimmed) || YM.isSelfUrl(trimmed)) return;
-
+        // Убраны все проверки валидности
         let url = trimmed;
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
@@ -103,19 +83,7 @@ YM.iframe = {
     }
 };
 
-/**
- * Показывает сообщение о блокировке на 5 секунд.
- * Не изменяет содержимое iframe и не скрывает сплэш.
- */
-YM.showBlockedMessage = function() {
-    const msgEl = document.getElementById('error-message');
-    if (!msgEl) return;
-    // НЕ скрываем сплэш — оставляем фон стартовой страницы или текущий контент
-    msgEl.classList.remove('hidden');
-    setTimeout(() => {
-        msgEl.classList.add('hidden');
-    }, 5000);
-};
+// Удалена функция YM.showBlockedMessage
 
 /**
  * Слушатель сообщений от iframe (для навигации внутри прокси).
@@ -131,10 +99,7 @@ window.addEventListener('message', (event) => {
                 if (target) targetUrl = target;
             }
 
-            if (YM.isSelfAppUrl(targetUrl)) {
-                window.location.href = targetUrl;
-                return;
-            }
+            // Убрана проверка на внутренний путь приложения
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
 

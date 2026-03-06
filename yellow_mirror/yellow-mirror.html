@@ -22,16 +22,15 @@
 
     <div class="panel-container">
         <div class="expanded-panel" id="expandedPanel">
-            <input type="text" id="url-input" placeholder="paste web link" class="invalid" />
-            <button id="load-site-btn" aria-label="Загрузить сайт" disabled>
+            <input type="text" id="url-input" placeholder="paste web link" />
+            <button id="load-site-btn" aria-label="Загрузить сайт">
                 <img src="/yellow_mirror/static/favicon.png" alt="Globe" width="24" height="24">
             </button>
         </div>
         <div class="minimized-bar" id="minimizedBar"></div>
     </div>
 
-    <!-- Сообщение о блокировке -->
-    <div id="error-message" class="error-message hidden">Sorry, it is impossible to access the site</div>
+    <!-- Удалён блок сообщения об ошибке -->
 
     <!-- JavaScript модули -->
     <script src="/yellow_mirror/scripts/core.js"></script>
