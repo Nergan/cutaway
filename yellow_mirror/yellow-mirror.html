@@ -4,65 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>yellow mirror</title>
-    <link rel="icon" href="/static/favicon.png" type="image/svg+xml">
-    <link rel="stylesheet" href="/static/styles/base.css">
-    <link rel="stylesheet" href="/static/styles/panel.css">
-    <link rel="stylesheet" href="/static/styles/responsive.css">
-    <style>
-        #stream-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            background: black;
-            display: none;
-        }
-        #stream-image {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            pointer-events: none;
-        }
-        #click-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            background: transparent;
-            display: none;
-        }
-    </style>
+    <link rel="icon" href="/yellow_mirror/static/favicon.png" type="image/svg+xml">
+    <link rel="stylesheet" href="/yellow_mirror/static/styles/base.css">
+    <link rel="stylesheet" href="/yellow_mirror/static/styles/panel.css">
+    <link rel="stylesheet" href="/yellow_mirror/static/styles/responsive.css">
 </head>
 <body>
+    <!-- Фоновое видео для стартовой страницы -->
     <video id="background-video" autoplay loop muted playsinline>
-        <source src="/static/moon.mp4" type="video/mp4">
+        <source src="/yellow_mirror/static/moon.mp4" type="video/mp4">
     </video>
 
-    <div id="stream-container">
-        <img id="stream-image" src="" alt="Browser stream">
-        <div id="click-overlay"></div>
-    </div>
+    <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms" title="Просмотр сайта"></iframe>
 
     <div class="panel-container">
         <div class="expanded-panel" id="expandedPanel">
             <input type="text" id="url-input" placeholder="paste web link" />
             <button id="load-site-btn" aria-label="Загрузить сайт">
-                <img src="/static/favicon.png" alt="Globe" width="24" height="24">
+                <img src="/yellow_mirror/static/favicon.png" alt="Globe" width="24" height="24">
             </button>
         </div>
         <div class="minimized-bar" id="minimizedBar"></div>
     </div>
 
-    <script src="/scripts/core.js"></script>
-    <script src="/scripts/browser.js"></script>
-    <script src="/scripts/dom.js"></script>
-    <script src="/scripts/background.js"></script>
-    <script src="/scripts/panel.js"></script>
-    <script src="/scripts/stream.js"></script>
-    <script src="/scripts/init.js"></script>
+    <!-- JavaScript модули -->
+    <script src="/yellow_mirror/scripts/core.js"></script>
+    <script src="/yellow_mirror/scripts/browser.js"></script>
+    <script src="/yellow_mirror/scripts/history.js"></script>
+    <script src="/yellow_mirror/scripts/dom.js"></script>
+    <script src="/yellow_mirror/scripts/background.js"></script> <!-- новый скрипт -->
+    <script src="/yellow_mirror/scripts/panel.js"></script>
+    <script src="/yellow_mirror/scripts/iframe.js"></script>
+    <script src="/yellow_mirror/scripts/init.js"></script>
 </body>
 </html>
