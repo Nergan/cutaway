@@ -20,26 +20,29 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
-    YM.elements.button.addEventListener('click', () => {
-        const url = YM.elements.input.value.trim();
-        if (url) YM.stream.loadSite(url);
-    });
+    YM.elements.button.addEventListener('click', YM.iframe.loadSite);
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const url = YM.elements.input.value.trim();
-            if (url) YM.stream.loadSite(url);
+            YM.iframe.loadSite();
         }
     });
 
-    YM.background.init();
+    YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
+    YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
+
+    window.addEventListener('popstate', YM.history.onPopState);
 
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
-        YM.elements.input.value = YM.simplifyUrl(initialTarget);
+        const normalized = YM.normalizeUrl(initialTarget);
+        YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
-        YM.stream.loadSite(initialTarget);
+        YM.iframe.loadTarget(normalized, { fromPop: true });
+        // Видео скроется внутри loadTarget
     } else {
-        YM.background.show();
+        YM.iframe.clear(); // clear показывает видео
+        YM.elements.input.value = '';
+        YM.panel.updateValidity();
     }
 });
