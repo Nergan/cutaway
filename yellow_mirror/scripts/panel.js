@@ -20,8 +20,7 @@ YM.panel = {
     },
 
     updateValidity: function() {
-        // Всегда активная кнопка и белый текст (убраны проверки)
         YM.elements.button.disabled = false;
-        YM.elements.input.classList.remove('invalid'); // убираем красный цвет, если был
+        YM.elements.input.classList.remove('invalid');
     }
 };
