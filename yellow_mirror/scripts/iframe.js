@@ -3,33 +3,23 @@ window.YM = window.YM || {};
 YM.iframe = {
     ignoreNextLoad: false,
 
-    /**
-     * Загружает целевой URL в iframe через прокси.
-     */
     loadTarget: function(target) {
         if (!target) return;
 
-        // Игнорируем служебные схемы (безопасность на уровне браузера)
+        // Игнорируем служебные схемы
         if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
-            YM.splash.show();
+            // Раньше тут был splash.show() — теперь ничего не делаем
             return;
         }
 
-        // Убрана проверка на внутренний путь приложения
-        // Убрана блокировка startpage.com
-
-        // Нормализуем URL и загружаем через прокси
         const normalizedTarget = YM.normalizeUrl(target);
         this.ignoreNextLoad = false;
-        YM.splash.show();
+        // splash.show() удалён
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
 
-    /**
-     * Обработчик успешной загрузки iframe.
-     */
     handleLoad: function() {
-        YM.splash.hide();
+        // splash.hide() удалён
 
         try {
             const currentIframeSrc = YM.elements.iframe.src;
@@ -40,14 +30,11 @@ YM.iframe = {
                 const target = urlParams.get('target');
                 if (target) targetUrl = target;
             } else {
-                // Если это не прокси (например, about:blank), не обновляем URL
                 const urlObj = new URL(currentIframeSrc, window.location.origin);
                 if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
                     return;
                 }
             }
-
-            // Убрана проверка на внутренний путь приложения
 
             setTimeout(() => {
                 if (YM.iframe.ignoreNextLoad) {
@@ -61,20 +48,13 @@ YM.iframe = {
         }
     },
 
-    /**
-     * Обработчик ошибки загрузки iframe.
-     */
     handleError: function() {
-        YM.splash.hide();
+        // splash.hide() удалён
         console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
     },
 
-    /**
-     * Загружает сайт из поля ввода.
-     */
     loadSite: function() {
         const trimmed = YM.elements.input.value.trim();
-        // Убраны все проверки валидности
         let url = trimmed;
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
@@ -83,11 +63,6 @@ YM.iframe = {
     }
 };
 
-// Удалена функция YM.showBlockedMessage
-
-/**
- * Слушатель сообщений от iframe (для навигации внутри прокси).
- */
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
@@ -98,8 +73,6 @@ window.addEventListener('message', (event) => {
                 const target = urlObj.searchParams.get('target');
                 if (target) targetUrl = target;
             }
-
-            // Убрана проверка на внутренний путь приложения
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
 

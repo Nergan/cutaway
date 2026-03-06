@@ -1,8 +1,4 @@
-// Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
-    // Не устанавливаем src для iframe — пусть остаётся пустым, сплэш перекроет
-
-    // Привязываем обработчики к элементам
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
 
     YM.elements.expandedPanel.addEventListener('mouseover', (e) => {
@@ -40,23 +36,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target) {
             YM.iframe.loadTarget(target);
         } else {
-            // Возврат на главную: показываем сплэш, НЕ меняем iframe
-            YM.splash.show();
+            // Возврат на главную: просто очищаем поле и делаем iframe пустым
+            YM.elements.iframe.src = 'about:blank'; // опционально
             YM.elements.input.value = '';
             YM.panel.updateValidity();
         }
     });
 
-    // Инициализация из URL
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
-        // Убрана проверка на внутренний путь приложения
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
         YM.iframe.loadTarget(normalized);
     } else {
-        // Если target нет, показываем сплэш (фон стартовой страницы)
-        YM.splash.show();
+        // Если target нет, оставляем iframe пустым (about:blank)
+        YM.elements.iframe.src = 'about:blank';
+        YM.elements.input.value = '';
+        YM.panel.updateValidity();
     }
 });
