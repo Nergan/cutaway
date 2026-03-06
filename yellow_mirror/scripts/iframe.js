@@ -1,3 +1,4 @@
+// yellow_mirror/scripts/iframe.js (фрагменты)
 window.YM = window.YM || {};
 
 YM.iframe = {
@@ -8,19 +9,20 @@ YM.iframe = {
 
         // Игнорируем служебные схемы
         if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
-            // Раньше тут был splash.show() — теперь ничего не делаем
             return;
         }
 
         const normalizedTarget = YM.normalizeUrl(target);
         this.ignoreNextLoad = false;
-        // splash.show() удалён
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalizedTarget)}`;
     },
 
-    handleLoad: function() {
-        // splash.hide() удалён
+    clear: function() {
+        // Очистить iframe (главная страница)
+        YM.elements.iframe.src = 'about:blank';
+    },
 
+    handleLoad: function() {
         try {
             const currentIframeSrc = YM.elements.iframe.src;
             let targetUrl = currentIframeSrc;
@@ -32,25 +34,27 @@ YM.iframe = {
             } else {
                 const urlObj = new URL(currentIframeSrc, window.location.origin);
                 if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                    return;
+                    return; // не обновляем историю для about:blank и т.п.
                 }
             }
 
-            setTimeout(() => {
-                if (YM.iframe.ignoreNextLoad) {
-                    YM.iframe.ignoreNextLoad = false;
-                } else {
-                    YM.pushBrowserUrl(targetUrl);
-                }
-            }, 0);
+            // Синхронизируем URL, если это не внутренний переход
+            if (!this.ignoreNextLoad) {
+                YM.history.syncWithIframe(targetUrl);
+            } else {
+                this.ignoreNextLoad = false;
+            }
+
+            // Обновляем поле ввода
+            YM.elements.input.value = YM.simplifyUrl(targetUrl);
+            YM.panel.updateValidity();
         } catch (e) {
             console.warn('Не удалось обработать загрузку iframe', e);
         }
     },
 
     handleError: function() {
-        // splash.hide() удалён
-        console.warn('Не удалось загрузить сайт в iframe (возможно, запрещено встраивание).');
+        console.warn('Не удалось загрузить сайт в iframe.');
     },
 
     loadSite: function() {
@@ -59,10 +63,12 @@ YM.iframe = {
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        YM.iframe.loadTarget(url);
+        // Используем navigateTo для добавления записи
+        YM.history.navigateTo(url);
     }
 };
 
+// Обработка сообщений от iframe (внутренняя навигация)
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
@@ -76,11 +82,10 @@ window.addEventListener('message', (event) => {
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
 
-            YM.elements.input.value = YM.simplifyUrl(normalizedTarget);
-            YM.panel.updateValidity();
+            // Внутренняя навигация — добавляем запись в историю
+            YM.history.navigateTo(normalizedTarget);
 
-            YM.pushBrowserUrl(normalizedTarget);
-
+            // Предотвращаем двойную обработку в handleLoad
             YM.iframe.ignoreNextLoad = true;
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
