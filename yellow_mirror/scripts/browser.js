@@ -1,4 +1,3 @@
-// yellow_mirror/scripts/browser.js
 window.YM = window.YM || {};
 
 YM.getTargetFromUrl = function() {
