@@ -1,4 +1,3 @@
-// yellow_mirror/scripts/init.js
 document.addEventListener('DOMContentLoaded', function() {
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
 
@@ -34,16 +33,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('popstate', YM.history.onPopState);
 
-    // Инициализация из URL
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
-        // Загружаем, но не добавляем запись (так как это уже есть в истории)
-        YM.iframe.loadTarget(normalized, { fromHistory: true });
+        // Загружаем с флагом fromPop, так как это существующая запись в истории
+        YM.iframe.loadTarget(normalized, { fromPop: true });
     } else {
-        // Главная страница
         YM.iframe.clear();
         YM.elements.input.value = '';
         YM.panel.updateValidity();
