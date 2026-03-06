@@ -3,7 +3,7 @@ window.YM = window.YM || {};
 
 YM.history = {
     /**
-     * Переход на новый URL (добавляет запись в историю)
+     * Переход на новый URL (вызывается при вводе или клике по ссылке)
      */
     navigateTo: function(target) {
         if (!target) return;
@@ -11,24 +11,27 @@ YM.history = {
         const currentTarget = YM.getTargetFromUrl();
         if (normalized === currentTarget) return; // уже на месте
 
-        // Обновляем URL через pushState
+        // Создаём новый URL с target
         const url = new URL(window.location.href);
         url.searchParams.set('target', normalized);
+        
+        // Добавляем запись в историю
         window.history.pushState({ target: normalized }, '', url);
-
-        // Загружаем сайт в iframe
-        YM.iframe.loadTarget(normalized);
+        
+        // Загружаем iframe с пометкой, что это навигация (установим ignoreNextLoad)
+        YM.iframe.loadTarget(normalized, { fromHistory: false });
     },
 
     /**
-     * Синхронизация URL с текущим содержимым iframe (без добавления записи)
+     * Синхронизация URL с текущим содержимым iframe (при необходимости)
      */
-    syncWithIframe: function(target) {
-        if (!target) return;
-        const normalized = YM.normalizeUrl(target);
+    syncIfNeeded: function(actualTarget) {
+        if (!actualTarget) return;
+        const normalized = YM.normalizeUrl(actualTarget);
         const currentTarget = YM.getTargetFromUrl();
         if (normalized === currentTarget) return;
 
+        // Заменяем текущую запись, чтобы URL соответствовал фактическому содержимому
         const url = new URL(window.location.href);
         url.searchParams.set('target', normalized);
         window.history.replaceState({ target: normalized }, '', url);
@@ -40,8 +43,8 @@ YM.history = {
     onPopState: function(event) {
         const target = YM.getTargetFromUrl();
         if (target) {
-            // Загружаем сайт, соответствующий target
-            YM.iframe.loadTarget(target);
+            // Загружаем соответствующий сайт (без добавления в историю)
+            YM.iframe.loadTarget(target, { fromHistory: true });
         } else {
             // Возврат на главную
             YM.iframe.clear();
