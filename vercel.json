@@ -1,11 +1,9 @@
+
 {
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python",
-      "config": {
-        "installCommand": "apt-get update && apt-get install -y chromium && pip install -r requirements.txt"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
