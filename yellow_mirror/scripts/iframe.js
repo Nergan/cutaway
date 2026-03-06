@@ -1,30 +1,30 @@
 window.YM = window.YM || {};
 
 YM.iframe = {
-    lastLoadTime: 0, // время последней успешной загрузки iframe
+    ignoreNextLoad: false,
 
     /**
-     * Загрузить целевой URL в iframe
+     * Загружает целевой URL в iframe.
+     * options.fromPush: true если вызов из push (будет игнорировать следующий load для проверки редиректа)
+     * options.fromPop: true если вызов из popstate (не игнорирует load)
      */
     loadTarget: function(target, options = {}) {
         if (!target) return;
-        if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) return;
+        if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
+            return;
+        }
         const normalized = YM.normalizeUrl(target);
+        // Устанавливаем ignoreNextLoad только при push
+        this.ignoreNextLoad = !!options.fromPush;
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalized)}`;
     },
 
-    /**
-     * Очистить iframe (главная страница)
-     */
     clear: function() {
         YM.elements.iframe.src = 'about:blank';
+        this.ignoreNextLoad = false;
     },
 
-    /**
-     * Обработчик успешной загрузки iframe
-     */
     handleLoad: function() {
-        this.lastLoadTime = Date.now();
         try {
             const currentIframeSrc = YM.elements.iframe.src;
             let actualTarget = null;
@@ -33,6 +33,7 @@ YM.iframe = {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 actualTarget = urlParams.get('target');
             } else if (currentIframeSrc === 'about:blank') {
+                this.ignoreNextLoad = false;
                 YM.elements.input.value = '';
                 YM.panel.updateValidity();
                 return;
@@ -43,38 +44,44 @@ YM.iframe = {
             if (!actualTarget) return;
 
             const normalizedActual = YM.normalizeUrl(actualTarget);
+
+            // Обновляем поле ввода
             YM.elements.input.value = YM.simplifyUrl(normalizedActual);
             YM.panel.updateValidity();
 
             const currentUrlTarget = YM.getTargetFromUrl();
-            if (normalizedActual !== currentUrlTarget) {
-                // Произошёл редирект или несоответствие – исправляем текущую запись
-                YM.history.replaceCurrent(normalizedActual);
+
+            if (this.ignoreNextLoad) {
+                // Это загрузка после нашего pushState
+                this.ignoreNextLoad = false;
+                if (normalizedActual !== currentUrlTarget) {
+                    // Произошёл редирект — заменяем текущую запись
+                    YM.history.replaceCurrent(normalizedActual);
+                }
+                // Если совпадают, ничего не делаем
+            } else {
+                // Это загрузка после popstate или другой (например, перезагрузка страницы)
+                if (normalizedActual !== currentUrlTarget) {
+                    // Несоответствие из-за редиректа — заменяем текущую запись
+                    YM.history.replaceCurrent(normalizedActual);
+                }
             }
         } catch (e) {
             console.warn('Ошибка в handleLoad', e);
         }
     },
 
-    /**
-     * Обработчик ошибки загрузки iframe
-     */
     handleError: function() {
         console.warn('Не удалось загрузить сайт в iframe.');
     },
 
-    /**
-     * Загрузить сайт из поля ввода (вызывается по кнопке или Enter)
-     */
     loadSite: function() {
         const trimmed = YM.elements.input.value.trim();
         let url = trimmed;
         if (!url.match(/^https?:\/\//i)) {
             url = 'https://' + url;
         }
-        // Пользовательский ввод – всегда push
         YM.history.push(url);
-        YM.iframe.loadTarget(url);
     }
 };
 
@@ -91,20 +98,8 @@ window.addEventListener('message', (event) => {
             }
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
-            const timeSinceLastLoad = Date.now() - YM.iframe.lastLoadTime;
-
-            // Эвристика: если сообщение пришло менее чем через 1 секунду после загрузки,
-            // считаем это автоматическим редиректом и заменяем текущую запись,
-            // иначе – пользовательское действие, добавляем запись.
-            if (timeSinceLastLoad < 1000) {
-                YM.history.replaceCurrent(normalizedTarget);
-            } else {
-                YM.history.push(normalizedTarget);
-            }
-
-            // Обновляем поле ввода сразу (на случай, если сообщение пришло до handleLoad)
-            YM.elements.input.value = YM.simplifyUrl(normalizedTarget);
-            YM.panel.updateValidity();
+            // Это внутренняя навигация — добавляем запись в историю
+            YM.history.push(normalizedTarget);
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
         }
