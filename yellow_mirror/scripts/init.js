@@ -20,29 +20,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
-    YM.elements.button.addEventListener('click', YM.iframe.loadSite);
+    YM.elements.button.addEventListener('click', () => {
+        const url = YM.elements.input.value.trim();
+        if (url) YM.stream.loadSite(url);
+    });
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            YM.iframe.loadSite();
+            const url = YM.elements.input.value.trim();
+            if (url) YM.stream.loadSite(url);
         }
     });
 
-    YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
-    YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
-
-    window.addEventListener('popstate', YM.history.onPopState);
+    YM.background.init();
 
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
-        const normalized = YM.normalizeUrl(initialTarget);
-        YM.elements.input.value = YM.simplifyUrl(normalized);
+        YM.elements.input.value = YM.simplifyUrl(initialTarget);
         YM.panel.updateValidity();
-        YM.iframe.loadTarget(normalized, { fromPop: true });
-        // Видео скроется внутри loadTarget
+        YM.stream.loadSite(initialTarget);
     } else {
-        YM.iframe.clear(); // clear показывает видео
-        YM.elements.input.value = '';
-        YM.panel.updateValidity();
+        YM.background.show();
     }
 });
