@@ -5,6 +5,6 @@ YM.elements = {
     minimizedBar: document.getElementById('minimizedBar'),
     input: document.getElementById('url-input'),
     button: document.getElementById('load-site-btn'),
-    iframe: document.getElementById('site-frame'),
-    splash: document.getElementById('splash')
+    iframe: document.getElementById('site-frame')
+    // splash удалён
 };

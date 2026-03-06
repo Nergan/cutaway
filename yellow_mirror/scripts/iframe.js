@@ -3,25 +3,26 @@ window.YM = window.YM || {};
 YM.iframe = {
     ignoreNextLoad: false,
 
-    /**
-     * Загружает целевой URL в iframe.
-     * options.fromPush: true если вызов из push (будет игнорировать следующий load для проверки редиректа)
-     * options.fromPop: true если вызов из popstate (не игнорирует load)
-     */
     loadTarget: function(target, options = {}) {
         if (!target) return;
         if (target.startsWith('about:') || target.startsWith('data:') || target.startsWith('javascript:')) {
             return;
         }
         const normalized = YM.normalizeUrl(target);
-        // Устанавливаем ignoreNextLoad только при push
         this.ignoreNextLoad = !!options.fromPush;
+
+        // При загрузке сайта скрываем фоновое видео
+        if (YM.background) YM.background.hide();
+
         YM.elements.iframe.src = `api/?target=${encodeURIComponent(normalized)}`;
     },
 
     clear: function() {
         YM.elements.iframe.src = 'about:blank';
         this.ignoreNextLoad = false;
+
+        // При возврате на главную показываем видео
+        if (YM.background) YM.background.show();
     },
 
     handleLoad: function() {
@@ -33,7 +34,8 @@ YM.iframe = {
                 const urlParams = new URL(currentIframeSrc).searchParams;
                 actualTarget = urlParams.get('target');
             } else if (currentIframeSrc === 'about:blank') {
-                this.ignoreNextLoad = false;
+                // Если загружен about:blank, убеждаемся, что видео показано (на случай, если clear не был вызван)
+                if (YM.background) YM.background.show();
                 YM.elements.input.value = '';
                 YM.panel.updateValidity();
                 return;
@@ -52,17 +54,12 @@ YM.iframe = {
             const currentUrlTarget = YM.getTargetFromUrl();
 
             if (this.ignoreNextLoad) {
-                // Это загрузка после нашего pushState
                 this.ignoreNextLoad = false;
                 if (normalizedActual !== currentUrlTarget) {
-                    // Произошёл редирект — заменяем текущую запись
                     YM.history.replaceCurrent(normalizedActual);
                 }
-                // Если совпадают, ничего не делаем
             } else {
-                // Это загрузка после popstate или другой (например, перезагрузка страницы)
                 if (normalizedActual !== currentUrlTarget) {
-                    // Несоответствие из-за редиректа — заменяем текущую запись
                     YM.history.replaceCurrent(normalizedActual);
                 }
             }
@@ -73,6 +70,7 @@ YM.iframe = {
 
     handleError: function() {
         console.warn('Не удалось загрузить сайт в iframe.');
+        // При ошибке можно оставить видео скрытым или показать сообщение — пока ничего не делаем
     },
 
     loadSite: function() {
@@ -85,7 +83,6 @@ YM.iframe = {
     }
 };
 
-// Обработка сообщений от iframe (внутренняя навигация)
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'iframe-navigation') {
         const frameUrl = event.data.url;
@@ -98,7 +95,6 @@ window.addEventListener('message', (event) => {
             }
 
             const normalizedTarget = YM.normalizeUrl(targetUrl);
-            // Это внутренняя навигация — добавляем запись в историю
             YM.history.push(normalizedTarget);
         } catch (e) {
             console.warn('Не удалось обработать сообщение от iframe', e);
