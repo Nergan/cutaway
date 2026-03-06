@@ -1,3 +1,4 @@
+// yellow_mirror/scripts/init.js
 document.addEventListener('DOMContentLoaded', function() {
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
 
@@ -31,27 +32,22 @@ document.addEventListener('DOMContentLoaded', function() {
     YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
     YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
 
-    window.addEventListener('popstate', () => {
-        const target = YM.getTargetFromUrl();
-        if (target) {
-            YM.iframe.loadTarget(target);
-        } else {
-            // Возврат на главную: просто очищаем поле и делаем iframe пустым
-            YM.elements.iframe.src = 'about:blank'; // опционально
-            YM.elements.input.value = '';
-            YM.panel.updateValidity();
-        }
-    });
+    // Обработка навигации по истории
+    window.addEventListener('popstate', YM.history.onPopState);
 
+    // Инициализация из URL
     const initialTarget = YM.getTargetFromUrl();
     if (initialTarget) {
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
+        // Загружаем, но не добавляем запись (replaceState при необходимости)
         YM.iframe.loadTarget(normalized);
+        // Синхронизируем URL (на случай, если он не совпадает)
+        YM.history.syncWithIframe(normalized);
     } else {
-        // Если target нет, оставляем iframe пустым (about:blank)
-        YM.elements.iframe.src = 'about:blank';
+        // Главная страница
+        YM.iframe.clear();
         YM.elements.input.value = '';
         YM.panel.updateValidity();
     }
