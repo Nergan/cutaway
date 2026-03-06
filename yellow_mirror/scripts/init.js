@@ -38,10 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
-        // Загружаем с флагом fromPop, так как это существующая запись в истории
         YM.iframe.loadTarget(normalized, { fromPop: true });
+        // Видео скроется внутри loadTarget
     } else {
-        YM.iframe.clear();
+        YM.iframe.clear(); // clear показывает видео
         YM.elements.input.value = '';
         YM.panel.updateValidity();
     }
