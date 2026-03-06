@@ -1,4 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация панели
+    YM.panel.init();
+
+    // Подсказка: если есть target в URL, мы уже на странице сайта,
+    // поле ввода заполнено упрощённым URL (заполняется сервером при вставке панели).
+    // Но сервер может не заполнить поле, поэтому пробуем извлечь из URL.
+    const currentTarget = YM.getTargetFromUrl();
+    if (currentTarget) {
+        YM.elements.input.value = YM.simplifyUrl(currentTarget);
+    } else {
+        // На главной - показываем видео
+        if (YM.background) YM.background.show();
+    }
+
+    // Валидация поля (всегда активно)
+    YM.panel.updateValidity();
+
+    // События панели
     YM.elements.input.addEventListener('input', YM.panel.updateValidity);
 
     YM.elements.expandedPanel.addEventListener('mouseover', (e) => {
@@ -19,30 +37,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
-    YM.elements.button.addEventListener('click', YM.iframe.loadSite);
+    YM.elements.minimizedBar.addEventListener('click', () => YM.panel.expand());
+    YM.elements.button.addEventListener('click', () => YM.panel.navigateToUrl());
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            YM.iframe.loadSite();
+            YM.panel.navigateToUrl();
         }
     });
-
-    YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
-    YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
-
-    window.addEventListener('popstate', YM.history.onPopState);
-
-    const initialTarget = YM.getTargetFromUrl();
-    if (initialTarget) {
-        const normalized = YM.normalizeUrl(initialTarget);
-        YM.elements.input.value = YM.simplifyUrl(normalized);
-        YM.panel.updateValidity();
-        YM.iframe.loadTarget(normalized, { fromPop: true });
-        // Видео скроется внутри loadTarget
-    } else {
-        YM.iframe.clear(); // clear показывает видео
-        YM.elements.input.value = '';
-        YM.panel.updateValidity();
-    }
 });

@@ -15,8 +15,6 @@
         <source src="/yellow_mirror/static/moon.mp4" type="video/mp4">
     </video>
 
-    <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms" title="Просмотр сайта"></iframe>
-
     <div class="panel-container">
         <div class="expanded-panel" id="expandedPanel">
             <input type="text" id="url-input" placeholder="paste web link" />
@@ -27,14 +25,12 @@
         <div class="minimized-bar" id="minimizedBar"></div>
     </div>
 
-    <!-- JavaScript модули -->
+    <!-- JavaScript модули (без iframe.js и history.js) -->
     <script src="/yellow_mirror/scripts/core.js"></script>
     <script src="/yellow_mirror/scripts/browser.js"></script>
-    <script src="/yellow_mirror/scripts/history.js"></script>
     <script src="/yellow_mirror/scripts/dom.js"></script>
-    <script src="/yellow_mirror/scripts/background.js"></script> <!-- новый скрипт -->
     <script src="/yellow_mirror/scripts/panel.js"></script>
-    <script src="/yellow_mirror/scripts/iframe.js"></script>
+    <script src="/yellow_mirror/scripts/background.js"></script>
     <script src="/yellow_mirror/scripts/init.js"></script>
 </body>
 </html>

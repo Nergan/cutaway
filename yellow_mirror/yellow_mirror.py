@@ -2,7 +2,7 @@ import asyncio
 import random
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urljoin, urlparse, quote
+from urllib.parse import urljoin, urlparse, quote, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -30,14 +30,13 @@ async def proxy(request: Request):
     if not target_url:
         raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
 
-    # Удалена проверка is_safe_url(target_url)
-
-    proxy_base_url = str(request.url).split('?')[0]
-
+    # Проверка на рекурсивные вызовы (восстановлена)
     parsed_target = urlparse(target_url)
     our_host = request.url.hostname
+    if parsed_target.netloc.split(':')[0] == our_host and parsed_target.path.startswith('/api/'):
+        raise HTTPException(status_code=400, detail="Recursive call to proxy")
 
-    # Удалён блок предотвращения рекурсивных вызовов (проверка на /api/)
+    proxy_base_url = str(request.url).split('?')[0]
 
     client_ip = request.client.host if request.client else 'unknown'
     proxy_client, user_agent = await get_client_for_ip(client_ip)
@@ -72,6 +71,20 @@ async def proxy(request: Request):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f'Proxy error: {str(e)}')
 
+    # Обработка редиректов (3xx)
+    if resp.status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get('location')
+        if location:
+            # Преобразуем относительный Location в абсолютный
+            new_target = urljoin(target_url, location)
+            # Убираем возможный фрагмент (он не нужен в Location)
+            parsed_new = urlparse(new_target)
+            new_target_clean = urlunparse(parsed_new._replace(fragment=''))
+            redirect_url = f"{proxy_base_url}?target={quote(new_target_clean, safe='')}"
+            # Возвращаем редирект клиенту
+            return RedirectResponse(url=redirect_url, status_code=resp.status_code)
+
+    # Запрещённые заголовки
     prohibited_headers = {
         'content-length',
         'content-encoding',
@@ -100,13 +113,3 @@ async def proxy(request: Request):
             status_code=resp.status_code,
             headers=filtered_headers
         )
-
-
-# Удалён fallback-роутер (путь '/{rest_of_path:path}')
-
-
-async def shutdown_clients():
-    async with ip_clients_lock:
-        for ip, (client, _, _) in ip_clients.items():
-            await client.aclose()
-        ip_clients.clear()
