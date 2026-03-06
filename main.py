@@ -1,6 +1,6 @@
 # Стандартные библиотеки
 from datetime import datetime
-from os import environ
+from os import environ, system
 
 # Установленные библиотеки
 from dotenv import load_dotenv
@@ -18,6 +18,7 @@ from toadbin.toadbin import router as toadbin_router
 from formular.formular import router as formular_router
 from yellow_mirror.yellow_mirror import router as yellow_mirror_router, shutdown_clients
 
+system('playwright install chromium')
 load_dotenv()
 
 # MongoDB для статистики главной страницы
