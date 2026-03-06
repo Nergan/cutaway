@@ -15,4 +15,4 @@ YM.simplifyUrl = function(url) {
     let simplified = normalized.replace(/^https?:\/\//i, '');
     simplified = simplified.replace(/^www\./i, '');
     return simplified;
-};  
+};
