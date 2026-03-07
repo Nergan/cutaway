@@ -20,16 +20,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     YM.elements.minimizedBar.addEventListener('click', YM.panel.expand);
-    YM.elements.button.addEventListener('click', YM.iframe.loadSite);
+    YM.elements.button.addEventListener('click', YM.navigator.loadSite);
     YM.elements.input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            YM.iframe.loadSite();
+            YM.navigator.loadSite();
         }
     });
 
-    YM.elements.iframe.addEventListener('load', () => YM.iframe.handleLoad());
-    YM.elements.iframe.addEventListener('error', () => YM.iframe.handleError());
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (link && link.href && !link.target) {
+            try {
+                const currentUrl = new URL(window.location.href);
+                const linkUrl = new URL(link.href, window.location.href);
+                if (linkUrl.origin === currentUrl.origin && linkUrl.pathname === currentUrl.pathname && linkUrl.search === currentUrl.search) {
+                    return;
+                }
+            } catch (e) {}
+            e.preventDefault();
+            YM.navigator.navigate(link.href);
+        }
+    });
+
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        e.preventDefault();
+        YM.navigator.submitForm(form);
+    });
 
     window.addEventListener('popstate', YM.history.onPopState);
 
@@ -38,10 +56,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const normalized = YM.normalizeUrl(initialTarget);
         YM.elements.input.value = YM.simplifyUrl(normalized);
         YM.panel.updateValidity();
-        YM.iframe.loadTarget(normalized, { fromPop: true });
-        // Видео скроется внутри loadTarget
+        YM.navigator.load(normalized);
     } else {
-        YM.iframe.clear(); // clear показывает видео
+        if (YM.background) YM.background.show();
         YM.elements.input.value = '';
         YM.panel.updateValidity();
     }
