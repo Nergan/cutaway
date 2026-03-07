@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const currentUrl = new URL(window.location.href);
                 const linkUrl = new URL(link.href, window.location.href);
                 if (linkUrl.origin === currentUrl.origin && linkUrl.pathname === currentUrl.pathname && linkUrl.search === currentUrl.search) {
-                    return;
+                    return; // тот же URL (возможно, якорь)
                 }
             } catch (e) {}
             e.preventDefault();
@@ -52,14 +52,30 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('popstate', YM.history.onPopState);
 
     const initialTarget = YM.getTargetFromUrl();
-    if (initialTarget) {
-        const normalized = YM.normalizeUrl(initialTarget);
-        YM.elements.input.value = YM.simplifyUrl(normalized);
-        YM.panel.updateValidity();
-        YM.navigator.load(normalized);
+    const justLoaded = sessionStorage.getItem('ym_just_loaded') === 'true';
+    if (justLoaded) {
+        sessionStorage.removeItem('ym_just_loaded');
+        // Страница только что загружена через navigator.load — не загружаем повторно, только обновляем UI
+        if (initialTarget) {
+            const normalized = YM.normalizeUrl(initialTarget);
+            YM.elements.input.value = YM.simplifyUrl(normalized);
+            YM.panel.updateValidity();
+            if (YM.background) YM.background.hide();
+        } else {
+            if (YM.background) YM.background.show();
+            YM.elements.input.value = '';
+            YM.panel.updateValidity();
+        }
     } else {
-        if (YM.background) YM.background.show();
-        YM.elements.input.value = '';
-        YM.panel.updateValidity();
+        if (initialTarget) {
+            const normalized = YM.normalizeUrl(initialTarget);
+            YM.elements.input.value = YM.simplifyUrl(normalized);
+            YM.panel.updateValidity();
+            YM.navigator.load(normalized);
+        } else {
+            if (YM.background) YM.background.show();
+            YM.elements.input.value = '';
+            YM.panel.updateValidity();
+        }
     }
 });

@@ -32,6 +32,8 @@ YM.navigator = {
             return response.text().then(html => ({ html, finalTarget }));
         })
         .then(({ html, finalTarget }) => {
+            // Устанавливаем флаг, чтобы init.js не перезагружал страницу
+            sessionStorage.setItem('ym_just_loaded', 'true');
             document.open();
             document.write(html);
             document.close();
@@ -101,6 +103,7 @@ YM.navigator = {
                 return response.text().then(html => ({ html, finalTarget }));
             })
             .then(({ html, finalTarget }) => {
+                sessionStorage.setItem('ym_just_loaded', 'true');
                 document.open();
                 document.write(html);
                 document.close();
