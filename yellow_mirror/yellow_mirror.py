@@ -37,8 +37,6 @@ async def proxy(request: Request):
     parsed_target = urlparse(target_url)
     our_host = request.url.hostname
 
-    # Удалён блок предотвращения рекурсивных вызовов (проверка на /api/)
-
     client_ip = request.client.host if request.client else 'unknown'
     proxy_client, user_agent = await get_client_for_ip(client_ip)
 
@@ -88,6 +86,7 @@ async def proxy(request: Request):
 
     content_type = resp.headers.get('content-type', '').lower()
     if 'text/html' in content_type:
+        # Используем финальный URL после редиректов как базовый для замены ссылок
         modified_html = replace_urls_in_html(resp.text, str(resp.url), proxy_base_url)
         return Response(
             content=modified_html.encode('utf-8'),
@@ -100,13 +99,3 @@ async def proxy(request: Request):
             status_code=resp.status_code,
             headers=filtered_headers
         )
-
-
-# Удалён fallback-роутер (путь '/{rest_of_path:path}')
-
-
-async def shutdown_clients():
-    async with ip_clients_lock:
-        for ip, (client, _, _) in ip_clients.items():
-            await client.aclose()
-        ip_clients.clear()
