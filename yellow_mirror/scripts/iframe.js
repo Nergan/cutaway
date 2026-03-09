@@ -70,10 +70,10 @@ YM.iframe = {
 
     handleError: function() {
         console.warn('Не удалось загрузить сайт в iframe.');
-        // При ошибке показываем фоновое видео и очищаем поле ввода
-        if (YM.background) YM.background.show();
-        YM.elements.input.value = '';
-        YM.panel.updateValidity();
+        // Перенаправляем на главную страницу Yellow Mirror
+        // Определяем базовый путь: текущий pathname с завершающим слешем
+        const basePath = window.location.pathname.replace(/\/?$/, '/');
+        window.location.href = window.location.origin + basePath;
     },
 
     loadSite: function() {
