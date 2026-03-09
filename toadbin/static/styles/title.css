@@ -1,0 +1,82 @@
+.toadbin-title {
+    font-family: 'Cormorant Garamond', 'Garamond', 'Times New Roman', serif;
+    font-weight: 400;
+    font-size: 2.4rem;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    font-style: normal;
+}
+
+.toadbin-title.toadbin-elegant {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+}
+
+.toadbin-title.toadbin-fantasy {
+    font-family: 'Cinzel', 'Garamond', serif;
+    font-weight: 400;
+    font-size: 2.3rem;
+    letter-spacing: 1.5px;
+}
+
+.toadbin-title.toadbin-playfair {
+    font-family: 'Playfair Display', 'Garamond', serif;
+    font-weight: 400;
+    font-size: 2.2rem;
+    letter-spacing: 0.8px;
+    font-style: italic;
+}
+
+.toadbin-title span:first-child {
+    color: lime;
+    text-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.toadbin-title span:last-child {
+    color: white;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.toadbin-title:hover span:first-child {
+    color: white;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.toadbin-title:hover span:last-child {
+    color: lime;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+}
+
+@media (max-width: 768px) {
+    .toadbin-title {
+        font-size: 2rem;
+    }
+    .toadbin-title.toadbin-elegant {
+        font-size: 2.1rem;
+    }
+    .toadbin-title.toadbin-fantasy {
+        font-size: 1.9rem;
+    }
+    .toadbin-title.toadbin-playfair {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .toadbin-title {
+        font-size: 1.7rem;
+    }
+    .toadbin-title.toadbin-elegant {
+        font-size: 1.8rem;
+    }
+    .toadbin-title.toadbin-fantasy {
+        font-size: 1.6rem;
+    }
+    .toadbin-title.toadbin-playfair {
+        font-size: 1.5rem;
+    }
+}

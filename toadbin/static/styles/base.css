@@ -1,0 +1,126 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.gif-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    object-fit: cover;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+.gif-background.loading {
+    opacity: 0;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+
+.container-fluid {
+    height: 100vh;
+    padding: 1rem;
+}
+
+.code-editor-container {
+    height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1rem;
+}
+
+.footer {
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.code-editor-wrapper {
+    flex: 1 1 auto;
+    position: relative;
+    min-height: 0;
+    width: 100%;
+}
+
+.notification {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+    padding: 18px 32px;
+    border-radius: 12px;
+    z-index: 9999;
+    font-size: 18px;
+    font-weight: 500;
+    text-align: center;
+    min-width: 300px;
+    max-width: 90%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.notification.show {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    .code-editor-container {
+        height: calc(100vh - 1rem);
+    }
+    .header h1 {
+        font-size: 1.25rem;
+    }
+    .notification {
+        top: 20px;
+        padding: 14px 24px;
+        font-size: 16px;
+        min-width: 260px;
+    }
+}
+
+@media (max-width: 576px) {
+    .footer {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem;
+    }
+    .footer > div {
+        width: 100%;
+        justify-content: space-between !important;
+    }
+    .notification {
+        top: 15px;
+        padding: 12px 20px;
+        font-size: 15px;
+        min-width: 240px;
+    }
+}

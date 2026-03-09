@@ -1,0 +1,7 @@
+.hljs, .hljs code {
+    background: transparent !important;
+}
+
+.code-editor-wrapper pre.hljs {
+    pointer-events: none;
+}
