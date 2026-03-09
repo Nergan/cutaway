@@ -2,7 +2,7 @@ import asyncio
 import random
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urljoin, urlparse, quote
+from urllib.parse import urljoin, urlparse, quote, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -59,11 +59,13 @@ async def proxy(request: Request):
         body = await request.body()
 
     try:
+        # Отключаем автоматическое следование редиректам
         resp = await proxy_client.request(
             method=request.method,
             url=target_url,
             headers=headers,
             content=body,
+            follow_redirects=False
         )
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail='Target server timeout')
@@ -72,6 +74,24 @@ async def proxy(request: Request):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f'Proxy error: {str(e)}')
 
+    # Если это редирект, переписываем Location и возвращаем ответ клиенту
+    if resp.status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get('location')
+        if location:
+            # Преобразуем относительный Location в абсолютный
+            absolute_location = urljoin(target_url, location)
+            # Переписываем в прокси-ссылку
+            new_location = f"{proxy_base_url}?target={quote(absolute_location, safe='')}"
+            # Создаём новый ответ с переписанным Location
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers={**resp.headers, 'location': new_location}
+            )
+        # Если Location отсутствует, просто возвращаем как есть (не должны сюда попадать)
+        return Response(content=resp.content, status_code=resp.status_code, headers=resp.headers)
+
+    # Для остальных ответов фильтруем заголовки
     prohibited_headers = {
         'content-length',
         'content-encoding',

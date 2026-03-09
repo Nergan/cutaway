@@ -70,7 +70,10 @@ YM.iframe = {
 
     handleError: function() {
         console.warn('Не удалось загрузить сайт в iframe.');
-        // При ошибке можно оставить видео скрытым или показать сообщение — пока ничего не делаем
+        // При ошибке показываем фоновое видео и очищаем поле ввода
+        if (YM.background) YM.background.show();
+        YM.elements.input.value = '';
+        YM.panel.updateValidity();
     },
 
     loadSite: function() {
