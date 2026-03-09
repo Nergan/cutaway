@@ -7,133 +7,36 @@
         {% if code_id %}
             Toadbin - Code {{ code_id }}
         {% else %}
-            Toadbin - Share your code instantly
+            Toadbin - Share your code
         {% endif %}
     </title>
     <link rel="icon" type="image/x-icon" href="/toadbin/static/favicon.png">
     
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
-    <!-- Элегантные шрифты (Garamond + альтернативы) -->
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Playfair+Display:wght@400;500&family=Cinzel:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/toadbin/static/style.css">
-    
-    <style>
-        /* Основной стиль с Garamond */
-        .toadbin-title {
-            font-family: 'Cormorant Garamond', 'Garamond', 'Times New Roman', serif;
-            font-weight: 400;
-            font-size: 2.4rem;
-            letter-spacing: 0.5px;
-            line-height: 1;
-            font-style: normal;
-        }
-        
-        /* Утонченный вариант для более изящного вида */
-        .toadbin-title.toadbin-elegant {
-            font-family: 'Cormorant Garamond', serif;
-            font-weight: 300; /* Более тонкий вес */
-            font-size: 2.5rem;
-            letter-spacing: 1px;
-        }
-        
-        /* Фэнтезийный вариант (Cinzel) */
-        .toadbin-title.toadbin-fantasy {
-            font-family: 'Cinzel', 'Garamond', serif;
-            font-weight: 400;
-            font-size: 2.3rem;
-            letter-spacing: 1.5px;
-        }
-        
-        /* Вариант с Playfair Display */
-        .toadbin-title.toadbin-playfair {
-            font-family: 'Playfair Display', 'Garamond', serif;
-            font-weight: 400;
-            font-size: 2.2rem;
-            letter-spacing: 0.8px;
-            font-style: italic;
-        }
-        
-        /* Начальные цвета */
-        .toadbin-title span:first-child {
-            color: lime; /* Ярко-зеленый */
-            text-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-        
-        .toadbin-title span:last-child {
-            color: white; /* Белый */
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        /* Эффект при наведении - инверсия цветов */
-        .toadbin-title:hover span:first-child {
-            color: white; /* Зеленая часть становится белой */
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-        }
-        
-        .toadbin-title:hover span:last-child {
-            color: lime; /* Белая часть становится зеленой */
-            text-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
-        }
-        
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .toadbin-title {
-                font-size: 2rem;
-            }
-            .toadbin-title.toadbin-elegant {
-                font-size: 2.1rem;
-            }
-            .toadbin-title.toadbin-fantasy {
-                font-size: 1.9rem;
-            }
-            .toadbin-title.toadbin-playfair {
-                font-size: 1.8rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .toadbin-title {
-                font-size: 1.7rem;
-            }
-            .toadbin-title.toadbin-elegant {
-                font-size: 1.8rem;
-            }
-            .toadbin-title.toadbin-fantasy {
-                font-size: 1.6rem;
-            }
-            .toadbin-title.toadbin-playfair {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/toadbin/static/styles/base.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/editor.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/copy-button.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/scrollbars.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/highlight.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/title.css">
 </head>
 <body>
-    <!-- GIF Background (src will be set by random_background.js) -->
     <video class="gif-background" autoplay loop muted playsinline></video>
     
-    <!-- Dark Overlay -->
     <div class="overlay"></div>
     
-    <!-- Main Content -->
     <div class="container-fluid">
         <div class="code-editor-container">
-            <!-- Header -->
             <div class="header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h1 class="h3 mb-0">
                         <i class="bi bi-code-slash me-2"></i>
                         <a href="/toadbin" style="text-decoration: none;">
-                            <!-- Меняйте класс здесь для разных стилей: 
-                                 toadbin-elegant, toadbin-fantasy, toadbin-playfair -->
                             <span class="toadbin-title toadbin-elegant">
                                 <span>Toad</span><span>bin</span>
                             </span>
@@ -150,7 +53,6 @@
                         {% endif %}
                     </h1>
                     
-                    <!-- Кнопка копирования кода (только при наличии code_id) -->
                     {% if code_id %}
                     <button id="copyCodeButton" class="copy-code-btn" title="Copy code to clipboard">
                         <i class="bi bi-copy"></i>
@@ -159,7 +61,6 @@
                 </div>
             </div>
             
-            <!-- Code Input Area -->
             <textarea 
                 id="codeInput" 
                 class="code-editor" 
@@ -171,7 +72,6 @@
                 {% if code_id %}disabled{% endif %}
             >{% if code %}{{ code }}{% endif %}</textarea>
             
-            <!-- Footer -->
             <div class="footer">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -208,7 +108,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/toadbin/scripts/random background.js"></script>
     <script src="/toadbin/scripts/character counter.js"></script>
-    <!-- highlight.js теперь всегда подключен (и для просмотра, и для редактирования) -->
     <script src="/toadbin/scripts/highlight.js"></script>
     {% if not code_id %}
         <script src="/toadbin/scripts/save.js"></script>

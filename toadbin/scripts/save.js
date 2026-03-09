@@ -1,6 +1,7 @@
-// toadbin/scripts/save.js
 (function() {
-    document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', () => {
         const codeInput = document.getElementById('codeInput');
         if (!codeInput) {
             console.warn('codeInput not found, save.js will not work');
@@ -9,7 +10,44 @@
 
         let isProcessing = false;
 
-        async function getExistingIds() {
+        /**
+         * Show a notification message.
+         * @param {string} message - Message to display.
+         * @param {number} duration - Display duration in ms.
+         */
+        const showNotification = (message, duration = 5000) => {
+            let notification = document.getElementById('notification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'notification';
+                notification.className = 'notification';
+                document.body.appendChild(notification);
+            }
+
+            if (notification.timeoutId) {
+                clearTimeout(notification.timeoutId);
+            }
+
+            notification.textContent = message;
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+
+            notification.timeoutId = setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, duration);
+        };
+
+        /**
+         * Fetch all existing code IDs from the server.
+         * @returns {Promise<string[]>}
+         */
+        const getExistingIds = async () => {
             try {
                 const response = await fetch('./api/existing-ids');
                 if (!response.ok) throw new Error('Failed to fetch existing IDs');
@@ -18,51 +56,61 @@
                 console.error('Error fetching existing IDs:', error);
                 return [];
             }
-        }
+        };
 
-        function generateUUIDv4() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        /**
+         * Generate a random UUID v4 (not cryptographically secure).
+         * @returns {string}
+         */
+        const generateUUIDv4 = () => {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
                 const r = Math.random() * 16 | 0;
                 const v = c === 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
-        }
+        };
 
-        function generateUniqueId(existingIds) {
-            let newId;
+        /**
+         * Generate a unique ID not present in existingIds.
+         * @param {string[]} existingIds - List of existing IDs.
+         * @returns {string}
+         * @throws Will throw if unable to generate unique ID after max attempts.
+         */
+        const generateUniqueId = (existingIds) => {
             const maxAttempts = 100;
-            let attempts = 0;
-            
-            do {
-                newId = generateUUIDv4();
-                attempts++;
-                if (attempts > maxAttempts) throw new Error('Failed to generate unique ID');
-            } while (existingIds.includes(newId));
-            
-            return newId;
-        }
+            for (let attempts = 0; attempts < maxAttempts; attempts++) {
+                const newId = generateUUIDv4();
+                if (!existingIds.includes(newId)) {
+                    return newId;
+                }
+            }
+            throw new Error('Failed to generate unique ID after 100 attempts');
+        };
 
-        async function saveCode() {
+        /**
+         * Save the current code to the server.
+         */
+        const saveCode = async () => {
             if (isProcessing) return;
-            
+
             const code = codeInput.value.trim();
             if (!code) {
-                alert('Please enter some code before saving.');
+                showNotification('Please enter some code before saving.', 3000);
                 return;
             }
-            
+
             isProcessing = true;
-            
+
             try {
                 const existingIds = await getExistingIds();
                 const newId = generateUniqueId(existingIds);
-                
+
                 const response = await fetch('./api/save', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({id: newId, code: code})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: newId, code: code })
                 });
-                
+
                 if (response.ok) {
                     window.location.href = `/toadbin/${newId}`;
                 } else {
@@ -70,32 +118,26 @@
                 }
             } catch (error) {
                 console.error('Error saving code:', error);
-                alert('An error occurred while saving. Please try again.');
+                showNotification('Sorry, database is busy :(');
             } finally {
                 isProcessing = false;
             }
-        }
+        };
 
-        // Глобальный обработчик для предотвращения стандартного сохранения страницы
-        window.addEventListener('keydown', function(event) {
-            // Проверяем Ctrl+S или Cmd+S НЕЗАВИСИМО от раскладки
-            const isCtrlS = (event.ctrlKey || event.metaKey) && 
-                           (event.code === 'KeyS' || event.key === 's' || event.key === 'ы');
-            
-            // Если это Ctrl+S и фокус на textarea, блокируем стандартное поведение
+        // Prevent default browser save (Ctrl+S) when focused on textarea
+        window.addEventListener('keydown', (event) => {
+            const isCtrlS = (event.ctrlKey || event.metaKey) &&
+                (event.code === 'KeyS' || event.key === 's' || event.key === 'ы');
             if (isCtrlS && document.activeElement === codeInput) {
                 event.preventDefault();
             }
         });
 
-        // Обработчик на textarea для вызова нашей функции сохранения
-        codeInput.addEventListener('keydown', function(event) {
-            // Проверяем Ctrl+S или Cmd+S НЕЗАВИСИМО от раскладки
-            const isCtrlS = (event.ctrlKey || event.metaKey) && 
-                           (event.code === 'KeyS' || event.key === 's' || event.key === 'ы');
-            
+        // Trigger save on Ctrl+S
+        codeInput.addEventListener('keydown', (event) => {
+            const isCtrlS = (event.ctrlKey || event.metaKey) &&
+                (event.code === 'KeyS' || event.key === 's' || event.key === 'ы');
             if (isCtrlS) {
-                // Сохраняем код
                 saveCode();
             }
         });
