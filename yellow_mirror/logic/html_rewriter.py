@@ -1,4 +1,4 @@
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin, quote, urlparse, urlunparse
 from bs4 import BeautifulSoup
 from .url_utils import is_safe_url
 
@@ -17,7 +17,15 @@ def replace_urls_in_html(html: str, base_url: str, proxy_base_url: str) -> str:
             if original and not original.startswith('#') and not original.startswith('data:'):
                 absolute = urljoin(base_url, original)
                 if is_safe_url(absolute):
-                    element[attr] = f"{proxy_base_url}?target={quote(absolute, safe='')}"
+                    # Разделяем URL на часть без фрагмента и сам фрагмент
+                    parsed = urlparse(absolute)
+                    # Собираем URL без фрагмента
+                    url_without_fragment = urlunparse(parsed._replace(fragment=''))
+                    quoted_target = quote(url_without_fragment, safe='')
+                    new_url = f"{proxy_base_url}?target={quoted_target}"
+                    if parsed.fragment:
+                        new_url += "#" + parsed.fragment
+                    element[attr] = new_url
 
     for element in soup.find_all(style=True):
         style = element['style']
@@ -28,21 +36,26 @@ def replace_urls_in_html(html: str, base_url: str, proxy_base_url: str) -> str:
                 url_candidate = before.strip('\'" ')
                 absolute = urljoin(base_url, url_candidate)
                 if is_safe_url(absolute):
-                    new_style.append(f"url({proxy_base_url}?target={quote(absolute, safe='')}){rest}")
+                    # Аналогично обрабатываем фрагменты в CSS (редко, но возможно)
+                    parsed = urlparse(absolute)
+                    url_without_fragment = urlunparse(parsed._replace(fragment=''))
+                    quoted_target = quote(url_without_fragment, safe='')
+                    new_url = f"{proxy_base_url}?target={quoted_target}"
+                    if parsed.fragment:
+                        new_url += "#" + parsed.fragment
+                    new_style.append(f"url({new_url}){rest}")
                 else:
                     new_style.append(f'url({before}){rest}')
             else:
                 new_style.append(part)
         element['style'] = ''.join(new_style)
 
-    # Удалён блок добавления стиля с белым фоном
-
     if not soup.body:
         if not soup.html:
             soup.append(soup.new_tag('html'))
         soup.html.append(soup.new_tag('body'))
 
-    # Добавляем скрипт для отслеживания навигации внутри iframe
+    # Добавляем скрипт для отслеживания навигации внутри iframe (без изменений)
     script_tag = soup.new_tag('script')
     script_tag.string = '''
     (function() {
