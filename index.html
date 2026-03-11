@@ -618,13 +618,13 @@
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    counterEl.textContent = `visitors: ${data.count}`;
+                    counterEl.textContent = `visitors ${data.count}`;
                 } else {
-                    counterEl.textContent = 'visitors: ?';
+                    counterEl.textContent = 'visitors ?';
                 }
             } catch (error) {
                 console.error('Failed to track visitor:', error);
-                counterEl.textContent = 'visitors: ?';
+                counterEl.textContent = 'visitors ?';
             }
         }
 
