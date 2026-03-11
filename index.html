@@ -9,10 +9,9 @@
     <!-- Иконки Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     <link rel="icon" type="image/x-icon" href="https://sun9-62.userapi.com/s/v1/ig2/TxIWkFv2SSn7KM4g0q4bd_7WBUUtjP1EHEY9Oviab7JnTXhZ2EsH75FdIjfZXzrvWXlUNndi28sep9lCQLs0dzyD.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,600x600&from=bu&cs=600x0">
-    <!-- Пиксельный шрифт -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&display=swap" rel="stylesheet">
+    <!-- Подключаем Righteous и Yanone Kaffeesatz -->
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Yanone+Kaffeesatz:wght@300;400&display=swap" rel="stylesheet">
     <style>
-        /* все стили остались без изменений */
         :root {
             --bg-dark: #0a0a0a;
             --card-bg: #151515;
@@ -28,11 +27,52 @@
         body {
             background-color: var(--bg-dark);
             padding: 20px;
-            font-family: 'Silkscreen', 'Press Start 2P', monospace;
+            /* Базовый шрифт – Yanone Kaffeesatz Light */
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 300;
             min-height: 100vh;
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.05) 0%, transparent 20%),
                 radial-gradient(circle at 90% 80%, rgba(0, 217, 255, 0.05) 0%, transparent 20%);
+        }
+
+        /* Белый текст – шрифт Righteous */
+        .welcome-text,
+        .project-card .card-title,
+        .badge-category {
+            font-family: 'Righteous', cursive;
+            font-weight: 400;
+            color: var(--text-primary);
+        }
+
+        /* Серый текст – Yanone Kaffeesatz Light */
+        .job-text,
+        .project-card .card-text {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 300;
+            color: var(--text-secondary);
+        }
+
+        /* Счётчик посетителей – Yanone Light курсив */
+        .visitor-counter {
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 300;
+            font-style: italic;
+            color: var(--text-secondary);
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 1.4rem;
+            background-color: rgba(30, 30, 30, 0.25);
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+            padding: 5px 10px;
+            border-radius: 8px;
+            z-index: 1000;
+            transition: background-color 0.2s;
+        }
+        .visitor-counter:hover {
+            background-color: rgba(40, 40, 40, 0.4);
         }
 
         /* Стили для заголовка и контактов */
@@ -58,15 +98,13 @@
         }
         
         .welcome-text {
-            color: var(--text-primary);
-            font-size: 1.8rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            line-height: 1.4;
+            line-height: 1.3;
         }
         
         .job-text {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
+            font-size: 1.5rem;
             font-style: italic;
             opacity: 0.6;
             margin-bottom: 20px;
@@ -82,29 +120,35 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            color: var(--accent-cyan);
             text-decoration: none;
-            font-size: 0.9rem;
+            font-size: 1.4rem;
             padding: 6px 12px;
             border-radius: 6px;
+            transition: all 0.3s ease;
+            font-family: 'Yanone Kaffeesatz', sans-serif;
+            font-weight: 300;
+        }
+
+        /* Обычная ссылка (Telegram) – синяя */
+        .contact-link {
+            color: var(--accent-cyan);
             background-color: rgba(0, 217, 255, 0.1);
             border: 1px solid rgba(0, 217, 255, 0.2);
-            transition: all 0.3s ease;
         }
-        
+
+        .contact-link.github {
+            color: var(--accent-green);
+            background-color: rgba(5, 255, 161, 0.1);
+            border: 1px solid rgba(5, 255, 161, 0.2);
+        }
+
         .contact-link:hover {
             background-color: rgba(0, 217, 255, 0.2);
             transform: translateY(-2px);
             color: white;
             text-decoration: none;
         }
-        
-        .contact-link.github {
-            color: var(--accent-green);
-            background-color: rgba(5, 255, 161, 0.1);
-            border: 1px solid rgba(5, 255, 161, 0.2);
-        }
-        
+
         .contact-link.github:hover {
             background-color: rgba(5, 255, 161, 0.2);
             color: white;
@@ -155,17 +199,14 @@
         }
         
         .project-card .card-title {
-            font-weight: 700;
-            color: var(--text-primary);
             margin-bottom: 1rem;
-            font-size: 1.3rem;
+            font-size: 1.8rem;
             letter-spacing: 0.5px;
         }
         
         .project-card .card-text {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
+            font-size: 1.4rem;
+            line-height: 1.5;
             margin-bottom: 1.5rem;
         }
         
@@ -212,8 +253,8 @@
         }
         
         .badge-category {
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 1rem;
+            font-weight: 400;
             padding: 0.5em 1em;
             border-radius: 50px;
             letter-spacing: 0.5px;
@@ -245,7 +286,6 @@
         .icon-8 { 
             background: linear-gradient(135deg, #ff0066, #cc0052);
         }
-        /* Новый класс для чёрного фона иконки */
         .icon-black {
             background: black;
         }
@@ -272,12 +312,10 @@
             border: 1px solid rgba(5, 255, 161, 0.3);
         }
         
-        /* Эффект свечения для некоторых элементов */
         .glow-on-hover:hover {
             box-shadow: 0 0 15px currentColor;
         }
         
-        /* Декоративный элемент в углу карточки */
         .corner-decoration {
             position: absolute;
             bottom: 15px;
@@ -290,27 +328,6 @@
         .project-card:hover .corner-decoration {
             opacity: 0.7;
         }
-        
-        /* ===== ИСПРАВЛЕННЫЙ СЧЁТЧИК ===== */
-        .visitor-counter {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            background-color: rgba(30, 30, 30, 0.25);
-            -webkit-backdrop-filter: blur(5px);
-            backdrop-filter: blur(5px);
-            padding: 5px 10px;
-            border-radius: 8px;
-            z-index: 1000;
-            font-family: 'Silkscreen', 'Press Start 2P', monospace;
-            transition: background-color 0.2s;
-        }
-        .visitor-counter:hover {
-            background-color: rgba(40, 40, 40, 0.4);
-        }
-        /* ================================= */
         
         /* Адаптивные отступы */
         @media (max-width: 768px) {
@@ -327,7 +344,10 @@
             }
             
             .welcome-text {
-                font-size: 1.4rem;
+                font-size: 2rem;
+            }
+            .job-text {
+                font-size: 1.3rem;
             }
         }
         
@@ -337,7 +357,6 @@
             }
         }
         
-        /* Стиль для контейнера с сеткой */
         .projects-grid {
             animation: fadeIn 0.8s ease-out;
         }
@@ -485,13 +504,12 @@
                     </a>
                 </div>
 
-                <!-- Проект 6: yellow mirror (новый) -->
+                <!-- Проект 6: yellow mirror -->
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
                     <a href="/yellow-mirror" class="project-link">
                         <div class="project-card">
                             <div class="card-body">
                                 <div class="project-icon icon-black">
-                                    <!-- Иконка глобуса (жёлтая) через SVG data URI -->
                                     <img src="/yellow_mirror/static/favicon.png" alt="Globe" width="24" height="24">
                                 </div>
                                 <h5 class="card-title" data-i18n="project6_title">yellow mirror</h5>
@@ -506,7 +524,7 @@
                         </div>
                     </a>
                 </div>
-                <!-- Конец новых проектов -->
+                <!-- Конец проектов -->
             </div>
         </div>
     </div>
@@ -517,7 +535,7 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Встроенный скрипт для интернационализации и скрытия проекта scriptura для российских пользователей -->
+    <!-- Скрипты интернационализации и трекинга -->
     <script>
         const translations = {
           en: {
@@ -538,9 +556,8 @@
             project5_title: "formular",
             project5_desc: "any to any (not working)",
             project5_category: "doc",
-            // Новый проект
             project6_title: "yellow mirror",
-            project6_desc: "web mirror",
+            project6_desc: "simple web browser",
             project6_category: "web"
           },
           ru: {
@@ -561,7 +578,6 @@
             project5_title: "formular",
             project5_desc: "конвертер файлов (не работает)",
             project5_category: "прикладные задачи",
-            // Новый проект
             project6_title: "yellow mirror",
             project6_desc: "веб зеркало",
             project6_category: "веб"
@@ -569,26 +585,17 @@
         };
 
         function setLanguage(lang) {
-          if (!translations[lang]) {
-            lang = 'en';
-          }
-          const elements = document.querySelectorAll('[data-i18n]');
-          elements.forEach(el => {
+          if (!translations[lang]) lang = 'en';
+          document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
-            if (translations[lang][key]) {
-              el.innerHTML = translations[lang][key];
-            } else if (translations['en'][key]) {
-              el.innerHTML = translations['en'][key];
-            }
+            if (translations[lang][key]) el.innerHTML = translations[lang][key];
+            else if (translations['en'][key]) el.innerHTML = translations['en'][key];
           });
         }
 
         function detectLanguage() {
-          const browserLang = navigator.language || navigator.userLanguage;
-          if (browserLang && browserLang.toLowerCase().startsWith('ru')) {
-            return 'ru';
-          }
-          return 'en';
+          const lang = navigator.language || navigator.userLanguage;
+          return lang && lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
         }
 
         function getVisitorId() {
@@ -624,14 +631,10 @@
         document.addEventListener('DOMContentLoaded', function() {
           const lang = detectLanguage();
           setLanguage(lang);
-
           if (lang === 'ru') {
             const projectToHide = document.querySelector('[data-project="scriptura"]');
-            if (projectToHide) {
-              projectToHide.style.display = 'none';
-            }
+            if (projectToHide) projectToHide.style.display = 'none';
           }
-          
           trackVisitor();
         });
     </script>
@@ -639,17 +642,13 @@
     <!-- Скрипт для дополнительных эффектов -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.project-card');
-            cards.forEach((card, index) => {
+            document.querySelectorAll('.project-card').forEach((card, index) => {
                 card.style.animationDelay = `${index * 0.05}s`;
             });
-            
-            const icons = document.querySelectorAll('.project-icon');
-            icons.forEach(icon => {
+            document.querySelectorAll('.project-icon').forEach(icon => {
                 icon.addEventListener('mouseenter', function() {
                     this.style.transform = 'rotate(15deg) scale(1.15)';
                 });
-                
                 icon.addEventListener('mouseleave', function() {
                     this.style.transform = 'rotate(0) scale(1)';
                 });
