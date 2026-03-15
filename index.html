@@ -161,7 +161,7 @@
             line-height: 1.5;
         }
 
-        /* Иконки — при наведении красный фон */
+        /* Иконки — без прозрачности, только при наведении меняется фон */
         .project-icon {
             display: flex;
             align-items: center;
@@ -182,24 +182,14 @@
             width: 48px;
             height: 48px;
             object-fit: contain;
-            opacity: 0.7;
-            filter: brightness(0.9);
-            transition: opacity 0.2s, filter 0.2s;
-        }
-
-        .project-card:hover .custom-icon {
+            /* Убрана прозрачность и фильтры */
             opacity: 1;
+            filter: none;
         }
 
-        /* Иконка formular всегда белая (не только при наведении) */
+        /* Иконка formular всегда белая */
         .icon-5 .custom-icon {
             filter: brightness(0) invert(1);
-            opacity: 1; /* чтобы была полностью непрозрачной */
-        }
-
-        /* Убираем возможное переопределение при наведении, но можно оставить, так как специфичность выше */
-        .project-card:hover .icon-5 .custom-icon {
-            filter: brightness(0) invert(1); /* оставляем тот же эффект, но можно и убрать */
             opacity: 1;
         }
 
@@ -238,6 +228,12 @@
             text-decoration: none;
             color: inherit;
             display: block;
+        }
+
+        /* ---------- Стили для русского языка: все тексты шрифтом Inter ---------- */
+        .lang-ru .welcome-text,
+        .lang-ru .project-card .card-title {
+            font-family: 'Inter', sans-serif;
         }
 
         /* ---------- Счётчик посетителей с красным акцентом ---------- */
@@ -439,7 +435,7 @@
     <!-- Bootstrap JS (необязателен) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Скрипты интернационализации и трекинга (без изменений) -->
+    <!-- Скрипты интернационализации и трекинга -->
     <script>
         const translations = {
           en: {
@@ -493,6 +489,13 @@
             if (translations[lang][key]) el.innerHTML = translations[lang][key];
             else if (translations['en'][key]) el.innerHTML = translations['en'][key];
           });
+          
+          // Управление классом для смены шрифта на русском
+          if (lang === 'ru') {
+            document.body.classList.add('lang-ru');
+          } else {
+            document.body.classList.remove('lang-ru');
+          }
         }
 
         function detectLanguage() {
