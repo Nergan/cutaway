@@ -122,8 +122,6 @@
          * @returns {Promise<boolean>} True if successful (will redirect), false on error.
          */
         async function saveCode() {
-            console.log('saving code...')
-
             if (isProcessing) return false;
 
             const code = codeInput.value.trim();
@@ -133,6 +131,7 @@
             }
 
             isProcessing = true;
+            console.log('saving code...')
 
             try {
                 const existingIds = await fetchExistingIds();
