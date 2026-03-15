@@ -20,7 +20,7 @@
     
     <link rel="stylesheet" href="/toadbin/static/styles/base.css">
     <link rel="stylesheet" href="/toadbin/static/styles/editor.css">
-    <link rel="stylesheet" href="/toadbin/static/styles/copy-button.css">
+    <link rel="stylesheet" href="/toadbin/static/styles/buttons.css">
     <link rel="stylesheet" href="/toadbin/static/styles/scrollbars.css">
     <link rel="stylesheet" href="/toadbin/static/styles/highlight.css">
     <link rel="stylesheet" href="/toadbin/static/styles/title.css">
@@ -54,9 +54,13 @@
                     </h1>
                     
                     {% if code_id %}
-                    <button id="copyCodeButton" class="copy-code-btn" title="Copy code to clipboard">
-                        <i class="bi bi-copy"></i>
-                    </button>
+                        <button id="copyCodeButton" class="copy-code-btn" title="Copy code to clipboard">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                    {% else %}
+                        <button id="saveCodeButton" class="copy-code-btn" title="Save code (Ctrl+S)">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                        </button>
                     {% endif %}
                 </div>
             </div>
