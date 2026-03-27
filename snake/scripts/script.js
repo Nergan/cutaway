@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 1. Пытаемся получить список через API-эндпоинт (правильный путь с префиксом /snake)
         try {
-            const response = await fetch('/api/snake-backgrounds');
+            const response = await fetch('./api/snake-backgrounds');
             if (response.ok) {
                 const text = await response.text();
                 // Проверяем, что это JSON, а не HTML
