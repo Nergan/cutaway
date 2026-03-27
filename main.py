@@ -1,13 +1,16 @@
 # Стандартные библиотеки
 from datetime import datetime
-from os import environ
+from os import environ, listdir
+from os.path import isdir
+from pathlib import Path
 
 # Установленные библиотеки
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
+from fastapi.templating import Jinja2Templates
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
@@ -27,7 +30,12 @@ stats_db = client['main-page']
 
 app = FastAPI()
 
+BASE_DIR = Path(__file__).parent
+templates = Jinja2Templates(directory=BASE_DIR)
+BACKGROUNDS_DIR = BASE_DIR / 'mainpage-backgrounds'
+
 # Монтирование статических директорий
+app.mount('/mainpage-backgrounds', StaticFiles(directory='mainpage-backgrounds'), name='mainpage-backgrounds')
 app.mount('/evenfest/static', StaticFiles(directory='evenfest/static'), name='evenfest')
 app.mount('/snake/static', StaticFiles(directory='snake/static'), name='snake-static')
 app.mount('/snake/scripts', StaticFiles(directory='snake/scripts'), name='snake-scripts')
@@ -94,3 +102,15 @@ async def track_visitor(request: TrackRequest):
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
     return RedirectResponse(url='/')
+
+@app.get('/api/mainpage-backgrounds')
+async def get_mainpage_backgrounds():
+    """Return a list of available background video filenames."""
+    if not BACKGROUNDS_DIR.exists():
+        raise HTTPException(status_code=404, detail='Backgrounds directory not found')
+    try:
+        mp4_files = [f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
+        mp4_files.sort()
+        return JSONResponse(content={'backgrounds': mp4_files})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
