@@ -22,8 +22,6 @@ from formular.formular import router as formular_router
 from yellow_mirror.yellow_mirror import router as yellow_mirror_router, shutdown_clients
 # from simple_aichat.simple_aichat import router as simple_aichat_router
 
-import llama_cpp
-
 
 load_dotenv()
 
