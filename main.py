@@ -20,7 +20,7 @@ from snake.snake import router as snake_router
 from toadbin.toadbin import router as toadbin_router
 from formular.formular import router as formular_router
 from yellow_mirror.yellow_mirror import router as yellow_mirror_router, shutdown_clients
-# from simple_aichat.simple_aichat import router as simple_aichat_router
+from simple_aichat.simple_aichat import router as simple_aichat_router
 
 load_dotenv()
 
