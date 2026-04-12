@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple AI Chat</title>
+  <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/15690/15690635.png">
+  <script type="text/javascript" src="/eel.js"></script>
+  <script>
+    // POLYFILL FOR FASTAPI WEBSOCKETS (Auto-detects environment)
+    if (typeof eel === 'undefined') {
+      console.log("Eel not found, initializing FastAPI WebSockets...");
+      window.eel = {
+        expose: function(func) { window[func.name] = func; },
+        _ws: new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/simple-aichat/ws`),
+        _callbacks: {},
+        _msgId: 0,
+        _send: function(action, args) {
+          return new Promise((resolve) => {
+            const id = ++this._msgId;
+            this._callbacks[id] = resolve;
+            const payload = JSON.stringify({id, action, args});
+            if (this._ws.readyState === WebSocket.OPEN) {
+              this._ws.send(payload);
+            } else {
+              this._ws.addEventListener('open', () => this._ws.send(payload), {once: true});
+            }
+          });
+        },
+        get_config: () => () => window.eel._send('get_config',[]),
+        init_model: () => () => window.eel._send('init_model',[]),
+        update_names: (u, a) => () => window.eel._send('update_names', [u, a]),
+        set_chat_history: (h) => () => window.eel._send('set_chat_history', [h]),
+        clear_history: () => () => window.eel._send('clear_history',[]),
+        interrupt: () => () => window.eel._send('interrupt', []),
+        send_message: (t) => () => window.eel._send('send_message',[t])
+      };
+
+      window.eel._ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'response' && window.eel._callbacks[data.id]) {
+          window.eel._callbacks[data.id](data.result);
+          delete window.eel._callbacks[data.id];
+        } else if (data.type === 'call' && typeof window[data.func] === 'function') {
+          window[data.func](...data.args);
+        }
+      };
+    }
+  </script>
+  <style>
+    /* OPT-CORE: WARM MID-DARK EDITION */
+    body { background-color: #383431; color: #e5e1db; font-family: Verdana, sans-serif; font-size: 10pt; margin: 0; padding: 15px; }
+    
+    .container { max-width: 1000px; margin: 0 auto; background-color: #423e3b; border: 1px solid #665f5a; padding: 20px 25px; display: flex; flex-direction: column; height: 95vh; box-sizing: border-box; border-radius: 8px; }
+    
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background-color: #332d29; border-radius: 4px; border: 1px solid #665f5a; }
+    ::-webkit-scrollbar-thumb { background-color: #524a44; border-radius: 4px; border: 1px solid #7d736c; }
+    ::-webkit-scrollbar-thumb:hover { background-color: #665f5a; }
+    ::-webkit-scrollbar-corner { background-color: #383431; }
+    * { scrollbar-width: thin; scrollbar-color: #524a44 #332d29; } 
+
+    .header-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #665f5a; padding-bottom: 5px; margin-bottom: 10px; flex-shrink: 0; }
+    h1 { font-family: "Trebuchet MS", sans-serif; color: #d4a373; font-size: 20pt; margin: 0; }
+    .settings-area { display: flex; gap: 15px; font-size: 9pt; color: #9e958f; }
+    .settings-area input { background-color: #332d29; color: #e5e1db; border: 1px solid #736b66; border-radius: 4px; padding: 4px 8px; outline: none; font-family: inherit; width: 100px; transition: border-color 0.2s; }
+    .settings-area input:focus { border-color: #d4a373; }
+    
+    .info-box { background-color: #4a3c31; border: 1px solid #7a6352; padding: 12px 15px; margin-bottom: 15px; color: #e8dbce; font-size: 9pt; border-radius: 6px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .extra-info { display: none; margin-top: 10px; }
+    .extra-info.expanded { display: block; }
+    .info-toggle-btn { background: none; border: none; color: #d4a373; cursor: pointer; font-size: 8pt; margin-top: 8px; text-align: center; font-family: inherit; padding: 0; }
+    .info-toggle-btn:hover { color: #e5e1db; text-decoration: underline; }
+    
+    .token-bar-container { background-color: #332d29; border: 1px solid #736b66; height: 18px; position: relative; margin-bottom: 15px; flex-shrink: 0; border-radius: 4px; overflow: hidden; }
+    .token-bar-fill { background-color: #a86c6c; height: 100%; width: 0%; transition: width 0.3s ease; }
+    .token-bar-text { position: absolute; top: 0; left: 0; right: 0; text-align: center; font-size: 8pt; line-height: 18px; color: #f0ebe1; text-shadow: 1px 1px #222; }
+
+    .chat-container { flex-grow: 1; background-color: #383431; border: 1px solid #736b66; padding: 15px; overflow-y: auto; margin-bottom: 15px; border-radius: 6px; }
+    .message-row { margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap; }
+    .role-user { color: #d98a59; font-weight: bold; }
+    .role-ai { color: #d4a373; font-weight: bold; }
+    .msg-text { color: #e5e1db; }
+    .thinking { font-style: italic; color: #9e958f; }
+
+    .input-area { display: flex; gap: 10px; flex-direction: column; flex-shrink: 0; }
+    textarea { width: 100%; box-sizing: border-box; background-color: #332d29; color: #e5e1db; border: 1px solid #736b66; padding: 10px; font-family: inherit; font-size: 10pt; resize: vertical; outline: none; border-radius: 6px; }
+    textarea:focus { border-color: #d4a373; }
+    
+    .btn-group { display: flex; gap: 10px; align-self: flex-end; }
+    button { background-color: #524a44; border-top: 2px solid #7d736c; border-left: 2px solid #7d736c; border-bottom: 2px solid #332d29; border-right: 2px solid #332d29; color: #e5e1db; padding: 6px 16px; font-family: Verdana, sans-serif; font-size: 10pt; cursor: pointer; border-radius: 6px; }
+    button:active { border-top: 2px solid #332d29; border-left: 2px solid #332d29; border-bottom: 2px solid #7d736c; border-right: 2px solid #7d736c; background-color: #423e3b; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; border-color: #555; background-color: #333; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header-row">
+    <h1>Simple AI Chat</h1>
+    <div class="settings-area">
+      <label>User Name: <input type="text" id="userNameInput" onchange="updateNames()"></label>
+      <label>AI Name: <input type="text" id="aiNameInput" onchange="updateNames()"></label>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-content">
+      This is the simplest possible chat for communicating with the dumbest possible AI model. It's a miracle it even launched on Vercel.
+      <div id="extraInfo" class="extra-info">
+        <br> Why haven't I entered any messages yet, but I see multiple used tokens? - These are tokens spent on the start prompt.
+        <br><br> What model is this? - One of the gguf models from <a style="color:#ae9583" href="https://huggingface.co" target="_blank">huggingface.co</a>.
+        <br><br> Chat history is stored only locally in your browser and will be erased if you clear the page cache.
+      </div>
+    </div>
+    <button id="toggleInfoBtn" class="info-toggle-btn" onclick="toggleInfo()">▼</button>
+  </div>
+
+  <div class="token-bar-container" title="Context Memory Tracker">
+    <div class="token-bar-fill" id="tokenFill"></div>
+    <div class="token-bar-text" id="tokenText">Tokens Used: 0 / 2048</div>
+  </div>
+
+  <div class="chat-container" id="chatBox">
+    <!-- Chat dynamically injected here -->
+  </div>
+
+  <div class="input-area">
+    <textarea id="userInput" rows="3" placeholder="Initializing engine... please wait." disabled></textarea>
+    <div class="btn-group">
+      <button id="clearBtn" onclick="clearContext()" disabled>Clear Chat</button>
+      <button id="stopBtn" onclick="interruptGeneration()" disabled>Interrupt</button>
+      <button onclick="downloadHistoryTXT()">Download history.txt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let config = {};
+  let chatHistoryJS =[]; 
+  let currentAiMsgEl = null;
+  let thinkingEl = null;
+  let isGenerating = false;
+
+  // Expose backend callback functions for BOTH Eel and WebSockets
+  eel.expose(generation_finished);
+  eel.expose(update_tokens);
+  eel.expose(remove_thinking_indicator);
+  eel.expose(append_ai_chunk);
+
+  function toggleInfo() {
+    const extra = document.getElementById('extraInfo');
+    const btn = document.getElementById('toggleInfoBtn');
+    if (extra.classList.contains('expanded')) {
+      extra.classList.remove('expanded');
+      btn.innerText = '▼';
+    } else {
+      extra.classList.add('expanded');
+      btn.innerText = '▲';
+    }
+  }
+
+  window.onload = async function() {
+    config = await eel.get_config()();
+    
+    document.getElementById('userNameInput').value = config.USERNAME;
+    document.getElementById('aiNameInput').value = config.MODEL_NAME;
+    
+    renderChat();
+
+    const loaded = await eel.init_model()();
+    if(loaded) {
+      document.getElementById('userInput').disabled = false;
+      document.getElementById('userInput').placeholder = "Enter message... (Enter to send, Shift+Enter for new line)";
+      document.getElementById('clearBtn').disabled = false;
+    } else {
+      document.getElementById('userInput').placeholder = "Error loading model. Check backend logs.";
+    }
+  };
+
+  function updateNames() {
+    const newUser = document.getElementById('userNameInput').value.trim() || 'User';
+    const newAi = document.getElementById('aiNameInput').value.trim() || 'AI';
+    config.USERNAME = newUser;
+    config.MODEL_NAME = newAi;
+    
+    eel.update_names(newUser, newAi)(); 
+    renderChat(); 
+  }
+
+  function renderChat() {
+    const chatBox = document.getElementById('chatBox');
+    chatBox.innerHTML = '';
+    
+    appendMessageRaw(config.MODEL_NAME, config.FIRST_MESSAGE, 'role-ai');
+    
+    chatHistoryJS.forEach(msg => {
+      const displayName = msg.role === '<username>' ? config.USERNAME : config.MODEL_NAME;
+      const roleClass = msg.role === '<username>' ? 'role-user' : 'role-ai';
+      appendMessageRaw(displayName, msg.text, roleClass);
+    });
+    
+    scrollToBottom();
+  }
+
+  function appendMessageRaw(name, text, roleClass) {
+    const chatBox = document.getElementById('chatBox');
+    const row = document.createElement('div');
+    row.className = 'message-row';
+    const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    row.innerHTML = `<span class="${roleClass}">${name}: </span><span class="msg-text">${escapedText}</span>`;
+    chatBox.appendChild(row);
+  }
+
+  function send() {
+    if (isGenerating) return;
+    
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    chatHistoryJS.push({ role: '<username>', text: text });
+    appendMessageRaw(config.USERNAME, text, 'role-user');
+    input.value = '';
+    
+    appendThinking();
+    currentAiMsgEl = null; 
+    
+    isGenerating = true;
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('clearBtn').disabled = true;
+    eel.send_message(text)(); 
+  }
+
+  function interruptGeneration() {
+    eel.interrupt()();
+    document.getElementById('stopBtn').disabled = true;
+  }
+  
+  function clearContext() {
+    if (isGenerating) return;
+    chatHistoryJS =[]; 
+    eel.clear_history()(); 
+    renderChat(); 
+  }
+
+  document.body.addEventListener('dragover', (e) => { e.preventDefault(); });
+  document.body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (isGenerating) return; 
+
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = ev.target.result;
+          const regex = /(<username>|<ainame>):\s*([\s\S]*?)(?=(?:<username>|<ainame>):|$)/g;
+          let match;
+          chatHistoryJS =[];
+          
+          while ((match = regex.exec(text)) !== null) {
+            chatHistoryJS.push({
+              role: match[1], 
+              text: match[2].trim()
+            });
+          }
+          
+          eel.set_chat_history(chatHistoryJS)(); 
+          renderChat(); 
+        };
+        reader.readAsText(file);
+      }
+    }
+  });
+
+  function generation_finished() {
+    isGenerating = false;
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('clearBtn').disabled = false;
+    if (currentAiMsgEl) {
+      chatHistoryJS.push({ role: '<ainame>', text: currentAiMsgEl.innerText });
+      currentAiMsgEl = null;
+    }
+  }
+
+  function update_tokens(used, total) {
+    let perc = (used / total) * 100;
+    if (perc > 100) perc = 100;
+    document.getElementById('tokenFill').style.width = perc + '%';
+    document.getElementById('tokenText').innerText = `Tokens Used: ${used} / ${total}`;
+    
+    if(perc > 85) document.getElementById('tokenFill').style.backgroundColor = '#e65c5c';
+    else document.getElementById('tokenFill').style.backgroundColor = '#a86c6c';
+  }
+
+  function remove_thinking_indicator() {
+    if(thinkingEl) {
+      thinkingEl.remove();
+      thinkingEl = null;
+    }
+  }
+
+  function append_ai_chunk(chunk) {
+    if (!currentAiMsgEl) {
+      const chatBox = document.getElementById('chatBox');
+      const row = document.createElement('div');
+      row.className = 'message-row';
+      row.innerHTML = `<span class="role-ai">${config.MODEL_NAME}: </span>`;
+      
+      currentAiMsgEl = document.createElement('span');
+      currentAiMsgEl.className = 'msg-text';
+      row.appendChild(currentAiMsgEl);
+      chatBox.appendChild(row);
+    }
+    currentAiMsgEl.innerText += chunk;
+    scrollToBottom();
+  }
+
+  function appendThinking() {
+    const chatBox = document.getElementById('chatBox');
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'message-row thinking';
+    thinkingEl.innerText = `${config.MODEL_NAME}: [thinking...]`;
+    chatBox.appendChild(thinkingEl);
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    const chatBox = document.getElementById('chatBox');
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function downloadHistoryTXT() {
+    let content = "";
+    
+    chatHistoryJS.forEach(msg => {
+      content += `${msg.role}: ${msg.text}\n\n`;
+    });
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'history.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('userInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isGenerating) {
+        send();
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
