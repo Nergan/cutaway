@@ -20,6 +20,7 @@ from snake.snake import router as snake_router
 from toadbin.toadbin import router as toadbin_router
 from formular.formular import router as formular_router
 from yellow_mirror.yellow_mirror import router as yellow_mirror_router, shutdown_clients
+# from simple_aichat.simple_aichat import router as simple_aichat_router
 
 load_dotenv()
 
@@ -52,6 +53,7 @@ app.include_router(snake_router, prefix='/snake')
 app.include_router(toadbin_router, prefix='/toadbin')
 app.include_router(formular_router, prefix='/formular')
 app.include_router(yellow_mirror_router, prefix='/yellow-mirror')
+# app.include_router(simple_aichat_router, prefix='/simple-aichat')
 
 
 class TrackRequest(BaseModel):
@@ -109,7 +111,7 @@ async def get_mainpage_backgrounds():
     if not BACKGROUNDS_DIR.exists():
         raise HTTPException(status_code=404, detail='Backgrounds directory not found')
     try:
-        mp4_files = [f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
+        mp4_files =[f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
         mp4_files.sort()
         return JSONResponse(content={'backgrounds': mp4_files})
     except Exception as e:
