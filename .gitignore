@@ -12,3 +12,4 @@ htmlcov/
 .env
 
 simple-aichat/model/
+context.md
