@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foundry VTT Character Viewer | Wildwood Edition</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #d9cba3 radial-gradient(circle at 10% 30%, rgba(80,100,50,0.2) 1px, transparent 1px);
+      background-size: 32px 32px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      color: #2c2a1f;
+      padding: 1.8rem;
+    }
+
+    ::-webkit-scrollbar {
+      width: 12px;
+      background: #b7aa7a;
+    }
+    ::-webkit-scrollbar-track {
+      background: #e5dbbc;
+      border-radius: 20px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #6f5e3f;
+      border-radius: 20px;
+    }
+    ::selection {
+      background: #9bb868;
+      color: #1f2a0e;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(230, 220, 180, 0.85); /* Slightly higher opacity for text readability */
+      border-radius: 64px 32px 64px 32px;
+      padding: 2.5rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: normal;
+      letter-spacing: 2px;
+      border-left: 12px solid #6a994e;
+      padding-left: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h2, h3, h4 {
+      font-weight: normal;
+      margin-top: 1.5rem;
+      margin-bottom: 0.8rem;
+      color: #3a4729;
+    }
+
+    h3 {
+      font-size: 1.6rem;
+      border-bottom: 2px solid rgba(106, 153, 78, 0.3);
+      padding-bottom: 0.3rem;
+    }
+
+    /* Nature-inspired Cards */
+    .spirit-card {
+      background: rgba(245, 238, 205, 0.75);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      border-radius: 36px 16px 36px 16px;
+      transition: all 0.3s ease;
+    }
+    
+    .moss-card {
+      background: rgba(100, 80, 45, 0.15);
+      padding: 1.5rem;
+      border-radius: 30px 8px 30px 8px;
+      margin-bottom: 1rem;
+      transition: background 0.3s ease;
+    }
+    .moss-card:hover {
+      background: rgba(100, 80, 45, 0.25);
+    }
+
+    /* Buttons */
+    .btn-leaf {
+      display: inline-block;
+      background: #6b8c42cc;
+      color: #1e2f0c;
+      padding: 0.5rem 1.2rem;
+      border: none;
+      border-radius: 40px;
+      text-decoration: none;
+      font-weight: bold;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      cursor: pointer;
+      transition: padding-right 0.2s, background 0.2s;
+    }
+    .btn-leaf:hover {
+      background: #94b267;
+      padding-right: 1.8rem;
+    }
+    .btn-leaf.active {
+      background: #4a6b2c;
+      color: #e5dbbc;
+      padding-right: 1.8rem;
+    }
+
+    /* Drag & Drop Zone */
+    #drop-zone {
+      margin-top: 1.5rem;
+      padding: 2.5rem;
+      border: 3px dashed #6a994e;
+      border-radius: 36px 16px 36px 16px;
+      text-align: center;
+      font-size: 1.2rem;
+      color: #3a4729;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    #drop-zone.dragover {
+      background: rgba(106, 153, 78, 0.2);
+      transform: scale(1.02);
+      border-style: solid;
+    }
+
+    /* Character Header */
+    .char-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      align-items: center;
+    }
+    .char-img {
+      width: 140px;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 30px 8px 30px 8px;
+      border: 4px solid #6f5e3f;
+      background-color: rgba(100, 80, 45, 0.25);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .char-info { flex-grow: 1; }
+    .char-info h2 { 
+      font-size: 2.5rem; 
+      margin: 0 0 0.5rem 0; 
+      border: none;
+    }
+    .char-sub { 
+      font-style: italic; 
+      font-size: 1.1rem; 
+      color: #4a4637; 
+    }
+
+    /* Tabs Navigation */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      margin: 2rem 0 1.5rem 0;
+      border-bottom: 2px solid rgba(106, 153, 78, 0.4);
+      padding-bottom: 1rem;
+    }
+    .tab-content { display: none; }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      background: rgba(245, 238, 205, 0.6);
+      border-radius: 20px 8px 20px 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    table.data-table th, table.data-table td {
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(111, 94, 63, 0.2);
+    }
+    table.data-table th {
+      background: rgba(107, 140, 66, 0.3);
+      color: #1f2a0e;
+      font-weight: bold;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+    }
+    table.data-table tr:last-child td { border-bottom: none; }
+    .attr-score { font-size: 1.5rem; font-weight: bold; color: #2c2a1f; }
+    .attr-mod { color: #6f5e3f; font-style: italic; font-size: 0.9rem; }
+
+    /* Details / Spoilers for Items */
+    details {
+      background: rgba(245, 238, 205, 0.75);
+      padding: 1rem 1.5rem;
+      border-radius: 30px 8px 30px 8px;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+    details:hover {
+      background: rgba(255, 250, 225, 0.9);
+      transform: translateX(4px);
+    }
+    summary {
+      font-weight: bold;
+      font-size: 1.15rem;
+      cursor: pointer;
+      outline: none;
+      color: #3a4729;
+      list-style-type: "✦ ";
+    }
+    summary:hover { color: #6a994e; }
+    
+    .item-desc {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #b7aa7a;
+      font-size: 1rem;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+    
+    /* Constrain inner HTML elements coming from Foundry */
+    .item-desc img, .bio-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; }
+    .item-desc table, .bio-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: rgba(255,255,255,0.3); }
+    .item-desc td, .item-desc th, .bio-content td, .bio-content th { border: 1px solid rgba(111, 94, 63, 0.4); padding: 0.5rem; }
+
+    /* Biography */
+    .bio-content {
+      background: rgba(245, 238, 205, 0.75);
+      padding: 2rem;
+      border-radius: 36px 16px 36px 16px;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-float {
+      animation: sway 5s infinite ease-in-out;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-style: italic;
+      background: rgba(100, 80, 45, 0.1);
+      border-radius: 32px;
+      padding: 1rem;
+      color: #6f5e3f;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- UPLOAD SECTION -->
+  <div id="upload-section" class="spirit-card" style="margin-top: 2rem;">
+    <p>Select a Foundry VTT <strong>.json</strong> actor file to read the character blank</p>
+    <input type="file" id="file-input" accept=".json" style="display:none;">
+    
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      Drop your JSON parchment here<br>
+      <span style="font-size: 0.9rem; opacity: 0.8;">(or click to browse)</span>
+    </div>
+  </div>
+
+  <!-- CHARACTER SHEET SECTION -->
+  <div id="character-sheet" style="display: none;">
+    <button class="btn-leaf" onclick="resetViewer()" style="margin-bottom: 2rem;">« Seal the Archive</button>
+
+    <!-- Header -->
+    <div class="char-header spirit-card">
+      <img id="char-img" class="char-img" src="" alt="Portrait" onerror="this.style.display='none'">
+      <div class="char-info">
+        <h2 id="char-name">Character Name</h2>
+        <div class="char-sub" id="char-subtitle">Level 1 Class | Race | Background</div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="tabs">
+      <button class="btn-leaf active tab-btn" id="btn-core" onclick="showTab('core')">Core Stats</button>
+      <button class="btn-leaf tab-btn" id="btn-features" onclick="showTab('features')">Features & Traits</button>
+      <button class="btn-leaf tab-btn" id="btn-spells" onclick="showTab('spells')">Spellbook</button>
+      <button class="btn-leaf tab-btn" id="btn-inventory" onclick="showTab('inventory')">Inventory</button>
+      <button class="btn-leaf tab-btn" id="btn-bio" onclick="showTab('bio')">Biography</button>
+    </div>
+
+    <!-- TAB: CORE -->
+    <div id="tab-core" class="tab-content" style="display: block;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Armor Class</th>
+            <th>Hit Points</th>
+            <th>Speed (Walk)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong id="stat-ac" style="font-size: 1.6rem; color: #3a4729;">10</strong></td>
+            <td><strong id="stat-hp" style="font-size: 1.6rem; color: #8b3a3a;">0 / 0</strong></td>
+            <td><strong id="stat-speed" style="font-size: 1.6rem; color: #3a4729;">30 ft</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Attribute Roots</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>STR</th>
+            <th>DEX</th>
+            <th>CON</th>
+            <th>INT</th>
+            <th>WIS</th>
+            <th>CHA</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="attr-row">
+            <!-- Injected via JS -->
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: FEATURES -->
+    <div id="tab-features" class="tab-content">
+      <h3>Gifts of Nature & Training</h3>
+      <div id="list-features"></div>
+    </div>
+
+    <!-- TAB: SPELLS -->
+    <div id="tab-spells" class="tab-content">
+      <h3>Mystic Weavings</h3>
+      <div id="list-spells"></div>
+    </div>
+
+    <!-- TAB: INVENTORY -->
+    <div id="tab-inventory" class="tab-content">
+      <h3>Possessions & Relics</h3>
+      <div id="list-inventory"></div>
+    </div>
+
+    <!-- TAB: BIOGRAPHY -->
+    <div id="tab-bio" class="tab-content">
+      <h3>Tale of the Wanderer</h3>
+      <div class="bio-content" id="char-bio"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  // Drag & Drop / File Input Logic
+  const fileInput = document.getElementById('file-input');
+  const dropZone = document.getElementById('drop-zone');
+
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  function handleFiles(files) {
+    if (!files.length) return;
+    const file = files[0];
+    if (!file.name.endsWith('.json')) {
+      alert('Please select a valid .json parchment.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        renderCharacterSheet(data);
+      } catch (err) {
+        alert('Error interpreting the runes. Ensure it is a valid Foundry VTT actor file.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetViewer() {
+    document.getElementById('character-sheet').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+    fileInput.value = "";
+  }
+
+  // Tab Navigation Logic
+  function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById('tab-' + tabId).style.display = 'block';
+    document.getElementById('btn-' + tabId).classList.add('active');
+  }
+
+  // Helper: Get D&D Modifier
+  function getModifier(score) {
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  }
+
+  // Helper: Parse and clean Foundry VTT specific formatting tags
+  function processFoundryText(text) {
+    if (!text) return "";
+    
+    // 1. Process inline dice rolls e.g., [[/r 1d8]] or [[/roll 1d6+2]]
+    text = text.replace(/\[\[\/(?:r|roll)\s+([^\]]+)\]\]/gi, "<strong style='color: #8b3a3a;'>$1</strong>");
+    
+    // 2. Process internal links e.g., @UUID[Compendium...]{Display Name} or &amp;reference[...]{Display Name}
+    // We match @, &, or the HTML entity &amp; to catch cases where the JSON has escaped characters.
+    text = text.replace(/(?:@|&amp;|&)[a-zA-Z0-9_]+\[([^\]]+)\](?:\{([^\}]+)\})?/g, (match, bracketContent, braceContent) => {
+      if (braceContent) {
+        // If there is a display name mapped in curly braces, display it nicely
+        return `<strong style="color: #6a994e;">${braceContent}</strong>`;
+      }
+      
+      // If there is no display name, check if it's a long/ugly system ID or path
+      if (bracketContent.includes('.') || bracketContent.length > 20) {
+        return ''; // Hide it, as it provides no value to the user
+      }
+      
+      // Otherwise, it might be a simple tag like @Item[Sword], so we show "Sword"
+      return `<strong style="color: #6a994e;">${bracketContent}</strong>`;
+    });
+    
+    return text;
+  }
+
+  // Render Foundry Data
+  function renderCharacterSheet(data) {
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('character-sheet').style.display = 'block';
+    showTab('core'); // Reset to core tab
+
+    // 1. Basic Info
+    document.getElementById('char-name').textContent = data.name || "Unnamed Wanderer";
+    const imgEl = document.getElementById('char-img');
+    if (data.img) {
+      imgEl.src = data.img;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.style.display = 'none';
+    }
+
+    // 2. Parse Items for Subtitle & Lists
+    let cls =[], race = "Unknown Form", bg = "Unknown Path";
+    let featuresHtml = "", inventoryHtml = "", spellsHtml = "";
+    
+    const items = data.items ||[];
+    
+    items.forEach(item => {
+      // Build Subtitle Parts
+      if (item.type === 'class') {
+        const level = item.system?.levels || 1;
+        cls.push(`${item.name} (Lvl ${level})`);
+      } else if (item.type === 'race') {
+        race = item.name;
+      } else if (item.type === 'background') {
+        bg = item.name;
+      } 
+      
+      // Apply the Foundry VTT text processing to descriptions
+      let descRaw = item.system?.description?.value || "No records provided in the archives.";
+      let desc = processFoundryText(descRaw);
+      
+      const qty = item.system?.quantity ? `<span style="color:#6a994e;">[${item.system.quantity}x]</span> ` : "";
+      
+      const detailsBlock = `
+        <details>
+          <summary>${qty}${item.name}</summary>
+          <div class="item-desc">${desc}</div>
+        </details>
+      `;
+
+      if (item.type === 'spell') {
+        spellsHtml += detailsBlock;
+      } else if (['feat', 'classfeature', 'subclass', 'background', 'race'].includes(item.type)) {
+        featuresHtml += detailsBlock;
+      } else if (['weapon', 'equipment', 'consumable', 'loot', 'container', 'tool'].includes(item.type)) {
+        inventoryHtml += detailsBlock;
+      }
+    });
+
+    const classStr = cls.length > 0 ? cls.join(", ") : "Unknown Class";
+    document.getElementById('char-subtitle').textContent = `${classStr} | ${race} | ${bg}`;
+
+    // Fill Tabs
+    document.getElementById('list-features').innerHTML = featuresHtml || "<p>The winds carry no features for this one.</p>";
+    document.getElementById('list-spells').innerHTML = spellsHtml || "<p>No magical affinities found.</p>";
+    document.getElementById('list-inventory').innerHTML = inventoryHtml || "<p>The traveler carries no worldly burdens.</p>";
+
+    // 3. Stats (AC, HP, Speed)
+    const attrs = data.system?.attributes || {};
+    
+    // AC handling (Fallback chain for different Foundry ver/configs)
+    const ac = attrs.ac?.value || attrs.ac?.flat || attrs.ac?.calc || "10";
+    document.getElementById('stat-ac').textContent = ac;
+
+    // HP handling
+    const hpVal = attrs.hp?.value !== null ? attrs.hp?.value : 0;
+    const hpMax = attrs.hp?.max !== null ? attrs.hp?.max : hpVal;
+    document.getElementById('stat-hp').textContent = `${hpVal} / ${hpMax}`;
+
+    // Speed handling
+    const speed = attrs.movement?.walk || attrs.movement?.value || "30";
+    document.getElementById('stat-speed').textContent = `${speed} ft`;
+
+    // 4. Attributes Table
+    const abs = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    let attrHtml = "";
+    abs.forEach(ab => {
+      const score = data.system?.abilities?.[ab]?.value || 10;
+      const mod = getModifier(score);
+      attrHtml += `
+        <td>
+          <div class="attr-score">${score}</div>
+          <div class="attr-mod">${mod}</div>
+        </td>`;
+    });
+    document.getElementById('attr-row').innerHTML = attrHtml;
+
+    // 5. Biography
+    let bioRaw = data.system?.details?.biography?.value || "The story of this spirit is yet to be written...";
+    let bioText = processFoundryText(bioRaw);
+    document.getElementById('char-bio').innerHTML = bioText;
+  }
+</script>
+
+</body>
+</html>
