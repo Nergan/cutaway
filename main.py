@@ -21,6 +21,7 @@ from toadbin.toadbin import router as toadbin_router
 from formular.formular import router as formular_router
 from yellow_mirror.yellow_mirror import router as yellow_mirror_router, shutdown_clients
 from foundry_blank_viewer.main import router as foundry_router
+from markbin.markbin import router as markbin_router
 # from simple_aichat.simple_aichat import router as simple_aichat_router
 
 
@@ -48,6 +49,8 @@ app.mount('/formular/static', StaticFiles(directory='formular/static'), name='fo
 app.mount('/formular/scripts', StaticFiles(directory='formular/scripts'), name='formular-scripts')
 app.mount('/yellow_mirror/static', StaticFiles(directory='yellow_mirror/static'), name='yellow-mirror-static')
 app.mount('/yellow_mirror/scripts', StaticFiles(directory='yellow_mirror/scripts'), name='yellow-mirror-scripts')
+app.mount('/markbin/static', StaticFiles(directory='markbin/static'), name='markbin-static')
+app.mount('/markbin/scripts', StaticFiles(directory='markbin/scripts'), name='markbin-scripts')
 
 # Подключение роутеров подпроектов
 app.include_router(evenfest_router, prefix='/evenfest')
@@ -57,6 +60,7 @@ app.include_router(formular_router, prefix='/formular')
 app.include_router(yellow_mirror_router, prefix='/yellow-mirror')
 # app.include_router(simple_aichat_router, prefix='/simple-aichat')
 app.include_router(foundry_router, prefix="/foundry", tags=["Foundry Viewer"])
+app.include_router(markbin_router, prefix='/markbin')
 
 
 class TrackRequest(BaseModel):
