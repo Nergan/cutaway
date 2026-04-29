@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { capture: true });
 
+    // --- TEXT & ID CLEANERS (Supports Cyrillic & other languages!) ---
     function getCleanText(rawText) {
         if (!rawText) return '';
         let text = rawText.replace(/[*_~`]/g, '');
@@ -61,6 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return (tmp.textContent || tmp.innerText || '').trim();
     }
 
+    function generateId(text) {
+        // \p{L} keeps all letters (including Russian/Cyrillic)
+        // \p{N} keeps all numbers
+        let id = text.toLowerCase().trim()
+            .replace(/[\s]+/g, '-')
+            .replace(/[^\p{L}\p{N}\-_]/gu, '') 
+            .replace(/^-+|-+$/g, '');
+        return id || 'heading'; // Fallback so it's never completely empty
+    }
+
+    // --- TOC GENERATOR & NATIVE SCROLL ---
     function updateTOC(md) {
         const tocContent = document.getElementById('toc-content');
         tocContent.innerHTML = "";
@@ -83,31 +95,50 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        const idCounts = {};
+        
         headings.forEach(h => {
             const cleanText = getCleanText(h.text);
             if (!cleanText) return; 
             
-            const id = cleanText.toLowerCase().replace(/[^\w]+/g, '-');
+            // Create a unique ID even if multiple headings have the same name
+            let baseId = generateId(cleanText);
+            let id = baseId;
+            if (idCounts[baseId]) {
+                id = `${baseId}-${idCounts[baseId]}`;
+                idCounts[baseId]++;
+            } else {
+                idCounts[baseId] = 1;
+            }
+            
             const tocItem = document.createElement('a');
             tocItem.href = `#${id}`;
             tocItem.className = 'toc-item';
             tocItem.style.marginLeft = `${(h.depth - 1) * 15}px`;
             tocItem.textContent = cleanText;
             
-            // --- SIMPLE NATIVE BROWSER SCROLLING ---
             tocItem.addEventListener('click', (e) => {
                 e.preventDefault(); 
                 
                 if (isViewMode) {
                     const target = document.getElementById(id);
+                    // Standard native browser smooth scroll
                     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
+                    
+                    // Match the correct heading occurrence
+                    let targetOccurrence = id.includes('-') ? parseInt(id.split('-').pop()) || 0 : 0;
+                    let matchIndex = 0;
+                    
                     for (let el of editorHeadings) {
                         const elCleanText = getCleanText(el.textContent);
-                        if (elCleanText.toLowerCase().replace(/[^\w]+/g, '-') === id) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            break;
+                        if (generateId(elCleanText) === baseId) {
+                            if (matchIndex === targetOccurrence) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                break;
+                            }
+                            matchIndex++;
                         }
                     }
                 }
@@ -253,12 +284,22 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTOC(md);
         
         const renderer = new marked.Renderer();
+        const idCounts = {};
+        
         renderer.heading = function(headingObj) {
             const text = headingObj.text || arguments[0];
             const depth = headingObj.depth || arguments[1];
             
             const cleanText = getCleanText(text);
-            const id = cleanText.toLowerCase().replace(/[^\w]+/g, '-');
+            let baseId = generateId(cleanText);
+            let id = baseId;
+            
+            if (idCounts[baseId]) {
+                id = `${baseId}-${idCounts[baseId]}`;
+                idCounts[baseId]++;
+            } else {
+                idCounts[baseId] = 1;
+            }
             
             return `<h${depth} id="${id}">${text}</h${depth}>`;
         };
