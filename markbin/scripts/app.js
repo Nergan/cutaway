@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     btnToggleBar.addEventListener('click', () => {
         bottomContainer.classList.toggle('collapsed');
-        // This physically frees up the scrollable space padding!
         editorContainer.classList.toggle('expanded-view');
         
         const icon = btnToggleBar.querySelector('i');
@@ -56,28 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function getCleanText(rawText) {
         if (!rawText) return '';
         let text = rawText.replace(/[*_~`]/g, '');
-        // Defuse potential HTML entities before extracting clean text
         text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         let tmp = document.createElement('div');
         tmp.innerHTML = text;
         return (tmp.textContent || tmp.innerText || '').trim();
-    }
-
-    // --- ABSOLUTE MATHEMATICAL SCROLLING ENGINE ---
-    function bulletproofScrollTo(targetElement) {
-        if (!editorContainer || !targetElement) return;
-
-        const containerRect = editorContainer.getBoundingClientRect();
-        const targetRect = targetElement.getBoundingClientRect();
-        
-        // Calculate the absolute pixel position inside the container:
-        // Current scroll amount + difference between target and container top
-        const absoluteTop = editorContainer.scrollTop + (targetRect.top - containerRect.top);
-
-        editorContainer.scrollTo({ 
-            top: absoluteTop - 20, // Keep 20px padding above heading
-            behavior: 'smooth' 
-        });
     }
 
     function updateTOC(md) {
@@ -113,18 +94,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tocItem.style.marginLeft = `${(h.depth - 1) * 15}px`;
             tocItem.textContent = cleanText;
             
+            // --- SIMPLE NATIVE BROWSER SCROLLING ---
             tocItem.addEventListener('click', (e) => {
                 e.preventDefault(); 
                 
                 if (isViewMode) {
                     const target = document.getElementById(id);
-                    if (target) bulletproofScrollTo(target);
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
                     for (let el of editorHeadings) {
                         const elCleanText = getCleanText(el.textContent);
                         if (elCleanText.toLowerCase().replace(/[^\w]+/g, '-') === id) {
-                            bulletproofScrollTo(el);
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             break;
                         }
                     }
