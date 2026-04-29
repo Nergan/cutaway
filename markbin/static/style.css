@@ -1,0 +1,134 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg-color: #222222;  /* Softer Sakura-Vader dark theme */
+    --text-color: #c9cacc;
+    --accent-color: #e06c75; 
+    --border-color: #333333;
+    --hover-bg: #2a2a2a;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative; /* Crucial for absolute bottom container */
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+::selection { background: rgba(224, 108, 117, 0.3); }
+
+.layout { display: flex; flex: 1; overflow: hidden; }
+
+/* --- EDITOR TAKES FULL SPACE --- */
+.editor-container { 
+    flex: 1; overflow-y: auto; position: relative;
+    padding: 2rem 2rem 80px 2rem; /* 60px bar + 20px padding */
+    transition: padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column; align-items: center; 
+}
+
+/* Frees up layout space when bottom panel hides */
+.editor-container.expanded-view {
+    padding-bottom: 20px; 
+}
+
+#editor-wrapper, #viewer { 
+    width: 100%; max-width: 850px; 
+    background: transparent; 
+    border: none;
+    box-shadow: none;
+}
+
+/* --- BOTTOM BAR & MINI TOGGLE --- */
+.bottom-container {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+}
+.bottom-container.collapsed {
+    transform: translateY(60px); 
+}
+.bottom-bar {
+    height: 60px; padding: 0 2rem; display: flex;
+    align-items: center; justify-content: space-between;
+}
+
+.toggle-bar-btn {
+    position: absolute;
+    top: -24px; right: 2rem;
+    height: 24px; width: 44px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    color: var(--text-color);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: color 0.2s;
+}
+.toggle-bar-btn:hover { color: var(--accent-color); }
+
+.logo { font-weight: 600; font-size: 1.2rem; color: var(--accent-color); text-decoration: none; }
+.actions { display: flex; gap: 1rem; }
+.icon-btn { background: transparent; border: none; color: var(--text-color); font-size: 1.3rem; cursor: pointer; transition: 0.2s; }
+.icon-btn:hover { color: var(--accent-color); }
+.icon-btn.disabled { color: #555; pointer-events: none; }
+
+/* VDITOR TRANSPARENCY OVERRIDES */
+.vditor, .vditor-ir, .vditor-reset, .markdown-body { 
+    background-color: transparent !important; background: transparent !important;
+    --panel-background-color: transparent !important; --textarea-background-color: transparent !important;
+    border: none !important; 
+}
+.vditor-ir { padding: 0 !important; }
+
+.vditor-reset, .markdown-body { color: var(--text-color) !important; font-size: 1.1rem; line-height: 1.7; }
+.vditor-reset h1, .vditor-reset h2, .vditor-reset h3, .vditor-reset h4, .vditor-reset h5, .vditor-reset h6,
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    color: var(--accent-color) !important; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; margin-top: 1em;
+}
+.vditor-reset a, .markdown-body a { color: var(--accent-color) !important; text-decoration: none; }
+.vditor-reset a:hover, .markdown-body a:hover { text-decoration: underline; }
+.vditor-reset blockquote, .markdown-body blockquote { border-left: 4px solid var(--accent-color) !important; color: #999 !important; }
+.markdown-body img, .vditor-reset img { max-width: 100%; border-radius: 8px; }
+
+/* SAKURA-VADER CODE BLOCKS */
+#editor-wrapper pre, #viewer pre, .vditor-reset pre, .markdown-body pre, .vditor-ir pre.vditor-reset {
+    background-color: #151515 !important; border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important; padding: 1rem !important; overflow-x: auto !important;
+}
+#editor-wrapper code, #viewer code, .vditor-reset code, .markdown-body code {
+    background-color: #151515 !important; color: #abb2bf !important; padding: 0.2rem 0.4rem !important; 
+    border-radius: 3px !important; font-family: 'Courier New', Courier, monospace !important;
+}
+#editor-wrapper pre code, #viewer pre code, .vditor-reset pre code, .markdown-body pre code { 
+    padding: 0 !important; background-color: transparent !important; 
+}
+
+.hidden { display: none !important; }
+
+/* TOC Sidebar */
+.sidebar { width: 280px; border-left: 1px solid var(--border-color); background: var(--bg-color); padding: 1.5rem; overflow-y: auto; }
+.sidebar h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--accent-color); margin-bottom: 1.5rem; }
+.toc-item { display: block; color: var(--text-color); text-decoration: none; margin-bottom: 0.8rem; font-size: 0.9rem; transition: 0.2s; }
+.toc-item:hover { color: var(--accent-color); }
+
+.spinner { animation: rotate 1s linear infinite; }
+@keyframes rotate { 100% { transform: rotate(360deg); } }
+
+.toast {
+    position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--hover-bg); color: var(--accent-color); padding: 0.8rem 1.5rem; border-radius: 30px;
+    font-size: 0.9rem; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    opacity: 0; visibility: hidden; transition: 0.3s; z-index: 1000;
+}
+.toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
