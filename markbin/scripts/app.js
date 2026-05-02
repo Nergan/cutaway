@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let vditorInstance = null;
     let rawMarkdown = "";
     
+    // Constant key for LocalStorage
+    const DRAFT_KEY = 'markbin_draft';
+    
     function showToast(message) {
         toast.textContent = message;
         toast.classList.add('show');
@@ -52,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { capture: true });
 
-    // --- TEXT & ID CLEANERS (Supports Cyrillic & other languages!) ---
+    // --- TEXT & ID CLEANERS ---
     function getCleanText(rawText) {
         if (!rawText) return '';
         let text = rawText.replace(/[*_~`]/g, '');
@@ -63,13 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function generateId(text) {
-        // \p{L} keeps all letters (including Russian/Cyrillic)
-        // \p{N} keeps all numbers
         let id = text.toLowerCase().trim()
             .replace(/[\s]+/g, '-')
             .replace(/[^\p{L}\p{N}\-_]/gu, '') 
             .replace(/^-+|-+$/g, '');
-        return id || 'heading'; // Fallback so it's never completely empty
+        return id || 'heading'; 
     }
 
     // --- TOC GENERATOR & NATIVE SCROLL ---
@@ -101,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const cleanText = getCleanText(h.text);
             if (!cleanText) return; 
             
-            // Create a unique ID even if multiple headings have the same name
             let baseId = generateId(cleanText);
             let id = baseId;
             if (idCounts[baseId]) {
@@ -122,12 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (isViewMode) {
                     const target = document.getElementById(id);
-                    // Standard native browser smooth scroll
                     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
                     
-                    // Match the correct heading occurrence
                     let targetOccurrence = id.includes('-') ? parseInt(id.split('-').pop()) || 0 : 0;
                     let matchIndex = 0;
                     
@@ -180,7 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
         btnAction.title = "Save snippet (Ctrl + S)";
         
+        // Check for saved draft in local storage
+        const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
+        rawMarkdown = savedDraft;
+
         vditorInstance = new Vditor('editor', {
+            value: savedDraft, // Initialize with draft
             mode: 'ir',
             theme: 'dark',
             icon: 'material',
@@ -194,10 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
             after: () => {
                 bindEditorEvents();
                 vditorInstance.focus();
-                updateTOC(""); 
+                updateSaveButtonState();
+                updateTOC(rawMarkdown); 
             },
             input: (val) => {
                 rawMarkdown = val;
+                localStorage.setItem(DRAFT_KEY, val); // Save to local storage on type
                 updateSaveButtonState();
                 updateTOC(val); 
             }
@@ -239,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => {
                 vditorInstance.setValue(e.target.result);
                 rawMarkdown = e.target.result;
+                localStorage.setItem(DRAFT_KEY, rawMarkdown); // Save uploaded file to draft
                 updateSaveButtonState();
                 updateTOC(rawMarkdown);
             };
@@ -269,6 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!response.ok) throw new Error("Failed to save.");
                 
                 const data = await response.json();
+                
+                // Clear the local draft AFTER a successful save
+                localStorage.removeItem(DRAFT_KEY);
+                
                 window.location.href = `${baseUrl}/${data.uuid}`;
             } catch (err) {
                 showToast("Failed to save snippet!");
