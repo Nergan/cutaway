@@ -24,6 +24,8 @@ from foundry_blank_viewer.main import router as foundry_router
 from markbin.markbin import router as markbin_router
 # from simple_aichat.simple_aichat import router as simple_aichat_router
 
+# Импорт Kanban-роутера
+from kanban.kanban import router as kanban_router
 
 load_dotenv()
 
@@ -61,6 +63,7 @@ app.include_router(yellow_mirror_router, prefix='/yellow-mirror')
 # app.include_router(simple_aichat_router, prefix='/simple-aichat')
 app.include_router(foundry_router, prefix="/foundry", tags=["Foundry Viewer"])
 app.include_router(markbin_router, prefix='/markbin')
+app.include_router(kanban_router, prefix='/kanban', tags=['Kanban'])
 
 
 class TrackRequest(BaseModel):
