@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="icon" type="image/x-icon" href="https://psv4.userapi.com/s/v1/d2/cXhcvJAqHzGb946EebUXj0s6N-Tn0OyQRUjT027EuhZiYlNdmPjEnnlORJtDBb7fIDdrucwOMkStCRd_aoGv6hb7b1UeHbuRhEKShCVhpQGKP8PFkEMKhy3hAO2dFFzyn9tWrHv1edw_/kanban.png">
+    <title>kanban</title>
+    <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --panel-bg: #141414;
+            --card-bg: #1a1a1a;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.25);
+            --text-main: #e2e2e2;
+            --text-muted: #808080;
+            --accent: rgba(255, 255, 255, 0.4);
+            --danger: #c96a6a; 
+            --font-stack: system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom Text Selection */
+        ::selection {
+            background: rgba(200, 200, 200, 0.25);
+            color: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            font-size: 14px;
+            font-weight: 400;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.2s ease;
+        }
+
+        /* Compact Header */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            flex-shrink: 0;
+            overflow-x: auto;
+            order: 1;
+        }
+
+        /* Board */
+        .board {
+            display: flex;
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 16px 0;
+            order: 2;
+        }
+
+        /* Mobile Adaptive Layout */
+        @media (max-width: 768px) {
+            header {
+                order: 2;
+                border-bottom: none;
+                border-top: 1px solid var(--border-color);
+                padding: 12px 16px;
+            }
+            .board {
+                order: 1;
+                padding: 12px 0 0 0;
+            }
+        }
+
+        /* Interactive App Title */
+        .app-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-right: auto;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        
+        .app-title:hover {
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+            transform: scale(1.02);
+        }
+
+        /* Minimalist Buttons */
+        .btn, button {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: inline-block;
+        }
+
+        .btn:hover, button:hover {
+            color: var(--text-main);
+            border-color: var(--border-hover);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Columns */
+        .column {
+            flex: 1;
+            min-width: 140px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            padding: 0 16px;
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .col-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 4px 0 16px 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: grab;
+        }
+
+        .col-header:active {
+            cursor: grabbing;
+        }
+
+        .col-title {
+            text-align: center;
+            word-break: break-word;
+            cursor: text;
+            width: 100%;
+            padding: 0 20px;
+            transition: color 0.2s;
+        }
+        
+        .col-title:hover { color: var(--text-main); }
+
+        .col-header .action-group {
+            position: absolute;
+            right: 0;
+        }
+
+        .col-body {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 40px;
+        }
+
+        /* Projects */
+        .project {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: grab;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .project:hover {
+            border-color: var(--border-hover);
+            background: #1e1e1e;
+        }
+
+        .project-title {
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .project-title span {
+            flex: 1;
+            cursor: text;
+        }
+
+        /* Recursive Subprojects */
+        .sub-list {
+            border-left: 1px solid var(--border-color);
+            margin-left: 4px;
+            padding-left: 10px;
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sub-item {
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            color: #999999;
+        }
+
+        .sub-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .sub-item-text {
+            flex: 1;
+            word-break: break-word;
+            line-height: 1.4;
+            cursor: text;
+            transition: color 0.2s;
+        }
+        
+        .sub-item-text:hover { color: var(--text-main); }
+
+        /* Interaction Elements & Action Groups */
+        .action-group {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .action-btn {
+            padding: 0 4px;
+            color: var(--border-hover);
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .action-btn:hover { color: var(--text-main) !important; background: transparent !important; border-color: transparent !important;}
+        .action-btn.del-btn:hover { color: var(--danger) !important; }
+
+        /* Hover Reveal for Action Groups */
+        .project-title:hover .action-group, 
+        .sub-item-header:hover .action-group, 
+        .col-header:hover .action-group {
+            opacity: 1;
+        }
+
+        /* Base properties for Add Buttons */
+        .add-btn {
+            text-align: left;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            max-height: 40px; 
+            padding: 6px 4px;
+            opacity: 1;
+            margin-top: 0;
+        }
+
+        .add-btn:hover {
+            color: var(--text-main);
+            background: transparent;
+        }
+
+        /* Dynamic Space Saving & Hover Behavior (Desktop Only) */
+        @media (min-width: 769px) and (hover: hover) {
+            .add-btn {
+                opacity: 0;
+                max-height: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+                pointer-events: none;
+            }
+            .sub-list > .add-btn { margin-top: -4px; }
+            
+            .column:hover > .col-body > .add-btn,
+            .project:hover > .sub-list > .add-btn,
+            .sub-item:hover > .sub-list > .add-btn {
+                opacity: 1;
+                max-height: 40px;
+                padding-top: 6px;
+                padding-bottom: 6px;
+                pointer-events: auto;
+            }
+            .project:hover > .sub-list > .add-btn,
+            .sub-item:hover > .sub-list > .add-btn { margin-top: 0; }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .action-group { opacity: 1 !important; }
+        }
+
+        /* Custom Dialog Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 15, 15, 0.75);
+            backdrop-filter: blur(3px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active { opacity: 1; }
+        
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 24px 32px;
+            min-width: 320px;
+            text-align: center;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateY(10px);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        
+        .modal-msg {
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .btn-danger { color: var(--danger); border-color: rgba(201, 106, 106, 0.3); }
+        .btn-danger:hover { background: rgba(201, 106, 106, 0.1); border-color: var(--danger); }
+        
+        .btn-primary { color: var(--text-main); border-color: rgba(255, 255, 255, 0.3); }
+        .btn-primary:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--text-main); }
+
+        /* Inputs */
+        .inline-input {
+            width: 100%;
+            background: #000;
+            color: #fff;
+            border: 1px solid var(--accent);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .inline-input:focus { outline: none; border-color: var(--text-main); }
+        .col-title .inline-input { text-align: center; }
+
+        /* Drag & Drop Animations */
+        .placeholder {
+            border: 1px dashed var(--accent);
+            background: rgba(255, 255, 255, 0.02);
+            box-sizing: border-box;
+            pointer-events: none;
+            height: 0;
+            margin: 0;
+            border-width: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            transition: height 0.2s ease, margin 0.2s ease, border-width 0.2s ease;
+        }
+
+        .col-placeholder {
+            border: 1px dashed var(--accent);
+            background: rgba(255, 255, 255, 0.02);
+            box-sizing: border-box;
+            pointer-events: none;
+            min-width: 0;
+            margin: 0;
+            border-width: 0;
+            overflow: hidden;
+            transition: min-width 0.2s ease, border-width 0.2s ease;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="app-title" onclick="window.location.reload()">Kanban</div>
+        <div id="dynamic-header-controls" style="display: flex; gap: 8px;">
+            <button id="add-col-btn">+ Column</button>
+        </div>
+        <button id="export-btn" title="Export as JSON (Ctrl+S)">↓ Export JSON</button>
+        <label class="btn" title="Or drag & drop a JSON file anywhere">
+            ↑ Import JSON
+            <input type="file" id="import-file" accept=".json" hidden>
+        </label>
+    </header>
+
+    <div id="board" class="board"></div>
+
+    <!-- Unified Dialog Modal (Confirmations Only) -->
+    <div id="dialog-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div id="dialog-msg" class="modal-msg">Are you sure?</div>
+            <div class="modal-actions">
+                <button id="dialog-cancel" class="btn">Cancel</button>
+                <button id="dialog-confirm" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const StorageKey = 'minimal_kanban_data';
+        let state = { columns:[] };
+        let dragSource = null;
+        let currentGap = null;
+
+        const PALETTE =['', '#c96a6a', '#6a9c78', '#6a7cc9', '#c9b06a', '#9c6ac9'];
+
+        const uid = () => Math.random().toString(36).substr(2, 9);
+        
+        function el(tag, className, text, attributes) {
+            const e = document.createElement(tag);
+            if (className) e.className = className;
+            if (text) e.textContent = text;
+            if (attributes) {
+                for (let k in attributes) e.setAttribute(k, attributes[k]);
+            }
+            return e;
+        }
+
+        function showDialog({ msg, confirmText, confirmClass }, onConfirm) {
+            const modal = document.getElementById('dialog-modal');
+            const msgEl = document.getElementById('dialog-msg');
+            const cancelBtn = document.getElementById('dialog-cancel');
+            const confirmBtn = document.getElementById('dialog-confirm');
+
+            msgEl.textContent = msg;
+            confirmBtn.textContent = confirmText || 'Delete';
+            confirmBtn.className = 'btn ' + (confirmClass || 'btn-danger');
+
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('active'));
+
+            const close = () => {
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    cancelBtn.onclick = null;
+                    confirmBtn.onclick = null;
+                }, 200); 
+            };
+
+            const execConfirm = () => {
+                close();
+                onConfirm(true);
+            };
+
+            cancelBtn.onclick = close;
+            confirmBtn.onclick = execConfirm;
+        }
+
+        function init() {
+            const saved = localStorage.getItem(StorageKey);
+            if (saved) {
+                try { 
+                    state = JSON.parse(saved); 
+                    if (!state.columns) buildDefault();
+                } catch (e) { buildDefault(); }
+            } else {
+                buildDefault();
+            }
+            setupGlobals();
+            render();
+        }
+
+        function buildDefault() {
+            state = {
+                columns:[
+                    { id: uid(), title: 'Pending', projects: [] },
+                    { id: uid(), title: 'In Progress', projects:[] },
+                    { id: uid(), title: 'Released', projects:[] }
+                ]
+            };
+        }
+
+        function save() {
+            localStorage.setItem(StorageKey, JSON.stringify(state));
+        }
+
+        function createInlineInput(parent, placeholderText, initialValue, onComplete, onCancel) {
+            const inp = el('input', 'inline-input', null, { placeholder: placeholderText, type: 'text' });
+            inp.value = initialValue || '';
+            parent.innerHTML = '';
+            parent.appendChild(inp);
+            inp.focus();
+
+            let finished = false;
+            const commit = () => {
+                if (finished) return;
+                finished = true;
+                const val = inp.value.trim();
+                if (val) onComplete(val);
+                else if (onCancel) onCancel();
+            };
+            
+            inp.addEventListener('blur', commit);
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') commit();
+                if (e.key === 'Escape') {
+                    finished = true;
+                    if (onCancel) onCancel();
+                }
+            });
+        }
+
+        function renderTree(childrenArray, container) {
+            if (!childrenArray) return;
+
+            childrenArray.forEach(child => {
+                const sEl = el('div', 'sub-item');
+                const sHeader = el('div', 'sub-item-header');
+                const sTitle = el('span', 'sub-item-text', child.title);
+                
+                sTitle.onclick = (e) => {
+                    e.stopPropagation();
+                    const rootProject = sEl.closest('.project');
+                    if (rootProject) rootProject.draggable = false;
+
+                    createInlineInput(sHeader, 'Subproject text...', child.title, 
+                        (newVal) => { child.title = newVal; save(); render(); }, 
+                        () => render()
+                    );
+                };
+
+                const actions = el('div', 'action-group');
+                const sDel = el('button', 'action-btn del-btn', '×');
+                sDel.onclick = (e) => {
+                    e.stopPropagation();
+                    const execDelete = () => {
+                        const idx = childrenArray.findIndex(i => i.id === child.id);
+                        if (idx > -1) {
+                            childrenArray.splice(idx, 1);
+                            save(); render();
+                        }
+                    };
+                    
+                    if (child.children && child.children.length > 0) {
+                        showDialog({ msg: `Delete "${child.title}" and its nested items?` }, execDelete);
+                    } else {
+                        execDelete();
+                    }
+                };
+
+                actions.appendChild(sDel);
+                sHeader.appendChild(sTitle);
+                sHeader.appendChild(actions);
+                sEl.appendChild(sHeader);
+
+                const childList = el('div', 'sub-list');
+                child.children = child.children ||[];
+                renderTree(child.children, childList);
+
+                const addBtn = el('button', 'add-btn', '+ add');
+                addBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    addBtn.style.display = 'none';
+                    const wrapper = el('div');
+                    childList.appendChild(wrapper);
+                    
+                    const rootProject = sEl.closest('.project');
+                    if (rootProject) rootProject.draggable = false;
+
+                    createInlineInput(wrapper, 'New nested item...', '', 
+                        (newVal) => { 
+                            child.children.push({ id: uid(), title: newVal, children:[] }); 
+                            save(); render(); 
+                        },
+                        () => render()
+                    );
+                };
+                childList.appendChild(addBtn);
+
+                sEl.appendChild(childList);
+                container.appendChild(sEl);
+            });
+        }
+
+        function render() {
+            const board = document.getElementById('board');
+            board.innerHTML = ''; 
+
+            state.columns.forEach(col => {
+                const colEl = el('div', 'column');
+                colEl.dataset.id = col.id;
+
+                const header = el('div', 'col-header');
+                const title = el('div', 'col-title', col.title);
+                
+                header.addEventListener('mouseenter', () => colEl.draggable = true);
+                header.addEventListener('mouseleave', () => colEl.draggable = false);
+
+                colEl.addEventListener('dragstart', (e) => {
+                    dragSource = { type: 'column', id: col.id, el: colEl, width: colEl.offsetWidth };
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', col.id);
+
+                    requestAnimationFrame(() => {
+                        colEl.style.display = 'none';
+                        currentGap = el('div', 'col-placeholder');
+                        currentGap.style.minWidth = dragSource.width + 'px';
+                        colEl.parentNode.insertBefore(currentGap, colEl);
+                    });
+                });
+
+                colEl.addEventListener('dragend', () => {
+                    if (currentGap) currentGap.remove();
+                    currentGap = null;
+                    dragSource = null;
+                    colEl.draggable = false;
+                    document.querySelectorAll('.col-placeholder').forEach(el => el.remove());
+                    render();
+                });
+
+                title.onclick = (e) => {
+                    e.stopPropagation();
+                    colEl.draggable = false; 
+                    createInlineInput(title, 'Column name...', col.title, 
+                        (newVal) => { col.title = newVal; save(); render(); }, 
+                        () => { colEl.draggable = true; render(); }
+                    );
+                };
+
+                const actions = el('div', 'action-group');
+                const delColBtn = el('button', 'action-btn del-btn', '×', { title: 'Delete Column' });
+                delColBtn.onclick = () => {
+                    const execDelete = () => {
+                        state.columns = state.columns.filter(c => c.id !== col.id);
+                        save(); render();
+                    };
+
+                    if (col.projects.length > 0) {
+                        showDialog({ msg: `Delete column "${col.title}" and all its projects?` }, execDelete);
+                    } else {
+                        execDelete();
+                    }
+                };
+
+                actions.appendChild(delColBtn);
+                header.appendChild(title);
+                header.appendChild(actions);
+                colEl.appendChild(header);
+
+                const body = el('div', 'col-body');
+                
+                col.projects.forEach(proj => {
+                    const pEl = el('div', 'project');
+                    pEl.draggable = true;
+
+                    if (proj.color) {
+                        pEl.style.boxShadow = `inset 3px 0 0 0 ${proj.color}`;
+                    }
+
+                    const pHead = el('div', 'project-title');
+                    const pTitle = el('span', null, proj.title);
+                    
+                    pTitle.onclick = (e) => {
+                        e.stopPropagation();
+                        pEl.draggable = false;
+                        createInlineInput(pHead, 'Project Title...', proj.title, 
+                            (newVal) => { proj.title = newVal; save(); render(); }, 
+                            () => render()
+                        );
+                    };
+
+                    const pActions = el('div', 'action-group');
+                    
+                    const pColorBtn = el('button', 'action-btn', '●', { title: 'Cycle Color' });
+                    pColorBtn.style.color = proj.color || 'var(--border-hover)';
+                    pColorBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        let idx = PALETTE.indexOf(proj.color || '');
+                        proj.color = PALETTE[(idx + 1) % PALETTE.length];
+                        save(); render();
+                    };
+
+                    const pDel = el('button', 'action-btn del-btn', '×', { title: 'Delete Project' });
+                    pDel.onclick = (e) => {
+                        e.stopPropagation();
+                        const execDelete = () => {
+                            col.projects = col.projects.filter(p => p.id !== proj.id);
+                            save(); render();
+                        };
+
+                        if (proj.children && proj.children.length > 0) {
+                            showDialog({ msg: `Delete project "${proj.title}" and all nested subprojects?` }, execDelete);
+                        } else {
+                            execDelete();
+                        }
+                    };
+
+                    pActions.appendChild(pColorBtn);
+                    pActions.appendChild(pDel);
+
+                    pHead.appendChild(pTitle);
+                    pHead.appendChild(pActions);
+                    pEl.appendChild(pHead);
+
+                    const subList = el('div', 'sub-list');
+                    
+                    proj.children = proj.children || proj.subprojects ||[];
+                    if (proj.subprojects) delete proj.subprojects; 
+
+                    renderTree(proj.children, subList);
+
+                    const addSubBtn = el('button', 'add-btn', '+ add subproject');
+                    addSubBtn.onclick = () => {
+                        addSubBtn.style.display = 'none';
+                        const wrapper = el('div');
+                        subList.appendChild(wrapper);
+                        pEl.draggable = false;
+
+                        createInlineInput(wrapper, 'New subproject...', '', 
+                            (newVal) => { 
+                                proj.children.push({ id: uid(), title: newVal, children:[] }); 
+                                save(); render(); 
+                            },
+                            () => render()
+                        );
+                    };
+                    subList.appendChild(addSubBtn);
+
+                    pEl.appendChild(subList);
+                    setupDragEvents(pEl, proj, col);
+                    body.appendChild(pEl);
+                });
+
+                const addProjBtn = el('button', 'add-btn', '+ Add Project');
+                addProjBtn.onclick = () => {
+                    addProjBtn.style.display = 'none';
+                    const wrapper = el('div');
+                    body.insertBefore(wrapper, addProjBtn);
+                    createInlineInput(wrapper, 'New project...', '', 
+                        (newVal) => { col.projects.push({ id: uid(), title: newVal, children:[] }); save(); render(); },
+                        () => render()
+                    );
+                };
+                body.appendChild(addProjBtn);
+
+                setupDropEvents(body, col);
+                colEl.appendChild(body);
+                board.appendChild(colEl);
+            });
+        }
+
+        // --- PROJECT DND LOGIC ---
+        function setupDragEvents(pEl, proj, col) {
+            pEl.addEventListener('dragstart', (e) => {
+                e.stopPropagation(); 
+                dragSource = { type: 'project', colId: col.id, projId: proj.id, el: pEl, height: pEl.offsetHeight };
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', proj.id);
+
+                requestAnimationFrame(() => {
+                    pEl.style.display = 'none';
+                    currentGap = el('div', 'placeholder');
+                    currentGap.style.height = dragSource.height + 'px';
+                    currentGap.style.marginBottom = '8px';
+                    currentGap.style.borderWidth = '1px';
+                    pEl.parentNode.insertBefore(currentGap, pEl);
+                });
+            });
+
+            pEl.addEventListener('dragend', () => {
+                if (currentGap) currentGap.remove();
+                currentGap = null;
+                dragSource = null;
+                document.querySelectorAll('.placeholder').forEach(el => el.remove());
+                render();
+            });
+        }
+
+        function setGap(container, afterElement, height) {
+            if (currentGap && currentGap.parentNode === container && currentGap.nextElementSibling === afterElement) {
+                return;
+            }
+            if (currentGap) {
+                const old = currentGap;
+                old.style.height = '0px';
+                old.style.marginBottom = '0px';
+                old.style.borderWidth = '0px';
+                setTimeout(() => old.remove(), 200);
+            }
+            currentGap = el('div', 'placeholder');
+            if (afterElement) container.insertBefore(currentGap, afterElement);
+            else container.appendChild(currentGap);
+
+            void currentGap.offsetWidth; 
+            currentGap.style.height = height + 'px';
+            currentGap.style.marginBottom = '8px';
+            currentGap.style.borderWidth = '1px';
+        }
+
+        function getDragAfterElement(container, y) {
+            const elements =[...container.querySelectorAll('.project:not([style*="display: none"])')];
+            return elements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function setupDropEvents(body, col) {
+            body.addEventListener('dragover', (e) => {
+                if (!dragSource || dragSource.type !== 'project') return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const afterElement = getDragAfterElement(body, e.clientY);
+                const insertBeforeNode = afterElement || body.querySelector('.add-btn');
+                setGap(body, insertBeforeNode, dragSource.height);
+            });
+
+            body.addEventListener('drop', (e) => {
+                if (!dragSource || dragSource.type !== 'project') return;
+                e.preventDefault();
+
+                const sourceCol = state.columns.find(c => c.id === dragSource.colId);
+                const projIndex = sourceCol.projects.findIndex(p => p.id === dragSource.projId);
+                const proj = sourceCol.projects.splice(projIndex, 1)[0];
+
+                const domProjects =[...body.querySelectorAll('.project:not([style*="display: none"])')];
+                let targetIndex = domProjects.length;
+
+                if (currentGap) {
+                    let nextEl = currentGap.nextElementSibling;
+                    while (nextEl && !nextEl.classList.contains('project')) {
+                        nextEl = nextEl.nextElementSibling;
+                    }
+                    if (nextEl) targetIndex = domProjects.indexOf(nextEl);
+                }
+
+                col.projects.splice(targetIndex, 0, proj);
+                save();
+            });
+        }
+
+        // --- COLUMN DND UTILS ---
+        function getColDragAfterElement(container, x) {
+            const elements =[...container.querySelectorAll('.column:not([style*="display: none"])')];
+            return elements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - box.left - box.width / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function setColGap(container, afterElement, width) {
+            if (currentGap && currentGap.parentNode === container && currentGap.nextElementSibling === afterElement) {
+                return;
+            }
+            if (currentGap) {
+                const old = currentGap;
+                old.style.minWidth = '0px';
+                old.style.borderWidth = '0px';
+                setTimeout(() => old.remove(), 200);
+            }
+            currentGap = el('div', 'col-placeholder');
+            if (afterElement) container.insertBefore(currentGap, afterElement);
+            else container.appendChild(currentGap);
+
+            void currentGap.offsetWidth; 
+            currentGap.style.minWidth = width + 'px';
+            currentGap.style.borderWidth = '1px';
+        }
+
+        function setupGlobals() {
+            const board = document.getElementById('board');
+            
+            board.addEventListener('dragover', (e) => {
+                if (!dragSource || dragSource.type !== 'column') return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                const afterElement = getColDragAfterElement(board, e.clientX);
+                setColGap(board, afterElement, dragSource.width);
+            });
+
+            board.addEventListener('drop', (e) => {
+                if (!dragSource || dragSource.type !== 'column') return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const sourceIndex = state.columns.findIndex(c => c.id === dragSource.id);
+                if (sourceIndex === -1) return;
+                
+                const column = state.columns.splice(sourceIndex, 1)[0];
+
+                const domColumns = [...board.querySelectorAll('.column:not([style*="display: none"])')];
+                let targetIndex = domColumns.length;
+
+                if (currentGap) {
+                    let nextEl = currentGap.nextElementSibling;
+                    while (nextEl && !nextEl.classList.contains('column')) {
+                        nextEl = nextEl.nextElementSibling;
+                    }
+                    if (nextEl) targetIndex = domColumns.indexOf(nextEl);
+                }
+
+                state.columns.splice(targetIndex, 0, column);
+                save(); render();
+            });
+
+            document.getElementById('add-col-btn').onclick = () => {
+                const btn = document.getElementById('add-col-btn');
+                btn.style.display = 'none';
+                const wrapper = el('div');
+                btn.parentNode.appendChild(wrapper);
+                
+                createInlineInput(wrapper, 'Column Name...', '', 
+                    (newVal) => { 
+                        state.columns.push({ id: uid(), title: newVal, projects:[] }); 
+                        save(); render(); 
+                        wrapper.remove(); btn.style.display = 'inline-block';
+                    },
+                    () => { wrapper.remove(); btn.style.display = 'inline-block'; }
+                );
+            };
+
+            // Standard File Export utilizing native browser save dialog
+            document.getElementById('export-btn').onclick = () => {
+                const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'kanban.json';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                setTimeout(() => {
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }, 100);
+            };
+
+            // Setup shortcut (Ctrl+S or Cmd+S) to instantly save
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    document.getElementById('export-btn').click();
+                }
+            });
+
+            document.getElementById('import-file').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => handleImport(ev.target.result);
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+
+            document.body.addEventListener('dragover', (e) => {
+                e.preventDefault(); 
+                if (e.dataTransfer.types.includes('Files')) {
+                    document.body.style.backgroundColor = '#161616';
+                }
+            });
+            
+            document.body.addEventListener('dragleave', (e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                    document.body.style.backgroundColor = '';
+                }
+            });
+            
+            document.body.addEventListener('drop', (e) => {
+                e.preventDefault(); 
+                if (e.dataTransfer.types.includes('Files')) {
+                    document.body.style.backgroundColor = '';
+                    const file = e.dataTransfer.files[0];
+                    if (file && (file.type === "application/json" || file.name.endsWith('.json'))) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => handleImport(ev.target.result);
+                        reader.readAsText(file);
+                    } else {
+                        alert('Only JSON files are supported for import.');
+                    }
+                }
+            });
+        }
+
+        function handleImport(jsonString) {
+            try {
+                const loaded = JSON.parse(jsonString);
+                if (loaded && Array.isArray(loaded.columns)) {
+                    state = loaded;
+                    save();
+                    render();
+                } else {
+                    alert('Invalid board structure.');
+                }
+            } catch (err) {
+                alert('Error parsing JSON file.');
+            }
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
