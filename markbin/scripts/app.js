@@ -9,11 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewer = document.getElementById('viewer');
     const toast = document.getElementById('toast');
     const fileInput = document.getElementById('file-input');
+    const btnUpload = document.getElementById('btn-upload');   // upload button
     
     let vditorInstance = null;
     let rawMarkdown = "";
     
-    // Constant key for LocalStorage
     const DRAFT_KEY = 'markbin_draft';
     
     function showToast(message) {
@@ -31,17 +31,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnToggleBar = document.getElementById('toggle-bar-btn');
     const editorContainer = document.getElementById('editor-container');
     
+    // ✅ Set initial icon based on screen size
+    const isDesktopInit = window.matchMedia('(min-width: 769px)').matches;
+    const iconInit = btnToggleBar.querySelector('i');
+    if (isDesktopInit) {
+        iconInit.classList.remove('bi-chevron-down');
+        iconInit.classList.add('bi-chevron-up');      // panel at top, collapse upward
+    } else {
+        iconInit.classList.remove('bi-chevron-up');
+        iconInit.classList.add('bi-chevron-down');    // panel at bottom, collapse downward
+    }
+    
+    // Toggle panel collapse (works for both mobile bottom and desktop top)
     btnToggleBar.addEventListener('click', () => {
         bottomContainer.classList.toggle('collapsed');
         editorContainer.classList.toggle('expanded-view');
         
         const icon = btnToggleBar.querySelector('i');
-        if (bottomContainer.classList.contains('collapsed')) {
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
+        const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+        
+        if (isDesktop) {
+            // Desktop top bar: swap icon meanings
+            if (bottomContainer.classList.contains('collapsed')) {
+                // Collapsed (hidden up) → show down arrow to expand
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            } else {
+                // Visible → show up arrow to collapse
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            }
         } else {
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
+            // Mobile bottom bar: original logic
+            if (bottomContainer.classList.contains('collapsed')) {
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            } else {
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            }
         }
     });
 
@@ -79,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tocContent.innerHTML = "";
         
         const tokens = marked.lexer(md);
-        const headings =[];
+        const headings = [];
         
         function walkTokens(tokenList) {
             if (!tokenList) return;
@@ -147,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (isViewMode) {
+        // --- VIEW MODE ---
+        btnUpload.style.display = 'none';  // hide upload button
+        
         btnAction.innerHTML = '<i class="bi bi-clipboard"></i>';
         btnAction.title = "Copy raw Markdown";
         btnAction.classList.remove('disabled');
@@ -175,34 +206,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     } else {
+        // --- EDIT MODE ---
         btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
         btnAction.title = "Save snippet (Ctrl + S)";
+        
+        // Upload button: click triggers hidden file input
+        btnUpload.addEventListener('click', () => {
+            fileInput.click();
+        });
         
         // Check for saved draft in local storage
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
 
         vditorInstance = new Vditor('editor', {
-            value: savedDraft, // Initialize with draft
+            value: savedDraft,
             mode: 'ir',
             theme: 'dark',
             icon: 'material',
             toolbarConfig: { hide: true },
             cache: { enable: false },
-            placeholder: "Type Markdown, drag & drop a file, or click here to upload...",
+            placeholder: "Type Markdown or drag & drop a file…",
             preview: {
                 theme: { current: 'dark' },
                 hljs: { style: 'atom-one-dark' } 
             },
             after: () => {
-                bindEditorEvents();
                 vditorInstance.focus();
                 updateSaveButtonState();
                 updateTOC(rawMarkdown); 
             },
             input: (val) => {
                 rawMarkdown = val;
-                localStorage.setItem(DRAFT_KEY, val); // Save to local storage on type
+                localStorage.setItem(DRAFT_KEY, val);
                 updateSaveButtonState();
                 updateTOC(val); 
             }
@@ -213,15 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAction.classList.add('disabled');
             } else {
                 btnAction.classList.remove('disabled');
-            }
-        }
-
-        function bindEditorEvents() {
-            const vditorContainer = document.querySelector('.vditor-ir');
-            if (vditorContainer) {
-                vditorContainer.addEventListener('click', () => {
-                    if (rawMarkdown.trim() === "") fileInput.click();
-                });
             }
         }
 
@@ -244,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => {
                 vditorInstance.setValue(e.target.result);
                 rawMarkdown = e.target.result;
-                localStorage.setItem(DRAFT_KEY, rawMarkdown); // Save uploaded file to draft
+                localStorage.setItem(DRAFT_KEY, rawMarkdown);
                 updateSaveButtonState();
                 updateTOC(rawMarkdown);
             };
@@ -276,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 
-                // Clear the local draft AFTER a successful save
                 localStorage.removeItem(DRAFT_KEY);
                 
                 window.location.href = `${baseUrl}/${data.uuid}`;
@@ -319,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         viewer.innerHTML = DOMPurify.sanitize(rawHtml, {
             ADD_TAGS: ['iframe'],
-            ADD_ATTR:['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'id']
+            ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'id']
         });
     }
 });

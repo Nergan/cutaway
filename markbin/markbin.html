@@ -34,7 +34,7 @@
         </aside>
     </div>
 
-    <!-- Absolutely positioned bottom bar -->
+    <!-- Absolutely positioned bottom bar (on desktop moved to top via CSS) -->
     <div class="bottom-container" id="bottom-container">
         <button id="toggle-bar-btn" class="toggle-bar-btn" title="Toggle Panel">
             <i class="bi bi-chevron-down"></i>
@@ -44,6 +44,10 @@
             <div class="actions">
                 <button id="btn-toc" class="icon-btn" title="Toggle Structure" aria-label="Toggle Table of Contents">
                     <i class="bi bi-list-nested"></i>
+                </button>
+                <!-- Upload button (hidden in view mode via JS) -->
+                <button id="btn-upload" class="icon-btn" title="Load Markdown file">
+                    <i class="bi bi-cloud-arrow-down"></i>
                 </button>
                 <button id="btn-action" class="icon-btn disabled" aria-label="Action">
                     <!-- Icon dynamically injected -->
