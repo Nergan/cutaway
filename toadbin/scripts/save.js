@@ -238,14 +238,12 @@
 
             if (!isCtrlS) return;
 
-            // Prevent the browser's native save dialog
-            if (document.activeElement === codeInput) {
-                event.preventDefault();
-            }
+            // Prevent the browser's native save dialog universally
+            event.preventDefault();
 
-            // Trigger save if the textarea is focused
-            if (document.activeElement === codeInput) {
-                saveCode();
+            // Programmatically click the save button to trigger the animation and logic uniformly
+            if (saveButton) {
+                saveButton.click();
             }
         }
 
