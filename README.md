@@ -1,68 +1,50 @@
-# Nargan's Projects — коллекция веб-приложений
+# 🧩 Nargan's Pet‑Projects
 
-Этот репозиторий объединяет несколько независимых проектов на **FastAPI**.  
-Все сервисы доступны через единую главную страницу‑портфолио, а бот работает отдельно и интегрирован в экосистему через MongoDB.
-
-Проекты охватывают разные области: от сайта сообщества и утилит до сервисов для обмена кодом, веб‑зеркала и AI‑бота для общения.
+A collection of small, standalone web applications and experiments built with **FastAPI** and deployed on **Vercel**.  
+The landing page (index.html) serves as a hub to navigate between them.
 
 ---
 
-## Технологический стек
+## 🚀 Subprojects
 
-- **Backend (веб)**: Python 3.8+, FastAPI
-- **Telegram‑бот**: aiogram 3.x
-- **База данных**: MongoDB (используется в `toadbin`, для счётчика посетителей и для хранения данных бота)
-- **AI для бота**: `llama-cpp-python` — локальный запуск LLM (например, модели в формате GGUF)
-- **Шаблонизация**: Jinja2
-- **Асинхронный HTTP‑клиент**: `httpx`
-- **Парсинг HTML**: `beautifulsoup4` + `lxml`
-- **Конвертация документов**: `python-docx`, `reportlab`, `playwright` (Chromium)
-- **Фронтенд**: Bootstrap 5, Bootstrap Icons, кастомные CSS/JS
-- **Дополнительно**: `python-dotenv` для переменных окружения
+| Name | Description | Endpoint |
+|------|-------------|----------|
+| **evenfest** | Cosplay community website with dynamic content loaded from MongoDB. | `/evenfest` |
+| **snake** | Classic Snake game with a nature‑themed, video‑background UI. | `/snake` |
+| **toadbin** | Code‑sharing platform similar to katbin, with syntax highlighting and a random background. | `/toadbin` |
+| **formular** | File converter (docx→pdf, html→pdf) – currently limited. | `/formular` |
+| **yellow mirror** | Simple web proxy that enables browsing external sites through the app. | `/yellow-mirror` |
+| **foundry blank viewer** | Upload a Foundry VTT actor JSON file and view character traits in a fantasy UI. | `/foundry` |
+| **markbin** | Markdown editor with live preview, saving, and sharing capabilities. | `/markbin` |
+| **kanban** | Minimal kanban board with drag & drop, export/import, and local storage. | `/kanban` |
+| **simple aichat** | Chat interface with a local LLM (llama.cpp) via WebSocket. | `/simple-aichat` (disabled in main) |
 
 ---
 
-## Описание подпроектов
+## 🛠️ Tech Stack
 
-### Главная страница
-Служит навигационным центром. При первом посещении генерирует уникальный идентификатор посетителя (сохраняется в `localStorage`) и увеличивает счётчик уникальных просмотров в MongoDB.  
-Поддерживает два языка (русский/английский) в зависимости от настроек браузера. Для российских пользователей скрывает один из проектов (по требованию).
+- **Backend:** Python 3.10+, [FastAPI](https://fastapi.tiangolo.com/)
+- **Database:** MongoDB (used by evenfest, toadbin, markbin, visitor counter)
+- **Frontend:** HTML, CSS, JavaScript, Bootstrap, Vditor, highlight.js, various fonts
+- **Deployment:** Vercel (via `vercel.json`), Uvicorn for local development
 
-### evenfest
-Сайт сообщества косплееров и фотографов.  
-Реализован на **FastAPI** + **Jinja2**.  
-- Меню формируется из `content.json`
-- Страницы: новости, «о нас», для косплееров, фотографов, спец‑гостей, билеты
-- Кастомный CSS с фиолетовой неоновой темой
-- Адаптивный интерфейс
+---
 
-### snake
-Классическая игра «Змейка» в неоновом стиле.  
-Полностью на **JavaScript** (Canvas API), бэкенд только раздаёт статику.  
-- Телепортация через границы
-- Три типа еды с разной ценностью
-- Частицы при поедании, повышении уровня, окончании игры
-- Управление с клавиатуры (WASD / стрелки) и кнопками на экране
+## 📁 Project Structure
 
-### toadbin
-Минималистичный аналог Pastebin (на самом деле, katbin) для обмена кодом.  
-- Сохранение сниппетов в **MongoDB** с уникальным UUID
-- Подсветка синтаксиса через **Highlight.js**
-- Умные отступы, автозакрытие скобок, сохранение по `Ctrl+S`
-- Случайное видео на фоне из папки `static/backgrounds`
-- Два режима: редактирование (новый сниппет) и только чтение (по ссылке)
-
-### formular
-Конвертер документов в PDF.  
-- Поддерживает входные форматы: **DOCX**, **HTML**
-- Для DOCX → PDF используется `python-docx` + `reportlab`
-- Для HTML → PDF используется **Playwright** (Chromium)
-- Интерфейс в готическом стиле с оранжевыми акцентами
-
-### yellow-mirror
-Веб‑зеркало, позволяющее просматривать внешние сайты через собственный интерфейс.  
-- Загружает страницы по HTTP/HTTPS, переписывает все ссылки, чтобы навигация оставалась внутри зеркала
-- Изолирует загружаемые страницы через `sandbox`‑атрибут iframe
-- Мониторит изменения URL внутри iframe и синхронизирует адресную строку
-- Многослойный анимированный сплэш‑скрин с эффектом параллакса
-- Защита от обращения к локальным адресам и рекурсивных вызовов
+```
+.
+├── main.py                # Main FastAPI app that mounts all subprojects
+├── index.html             # Landing page with language detection and visitor counter
+├── vercel.json            # Vercel deployment configuration
+├── evenfest/              # Cosplay community (FastAPI + MongoDB)
+├── snake/                 # Snake game (static files + API for backgrounds)
+├── toadbin/               # Code bin (FastAPI + MongoDB, background videos)
+├── formular/              # File converter (FastAPI + Playwright)
+├── yellow_mirror/         # Web proxy (FastAPI + httpx)
+├── foundry_blank_viewer/  # Foundry character viewer (static HTML)
+├── markbin/               # Markdown editor/sharing (FastAPI + MongoDB)
+├── kanban/                # Kanban board (static HTML, client‑side JS)
+├── simple_aichat/         # AI chat (currently disabled in main.py)
+└── mainpage-backgrounds/  # MP4 videos for the landing page background
+```
