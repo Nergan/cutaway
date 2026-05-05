@@ -35,11 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDesktopInit = window.matchMedia('(min-width: 769px)').matches;
     const iconInit = btnToggleBar.querySelector('i');
     if (isDesktopInit) {
-        iconInit.classList.remove('bi-chevron-down');
+        iconInit.classList.remove('bi-file-earmark-arrow-up');
         iconInit.classList.add('bi-chevron-up');      // panel at top, collapse upward
     } else {
         iconInit.classList.remove('bi-chevron-up');
-        iconInit.classList.add('bi-chevron-down');    // panel at bottom, collapse downward
+        iconInit.classList.add('bi-file-earmark-arrow-up');    // panel at bottom, collapse downward
     }
     
     // Toggle panel collapse (works for both mobile bottom and desktop top)
@@ -55,16 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bottomContainer.classList.contains('collapsed')) {
                 // Collapsed (hidden up) → show down arrow to expand
                 icon.classList.remove('bi-chevron-up');
-                icon.classList.add('bi-chevron-down');
+                icon.classList.add('bi-file-earmark-arrow-up');
             } else {
                 // Visible → show up arrow to collapse
-                icon.classList.remove('bi-chevron-down');
+                icon.classList.remove('bi-file-earmark-arrow-up');
                 icon.classList.add('bi-chevron-up');
             }
         } else {
             // Mobile bottom bar: original logic
             if (bottomContainer.classList.contains('collapsed')) {
-                icon.classList.remove('bi-chevron-down');
+                icon.classList.remove('bi-file-earmark-arrow-up');
                 icon.classList.add('bi-chevron-up');
             } else {
                 icon.classList.remove('bi-chevron-up');
