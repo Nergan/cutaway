@@ -132,3 +132,47 @@ body {
     opacity: 0; visibility: hidden; transition: 0.3s; z-index: 1000;
 }
 .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+/* ===== DESKTOP: top bar, a little bigger, same toggle ===== */
+@media (min-width: 769px) {
+    .bottom-container {
+        top: 0;                /* move to top */
+        bottom: auto;
+        height: 40px;          /* bigger than before, still smaller than mobile 60px */
+        border-bottom: 1px solid var(--border-color);
+        border-top: none;
+    }
+    .bottom-container.collapsed {
+        transform: translateY(-100%);  /* slide up, leaving toggle tab visible */
+    }
+    .bottom-bar {
+        height: 40px;
+        padding: 0 1rem;
+    }
+    .logo {
+        font-size: 0.9rem;
+    }
+    .icon-btn {
+        font-size: 1rem;
+    }
+    /* Toggle button repositioned to hang below the bar */
+    .toggle-bar-btn {
+        top: auto;
+        bottom: -24px;
+        right: 2rem;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 0 0 8px 8px;
+    }
+    /* Adjust editor padding for top bar */
+    .editor-container {
+        padding-top: 60px;     /* 40px bar + 20px spacing */
+        padding-bottom: 20px;
+        transition: padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .editor-container.expanded-view {
+        padding-top: 20px;     /* when bar is hidden */
+    }
+}
