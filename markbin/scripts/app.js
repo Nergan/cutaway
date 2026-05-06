@@ -4,24 +4,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnAction = document.getElementById('btn-action');
     const btnToc = document.getElementById('btn-toc');
-    const btnUpload = document.getElementById('btn-upload');
     const sidebar = document.getElementById('toc-sidebar');
     const editorWrapper = document.getElementById('editor-wrapper');
     const viewer = document.getElementById('viewer');
     const toast = document.getElementById('toast');
     const fileInput = document.getElementById('file-input');
+    const btnUpload = document.getElementById('btn-upload');   // upload button
     
     let vditorInstance = null;
     let rawMarkdown = "";
+    
     const DRAFT_KEY = 'markbin_draft';
-
-    // --- SETUP GITHUB-FLAVORED MARKDOWN PARSER ---
-    const mdParser = window.markdownit({
-        html: true,       // Allow HTML tags
-        linkify: true,    // Autoconvert URL-like text to links
-        typographer: true, // Beautify quotes and dashes
-        breaks: true      // GitHub style line-breaks
-    }).use(window.markdownitTaskLists, { enabled: false }); // Add GitHub task lists support
     
     function showToast(message) {
         toast.textContent = message;
@@ -38,17 +31,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnToggleBar = document.getElementById('toggle-bar-btn');
     const editorContainer = document.getElementById('editor-container');
     
+    // ✅ Set initial icon based on screen size
+    const isDesktopInit = window.matchMedia('(min-width: 769px)').matches;
+    const iconInit = btnToggleBar.querySelector('i');
+    if (isDesktopInit) {
+        iconInit.classList.remove('bi-chevron-down');
+        iconInit.classList.add('bi-chevron-up');      // panel at top, collapse upward
+    } else {
+        iconInit.classList.remove('bi-chevron-up');
+        iconInit.classList.add('bi-chevron-down');    // panel at bottom, collapse downward
+    }
+    
+    // Toggle panel collapse (works for both mobile bottom and desktop top)
     btnToggleBar.addEventListener('click', () => {
         bottomContainer.classList.toggle('collapsed');
         editorContainer.classList.toggle('expanded-view');
         
         const icon = btnToggleBar.querySelector('i');
-        if (bottomContainer.classList.contains('collapsed')) {
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
+        const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+        
+        if (isDesktop) {
+            // Desktop top bar: swap icon meanings
+            if (bottomContainer.classList.contains('collapsed')) {
+                // Collapsed (hidden up) → show down arrow to expand
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            } else {
+                // Visible → show up arrow to collapse
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            }
         } else {
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
+            // Mobile bottom bar: original logic
+            if (bottomContainer.classList.contains('collapsed')) {
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            } else {
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            }
         }
     });
 
@@ -62,6 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { capture: true });
 
+    // --- TEXT & ID CLEANERS ---
+    function getCleanText(rawText) {
+        if (!rawText) return '';
+        let text = rawText.replace(/[*_~`]/g, '');
+        text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        let tmp = document.createElement('div');
+        tmp.innerHTML = text;
+        return (tmp.textContent || tmp.innerText || '').trim();
+    }
+
     function generateId(text) {
         let id = text.toLowerCase().trim()
             .replace(/[\s]+/g, '-')
@@ -70,18 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return id || 'heading'; 
     }
 
-    // --- REVOLUTIONARY DOM-BASED TOC & SCROLLING ---
-    // Instead of guessing with regex, this reads the actual rendered elements on the screen.
-    function updateTOC() {
+    // --- TOC GENERATOR & NATIVE SCROLL ---
+    function updateTOC(md) {
         const tocContent = document.getElementById('toc-content');
         tocContent.innerHTML = "";
         
-        // Determine the correct container based on the mode
-        const container = isViewMode ? viewer : document.querySelector('.vditor-ir');
-        if (!container) return;
-
-        // Find all rendered headings physically present in the DOM
-        const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        const tokens = marked.lexer(md);
+        const headings = [];
+        
+        function walkTokens(tokenList) {
+            if (!tokenList) return;
+            tokenList.forEach(t => {
+                if (t.type === 'heading') headings.push(t);
+                if (t.tokens) walkTokens(t.tokens);
+                else if (t.items) walkTokens(t.items);
+            });
+        }
+        walkTokens(tokens);
         
         if (headings.length === 0) {
             tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
@@ -91,9 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const idCounts = {};
         
         headings.forEach(h => {
-            // Natively extracts clean text, ignoring any nested HTML like <p> inside headers!
-            const cleanText = h.innerText || h.textContent || '';
-            if (!cleanText.trim()) return;
+            const cleanText = getCleanText(h.text);
+            if (!cleanText) return; 
             
             let baseId = generateId(cleanText);
             let id = baseId;
@@ -103,21 +138,36 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 idCounts[baseId] = 1;
             }
-
-            // Ensure the element has the ID assigned to it
-            if (!h.id) h.id = id;
             
-            const depth = parseInt(h.tagName.substring(1)); // e.g., 'H2' -> 2
             const tocItem = document.createElement('a');
             tocItem.href = `#${id}`;
             tocItem.className = 'toc-item';
-            tocItem.style.marginLeft = `${(depth - 1) * 15}px`;
+            tocItem.style.marginLeft = `${(h.depth - 1) * 15}px`;
             tocItem.textContent = cleanText;
             
-            // Native, direct node scrolling. It scrolls the exact physical element!
             tocItem.addEventListener('click', (e) => {
                 e.preventDefault(); 
-                h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                if (isViewMode) {
+                    const target = document.getElementById(id);
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
+                    
+                    let targetOccurrence = id.includes('-') ? parseInt(id.split('-').pop()) || 0 : 0;
+                    let matchIndex = 0;
+                    
+                    for (let el of editorHeadings) {
+                        const elCleanText = getCleanText(el.textContent);
+                        if (generateId(elCleanText) === baseId) {
+                            if (matchIndex === targetOccurrence) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                break;
+                            }
+                            matchIndex++;
+                        }
+                    }
+                }
             });
 
             tocContent.appendChild(tocItem);
@@ -125,11 +175,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (isViewMode) {
+        // --- VIEW MODE ---
+        btnUpload.style.display = 'none';  // hide upload button
+        
         btnAction.innerHTML = '<i class="bi bi-clipboard"></i>';
         btnAction.title = "Copy raw Markdown";
         btnAction.classList.remove('disabled');
-        
-        if (btnUpload) btnUpload.style.display = 'none'; // Hide upload button in view mode
         
         editorWrapper.classList.add('hidden');
         document.getElementById('loading').classList.remove('hidden');
@@ -155,39 +206,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     } else {
+        // --- EDIT MODE ---
         btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
         btnAction.title = "Save snippet (Ctrl + S)";
         
-        if (btnUpload) {
-            btnUpload.addEventListener('click', () => fileInput.click());
-        }
+        // Upload button: click triggers hidden file input
+        btnUpload.addEventListener('click', () => {
+            fileInput.click();
+        });
         
+        // Check for saved draft in local storage
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
 
         vditorInstance = new Vditor('editor', {
-            value: savedDraft, 
+            value: savedDraft,
             mode: 'ir',
             theme: 'dark',
             icon: 'material',
             toolbarConfig: { hide: true },
             cache: { enable: false },
-            placeholder: "Type Markdown, drag & drop a file, or click here to upload...",
+            placeholder: "Type Markdown or drag & drop a file…",
             preview: {
                 theme: { current: 'dark' },
                 hljs: { style: 'atom-one-dark' } 
             },
             after: () => {
-                bindEditorEvents();
                 vditorInstance.focus();
                 updateSaveButtonState();
-                updateTOC(); 
+                updateTOC(rawMarkdown); 
             },
             input: (val) => {
                 rawMarkdown = val;
-                localStorage.setItem(DRAFT_KEY, val); 
+                localStorage.setItem(DRAFT_KEY, val);
                 updateSaveButtonState();
-                updateTOC(); 
+                updateTOC(val); 
             }
         });
 
@@ -196,15 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAction.classList.add('disabled');
             } else {
                 btnAction.classList.remove('disabled');
-            }
-        }
-
-        function bindEditorEvents() {
-            const vditorContainer = document.querySelector('.vditor-ir');
-            if (vditorContainer) {
-                vditorContainer.addEventListener('click', () => {
-                    if (rawMarkdown.trim() === "") fileInput.click();
-                });
             }
         }
 
@@ -227,9 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => {
                 vditorInstance.setValue(e.target.result);
                 rawMarkdown = e.target.result;
-                localStorage.setItem(DRAFT_KEY, rawMarkdown); 
+                localStorage.setItem(DRAFT_KEY, rawMarkdown);
                 updateSaveButtonState();
-                updateTOC();
+                updateTOC(rawMarkdown);
             };
             reader.readAsText(file);
             fileInput.value = ""; 
@@ -258,7 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!response.ok) throw new Error("Failed to save.");
                 
                 const data = await response.json();
+                
                 localStorage.removeItem(DRAFT_KEY);
+                
                 window.location.href = `${baseUrl}/${data.uuid}`;
             } catch (err) {
                 showToast("Failed to save snippet!");
@@ -271,16 +317,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderMarkdown(md) {
-        // Parse with Markdown-It
-        const rawHtml = mdParser.render(md);
+        updateTOC(md);
         
-        // Sanitize for security (Added inputs/classes to safely allow GitHub Task Checkboxes)
+        const renderer = new marked.Renderer();
+        const idCounts = {};
+        
+        renderer.heading = function(headingObj) {
+            const text = headingObj.text || arguments[0];
+            const depth = headingObj.depth || arguments[1];
+            
+            const cleanText = getCleanText(text);
+            let baseId = generateId(cleanText);
+            let id = baseId;
+            
+            if (idCounts[baseId]) {
+                id = `${baseId}-${idCounts[baseId]}`;
+                idCounts[baseId]++;
+            } else {
+                idCounts[baseId] = 1;
+            }
+            
+            return `<h${depth} id="${id}">${text}</h${depth}>`;
+        };
+        marked.use({ renderer });
+        
+        const rawHtml = marked.parse(md);
+        
         viewer.innerHTML = DOMPurify.sanitize(rawHtml, {
-            ADD_TAGS: ['iframe', 'input'],
-            ADD_ATTR:['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'id', 'class', 'type', 'disabled', 'checked']
+            ADD_TAGS: ['iframe'],
+            ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'id']
         });
-
-        // Generate the TOC dynamically from the finalized DOM
-        updateTOC();
     }
 });
