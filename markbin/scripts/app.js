@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnAction = document.getElementById('btn-action');
     const btnToc = document.getElementById('btn-toc');
-    const btnClear = document.getElementById('btn-clear');
     const sidebar = document.getElementById('toc-sidebar');
     const editorWrapper = document.getElementById('editor-wrapper');
     const viewer = document.getElementById('viewer');
@@ -188,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isViewMode) {
         // --- VIEW MODE ---
         btnUpload.style.display = 'none';
-        btnClear.style.display = 'none';
         
         btnAction.innerHTML = '<i class="bi bi-clipboard"></i>';
         btnAction.title = "Copy raw Markdown";
@@ -231,17 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAction.title = "Save snippet (Ctrl + S)";
         
         btnUpload.addEventListener('click', () => fileInput.click());
-        
-        btnClear.addEventListener('click', () => {
-            if (rawMarkdown.trim() === "") return;
-            if (confirm("Are you sure you want to clear your current draft? This cannot be undone.")) {
-                vditorInstance.setValue('');
-                rawMarkdown = '';
-                localStorage.removeItem(DRAFT_KEY);
-                updateSaveButtonState();
-                updateTOCEditMode(rawMarkdown);
-            }
-        });
 
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
