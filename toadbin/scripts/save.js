@@ -64,22 +64,6 @@
         }
 
         /**
-         * Fetches all existing code IDs from the server.
-         * @returns {Promise<Set<string>>} A Set of existing IDs
-         */
-        async function fetchExistingIds() {
-            try {
-                const response = await fetch('./api/existing-ids');
-                if (!response.ok) throw new Error('Failed to fetch existing IDs');
-                const ids = await response.json();
-                return new Set(ids);
-            } catch (error) {
-                console.error('Error fetching existing IDs:', error);
-                return new Set();
-            }
-        }
-
-        /**
          * Generates a random UUID v4.
          * Falls back to a manual generator if crypto.randomUUID is not available.
          * @returns {string}
@@ -94,23 +78,6 @@
                 const v = c === 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
-        }
-
-        /**
-         * Generates a unique ID not present in the existingIds Set.
-         * @param {Set<string>} existingIds - Set of existing IDs
-         * @returns {string}
-         * @throws Will throw if unable to generate a unique ID after max attempts.
-         */
-        function generateUniqueId(existingIds) {
-            const MAX_ATTEMPTS = 100;
-            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-                const candidate = generateUUID();
-                if (!existingIds.has(candidate)) {
-                    return candidate;
-                }
-            }
-            throw new Error('Failed to generate unique ID after 100 attempts');
         }
 
         // ----------------------------------------------------------------------
@@ -134,8 +101,8 @@
             console.log('saving code...')
 
             try {
-                const existingIds = await fetchExistingIds();
-                const newId = generateUniqueId(existingIds);
+                // Generate a UUID locally without needing to query the server
+                const newId = generateUUID();
 
                 const response = await fetch('./api/save', {
                     method: 'POST',

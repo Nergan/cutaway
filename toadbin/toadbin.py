@@ -63,21 +63,9 @@ async def toad_backgrounds():
     if not BACKGROUNDS_DIR.exists():
         raise HTTPException(status_code=404, detail='Backgrounds directory not found')
     try:
-        mp4_files = [f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
+        mp4_files =[f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
         mp4_files.sort()
         return JSONResponse(content={'backgrounds': mp4_files})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get('/api/existing-ids')
-async def toad_ids():
-    """Return all existing code IDs (limited to 10000)."""
-    try:
-        cursor = codes_collection.find({}, {'code_id': 1})
-        docs = await cursor.to_list(length=10000)  # Increased limit
-        ids = [doc['code_id'] for doc in docs]
-        return ids
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
