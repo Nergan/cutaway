@@ -4,12 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnAction = document.getElementById('btn-action');
     const btnToc = document.getElementById('btn-toc');
+    const btnClear = document.getElementById('btn-clear');
     const sidebar = document.getElementById('toc-sidebar');
     const editorWrapper = document.getElementById('editor-wrapper');
     const viewer = document.getElementById('viewer');
     const toast = document.getElementById('toast');
     const fileInput = document.getElementById('file-input');
-    const btnUpload = document.getElementById('btn-upload');   // upload button
+    const btnUpload = document.getElementById('btn-upload'); 
     
     let vditorInstance = null;
     let rawMarkdown = "";
@@ -23,52 +24,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- PANEL TOGGLES ---
-    btnToc.addEventListener('click', () => {
-        sidebar.classList.toggle('hidden');
-    });
+    btnToc.addEventListener('click', () => sidebar.classList.toggle('hidden'));
 
     const bottomContainer = document.getElementById('bottom-container');
     const btnToggleBar = document.getElementById('toggle-bar-btn');
     const editorContainer = document.getElementById('editor-container');
     
-    // Set initial icon based on screen size
     const isDesktopInit = window.matchMedia('(min-width: 769px)').matches;
     const iconInit = btnToggleBar.querySelector('i');
     if (isDesktopInit) {
         iconInit.classList.remove('bi-chevron-down');
-        iconInit.classList.add('bi-chevron-up');      // panel at top, collapse upward
+        iconInit.classList.add('bi-chevron-up');
     } else {
         iconInit.classList.remove('bi-chevron-up');
-        iconInit.classList.add('bi-chevron-down');    // panel at bottom, collapse downward
+        iconInit.classList.add('bi-chevron-down');
     }
     
-    // Toggle panel collapse (works for both mobile bottom and desktop top)
     btnToggleBar.addEventListener('click', () => {
         bottomContainer.classList.toggle('collapsed');
         editorContainer.classList.toggle('expanded-view');
-        
         const icon = btnToggleBar.querySelector('i');
         const isDesktop = window.matchMedia('(min-width: 769px)').matches;
         
         if (isDesktop) {
-            // Desktop top bar: swap icon meanings
             if (bottomContainer.classList.contains('collapsed')) {
-                // Collapsed (hidden up) → show down arrow to expand
-                icon.classList.remove('bi-chevron-up');
-                icon.classList.add('bi-chevron-down');
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
             } else {
-                // Visible → show up arrow to collapse
-                icon.classList.remove('bi-chevron-down');
-                icon.classList.add('bi-chevron-up');
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
             }
         } else {
-            // Mobile bottom bar: original logic
             if (bottomContainer.classList.contains('collapsed')) {
-                icon.classList.remove('bi-chevron-down');
-                icon.classList.add('bi-chevron-up');
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
             } else {
-                icon.classList.remove('bi-chevron-up');
-                icon.classList.add('bi-chevron-down');
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
             }
         }
     });
@@ -101,38 +89,66 @@ document.addEventListener('DOMContentLoaded', () => {
         return id || 'heading'; 
     }
 
-    // --- TOC GENERATOR & NATIVE SCROLL ---
-    function updateTOC(md) {
+    // --- TOC GENERATORS ---
+    // 1. Used in View Mode (Scrapes rendered HTML DOM)
+    function buildTOCFromDOM(container) {
+        const tocContent = document.getElementById('toc-content');
+        tocContent.innerHTML = "";
+        const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        
+        if (headings.length === 0) {
+            tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
+            return;
+        }
+
+        headings.forEach(h => {
+            const depth = parseInt(h.tagName.substring(1));
+            const text = getCleanText(h.textContent);
+            if (!h.id) h.id = generateId(text);
+            
+            const tocItem = document.createElement('a');
+            tocItem.href = `#${h.id}`;
+            tocItem.className = 'toc-item';
+            tocItem.style.marginLeft = `${(depth - 1) * 15}px`;
+            tocItem.textContent = text;
+            
+            tocItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            tocContent.appendChild(tocItem);
+        });
+    }
+
+    // 2. Used in Edit Mode (Lightweight Regex + Virtual DOM Scraper)
+    function updateTOCEditMode(md) {
         const tocContent = document.getElementById('toc-content');
         tocContent.innerHTML = "";
         
-        // Use markdown-it for robust flat token parsing
-        const mdParser = window.markdownit();
-        const tokens = mdParser.parse(md, {});
+        // Strip out code blocks to prevent false-positive headings
+        const noCode = md.replace(/```[\s\S]*?```/g, '');
+        const headingRegex = /^(#{1,6})\s+(.+)$/gm;
+        let match;
         const headings =[];
         
-        for (let i = 0; i < tokens.length; i++) {
-            if (tokens[i].type === 'heading_open') {
-                const depth = parseInt(tokens[i].tag.substring(1));
-                // In markdown-it, the inline text follows the heading_open token
-                const textToken = tokens[i + 1]; 
-                const rawText = textToken ? textToken.content : "";
-                headings.push({ depth, text: rawText });
-            }
+        while ((match = headingRegex.exec(noCode)) !== null) {
+            headings.push({
+                depth: match[1].length,
+                text: getCleanText(match[2].trim())
+            });
         }
         
         if (headings.length === 0) {
             tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
             return;
         }
-        
+
         const idCounts = {};
         
         headings.forEach(h => {
-            const cleanText = getCleanText(h.text);
-            if (!cleanText) return; 
+            if (!h.text) return;
             
-            let baseId = generateId(cleanText);
+            let baseId = generateId(h.text);
             let id = baseId;
             if (idCounts[baseId]) {
                 id = `${baseId}-${idCounts[baseId]}`;
@@ -142,43 +158,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const tocItem = document.createElement('a');
-            tocItem.href = `#${id}`;
+            tocItem.href = `#`;
             tocItem.className = 'toc-item';
             tocItem.style.marginLeft = `${(h.depth - 1) * 15}px`;
-            tocItem.textContent = cleanText;
+            tocItem.textContent = h.text;
             
             tocItem.addEventListener('click', (e) => {
-                e.preventDefault(); 
+                e.preventDefault();
+                const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
                 
-                if (isViewMode) {
-                    const target = document.getElementById(id);
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    const editorHeadings = document.querySelectorAll('.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-ir[data-type="NodeHeading"]');
-                    
-                    let targetOccurrence = id.includes('-') ? parseInt(id.split('-').pop()) || 0 : 0;
-                    let matchIndex = 0;
-                    
-                    for (let el of editorHeadings) {
-                        const elCleanText = getCleanText(el.textContent);
-                        if (generateId(elCleanText) === baseId) {
-                            if (matchIndex === targetOccurrence) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                break;
-                            }
-                            matchIndex++;
+                let targetOccurrence = id.includes('-') ? parseInt(id.split('-').pop()) || 0 : 0;
+                let matchIndex = 0;
+                
+                for (let el of editorHeadings) {
+                    const elCleanText = getCleanText(el.textContent);
+                    if (generateId(elCleanText) === baseId) {
+                        if (matchIndex === targetOccurrence) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            break;
                         }
+                        matchIndex++;
                     }
                 }
             });
-
             tocContent.appendChild(tocItem);
         });
     }
 
     if (isViewMode) {
         // --- VIEW MODE ---
-        btnUpload.style.display = 'none';  // hide upload button
+        btnUpload.style.display = 'none';
+        btnClear.style.display = 'none';
         
         btnAction.innerHTML = '<i class="bi bi-clipboard"></i>';
         btnAction.title = "Copy raw Markdown";
@@ -194,9 +204,17 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 rawMarkdown = data.content;
-                renderMarkdown(rawMarkdown);
-                document.getElementById('loading').classList.add('hidden');
-                viewer.classList.remove('hidden');
+                // Render view mode natively using Vditor for 100% engine parity
+                Vditor.preview(viewer, rawMarkdown, {
+                    mode: 'dark',
+                    theme: { current: 'dark' },
+                    hljs: { style: 'atom-one-dark' },
+                    after: () => {
+                        document.getElementById('loading').classList.add('hidden');
+                        viewer.classList.remove('hidden');
+                        buildTOCFromDOM(viewer);
+                    }
+                });
             })
             .catch(() => {
                 document.getElementById('loading').classList.add('hidden');
@@ -212,12 +230,19 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
         btnAction.title = "Save snippet (Ctrl + S)";
         
-        // Upload button: click triggers hidden file input
-        btnUpload.addEventListener('click', () => {
-            fileInput.click();
-        });
+        btnUpload.addEventListener('click', () => fileInput.click());
         
-        // Check for saved draft in local storage
+        btnClear.addEventListener('click', () => {
+            if (rawMarkdown.trim() === "") return;
+            if (confirm("Are you sure you want to clear your current draft? This cannot be undone.")) {
+                vditorInstance.setValue('');
+                rawMarkdown = '';
+                localStorage.removeItem(DRAFT_KEY);
+                updateSaveButtonState();
+                updateTOCEditMode(rawMarkdown);
+            }
+        });
+
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
 
@@ -236,21 +261,23 @@ document.addEventListener('DOMContentLoaded', () => {
             after: () => {
                 vditorInstance.focus();
                 updateSaveButtonState();
-                updateTOC(rawMarkdown); 
+                updateTOCEditMode(rawMarkdown); 
             },
             input: (val) => {
                 rawMarkdown = val;
                 localStorage.setItem(DRAFT_KEY, val);
                 updateSaveButtonState();
-                updateTOC(val); 
+                updateTOCEditMode(val); 
             }
         });
 
         function updateSaveButtonState() {
             if (rawMarkdown.trim() === "") {
                 btnAction.classList.add('disabled');
+                btnAction.classList.remove('unsaved');
             } else {
                 btnAction.classList.remove('disabled');
+                btnAction.classList.add('unsaved'); // Visual indicator
             }
         }
 
@@ -268,23 +295,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, true);
 
+        // Safe Drag and drop handling
         function handleFile(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                vditorInstance.setValue(e.target.result);
-                rawMarkdown = e.target.result;
+                const incomingText = e.target.result;
+                if (rawMarkdown.trim() !== '') {
+                    if (confirm("Replace existing document with this file?\n\nClick 'Cancel' to append it at your cursor instead.")) {
+                        vditorInstance.setValue(incomingText);
+                    } else {
+                        vditorInstance.insertValue(incomingText);
+                    }
+                } else {
+                    vditorInstance.setValue(incomingText);
+                }
+                
+                rawMarkdown = vditorInstance.getValue();
                 localStorage.setItem(DRAFT_KEY, rawMarkdown);
                 updateSaveButtonState();
-                updateTOC(rawMarkdown);
+                updateTOCEditMode(rawMarkdown);
             };
             reader.readAsText(file);
             fileInput.value = ""; 
         }
 
         window.saveSnippet = async function() {
-            if (vditorInstance) {
-                rawMarkdown = vditorInstance.getValue(); 
-            }
+            if (vditorInstance) rawMarkdown = vditorInstance.getValue(); 
 
             if (rawMarkdown.trim() === "") {
                 showToast("You haven't entered anything!");
@@ -293,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             btnAction.innerHTML = '<i class="bi bi-arrow-repeat spinner"></i>';
             btnAction.classList.add('disabled');
+            btnAction.classList.remove('unsaved'); // Hide dot while saving
 
             try {
                 const response = await fetch(`${baseUrl}/api/save`, {
@@ -304,64 +341,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!response.ok) throw new Error("Failed to save.");
                 
                 const data = await response.json();
-                
                 localStorage.removeItem(DRAFT_KEY);
-                
                 window.location.href = `${baseUrl}/${data.uuid}`;
             } catch (err) {
                 showToast("Failed to save snippet!");
                 btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
                 btnAction.classList.remove('disabled');
+                btnAction.classList.add('unsaved'); // Restore dot on failure
             }
         };
 
         btnAction.addEventListener('click', window.saveSnippet);
-    }
-
-    function renderMarkdown(mdText) {
-        updateTOC(mdText);
-        
-        // GFM Compatible Configuration
-        const mdParser = window.markdownit({
-            html: true,
-            linkify: true,
-            typographer: true,
-            breaks: true
-        });
-
-        // Use github-like task lists plugin if successfully loaded
-        if (window.markdownitTaskLists) {
-            mdParser.use(window.markdownitTaskLists);
-        }
-        
-        const idCounts = {};
-        
-        // Override the heading render rule to safely inject predictable ID anchors for TOC
-        mdParser.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
-            const token = tokens[idx];
-            const textToken = tokens[idx + 1];
-            if (textToken) {
-                const cleanText = getCleanText(textToken.content);
-                let baseId = generateId(cleanText);
-                let id = baseId;
-                
-                if (idCounts[baseId]) {
-                    id = `${baseId}-${idCounts[baseId]}`;
-                    idCounts[baseId]++;
-                } else {
-                    idCounts[baseId] = 1;
-                }
-                
-                token.attrSet('id', id);
-            }
-            return self.renderToken(tokens, idx, options);
-        };
-        
-        const rawHtml = mdParser.render(mdText);
-        
-        viewer.innerHTML = DOMPurify.sanitize(rawHtml, {
-            ADD_TAGS: ['iframe'],
-            ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'id']
-        });
     }
 });
