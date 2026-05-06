@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>markbin</title>
+    
+    <!-- Unified render engine: Vditor handles both Editing and Viewing -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.9.6/dist/index.css" />
     <script src="https://cdn.jsdelivr.net/npm/vditor@3.9.6/dist/index.min.js"></script>
     
-    <!-- Replaced marked.js with markdown-it & task-lists plugin for exact GitHub parity -->
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="icon" type="image/x-icon" href="{{ base_url }}/static/favicon.png">
     <link rel="stylesheet" href="{{ base_url }}/static/style.css">
@@ -26,6 +23,7 @@
             <div id="editor-wrapper">
                 <div id="editor"></div>
             </div>
+            <!-- Vditor will render directly into this div in View Mode -->
             <div id="viewer" class="markdown-body hidden"></div>
             
             <div id="loading" class="hidden">Loading document...</div>
@@ -38,7 +36,7 @@
         </aside>
     </div>
 
-    <!-- Absolutely positioned bottom bar (on desktop moved to top via CSS) -->
+    <!-- Adaptive Navigation Bar -->
     <div class="bottom-container" id="bottom-container">
         <button id="toggle-bar-btn" class="toggle-bar-btn" title="Toggle Panel">
             <i class="bi bi-chevron-down"></i>
@@ -49,7 +47,9 @@
                 <button id="btn-toc" class="icon-btn" title="Toggle Structure" aria-label="Toggle Table of Contents">
                     <i class="bi bi-list-nested"></i>
                 </button>
-                <!-- Upload button (hidden in view mode via JS) -->
+                <button id="btn-clear" class="icon-btn" title="Clear Draft">
+                    <i class="bi bi-trash"></i>
+                </button>
                 <button id="btn-upload" class="icon-btn" title="Load Markdown file">
                     <i class="bi bi-file-earmark-arrow-up"></i>
                 </button>
@@ -61,9 +61,10 @@
     </div>
 
     <script>
+        // Safely serialised config to prevent JS syntax breakage
         window.MARKBIN_CONFIG = {
-            baseUrl: "{{ base_url }}",
-            uuid: "{{ uuid }}"
+            baseUrl: {{ base_url | tojson | safe }},
+            uuid: {{ uuid | tojson | safe }}
         };
     </script>
     <script src="{{ base_url }}/scripts/app.js"></script>
