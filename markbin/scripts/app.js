@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnToggleBar = document.getElementById('toggle-bar-btn');
     const editorContainer = document.getElementById('editor-container');
     
-    // ✅ Set initial icon based on screen size
+    // Set initial icon based on screen size
     const isDesktopInit = window.matchMedia('(min-width: 769px)').matches;
     const iconInit = btnToggleBar.querySelector('i');
     if (isDesktopInit) {
@@ -106,18 +106,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const tocContent = document.getElementById('toc-content');
         tocContent.innerHTML = "";
         
-        const tokens = marked.lexer(md);
-        const headings = [];
+        // Use markdown-it for robust flat token parsing
+        const mdParser = window.markdownit();
+        const tokens = mdParser.parse(md, {});
+        const headings =[];
         
-        function walkTokens(tokenList) {
-            if (!tokenList) return;
-            tokenList.forEach(t => {
-                if (t.type === 'heading') headings.push(t);
-                if (t.tokens) walkTokens(t.tokens);
-                else if (t.items) walkTokens(t.items);
-            });
+        for (let i = 0; i < tokens.length; i++) {
+            if (tokens[i].type === 'heading_open') {
+                const depth = parseInt(tokens[i].tag.substring(1));
+                // In markdown-it, the inline text follows the heading_open token
+                const textToken = tokens[i + 1]; 
+                const rawText = textToken ? textToken.content : "";
+                headings.push({ depth, text: rawText });
+            }
         }
-        walkTokens(tokens);
         
         if (headings.length === 0) {
             tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
@@ -316,32 +318,46 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAction.addEventListener('click', window.saveSnippet);
     }
 
-    function renderMarkdown(md) {
-        updateTOC(md);
+    function renderMarkdown(mdText) {
+        updateTOC(mdText);
         
-        const renderer = new marked.Renderer();
+        // GFM Compatible Configuration
+        const mdParser = window.markdownit({
+            html: true,
+            linkify: true,
+            typographer: true,
+            breaks: true
+        });
+
+        // Use github-like task lists plugin if successfully loaded
+        if (window.markdownitTaskLists) {
+            mdParser.use(window.markdownitTaskLists);
+        }
+        
         const idCounts = {};
         
-        renderer.heading = function(headingObj) {
-            const text = headingObj.text || arguments[0];
-            const depth = headingObj.depth || arguments[1];
-            
-            const cleanText = getCleanText(text);
-            let baseId = generateId(cleanText);
-            let id = baseId;
-            
-            if (idCounts[baseId]) {
-                id = `${baseId}-${idCounts[baseId]}`;
-                idCounts[baseId]++;
-            } else {
-                idCounts[baseId] = 1;
+        // Override the heading render rule to safely inject predictable ID anchors for TOC
+        mdParser.renderer.rules.heading_open = function(tokens, idx, options, env, self) {
+            const token = tokens[idx];
+            const textToken = tokens[idx + 1];
+            if (textToken) {
+                const cleanText = getCleanText(textToken.content);
+                let baseId = generateId(cleanText);
+                let id = baseId;
+                
+                if (idCounts[baseId]) {
+                    id = `${baseId}-${idCounts[baseId]}`;
+                    idCounts[baseId]++;
+                } else {
+                    idCounts[baseId] = 1;
+                }
+                
+                token.attrSet('id', id);
             }
-            
-            return `<h${depth} id="${id}">${text}</h${depth}>`;
+            return self.renderToken(tokens, idx, options);
         };
-        marked.use({ renderer });
         
-        const rawHtml = marked.parse(md);
+        const rawHtml = mdParser.render(mdText);
         
         viewer.innerHTML = DOMPurify.sanitize(rawHtml, {
             ADD_TAGS: ['iframe'],
