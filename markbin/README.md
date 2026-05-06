@@ -5,10 +5,11 @@ Markbin is a minimalist, fast, and secure Markdown sharing service—a “Pasteb
 ## Features
 
 - **Live Preview Editing** – Powered by [Vditor](https://github.com/Vanessa219/vditor) in instant‑rendering (`ir`) mode. Markdown syntax hides as you type, showing rich text immediately.
-- **Dynamic Table of Contents** – Automatically extracts headings (using `markdown‑it` for robust parsing) and builds a clickable, indented sidebar that scrolls the document or editor smoothly.
-- **Multiple Input Methods** – Type directly, drag & drop `.md` / `.txt` files, or click the upload button to load content into the editor.
+- **Unified View Mode** – Instead of using separate parsers, view mode relies on Vditor's native preview engine. This guarantees 100% visual parity between what you type (including math blocks, Mermaid diagrams, and complex tables) and what is shared.
+- **Dynamic Table of Contents** – Automatically extracts headings and builds a clickable, indented sidebar that scrolls the document or editor smoothly.
+- **Multiple Input Methods** – Type directly, click the upload button, or drag & drop `.md` / `.txt` files. Dropping files safely prompts the user to either replace the draft or append the text at the cursor.
 - **Local Draft Persistence** – Unfinished snippets are saved to `localStorage` and restored automatically when you return to the editor.
-- **Secure Read Mode** – View saved documents with content sanitised by [DOMPurify](https://github.com/cure53/DOMPurify). Rendered with `markdown‑it` and the `task‑lists` plugin for full GitHub‑Flavored Markdown compatibility.
+- **Visual Unsaved Indicator** – The save button provides immediate visual feedback (a bright notification dot) whenever the editor contains unsaved changes.
 - **Copy Raw Markdown** – In view mode, one click copies the original Markdown source to the clipboard.
 - **Custom Hotkeys** – `Ctrl+S` / `Cmd+S` saves the snippet instantly (instead of opening the browser save dialog), with a spinner animation and toast feedback.
 - **Adaptive Navigation Bar** – A collapsible panel on mobile slides up from the bottom; on desktop it lives at the top. The toggle button animates smoothly and swaps icons depending on screen size.
@@ -22,9 +23,7 @@ Markbin uses a custom **“Sakura‑Vader”** dark theme. The colour palette (`
 
 | Layer          | Libraries / Tools                                                                          |
 |----------------|--------------------------------------------------------------------------------------------|
-| Editor         | [Vditor](https://github.com/Vanessa219/vditor) (IR mode, dark theme)                       |
-| Markdown       | [markdown‑it](https://github.com/markdown-it/markdown-it) 14.1.0 + `markdown‑it‑task‑lists` |
-| Sanitisation   | [DOMPurify](https://github.com/cure53/DOMPurify) 3.0.6                                     |
+| Editor & View  |[Vditor](https://github.com/Vanessa219/vditor) (IR mode, dark theme, native preview)       |
 | Backend        | [FastAPI](https://fastapi.tiangolo.com/), [Motor](https://motor.readthedocs.io/) (async MongoDB) |
 | Database       | MongoDB (collection `markbins.docs`)                                                       |
 | Frontend       | Vanilla JavaScript, [Bootstrap Icons](https://icons.getbootstrap.com/)                     |
@@ -37,7 +36,7 @@ All endpoints are prefixed with `/markbin` (configurable in the FastAPI router).
 | Method | Path               | Description                                                                                   |
 |--------|--------------------|-----------------------------------------------------------------------------------------------|
 | `GET`  | `/`                | Edit mode – empty editor with draft restoration.                                              |
-| `GET`  | `/{uuid}`          | View mode – renders the stored Markdown document as sanitised HTML.                           |
+| `GET`  | `/{uuid}`          | View mode – renders the stored Markdown document with exact visual parity.                    |
 | `POST` | `/api/save`        | Saves a raw Markdown payload. Returns `{"uuid": "<8‑char hex>"}`.                             |
 | `GET`  | `/api/docs/{uuid}` | Retrieves the raw Markdown content for a given UUID. Returns `{"content": "..."}`.            |
 
@@ -56,8 +55,7 @@ app.mount('/markbin/scripts', StaticFiles(directory='markbin/scripts'), name='ma
 app.include_router(router, prefix='/markbin')
 ```
 
-## File Structure
-
+File Structure
 ```
 markbin/
 ├── markbin.py          # FastAPI router, endpoints, MongoDB connection
@@ -67,6 +65,7 @@ markbin/
 │   ├── style.css       # Sakura‑Vader theme, responsive layout, Vditor overrides
 │   └── favicon.png
 ├── scripts/
-│   └── app.js          # Editor initialisation, TOC, markdown‑it config, UI logic
+│   └── app.js          # Editor initialisation, TOC, drag & drop logic, UI state
 └── README.md
 ```
+
