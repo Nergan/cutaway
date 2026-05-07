@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" type="image/x-icon" href="https://psv4.userapi.com/s/v1/d2/cXhcvJAqHzGb946EebUXj0s6N-Tn0OyQRUjT027EuhZiYlNdmPjEnnlORJtDBb7fIDdrucwOMkStCRd_aoGv6hb7b1UeHbuRhEKShCVhpQGKP8PFkEMKhy3hAO2dFFzyn9tWrHv1edw_/kanban.png">
-    <title>kanban</title>
+    <link rel="icon" type="image/x-icon" href="https://psv4.userapi.com/s/v1/d2/cXhcvJAqHzGb946EebUXj0s6N-Tn0OyQRUjT027EuhZiYlNdmPjEnnlORJtDBb7fIDdrucwOMkStCRd_aoGv6hb7b1UeHbuRhEKShCVhpQGKP8PFkEMKhy3hAO2dFFzyn9tWrHv1edw_/kanban.png">
+    <title>Kanban</title>
+    
+    <!-- Mobile Drag & Drop Polyfill -->
+    <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/DragDropTouch.min.js"></script>
+
     <style>
         :root {
             --bg-color: #0f0f0f;
@@ -25,10 +29,16 @@
             padding: 0;
         }
 
-        /* Custom Text Selection */
         ::selection {
             background: rgba(200, 200, 200, 0.25);
             color: #ffffff;
+        }
+
+        /* Accessibility: Minimalist Focus Ring */
+        *:focus-visible {
+            outline: 1px solid var(--border-hover);
+            outline-offset: 2px;
+            border-radius: 2px;
         }
 
         body {
@@ -93,6 +103,7 @@
             cursor: pointer;
             user-select: none;
             transition: all 0.2s ease;
+            text-decoration: none;
         }
         
         .app-title:hover {
@@ -191,7 +202,7 @@
             transition: border-color 0.2s ease, background 0.2s ease;
         }
 
-        .project:hover {
+        .project:hover, .project:focus-within {
             border-color: var(--border-hover);
             background: #1e1e1e;
         }
@@ -261,13 +272,21 @@
             line-height: 1;
         }
 
-        .action-btn:hover { color: var(--text-main) !important; background: transparent !important; border-color: transparent !important;}
+        .action-btn:hover, .action-btn:focus-visible { 
+            color: var(--text-main) !important; 
+            background: transparent !important; 
+            border-color: transparent !important;
+            opacity: 1;
+        }
         .action-btn.del-btn:hover { color: var(--danger) !important; }
 
-        /* Hover Reveal for Action Groups */
+        /* Reveal for Action Groups */
         .project-title:hover .action-group, 
+        .project-title:focus-within .action-group,
         .sub-item-header:hover .action-group, 
-        .col-header:hover .action-group {
+        .sub-item-header:focus-within .action-group,
+        .col-header:hover .action-group,
+        .col-header:focus-within .action-group {
             opacity: 1;
         }
 
@@ -286,7 +305,7 @@
             margin-top: 0;
         }
 
-        .add-btn:hover {
+        .add-btn:hover, .add-btn:focus-visible {
             color: var(--text-main);
             background: transparent;
         }
@@ -303,8 +322,11 @@
             .sub-list > .add-btn { margin-top: -4px; }
             
             .column:hover > .col-body > .add-btn,
+            .column:focus-within > .col-body > .add-btn,
             .project:hover > .sub-list > .add-btn,
-            .sub-item:hover > .sub-list > .add-btn {
+            .project:focus-within > .sub-list > .add-btn,
+            .sub-item:hover > .sub-list > .add-btn,
+            .sub-item:focus-within > .sub-list > .add-btn {
                 opacity: 1;
                 max-height: 40px;
                 padding-top: 6px;
@@ -312,7 +334,9 @@
                 pointer-events: auto;
             }
             .project:hover > .sub-list > .add-btn,
-            .sub-item:hover > .sub-list > .add-btn { margin-top: 0; }
+            .project:focus-within > .sub-list > .add-btn,
+            .sub-item:hover > .sub-list > .add-btn,
+            .sub-item:focus-within > .sub-list > .add-btn { margin-top: 0; }
         }
 
         @media (hover: none) and (pointer: coarse) {
@@ -417,12 +441,12 @@
 <body>
 
     <header>
-        <a href="" class="app-title">Kanban</a>
+        <a href="" class="app-title" title="Reload Application">Kanban</a>
         <div id="dynamic-header-controls" style="display: flex; gap: 8px;">
             <button id="add-col-btn">+ Column</button>
         </div>
         <button id="export-btn" title="Export as JSON (Ctrl+S)">↓ Export JSON</button>
-        <label class="btn" title="Or drag & drop a JSON file anywhere">
+        <label class="btn" title="Or drag & drop a JSON file anywhere" tabindex="0">
             ↑ Import JSON
             <input type="file" id="import-file" accept=".json" hidden>
         </label>
@@ -430,8 +454,8 @@
 
     <div id="board" class="board"></div>
 
-    <!-- Unified Dialog Modal (Confirmations Only) -->
-    <div id="dialog-modal" class="modal-overlay">
+    <!-- Unified Dialog Modal -->
+    <div id="dialog-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="dialog-msg">
         <div class="modal-content">
             <div id="dialog-msg" class="modal-msg">Are you sure?</div>
             <div class="modal-actions">
@@ -449,7 +473,10 @@
 
         const PALETTE =['', '#c96a6a', '#6a9c78', '#6a7cc9', '#c9b06a', '#9c6ac9'];
 
-        const uid = () => Math.random().toString(36).substr(2, 9);
+        // Modernized secure UID generator with fallback
+        const uid = () => typeof crypto !== 'undefined' && crypto.randomUUID 
+            ? crypto.randomUUID() 
+            : Math.random().toString(36).substr(2, 9);
         
         function el(tag, className, text, attributes) {
             const e = document.createElement(tag);
@@ -473,6 +500,7 @@
 
             modal.style.display = 'flex';
             requestAnimationFrame(() => modal.classList.add('active'));
+            confirmBtn.focus(); // A11y: focus on appear
 
             const close = () => {
                 modal.classList.remove('active');
@@ -496,8 +524,9 @@
             const saved = localStorage.getItem(StorageKey);
             if (saved) {
                 try { 
-                    state = JSON.parse(saved); 
-                    if (!state.columns) buildDefault();
+                    const loaded = JSON.parse(saved); 
+                    if (validateImport(loaded)) state = loaded;
+                    else buildDefault();
                 } catch (e) { buildDefault(); }
             } else {
                 buildDefault();
@@ -518,6 +547,30 @@
 
         function save() {
             localStorage.setItem(StorageKey, JSON.stringify(state));
+        }
+
+        // Structural strict validation for data integrity
+        function validateImport(data) {
+            if (!data || !Array.isArray(data.columns)) return false;
+            
+            const checkChildren = (children) => {
+                if (!Array.isArray(children)) return false;
+                for (const child of children) {
+                    if (!child.id || typeof child.title !== 'string') return false;
+                    if (child.children && !checkChildren(child.children)) return false;
+                }
+                return true;
+            };
+
+            for (const col of data.columns) {
+                if (!col.id || typeof col.title !== 'string' || !Array.isArray(col.projects)) return false;
+                for (const proj of col.projects) {
+                    if (!proj.id || typeof proj.title !== 'string') return false;
+                    const children = proj.children || proj.subprojects ||[];
+                    if (!checkChildren(children)) return false;
+                }
+            }
+            return true;
         }
 
         function createInlineInput(parent, placeholderText, initialValue, onComplete, onCancel) {
@@ -552,21 +605,31 @@
             childrenArray.forEach(child => {
                 const sEl = el('div', 'sub-item');
                 const sHeader = el('div', 'sub-item-header');
-                const sTitle = el('span', 'sub-item-text', child.title);
+                const sTitle = el('span', 'sub-item-text', child.title, { tabindex: '0', title: 'Edit subproject title' });
                 
+                sTitle.onkeydown = (e) => { if (e.key === 'Enter') sTitle.click(); };
                 sTitle.onclick = (e) => {
                     e.stopPropagation();
                     const rootProject = sEl.closest('.project');
                     if (rootProject) rootProject.draggable = false;
 
-                    createInlineInput(sHeader, 'Subproject text...', child.title, 
-                        (newVal) => { child.title = newVal; save(); render(); }, 
-                        () => render()
+                    createInlineInput(sTitle, 'Subproject text...', child.title, 
+                        (newVal) => { 
+                            child.title = newVal; 
+                            save(); 
+                            // Granular Update - avoided complete render()
+                            sTitle.textContent = newVal; 
+                            if (rootProject) rootProject.draggable = true; 
+                        }, 
+                        () => { 
+                            sTitle.textContent = child.title; 
+                            if (rootProject) rootProject.draggable = true; 
+                        }
                     );
                 };
 
                 const actions = el('div', 'action-group');
-                const sDel = el('button', 'action-btn del-btn', '×');
+                const sDel = el('button', 'action-btn del-btn', '×', { 'aria-label': 'Delete subproject' });
                 sDel.onclick = (e) => {
                     e.stopPropagation();
                     const execDelete = () => {
@@ -608,7 +671,11 @@
                             child.children.push({ id: uid(), title: newVal, children:[] }); 
                             save(); render(); 
                         },
-                        () => render()
+                        () => { 
+                            wrapper.remove(); 
+                            addBtn.style.display = ''; 
+                            if (rootProject) rootProject.draggable = true; 
+                        }
                     );
                 };
                 childList.appendChild(addBtn);
@@ -627,7 +694,7 @@
                 colEl.dataset.id = col.id;
 
                 const header = el('div', 'col-header');
-                const title = el('div', 'col-title', col.title);
+                const title = el('div', 'col-title', col.title, { tabindex: '0', title: 'Edit column name' });
                 
                 header.addEventListener('mouseenter', () => colEl.draggable = true);
                 header.addEventListener('mouseleave', () => colEl.draggable = false);
@@ -654,17 +721,26 @@
                     render();
                 });
 
+                title.onkeydown = (e) => { if (e.key === 'Enter') title.click(); };
                 title.onclick = (e) => {
                     e.stopPropagation();
                     colEl.draggable = false; 
                     createInlineInput(title, 'Column name...', col.title, 
-                        (newVal) => { col.title = newVal; save(); render(); }, 
-                        () => { colEl.draggable = true; render(); }
+                        (newVal) => { 
+                            col.title = newVal; 
+                            save(); 
+                            title.textContent = newVal; 
+                            colEl.draggable = true; 
+                        }, 
+                        () => { 
+                            title.textContent = col.title; 
+                            colEl.draggable = true; 
+                        }
                     );
                 };
 
                 const actions = el('div', 'action-group');
-                const delColBtn = el('button', 'action-btn del-btn', '×', { title: 'Delete Column' });
+                const delColBtn = el('button', 'action-btn del-btn', '×', { title: 'Delete Column', 'aria-label': 'Delete Column' });
                 delColBtn.onclick = () => {
                     const execDelete = () => {
                         state.columns = state.columns.filter(c => c.id !== col.id);
@@ -686,7 +762,7 @@
                 const body = el('div', 'col-body');
                 
                 col.projects.forEach(proj => {
-                    const pEl = el('div', 'project');
+                    const pEl = el('div', 'project', null, { tabindex: '0' });
                     pEl.draggable = true;
 
                     if (proj.color) {
@@ -694,29 +770,42 @@
                     }
 
                     const pHead = el('div', 'project-title');
-                    const pTitle = el('span', null, proj.title);
+                    const pTitle = el('span', null, proj.title, { tabindex: '0', title: 'Edit project title' });
                     
+                    pTitle.onkeydown = (e) => { if (e.key === 'Enter') pTitle.click(); };
                     pTitle.onclick = (e) => {
                         e.stopPropagation();
                         pEl.draggable = false;
                         createInlineInput(pHead, 'Project Title...', proj.title, 
-                            (newVal) => { proj.title = newVal; save(); render(); }, 
-                            () => render()
+                            (newVal) => { 
+                                proj.title = newVal; 
+                                save(); 
+                                pTitle.textContent = newVal; 
+                                pEl.draggable = true; 
+                            }, 
+                            () => { 
+                                pTitle.textContent = proj.title; 
+                                pEl.draggable = true; 
+                            }
                         );
                     };
 
                     const pActions = el('div', 'action-group');
                     
-                    const pColorBtn = el('button', 'action-btn', '●', { title: 'Cycle Color' });
+                    const pColorBtn = el('button', 'action-btn', '●', { title: 'Cycle Color', 'aria-label': 'Cycle project color' });
                     pColorBtn.style.color = proj.color || 'var(--border-hover)';
                     pColorBtn.onclick = (e) => {
                         e.stopPropagation();
                         let idx = PALETTE.indexOf(proj.color || '');
                         proj.color = PALETTE[(idx + 1) % PALETTE.length];
-                        save(); render();
+                        
+                        // Granular Update
+                        pColorBtn.style.color = proj.color || 'var(--border-hover)';
+                        pEl.style.boxShadow = proj.color ? `inset 3px 0 0 0 ${proj.color}` : 'none';
+                        save();
                     };
 
-                    const pDel = el('button', 'action-btn del-btn', '×', { title: 'Delete Project' });
+                    const pDel = el('button', 'action-btn del-btn', '×', { title: 'Delete Project', 'aria-label': 'Delete project' });
                     pDel.onclick = (e) => {
                         e.stopPropagation();
                         const execDelete = () => {
@@ -740,6 +829,7 @@
 
                     const subList = el('div', 'sub-list');
                     
+                    // Maintain legacy support but standardise internally
                     proj.children = proj.children || proj.subprojects ||[];
                     if (proj.subprojects) delete proj.subprojects; 
 
@@ -757,7 +847,11 @@
                                 proj.children.push({ id: uid(), title: newVal, children:[] }); 
                                 save(); render(); 
                             },
-                            () => render()
+                            () => { 
+                                wrapper.remove(); 
+                                addSubBtn.style.display = ''; 
+                                pEl.draggable = true; 
+                            }
                         );
                     };
                     subList.appendChild(addSubBtn);
@@ -773,8 +867,11 @@
                     const wrapper = el('div');
                     body.insertBefore(wrapper, addProjBtn);
                     createInlineInput(wrapper, 'New project...', '', 
-                        (newVal) => { col.projects.push({ id: uid(), title: newVal, children:[] }); save(); render(); },
-                        () => render()
+                        (newVal) => { 
+                            col.projects.push({ id: uid(), title: newVal, children:[] }); 
+                            save(); render(); 
+                        },
+                        () => { wrapper.remove(); addProjBtn.style.display = ''; }
                     );
                 };
                 body.appendChild(addProjBtn);
@@ -834,7 +931,7 @@
         }
 
         function getDragAfterElement(container, y) {
-            const elements =[...container.querySelectorAll('.project:not([style*="display: none"])')];
+            const elements = [...container.querySelectorAll('.project:not([style*="display: none"])')];
             return elements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -853,7 +950,7 @@
                 e.dataTransfer.dropEffect = 'move';
 
                 const afterElement = getDragAfterElement(body, e.clientY);
-                // Fix 2: Prevent querySelector from selecting nested child add buttons
+                // Fix: prevent selecting nested buttons using the scope pseudo-class
                 const insertBeforeNode = afterElement || body.querySelector(':scope > .add-btn');
                 setGap(body, insertBeforeNode, dragSource.height);
             });
@@ -866,7 +963,7 @@
                 const projIndex = sourceCol.projects.findIndex(p => p.id === dragSource.projId);
                 const proj = sourceCol.projects.splice(projIndex, 1)[0];
 
-                const domProjects =[...body.querySelectorAll('.project:not([style*="display: none"])')];
+                const domProjects = [...body.querySelectorAll('.project:not([style*="display: none"])')];
                 let targetIndex = domProjects.length;
 
                 if (currentGap) {
@@ -990,10 +1087,19 @@
             document.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                     e.preventDefault();
-                    // Fix 1: De-synchronize the click to bypass Chromium's HTTP save fallback
+                    // Fix: Async execution bypasses the browser's native HTTP fallback mechanism
                     setTimeout(() => {
                         document.getElementById('export-btn').click();
                     }, 0);
+                }
+            });
+
+            // Make custom label input trigger via keyboard for accessibility
+            const importLabel = document.querySelector('label[for="import-file"], label > input#import-file').parentElement;
+            importLabel.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('import-file').click();
                 }
             });
 
@@ -1038,7 +1144,7 @@
         function handleImport(jsonString) {
             try {
                 const loaded = JSON.parse(jsonString);
-                if (loaded && Array.isArray(loaded.columns)) {
+                if (validateImport(loaded)) {
                     state = loaded;
                     save();
                     render();
