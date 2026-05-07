@@ -853,7 +853,8 @@
                 e.dataTransfer.dropEffect = 'move';
 
                 const afterElement = getDragAfterElement(body, e.clientY);
-                const insertBeforeNode = afterElement || body.querySelector('.add-btn');
+                // Fix 2: Prevent querySelector from selecting nested child add buttons
+                const insertBeforeNode = afterElement || body.querySelector(':scope > .add-btn');
                 setGap(body, insertBeforeNode, dragSource.height);
             });
 
@@ -989,7 +990,10 @@
             document.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                     e.preventDefault();
-                    document.getElementById('export-btn').click();
+                    // Fix 1: De-synchronize the click to bypass Chromium's HTTP save fallback
+                    setTimeout(() => {
+                        document.getElementById('export-btn').click();
+                    }, 0);
                 }
             });
 
