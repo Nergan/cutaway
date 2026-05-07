@@ -473,7 +473,6 @@
 
         const PALETTE =['', '#c96a6a', '#6a9c78', '#6a7cc9', '#c9b06a', '#9c6ac9'];
 
-        // Modernized secure UID generator with fallback
         const uid = () => typeof crypto !== 'undefined' && crypto.randomUUID 
             ? crypto.randomUUID() 
             : Math.random().toString(36).substr(2, 9);
@@ -500,7 +499,7 @@
 
             modal.style.display = 'flex';
             requestAnimationFrame(() => modal.classList.add('active'));
-            confirmBtn.focus(); // A11y: focus on appear
+            confirmBtn.focus();
 
             const close = () => {
                 modal.classList.remove('active');
@@ -549,7 +548,6 @@
             localStorage.setItem(StorageKey, JSON.stringify(state));
         }
 
-        // Structural strict validation for data integrity
         function validateImport(data) {
             if (!data || !Array.isArray(data.columns)) return false;
             
@@ -617,7 +615,6 @@
                         (newVal) => { 
                             child.title = newVal; 
                             save(); 
-                            // Granular Update - avoided complete render()
                             sTitle.textContent = newVal; 
                             if (rootProject) rootProject.draggable = true; 
                         }, 
@@ -799,7 +796,6 @@
                         let idx = PALETTE.indexOf(proj.color || '');
                         proj.color = PALETTE[(idx + 1) % PALETTE.length];
                         
-                        // Granular Update
                         pColorBtn.style.color = proj.color || 'var(--border-hover)';
                         pEl.style.boxShadow = proj.color ? `inset 3px 0 0 0 ${proj.color}` : 'none';
                         save();
@@ -829,7 +825,6 @@
 
                     const subList = el('div', 'sub-list');
                     
-                    // Maintain legacy support but standardise internally
                     proj.children = proj.children || proj.subprojects ||[];
                     if (proj.subprojects) delete proj.subprojects; 
 
@@ -931,7 +926,7 @@
         }
 
         function getDragAfterElement(container, y) {
-            const elements = [...container.querySelectorAll('.project:not([style*="display: none"])')];
+            const elements =[...container.querySelectorAll('.project:not([style*="display: none"])')];
             return elements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -950,7 +945,6 @@
                 e.dataTransfer.dropEffect = 'move';
 
                 const afterElement = getDragAfterElement(body, e.clientY);
-                // Fix: prevent selecting nested buttons using the scope pseudo-class
                 const insertBeforeNode = afterElement || body.querySelector(':scope > .add-btn');
                 setGap(body, insertBeforeNode, dragSource.height);
             });
@@ -1012,6 +1006,51 @@
             currentGap.style.borderWidth = '1px';
         }
 
+        // --- ENHANCED EXPORT FUNCTIONALITY ---
+        function triggerExport() {
+            const jsonString = JSON.stringify(state, null, 2);
+            
+            // 1. Primary Strategy: File System API (Modern Browsers + Secure Contexts like Vercel)
+            // Completely averts browser default save hijacking because it natively prompts the OS.
+            if (window.showSaveFilePicker) {
+                window.showSaveFilePicker({
+                    suggestedName: 'kanban.json',
+                    types:[{
+                        description: 'JSON File',
+                        accept: { 'application/json': ['.json'] }
+                    }]
+                }).then(async handle => {
+                    const writable = await handle.createWritable();
+                    await writable.write(jsonString);
+                    await writable.close();
+                }).catch(err => {
+                    // Ignore if user manually pressed "Cancel" in the dialog
+                    if (err.name !== 'AbortError') fallbackExport(jsonString);
+                });
+            } else {
+                // 2. Fallback Strategy (Older browsers or HTTP contexts)
+                fallbackExport(jsonString);
+            }
+        }
+
+        function fallbackExport(jsonString) {
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'kanban.json';
+            document.body.appendChild(a);
+            
+            // Requesting an animation frame creates a tiny safe delay allowing the browser DOM to register the anchor tag
+            requestAnimationFrame(() => {
+                a.click();
+                setTimeout(() => {
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }, 100);
+            });
+        }
+
         function setupGlobals() {
             const board = document.getElementById('board');
             
@@ -1065,36 +1104,25 @@
                 );
             };
 
-            // Standard File Export utilizing native browser save dialog
-            document.getElementById('export-btn').onclick = () => {
-                const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'kanban.json';
-                document.body.appendChild(a);
-                a.click();
-                
-                // Cleanup
-                setTimeout(() => {
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                }, 100);
+            // Attach to the UI Button
+            document.getElementById('export-btn').onclick = (e) => {
+                if (e) e.preventDefault();
+                triggerExport();
             };
 
-            // Setup shortcut (Ctrl+S or Cmd+S) to instantly save
-            document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                    e.preventDefault();
-                    // Fix: Async execution bypasses the browser's native HTTP fallback mechanism
-                    setTimeout(() => {
-                        document.getElementById('export-btn').click();
-                    }, 0);
+            // Attach to the Window natively using Capture Phase
+            window.addEventListener('keydown', (e) => {
+                // e.code === 'KeyS' captures physical 'S' keys even if the keyboard language is currently set to Russian/German/etc.
+                const isSaveKey = (e.key && e.key.toLowerCase() === 's') || e.code === 'KeyS';
+                
+                if ((e.ctrlKey || e.metaKey) && isSaveKey) {
+                    e.preventDefault();     // Block Chrome's native save immediately
+                    e.stopPropagation();    // Block extensions or other listeners from interfering
+                    triggerExport();
                 }
-            });
+            }, { capture: true });
 
-            // Make custom label input trigger via keyboard for accessibility
+            // Keyboard Accessibility for File Upload Label
             const importLabel = document.querySelector('label[for="import-file"], label > input#import-file').parentElement;
             importLabel.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
