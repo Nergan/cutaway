@@ -282,13 +282,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, true);
 
-        // Safe Drag and drop handling
+        // Custom Confirm Modal Logic
+        function showConfirmModal() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-confirm-modal');
+                const btnReplace = document.getElementById('modal-btn-replace');
+                const btnCancel = document.getElementById('modal-btn-cancel');
+
+                modal.classList.remove('hidden');
+
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    btnReplace.onclick = null;
+                    btnCancel.onclick = null;
+                };
+
+                btnReplace.onclick = () => { cleanup(); resolve(true); };
+                btnCancel.onclick = () => { cleanup(); resolve(false); };
+            });
+        }
+
+        // Safe Async Drag and drop handling
         function handleFile(file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 const incomingText = e.target.result;
+                
                 if (rawMarkdown.trim() !== '') {
-                    if (confirm("Replace existing document with this file?\n\nClick 'Cancel' to append it at your cursor instead.")) {
+                    const doReplace = await showConfirmModal();
+                    if (doReplace) {
                         vditorInstance.setValue(incomingText);
                     } else {
                         vditorInstance.insertValue(incomingText);
