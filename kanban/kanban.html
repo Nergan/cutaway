@@ -153,14 +153,14 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            padding: 4px 0 16px 0; /* Restored Original Compact Padding */
+            padding: 4px 0 16px 0;
             font-size: 12px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: grab;
-            user-select: none; /* Prevents text selection from hijacking the drag */
+            user-select: none;
         }
 
         .col-header:active {
@@ -170,9 +170,9 @@
         .col-title {
             text-align: center;
             word-break: break-word;
-            cursor: grab; /* Shows that the text itself is a drag handle */
+            cursor: grab;
             width: 100%;
-            padding: 0 20px; /* Restored Original Compact Padding */
+            padding: 0 20px;
             transition: color 0.2s;
         }
         
@@ -202,7 +202,8 @@
             border-radius: 6px;
             cursor: grab;
             transition: border-color 0.2s ease, background 0.2s ease;
-            user-select: none; /* Prevents text selection from hijacking the drag */
+            user-select: none;
+            flex-shrink: 0; /* Prevents project cards from squishing when overloaded */
         }
 
         .project:hover, .project:focus-within {
@@ -306,6 +307,7 @@
             padding: 6px 4px;
             opacity: 1;
             margin-top: 0;
+            flex-shrink: 0; /* Prevents Add buttons from squishing */
         }
 
         .add-btn:hover, .add-btn:focus-visible {
@@ -403,7 +405,7 @@
             border-radius: 4px;
             font-family: inherit;
             font-size: inherit;
-            user-select: text; /* Restores the ability to highlight text when actively editing */
+            user-select: text;
         }
 
         .inline-input:focus { outline: none; border-color: var(--text-main); }
@@ -421,6 +423,7 @@
             border-radius: 6px;
             overflow: hidden;
             transition: height 0.2s ease, margin 0.2s ease, border-width 0.2s ease;
+            flex-shrink: 0; /* Prevents the placeholder height from squishing when overfilled */
         }
 
         .col-placeholder {
@@ -431,9 +434,10 @@
             min-width: 0;
             margin: 0;
             border-width: 0;
-            border-radius: 6px; /* Added matching rounded corners for column drops */
+            border-radius: 6px; 
             overflow: hidden;
             transition: min-width 0.2s ease, border-width 0.2s ease;
+            flex-shrink: 0; /* Prevents horizontal squishing on columns */
         }
 
         /* Scrollbars */
