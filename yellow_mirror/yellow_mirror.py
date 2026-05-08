@@ -100,9 +100,11 @@ async def proxy_route(request: Request, path: str):
         resp_headers[k] = v
 
     # 4. FORCE CORS ALLOWANCE: Tells the browser it's allowed to load Twitch/YouTube modules via our proxy
-    resp_headers["access-control-allow-origin"] = "*"
-    resp_headers["access-control-allow-methods"] = "*"
-    resp_headers["access-control-allow-headers"] = "*"
+    req_origin = request.headers.get("origin", "*")
+    resp_headers["access-control-allow-origin"] = req_origin
+    resp_headers["access-control-allow-credentials"] = "true"
+    resp_headers["access-control-allow-methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    resp_headers["access-control-allow-headers"] = request.headers.get("access-control-request-headers", "*")
     resp_headers["access-control-expose-headers"] = "*"
 
     content = resp.content
