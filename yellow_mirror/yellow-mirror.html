@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yellow Mirror</title>
-    <link rel="icon" href="/yellow_mirror/static/favicon.png" type="image/png">
+    <title>yellow mirror</title>
+    <link rel="icon" href="/yellow_mirror/static/favicon.png" type="image/svg+xml">
     <link rel="stylesheet" href="/yellow_mirror/static/styles/style.css">
 </head>
 <body>
@@ -12,13 +12,15 @@
         <source src="/yellow_mirror/static/moon.mp4" type="video/mp4">
     </video>
 
-    <!-- sandbox allows everything except top-level navigation, keeping SPAs contained -->
-    <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation" title="View"></iframe>
+    <!-- sandbox isolates site -->
+    <iframe id="site-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation" title="Просмотр сайта"></iframe>
 
     <div class="panel-container">
         <div class="expanded-panel" id="expandedPanel">
-            <input type="text" id="url-input" placeholder="paste web link here..." />
-            <button id="load-site-btn" aria-label="Load">GO</button>
+            <input type="text" id="url-input" placeholder="paste web link" />
+            <button id="load-site-btn" aria-label="Загрузить сайт">
+                <img src="/yellow_mirror/static/favicon.png" alt="Globe" width="24" height="24">
+            </button>
         </div>
         <div class="minimized-bar" id="minimizedBar"></div>
     </div>
