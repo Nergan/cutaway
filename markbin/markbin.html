@@ -16,6 +16,18 @@
 <body>
     <div id="toast" class="toast"></div>
 
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <p>Replace existing document with this file?</p>
+            <p class="modal-subtext">Click <strong>'Cancel'</strong> to append it at your cursor instead.</p>
+            <div class="modal-actions">
+                <button id="modal-btn-cancel" class="modal-btn">Cancel</button>
+                <button id="modal-btn-replace" class="modal-btn primary">Replace</button>
+            </div>
+        </div>
+    </div>
+
     <div class="layout">
         <main class="editor-container" id="editor-container">
             <input type="file" id="file-input" accept=".md,.txt" style="display: none;" />
