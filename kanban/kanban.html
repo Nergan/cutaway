@@ -153,13 +153,14 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            padding: 4px 0 16px 0;
+            padding: 4px 0 16px 0; /* Restored Original Compact Padding */
             font-size: 12px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: grab;
+            user-select: none; /* Prevents text selection from hijacking the drag */
         }
 
         .col-header:active {
@@ -169,12 +170,13 @@
         .col-title {
             text-align: center;
             word-break: break-word;
-            cursor: text;
+            cursor: grab; /* Shows that the text itself is a drag handle */
             width: 100%;
-            padding: 0 20px;
+            padding: 0 20px; /* Restored Original Compact Padding */
             transition: color 0.2s;
         }
         
+        .col-title:active { cursor: grabbing; }
         .col-title:hover { color: var(--text-main); }
 
         .col-header .action-group {
@@ -200,6 +202,7 @@
             border-radius: 6px;
             cursor: grab;
             transition: border-color 0.2s ease, background 0.2s ease;
+            user-select: none; /* Prevents text selection from hijacking the drag */
         }
 
         .project:hover, .project:focus-within {
@@ -218,7 +221,7 @@
 
         .project-title span {
             flex: 1;
-            cursor: text;
+            cursor: pointer;
         }
 
         /* Recursive Subprojects */
@@ -249,7 +252,7 @@
             flex: 1;
             word-break: break-word;
             line-height: 1.4;
-            cursor: text;
+            cursor: pointer;
             transition: color 0.2s;
         }
         
@@ -400,6 +403,7 @@
             border-radius: 4px;
             font-family: inherit;
             font-size: inherit;
+            user-select: text; /* Restores the ability to highlight text when actively editing */
         }
 
         .inline-input:focus { outline: none; border-color: var(--text-main); }
@@ -427,7 +431,7 @@
             min-width: 0;
             margin: 0;
             border-width: 0;
-            border-radius: 6px;
+            border-radius: 6px; /* Added matching rounded corners for column drops */
             overflow: hidden;
             transition: min-width 0.2s ease, border-width 0.2s ease;
         }
@@ -597,7 +601,6 @@
                 if (val) onComplete(val);
                 else if (onCancel) onCancel();
                 
-                // Immediately clear the focus from the parent container once edit finishes
                 clearActiveFocus();
             };
             
@@ -929,7 +932,6 @@
             const target = afterElement || null;
             const next = currentGap ? currentGap.nextElementSibling : null;
             
-            // Fix: Accurately equate null mappings to prevent infinite DOM destruction/re-creation loops
             if (currentGap && currentGap.parentNode === container && next === target) {
                 return;
             }
@@ -1038,7 +1040,6 @@
         function triggerExport() {
             const jsonString = JSON.stringify(state, null, 2);
             
-            // 1. Primary Strategy: File System API (Modern Browsers + Secure Contexts like Vercel)
             if (window.showSaveFilePicker) {
                 window.showSaveFilePicker({
                     suggestedName: 'kanban.json',
@@ -1051,11 +1052,9 @@
                     await writable.write(jsonString);
                     await writable.close();
                 }).catch(err => {
-                    // Ignore if user manually pressed "Cancel" in the dialog
                     if (err.name !== 'AbortError') fallbackExport(jsonString);
                 });
             } else {
-                // 2. Fallback Strategy (Older browsers or HTTP contexts)
                 fallbackExport(jsonString);
             }
         }
@@ -1099,7 +1098,7 @@
                 
                 const column = state.columns.splice(sourceIndex, 1)[0];
 
-                const domColumns = [...board.querySelectorAll('.column:not([style*="display: none"])')];
+                const domColumns =[...board.querySelectorAll('.column:not([style*="display: none"])')];
                 let targetIndex = domColumns.length;
 
                 if (currentGap) {
