@@ -1,6 +1,0 @@
-/* ---------- Адаптация для мобильных ---------- */
-@media (max-width: 600px) {
-    .expanded-panel input {
-        max-width: none;
-    }
-}
