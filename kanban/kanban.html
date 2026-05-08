@@ -773,7 +773,9 @@
                     pTitle.onclick = (e) => {
                         e.stopPropagation();
                         pEl.draggable = false;
-                        createInlineInput(pHead, 'Project Title...', proj.title, 
+                        
+                        // FIX: Target pTitle instead of pHead to avoid destroying action buttons
+                        createInlineInput(pTitle, 'Project Title...', proj.title, 
                             (newVal) => { 
                                 proj.title = newVal; 
                                 save(); 
@@ -957,7 +959,7 @@
                 const projIndex = sourceCol.projects.findIndex(p => p.id === dragSource.projId);
                 const proj = sourceCol.projects.splice(projIndex, 1)[0];
 
-                const domProjects = [...body.querySelectorAll('.project:not([style*="display: none"])')];
+                const domProjects =[...body.querySelectorAll('.project:not([style*="display: none"])')];
                 let targetIndex = domProjects.length;
 
                 if (currentGap) {
@@ -1011,13 +1013,12 @@
             const jsonString = JSON.stringify(state, null, 2);
             
             // 1. Primary Strategy: File System API (Modern Browsers + Secure Contexts like Vercel)
-            // Completely averts browser default save hijacking because it natively prompts the OS.
             if (window.showSaveFilePicker) {
                 window.showSaveFilePicker({
                     suggestedName: 'kanban.json',
                     types:[{
                         description: 'JSON File',
-                        accept: { 'application/json': ['.json'] }
+                        accept: { 'application/json':['.json'] }
                     }]
                 }).then(async handle => {
                     const writable = await handle.createWritable();
@@ -1041,7 +1042,6 @@
             a.download = 'kanban.json';
             document.body.appendChild(a);
             
-            // Requesting an animation frame creates a tiny safe delay allowing the browser DOM to register the anchor tag
             requestAnimationFrame(() => {
                 a.click();
                 setTimeout(() => {
@@ -1112,12 +1112,11 @@
 
             // Attach to the Window natively using Capture Phase
             window.addEventListener('keydown', (e) => {
-                // e.code === 'KeyS' captures physical 'S' keys even if the keyboard language is currently set to Russian/German/etc.
                 const isSaveKey = (e.key && e.key.toLowerCase() === 's') || e.code === 'KeyS';
                 
                 if ((e.ctrlKey || e.metaKey) && isSaveKey) {
-                    e.preventDefault();     // Block Chrome's native save immediately
-                    e.stopPropagation();    // Block extensions or other listeners from interfering
+                    e.preventDefault();     
+                    e.stopPropagation();    
                     triggerExport();
                 }
             }, { capture: true });
