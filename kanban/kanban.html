@@ -427,6 +427,7 @@
             min-width: 0;
             margin: 0;
             border-width: 0;
+            border-radius: 6px;
             overflow: hidden;
             transition: min-width 0.2s ease, border-width 0.2s ease;
         }
@@ -571,6 +572,13 @@
             return true;
         }
 
+        function clearActiveFocus() {
+            if (document.activeElement && document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
+            window.getSelection()?.removeAllRanges();
+        }
+
         function createInlineInput(parent, placeholderText, initialValue, onComplete, onCancel) {
             const inp = el('input', 'inline-input', null, { placeholder: placeholderText, type: 'text' });
             inp.value = initialValue || '';
@@ -583,16 +591,28 @@
                 if (finished) return;
                 finished = true;
                 const val = inp.value.trim();
+                
+                inp.blur();
+                
                 if (val) onComplete(val);
                 else if (onCancel) onCancel();
+                
+                // Immediately clear the focus from the parent container once edit finishes
+                clearActiveFocus();
             };
             
             inp.addEventListener('blur', commit);
             inp.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') commit();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commit();
+                }
                 if (e.key === 'Escape') {
+                    e.preventDefault();
                     finished = true;
+                    inp.blur();
                     if (onCancel) onCancel();
+                    clearActiveFocus();
                 }
             });
         }
@@ -774,7 +794,6 @@
                         e.stopPropagation();
                         pEl.draggable = false;
                         
-                        // FIX: Target pTitle instead of pHead to avoid destroying action buttons
                         createInlineInput(pTitle, 'Project Title...', proj.title, 
                             (newVal) => { 
                                 proj.title = newVal; 
@@ -907,7 +926,11 @@
         }
 
         function setGap(container, afterElement, height) {
-            if (currentGap && currentGap.parentNode === container && currentGap.nextElementSibling === afterElement) {
+            const target = afterElement || null;
+            const next = currentGap ? currentGap.nextElementSibling : null;
+            
+            // Fix: Accurately equate null mappings to prevent infinite DOM destruction/re-creation loops
+            if (currentGap && currentGap.parentNode === container && next === target) {
                 return;
             }
             if (currentGap) {
@@ -990,7 +1013,10 @@
         }
 
         function setColGap(container, afterElement, width) {
-            if (currentGap && currentGap.parentNode === container && currentGap.nextElementSibling === afterElement) {
+            const target = afterElement || null;
+            const next = currentGap ? currentGap.nextElementSibling : null;
+            
+            if (currentGap && currentGap.parentNode === container && next === target) {
                 return;
             }
             if (currentGap) {
