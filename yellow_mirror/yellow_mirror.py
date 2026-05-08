@@ -1,94 +1,103 @@
-import urllib.parse
-from fastapi import APIRouter, Request, Response, HTTPException
-from fastapi.responses import FileResponse
-from curl_cffi import requests as cffi_requests
-from .core.rewriter import rewrite_html
+import asyncio
+import json
+from pathlib import Path
+from urllib.parse import urljoin, urlparse, quote, urlunparse
+
+from curl_cffi import requests as curl_requests  # TLS impersonation
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import Response, FileResponse
+
+from .logic.config import ALLOWED_SCHEMES
+from .logic.url_utils import is_safe_url
 
 router = APIRouter()
+BASE_DIR = Path(__file__).parent
 
-async def shutdown_clients():
-    """Stub to prevent errors in cutaway/main.py. 
-    curl_cffi is stateless here, so no active connections need closing on shutdown."""
-    pass
+# -------------------------------------------------------------------
+@router.get('/')
+async def serve_app():
+    """Serve the new SPA shell."""
+    return FileResponse(BASE_DIR / 'yellow-mirror.html')
 
-@router.get("/")
-async def yellow_mirror_page():
-    return FileResponse("yellow_mirror/yellow-mirror.html")
+# -------------------------------------------------------------------
+@router.api_route('/api/', methods=['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'])
+async def proxy(request: Request):
+    target = request.query_params.get('target')
+    if not target:
+        raise HTTPException(status_code=400, detail="Missing 'target'")
 
-@router.get("/sw.js")
-async def service_worker():
-    """
-    Serves the Service Worker.
-    The Service-Worker-Allowed header is crucial here! 
-    It allows a script at /yellow-mirror/sw.js to intercept requests at the root '/' level.
-    """
-    return FileResponse(
-        "yellow_mirror/scripts/sw.js",
-        media_type="application/javascript",
-        headers={"Service-Worker-Allowed": "/"}
-    )
+    # Security: block private IPs / self‑proxy
+    if not is_safe_url(target):
+        raise HTTPException(status_code=403, detail="Forbidden target")
 
-@router.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def proxy_route(request: Request, path: str):
-    full_url = str(request.url)
-    if "/proxy/" not in full_url:
-        raise HTTPException(status_code=400, detail="Invalid proxy format")
-    
-    # Safely extract target url bypassing FastAPI's path sanitization
-    target_url = full_url.split("/proxy/", 1)[1]
-    
-    if not target_url.startswith(("http://", "https://")):
-        target_url = "https://" + target_url
+    # Build the proxy base URL for rewriting Location headers
+    proxy_base = str(request.url).split('?')[0]   # e.g. /yellow-mirror/api/
 
-    headers = dict(request.headers)
-    headers.pop("host", None)
-    headers.pop("connection", None)
-    headers.pop("accept-encoding", None)  # Prevent compressed payloads for easier HTML parsing
+    # Prepare headers for the target request
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in ('host', 'content-length', 'connection', 'accept-encoding')}
+    # Use a realistic User‑Agent (curl_cffi can spoof, but we set a default)
+    if 'user-agent' not in headers:
+        headers['user-agent'] = (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
 
-    body = await request.body()
-    
+    body = None
+    if request.method in ('POST', 'PUT', 'PATCH'):
+        body = await request.body()
+
+    # ---------------------------------------------------------------
+    # Use curl_cffi to fetch with Chrome TLS fingerprint
     try:
-        # Impersonate Chrome to bypass Cloudflare JS challenges and bot protections
-        async with cffi_requests.AsyncSession(impersonate="chrome") as session:
-            resp = await session.request(
+        # We run curl_cffi's request in a thread because it's blocking.
+        # In a serverless context this is acceptable for short requests.
+        loop = asyncio.get_event_loop()
+        resp = await loop.run_in_executor(
+            None,
+            lambda: curl_requests.request(
                 method=request.method,
-                url=target_url,
+                url=target,
                 headers=headers,
-                data=body if body else None,
-                allow_redirects=False,
-                timeout=15.0
+                data=body,
+                allow_redirects=False,   # we handle redirects in the SW
+                timeout=10.0,
+                impersonate="chrome110",  # latest impersonate ID as available
+                verify=True
             )
+        )
     except Exception as e:
-        return Response(content=f"Proxy error: {str(e)}", status_code=502)
+        raise HTTPException(status_code=502, detail=f"Proxy error: {str(e)}")
 
-    resp_headers = {}
-    for k, v in resp.headers.items():
-        k_lower = k.lower()
-        if k_lower in["content-encoding", "content-length", "transfer-encoding"]:
-            continue
-            
-        if k_lower == "set-cookie":
-            parts = v.split(";")
-            new_parts =[p for p in parts if not p.strip().lower().startswith("domain=")]
-            new_parts =[p if not p.strip().lower().startswith("path=") else "Path=/" for p in new_parts]
-            resp_headers[k] = "; ".join(new_parts)
-            continue
-            
-        if k_lower == "location":
-            loc = urllib.parse.urljoin(target_url, v)
-            resp_headers[k] = f"/yellow-mirror/proxy/{loc}"
-            continue
-            
-        if k_lower in["x-frame-options", "content-security-policy", "x-content-type-options"]:
-            continue
-            
-        resp_headers[k] = v
+    # ---------------------------------------------------------------
+    # For redirects, rewrite Location header
+    if resp.status_code in (301, 302, 303, 307, 308):
+        location = resp.headers.get('Location')
+        if location:
+            abs_location = urljoin(target, location)
+            new_loc = f"{proxy_base}?target={quote(abs_location, safe='')}"
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers={**{k: v for k, v in resp.headers.items()
+                            if k.lower() != 'location'},
+                         'Location': new_loc}
+            )
+        return Response(content=resp.content, status_code=resp.status_code,
+                        headers=resp.headers)
 
-    content = resp.content
-    content_type = resp_headers.get("content-type", "").lower()
-    
-    if "text/html" in content_type:
-        html_str = content.decode("utf-8", errors="ignore")
-        content = rewrite_html(html_str, target_url).encode("utf-8")
+    # ---------------------------------------------------------------
+    # Regular response: filter dangerous headers, return raw bytes
+    prohibited = {
+        'content-length', 'content-encoding', 'content-security-policy',
+        'content-security-policy-report-only', 'x-frame-options',
+        'x-content-type-options', 'x-xss-protection'
+    }
+    filtered_headers = {k: v for k, v in resp.headers.items()
+                        if k.lower() not in prohibited}
 
-    return Response(content=content, status_code=resp.status_code, headers=resp_headers)
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        headers=filtered_headers
+    )
