@@ -1,132 +1,94 @@
-import asyncio
-import random
-from datetime import datetime
-from pathlib import Path
-from urllib.parse import urljoin, urlparse, quote, urlunparse
-
-import httpx
-from bs4 import BeautifulSoup
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import Response, FileResponse, RedirectResponse
-from httpx import ASGITransport
-
-from .logic.client_manager import get_client_for_ip, shutdown_clients
-from .logic.url_utils import is_safe_url
-from .logic.html_rewriter import replace_urls_in_html
+import urllib.parse
+from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi.responses import FileResponse
+from curl_cffi import requests as cffi_requests
+from .core.rewriter import rewrite_html
 
 router = APIRouter()
-BASE_DIR = Path(__file__).parent
-
-
-@router.get('/', response_class=FileResponse, name='ym_root')
-async def yellow_mirror_page():
-    """Главная страница yellow mirror."""
-    return FileResponse(BASE_DIR / 'yellow-mirror.html')
-
-
-@router.api_route('/api/', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-async def proxy(request: Request):
-    target_url = request.query_params.get('target')
-    if not target_url:
-        raise HTTPException(status_code=400, detail="Missing 'target' query parameter")
-
-    # Удалена проверка is_safe_url(target_url)
-
-    proxy_base_url = str(request.url).split('?')[0]
-
-    parsed_target = urlparse(target_url)
-    our_host = request.url.hostname
-
-    # Удалён блок предотвращения рекурсивных вызовов (проверка на /api/)
-
-    client_ip = request.client.host if request.client else 'unknown'
-    proxy_client, user_agent = await get_client_for_ip(client_ip)
-
-    headers = dict(request.headers)
-    headers.pop('host', None)
-    headers.pop('content-length', None)
-    headers.pop('connection', None)
-    headers.pop('accept-encoding', None)
-
-    headers['user-agent'] = user_agent
-    if 'accept' not in headers:
-        headers['accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
-    if 'accept-language' not in headers:
-        headers['accept-language'] = 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
-
-    body = None
-    if request.method in ['POST', 'PUT', 'PATCH']:
-        body = await request.body()
-
-    try:
-        # Отключаем автоматическое следование редиректам
-        resp = await proxy_client.request(
-            method=request.method,
-            url=target_url,
-            headers=headers,
-            content=body,
-            follow_redirects=False
-        )
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail='Target server timeout')
-    except httpx.TooManyRedirects:
-        raise HTTPException(status_code=502, detail='Too many redirects')
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f'Proxy error: {str(e)}')
-
-    # Если это редирект, переписываем Location и возвращаем ответ клиенту
-    if resp.status_code in (301, 302, 303, 307, 308):
-        location = resp.headers.get('location')
-        if location:
-            # Преобразуем относительный Location в абсолютный
-            absolute_location = urljoin(target_url, location)
-            # Переписываем в прокси-ссылку
-            new_location = f"{proxy_base_url}?target={quote(absolute_location, safe='')}"
-            # Создаём новый ответ с переписанным Location
-            return Response(
-                content=resp.content,
-                status_code=resp.status_code,
-                headers={**resp.headers, 'location': new_location}
-            )
-        # Если Location отсутствует, просто возвращаем как есть (не должны сюда попадать)
-        return Response(content=resp.content, status_code=resp.status_code, headers=resp.headers)
-
-    # Для остальных ответов фильтруем заголовки
-    prohibited_headers = {
-        'content-length',
-        'content-encoding',
-        'content-security-policy',
-        'content-security-policy-report-only',
-        'x-frame-options',
-        'x-content-type-options',
-        'x-xss-protection',
-    }
-    filtered_headers = {
-        k: v for k, v in resp.headers.items()
-        if k.lower() not in prohibited_headers
-    }
-
-    content_type = resp.headers.get('content-type', '').lower()
-    if 'text/html' in content_type:
-        modified_html = replace_urls_in_html(resp.text, str(resp.url), proxy_base_url)
-        return Response(
-            content=modified_html.encode('utf-8'),
-            status_code=resp.status_code,
-            headers=filtered_headers
-        )
-    else:
-        return Response(
-            content=resp.content,
-            status_code=resp.status_code,
-            headers=filtered_headers
-        )
-
-
-# Удалён fallback-роутер (путь '/{rest_of_path:path}')
-
 
 async def shutdown_clients():
-    async with ip_clients_lock:
-        for ip, (client, _, _) in ip_clients.items():
-            await client.aclose()
-        ip_clients.clear()
+    """Stub to prevent errors in cutaway/main.py. 
+    curl_cffi is stateless here, so no active connections need closing on shutdown."""
+    pass
+
+@router.get("/")
+async def yellow_mirror_page():
+    return FileResponse("yellow_mirror/yellow-mirror.html")
+
+@router.get("/sw.js")
+async def service_worker():
+    """
+    Serves the Service Worker.
+    The Service-Worker-Allowed header is crucial here! 
+    It allows a script at /yellow-mirror/sw.js to intercept requests at the root '/' level.
+    """
+    return FileResponse(
+        "yellow_mirror/scripts/sw.js",
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"}
+    )
+
+@router.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+async def proxy_route(request: Request, path: str):
+    full_url = str(request.url)
+    if "/proxy/" not in full_url:
+        raise HTTPException(status_code=400, detail="Invalid proxy format")
+    
+    # Safely extract target url bypassing FastAPI's path sanitization
+    target_url = full_url.split("/proxy/", 1)[1]
+    
+    if not target_url.startswith(("http://", "https://")):
+        target_url = "https://" + target_url
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers.pop("connection", None)
+    headers.pop("accept-encoding", None)  # Prevent compressed payloads for easier HTML parsing
+
+    body = await request.body()
+    
+    try:
+        # Impersonate Chrome to bypass Cloudflare JS challenges and bot protections
+        async with cffi_requests.AsyncSession(impersonate="chrome") as session:
+            resp = await session.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                data=body if body else None,
+                allow_redirects=False,
+                timeout=15.0
+            )
+    except Exception as e:
+        return Response(content=f"Proxy error: {str(e)}", status_code=502)
+
+    resp_headers = {}
+    for k, v in resp.headers.items():
+        k_lower = k.lower()
+        if k_lower in["content-encoding", "content-length", "transfer-encoding"]:
+            continue
+            
+        if k_lower == "set-cookie":
+            parts = v.split(";")
+            new_parts =[p for p in parts if not p.strip().lower().startswith("domain=")]
+            new_parts =[p if not p.strip().lower().startswith("path=") else "Path=/" for p in new_parts]
+            resp_headers[k] = "; ".join(new_parts)
+            continue
+            
+        if k_lower == "location":
+            loc = urllib.parse.urljoin(target_url, v)
+            resp_headers[k] = f"/yellow-mirror/proxy/{loc}"
+            continue
+            
+        if k_lower in["x-frame-options", "content-security-policy", "x-content-type-options"]:
+            continue
+            
+        resp_headers[k] = v
+
+    content = resp.content
+    content_type = resp_headers.get("content-type", "").lower()
+    
+    if "text/html" in content_type:
+        html_str = content.decode("utf-8", errors="ignore")
+        content = rewrite_html(html_str, target_url).encode("utf-8")
+
+    return Response(content=content, status_code=resp.status_code, headers=resp_headers)
