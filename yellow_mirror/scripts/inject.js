@@ -1,8 +1,9 @@
 (function() {
     function getRealUrl() {
         let pathStr = window.location.pathname;
-        if(pathStr.startsWith('/yellow-mirror/proxy/')) {
-            return pathStr.substring(21) + window.location.search + window.location.hash;
+        if(pathStr.includes('/proxy/')) {
+            let target = pathStr.split('/proxy/')[1] + window.location.search + window.location.hash;
+            return target.replace(/^(https?:)\/+(.*)/, "$1//$2"); // Fix missing slashes
         }
         return window.location.href;
     }
@@ -11,14 +12,12 @@
         window.parent.postMessage({ type: 'ym-nav', url: getRealUrl() }, '*');
     }
 
-    // Hook PushState
     const origPush = history.pushState;
     history.pushState = function() {
         origPush.apply(this, arguments);
         syncUrl();
     };
 
-    // Hook ReplaceState
     const origReplace = history.replaceState;
     history.replaceState = function() {
         origReplace.apply(this, arguments);
@@ -28,7 +27,7 @@
     window.addEventListener('popstate', syncUrl);
     window.addEventListener('hashchange', syncUrl);
 
-    // Trap new tabs inside the proxy
+    // Stop links opening in outside tabs
     const origOpen = window.open;
     window.open = function(url, target, features) {
         if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
