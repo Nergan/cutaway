@@ -195,7 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
         editorWrapper.classList.add('hidden');
         document.getElementById('loading').classList.remove('hidden');
 
-        fetch(`${baseUrl}/api/docs/${uuid}`)
+        // Bypasses the mobile browser cache completely for fetching API documents
+        fetch(`${baseUrl}/api/docs/${uuid}`, { cache: 'no-store' })
             .then(res => {
                 if (!res.ok) throw new Error("Not Found");
                 return res.json();
@@ -228,7 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAction.innerHTML = '<i class="bi bi-cloud-arrow-up"></i>';
         btnAction.title = "Save snippet (Ctrl + S)";
         
-        btnUpload.addEventListener('click', () => fileInput.click());
+        // JS button click listener removed! 
+        // The HTML <label for="file-input"> takes care of it natively and securely.
 
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
