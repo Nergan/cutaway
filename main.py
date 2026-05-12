@@ -1,7 +1,6 @@
 # Стандартные библиотеки
 from datetime import datetime
-from os import environ, listdir
-from os.path import isdir
+from os import environ
 from pathlib import Path
 
 # Установленные библиотеки
@@ -41,7 +40,6 @@ templates = Jinja2Templates(directory=BASE_DIR)
 BACKGROUNDS_DIR = BASE_DIR / 'mainpage-backgrounds'
 
 # Монтирование статических директорий
-app.mount('/mainpage-backgrounds', StaticFiles(directory='mainpage-backgrounds'), name='mainpage-backgrounds')
 app.mount('/evenfest/static', StaticFiles(directory='evenfest/static'), name='evenfest')
 app.mount('/snake/static', StaticFiles(directory='snake/static'), name='snake-static')
 app.mount('/snake/scripts', StaticFiles(directory='snake/scripts'), name='snake-scripts')
@@ -117,12 +115,12 @@ async def not_found_handler(request: Request, exc: HTTPException):
 
 @app.get('/api/mainpage-backgrounds')
 async def get_mainpage_backgrounds():
-    """Return a list of available background video filenames."""
-    if not BACKGROUNDS_DIR.exists():
-        raise HTTPException(status_code=404, detail='Backgrounds directory not found')
-    try:
-        mp4_files =[f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
-        mp4_files.sort()
-        return JSONResponse(content={'backgrounds': mp4_files})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Return a hardcoded list of background video filenames from the CDN."""
+    mp4_files = [
+        "Autumn.mp4",
+        "hardtimes.mp4",
+        "lamp.mp4",
+        "Minecraft.mp4",
+        "warmlight.mp4"
+    ]
+    return JSONResponse(content={'backgrounds': mp4_files})

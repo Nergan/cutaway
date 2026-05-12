@@ -32,7 +32,7 @@ body::after {
             rgba(15, 20, 35, 0.8) 50%,
             rgba(10, 15, 30, 0.9) 100%
         ),
-        url('../background.png') center/cover no-repeat fixed;
+        url('https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/background.png') center/cover no-repeat fixed;
     z-index: -1;
     pointer-events: none;
 }

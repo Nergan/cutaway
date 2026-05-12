@@ -59,15 +59,15 @@ async def toadbin_codeview(request: Request, code_id: str):
 
 @router.get('/api/backgrounds')
 async def toad_backgrounds():
-    """Return a list of available background video filenames."""
-    if not BACKGROUNDS_DIR.exists():
-        raise HTTPException(status_code=404, detail='Backgrounds directory not found')
-    try:
-        mp4_files =[f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
-        mp4_files.sort()
-        return JSONResponse(content={'backgrounds': mp4_files})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Return a list of available background video filenames from the CDN."""
+    mp4_files =[
+        "abypie.mp4", "black kirry.mp4", "cold rainy.mp4", "cozy rain.mp4",
+        "fashion look.mp4", "jump into a puddle.mp4", "on lizzard.mp4",
+        "salmon.mp4", "sigh.mp4", "snowy.mp4", "swimming.mp4",
+        "there is no god beyond.mp4", "toad at home.mp4", "toad in a dark forest.mp4",
+        "toad with guitar.mp4", "wisdom toad.mp4", "with mushroom.mp4"
+    ]
+    return JSONResponse(content={'backgrounds': mp4_files})
 
 
 @router.post('/api/save')

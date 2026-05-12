@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const randomIndex = Math.floor(Math.random() * videoList.length);
         const selectedVideo = videoList[randomIndex];
-        const videoPath = `/snake/static/backgrounds/${selectedVideo}`;
+        const videoPath = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${selectedVideo}`;
 
         // Очищаем предыдущие источники
         videoBg.innerHTML = '';
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         videoBg.onerror = () => {
             console.warn(`Не удалось загрузить видео: ${selectedVideo}`);
             const fallbackIndex = (randomIndex + 1) % videoList.length;
-            const fallbackPath = `/snake/static/backgrounds/${videoList[fallbackIndex]}`;
+            const fallbackPath = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${videoList[fallbackIndex]}`;
             videoBg.innerHTML = '';
             const newSource = document.createElement('source');
             newSource.src = fallbackPath;

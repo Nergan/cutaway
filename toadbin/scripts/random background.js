@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear previous sources and add new one
             videoElement.innerHTML = '';
             const source = document.createElement('source');
-            source.src = `/toadbin/static/backgrounds/${selectedBackground}`;
+            source.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/backgrounds/${selectedBackground}`;
             source.type = 'video/mp4';
             videoElement.appendChild(source);
 
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Try another random background as fallback
                 const fallbackIndex = (randomIndex + 1) % backgrounds.length;
                 const fallbackSource = document.createElement('source');
-                fallbackSource.src = `/toadbin/static/backgrounds/${backgrounds[fallbackIndex]}`;
+                fallbackSource.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/backgrounds/${backgrounds[fallbackIndex]}`;
                 fallbackSource.type = 'video/mp4';
                 videoElement.innerHTML = '';
                 videoElement.appendChild(fallbackSource);
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (videoElement) {
                 videoElement.innerHTML = '';
                 const source = document.createElement('source');
-                source.src = '/toadbin/static/backgrounds/there is no god beyond.mp4';
+                source.src = 'https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/backgrounds/there is no god beyond.mp4';
                 source.type = 'video/mp4';
                 videoElement.appendChild(source);
                 videoElement.load();
