@@ -117,10 +117,10 @@ async def not_found_handler(request: Request, exc: HTTPException):
 async def get_mainpage_backgrounds():
     """Return a hardcoded list of background video filenames from the CDN."""
     mp4_files = [
-        "Autumn.mp4",
+        "autumn.mp4",
         "hardtimes.mp4",
         "lamp.mp4",
-        "Minecraft.mp4",
+        "minecraft.mp4",
         "warmlight.mp4"
     ]
     return JSONResponse(content={'backgrounds': mp4_files})
