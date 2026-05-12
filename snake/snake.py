@@ -17,16 +17,16 @@ async def snakepage():
 
 
 @router.get('/api/snake-backgrounds')
-async def get_mainpage_backgrounds():
-    """Return a list of available background video filenames."""
-    if not BACKGROUNDS_DIR.exists():
-        raise HTTPException(status_code=404, detail='Backgrounds directory not found')
-    try:
-        mp4_files = [f.name for f in BACKGROUNDS_DIR.iterdir() if f.is_file() and f.suffix.lower() == '.mp4']
-        mp4_files.sort()
-        return JSONResponse(content={'backgrounds': mp4_files})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def get_snake_backgrounds():
+    """Return a list of background video filenames for Snake from the CDN."""
+    mp4_files = [
+        "Autumn.mp4",
+        "hardtimes.mp4",
+        "lamp.mp4",
+        "Minecraft.mp4",
+        "warmlight.mp4"
+    ]
+    return JSONResponse(content={'backgrounds': mp4_files})
 
 
 @router.get('/{rest_of_path:path}', include_in_schema=False)

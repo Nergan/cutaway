@@ -379,7 +379,7 @@
                 <a href="/evenfest" class="project-link">
                     <div class="project-card">
                         <div class="project-icon icon-1">
-                            <img src="evenfest/static/favicon.png" alt="icon" class="custom-icon">
+                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/favicon.png" alt="icon" class="custom-icon">
                         </div>
                         <h5 class="card-title" data-i18n="project1_title">evenfest</h5>
                         <p class="card-text" data-i18n="project1_desc">cosplay community website</p>
@@ -415,7 +415,7 @@
                 <a href="/toadbin" class="project-link">
                     <div class="project-card">
                         <div class="project-icon icon-3">
-                            <img src="toadbin/static/favicon.png" alt="icon" class="custom-icon">
+                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/favicon.png" alt="icon" class="custom-icon">
                         </div>
                         <h5 class="card-title" data-i18n="project3_title"><span style="color: lime">toad</span>bin</h5>
                         <p class="card-text" data-i18n="project3_desc">like katbin, but with syntax highlighting</p>
@@ -469,7 +469,7 @@
                 <a href="/yellow-mirror" class="project-link">
                     <div class="project-card">
                         <div class="project-icon icon-6">
-                            <img src="/yellow_mirror/static/favicon.png" alt="icon" class="custom-icon">
+                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/yellow-mirror/favicon.png" alt="icon" class="custom-icon">
                         </div>
                         <h5 class="card-title" data-i18n="project6_title">yellow mirror</h5>
                         <p class="card-text" data-i18n="project6_desc">simple web browser</p>
@@ -523,7 +523,7 @@
                 <a href="/markbin" class="project-link">
                     <div class="project-card">
                         <div class="project-icon icon-9">
-                            <img src="/markbin/static/favicon.png" alt="icon" class="custom-icon">
+                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png" alt="icon" class="custom-icon">
                         </div>
                         <h5 class="card-title" data-i18n="project9_title"><span style="color: #e06c75">mark</span>bin</h5>
                         <p class="card-text" data-i18n="project9_desc">markdown editor&viewer&sharer</p>
@@ -693,7 +693,7 @@
             const randomIndex = Math.floor(Math.random() * backgrounds.length);
             const selected = backgrounds[randomIndex];
             const source = document.createElement('source');
-            source.src = `/mainpage-backgrounds/${selected}`;
+            source.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${selected}`;
             source.type = 'video/mp4';
             videoElement.innerHTML = '';
             videoElement.appendChild(source);
@@ -702,7 +702,7 @@
             videoElement.onerror = () => {
                 console.warn(`Failed to load ${selected}, trying fallback`);
                 const fallbackIndex = (randomIndex + 1) % backgrounds.length;
-                const fallbackSrc = `/mainpage-backgrounds/${backgrounds[fallbackIndex]}`;
+                const fallbackSrc = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${backgrounds[fallbackIndex]}`;
                 videoElement.innerHTML = '';
                 const fallbackSource = document.createElement('source');
                 fallbackSource.src = fallbackSrc;
@@ -714,7 +714,7 @@
             console.error('Background error:', err);
             videoElement.innerHTML = '';
             const fallbackSource = document.createElement('source');
-            fallbackSource.src = '/mainpage-backgrounds/default.mp4';
+            fallbackSource.src = 'https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/autumn.mp4';
             fallbackSource.type = 'video/mp4';
             videoElement.appendChild(fallbackSource);
             videoElement.load();
