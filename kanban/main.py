@@ -1,8 +1,40 @@
+import sys
+from pathlib import Path
 from fastapi import FastAPI
-from .kanban import router
+from fastapi.staticfiles import StaticFiles
 
-app = FastAPI(title="Kanban Board")
+# 1. Standalone FastAPI Initialization
+app = FastAPI(title="kanban standalone")
+BASE_DIR = Path(__file__).parent
 
-# We include the router without a prefix so that when run locally,
-# the board opens directly at the root ('/')
-app.include_router(router)
+# 2. Namespace static mounting (Guarantees parity with root deployment)
+if (BASE_DIR / 'static').exists():
+    app.mount('/kanban/static', StaticFiles(directory=BASE_DIR / 'static'), name='kanban_static')
+if (BASE_DIR / 'scripts').exists():
+    app.mount('/kanban/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='kanban_scripts')
+
+# 3. Import and mount the core logic router
+from kanban import router
+app.include_router(router, prefix='/kanban')
+
+@app.get("/")
+def root_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url='/kanban')
+
+# 4. The Dual-Boot Entrypoint
+if __name__ == '__main__':
+    # Launch Web Server if requested: `python main.py --web`
+    if "--web" in sys.argv:
+        import uvicorn
+        uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    # Default to Desktop App via Eel
+    else:
+        try:
+            import eel
+            eel.init(str(BASE_DIR))
+            # Finds the HTML file natively
+            html_file = 'templates/index.html' if (BASE_DIR / 'templates' / 'index.html').exists() else 'kanban.html'
+            eel.start(html_file, size=(1000, 850))
+        except ImportError:
+            print("Eel is not installed. To run the web server, use: python main.py --web")

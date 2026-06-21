@@ -1,118 +1,154 @@
-// 1. Register the Service Worker
+// Clean up old caching if it exists
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/yellow-mirror/sw.js', { scope: '/' })
-        .then(reg => console.log('Yellow Mirror SW Active!'))
-        .catch(err => console.error('SW Failed:', err));
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let r of registrations) {
+            r.unregister();
+        }
+    });
 }
 
-// 2. Define the UI object
 const UI = {
     input: document.getElementById('url-input'),
-    iframe: document.getElementById('site-frame'),
+    videoNative: document.getElementById('background-video'),
+    imgRemote: document.getElementById('site-stream'),
     btn: document.getElementById('load-site-btn'),
-    video: document.getElementById('background-video'),
     panel: document.getElementById('expandedPanel'),
     minBar: document.getElementById('minimizedBar')
 };
 
-// 3. UI Panel Toggles & Hover Logic
-UI.minBar.addEventListener('click', () => {
-    UI.panel.classList.remove('collapsed');
-    UI.minBar.classList.remove('visible');
-});
-
+UI.minBar.addEventListener('click', () => { UI.panel.classList.remove('collapsed'); UI.minBar.classList.remove('visible'); });
 UI.panel.addEventListener('click', (e) => {
-    const target = e.target.closest('input, button');
-    if (!(target && (target.tagName === 'INPUT' || target.tagName === 'BUTTON'))) {
-        UI.panel.classList.add('collapsed');
-        UI.minBar.classList.add('visible');
+    const t = e.target.closest('input, button');
+    if (!(t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON'))) {
+        UI.panel.classList.add('collapsed'); UI.minBar.classList.add('visible');
     }
 });
-
 UI.panel.addEventListener('mouseover', (e) => {
-    const target = e.target.closest('input, button');
-    UI.panel.classList.toggle('panel-highlight', !(target && (target.tagName === 'INPUT' || target.tagName === 'BUTTON')));
+    const t = e.target.closest('input, button');
+    UI.panel.classList.toggle('panel-highlight', !(t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON')));
 });
-
 UI.panel.addEventListener('mouseout', (e) => {
-    const related = e.relatedTarget;
-    if (!related || !UI.panel.contains(related)) {
-        UI.panel.classList.remove('panel-highlight');
-    }
+    const rel = e.relatedTarget;
+    if (!rel || !UI.panel.contains(rel)) UI.panel.classList.remove('panel-highlight');
 });
 
-// 4. URL formatting for display
+let ws = null;
+let clientId = crypto.randomUUID();
+
 function simplifyUrl(url) {
     if (!url) return '';
-    let simplified = url.replace(/\/$/, '');
-    simplified = simplified.replace(/^https?:\/\//i, '');
-    simplified = simplified.replace(/^www\./i, '');
-    return simplified;
+    return url.replace(/\/$/, '').replace(/^https?:\/\//i, '').replace(/^www\./i, '');
 }
 
-// 5. Proxy Loading Logic
+function stopStream() {
+    if (ws) { ws.close(); ws = null; }
+    UI.imgRemote.style.display = 'none';
+    UI.videoNative.style.display = 'block';
+    UI.imgRemote.src = '';
+}
+
+async function connectStream(url) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/yellow-mirror/ws/${clientId}`);
+
+    ws.onopen = () => {
+        ws.send(JSON.stringify({ 
+            type: 'init', url: url, 
+            width: window.innerWidth, height: window.innerHeight 
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        // If it's a raw string not starting with '{', it's our base64 JPEG from CDP
+        if (typeof event.data === "string" && !event.data.startsWith("{")) {
+            UI.imgRemote.src = "data:image/jpeg;base64," + event.data;
+            UI.videoNative.style.display = 'none';
+            UI.imgRemote.style.display = 'block';
+        } else {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'navigated') {
+                UI.input.value = simplifyUrl(msg.url);
+                // Force correct directory structure for history pushes
+                history.replaceState({ url: msg.url }, '', `/yellow-mirror/?target=${encodeURIComponent(msg.url)}`);
+            }
+            else if (msg.type === 'error') {
+                alert(msg.message);
+                stopStream();
+            }
+        }
+    };
+}
+
 function loadTarget(pushHistory = true) {
     let url = UI.input.value.trim();
-    
-    // If the input is empty, return to the "home" state
-    if (!url) {
-        UI.iframe.src = 'about:blank';
-        UI.video.style.display = 'block';
-        return;
-    }
-    
+    if (!url) { stopStream(); return; }
     if (!url.startsWith('http')) url = 'https://' + url;
-    
-    // Hide video and load the proxy frame
-    UI.video.style.display = 'none';
-    UI.iframe.src = '/yellow-mirror/proxy/' + url;
-    
-    // Manage history state
+
     if (pushHistory) {
-        const currentTarget = new URLSearchParams(window.location.search).get('target');
-        if (url !== currentTarget) {
-            history.pushState({ url }, '', `/yellow-mirror/?target=${encodeURIComponent(url)}`);
-        }
+        const cur = new URLSearchParams(window.location.search).get('target');
+        if (url !== cur) history.pushState({ url }, '', `/yellow-mirror/?target=${encodeURIComponent(url)}`);
     }
-    
     UI.input.value = simplifyUrl(url);
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) connectStream(url);
+    else ws.send(JSON.stringify({ type: 'navigate', url: url }));
 }
 
-// 6. Event Listeners for the GO button and Enter key
 UI.btn.addEventListener('click', () => loadTarget(true));
-UI.input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') loadTarget(true);
+UI.input.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadTarget(true); });
+
+function sendInput(action, payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'input', action, ...payload }));
+}
+
+const img = UI.imgRemote;
+img.addEventListener('contextmenu', e => e.preventDefault());
+img.addEventListener('dragstart', e => e.preventDefault());
+
+img.addEventListener('mousemove', e => {
+    const rect = img.getBoundingClientRect();
+    const x = Math.round((e.clientX - rect.left) / rect.width * window.innerWidth);
+    const y = Math.round((e.clientY - rect.top) / rect.height * window.innerHeight);
+    sendInput('mousemove', { x, y });
 });
 
-// 7. Receive navigation messages from the injected hook inside the iframe
-window.addEventListener('message', (e) => {
-    if (e.data && e.data.type === 'ym-nav') {
-        UI.input.value = simplifyUrl(e.data.url);
-        history.replaceState({ url: e.data.url }, '', `/yellow-mirror/?target=${encodeURIComponent(e.data.url)}`);
+const btnMap = { 0: 'left', 1: 'middle', 2: 'right' };
+img.addEventListener('mousedown', e => { 
+    // Fix: Immediately blur the input field so keys interact with the stream
+    if (document.activeElement === UI.input) UI.input.blur(); 
+    sendInput('mousedown', { button: btnMap[e.button] || 'left' }); 
+    e.preventDefault(); 
+});
+img.addEventListener('mouseup', e => { sendInput('mouseup', { button: btnMap[e.button] || 'left' }); e.preventDefault(); });
+img.addEventListener('wheel', e => { sendInput('wheel', { deltaX: e.deltaX, deltaY: e.deltaY }); e.preventDefault(); }, { passive: false });
+
+window.addEventListener('keydown', e => {
+    if (document.activeElement === UI.input) return;
+    const key = e.key === ' ' ? 'Space' : e.key;
+    sendInput('keydown', { key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey });
+    if (!e.ctrlKey && !e.metaKey && e.key !== 'F12') e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('keyup', e => {
+    if (document.activeElement === UI.input) return;
+    const key = e.key === ' ' ? 'Space' : e.key;
+    sendInput('keyup', { key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey });
+    e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('resize', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'resize', width: window.innerWidth, height: window.innerHeight }));
     }
 });
 
-// 8. Handle the browser's "Back" and "Forward" arrows correctly
 window.addEventListener('popstate', (e) => {
-    const params = new URLSearchParams(window.location.search);
-    const target = params.get('target');
-    
-    if (target) {
-        UI.input.value = target;
-        loadTarget(false); // Load without pushing to history again
-    } else {
-        // If we hit back until there is no target, clear the proxy and show video
-        UI.input.value = '';
-        UI.iframe.src = 'about:blank';
-        UI.video.style.display = 'block';
-    }
+    const target = new URLSearchParams(window.location.search).get('target');
+    if (target) { UI.input.value = target; loadTarget(false); } 
+    else { UI.input.value = ''; stopStream(); }
 });
 
-// 9. Handle initial page load with parameters (e.g., sharing a proxy link)
 window.addEventListener('load', () => {
     const target = new URLSearchParams(window.location.search).get('target');
-    if (target) {
-        UI.input.value = target;
-        loadTarget(false);
-    }
+    if (target) { UI.input.value = target; loadTarget(false); }
 });

@@ -1,117 +1,157 @@
-import re
-import urllib.parse
-from fastapi import APIRouter, Request, Response, HTTPException
+import asyncio
+import os
+import shutil
+from pathlib import Path
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
-from curl_cffi import requests as cffi_requests
-from .core.rewriter import rewrite_html
+from playwright.async_api import async_playwright
 
 router = APIRouter()
 
-async def shutdown_clients():
-    pass
+active_sessions = {}
+MAX_SESSIONS = 10
+BASE_DIR = Path(__file__).parent
 
 @router.get("/")
 async def yellow_mirror_page():
-    return FileResponse("yellow_mirror/yellow-mirror.html")
+    return FileResponse(BASE_DIR / "yellow-mirror.html")
 
-@router.get("/sw.js")
-async def service_worker():
-    return FileResponse(
-        "yellow_mirror/scripts/sw.js",
-        media_type="application/javascript",
-        headers={"Service-Worker-Allowed": "/"}
-    )
+@router.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await websocket.accept()
 
-@router.api_route("/proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def proxy_route(request: Request, path: str):
-    full_url = str(request.url)
-    if "/proxy/" not in full_url:
-        raise HTTPException(status_code=400, detail="Invalid proxy format")
-    
-    target_url = full_url.split("/proxy/", 1)[1]
-    target_url = re.sub(r"^(https?:)/+", r"\1//", target_url)
-    
-    if not target_url.startswith(("http://", "https://")):
-        target_url = "https://" + target_url
-
-    parsed_target = urllib.parse.urlparse(target_url)
-    target_origin = f"{parsed_target.scheme}://{parsed_target.netloc}"
-
-    headers = dict(request.headers)
-    
-    # 1. Strip headers that reveal our Vercel proxy
-    headers.pop("host", None)
-    headers.pop("connection", None)
-    headers.pop("accept-encoding", None)
-    
-    # 2. SPOOFING: Trick the target server into thinking we are on their domain (Fixes Google/YouTube Blocks)
-    headers["origin"] = target_origin
-    headers["referer"] = target_url
-    
-    # Emulate standard browser fetch metadata
-    headers["sec-fetch-dest"] = "empty"
-    headers["sec-fetch-mode"] = "cors"
-    headers["sec-fetch-site"] = "same-origin"
-
-    body = await request.body()
+    if len(active_sessions) >= MAX_SESSIONS:
+        await websocket.send_json({"type": "error", "message": "Server at maximum capacity (10)."})
+        await websocket.close()
+        return
+        
+    active_sessions[client_id] = {
+        "client_ws": websocket, 
+        "playwright": None, 
+        "context": None, 
+        "page": None, 
+        "cdp": None
+    }
     
     try:
-        async with cffi_requests.AsyncSession(impersonate="chrome") as session:
-            resp = await session.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                data=body if body else None,
-                allow_redirects=False,
-                timeout=15.0
-            )
-    except Exception as e:
-        return Response(content=f"Proxy error: {str(e)}", status_code=502)
+        while True:
+            data = await websocket.receive_json()
+            await handle_client_message(client_id, data)
+    except WebSocketDisconnect:
+        await cleanup_session(client_id)
 
-    resp_headers = {}
+async def handle_client_message(client_id: str, data: dict):
+    session = active_sessions.get(client_id)
+    if not session: return
     
-    # 3. Strip hostile headers and modify cookies
-    prohibited_headers =[
-        "content-encoding", "content-length", "transfer-encoding",
-        "x-frame-options", "content-security-policy", "content-security-policy-report-only",
-        "x-content-type-options", "x-xss-protection", "strict-transport-security",
-        "cross-origin-embedder-policy", "cross-origin-opener-policy", "cross-origin-resource-policy"
-    ]
-
-    for k, v in resp.headers.items():
-        k_lower = k.lower()
-        if k_lower in prohibited_headers:
-            continue
-            
-        if k_lower == "set-cookie":
-            parts = v.split(";")
-            new_parts =[p for p in parts if not p.strip().lower().startswith("domain=")]
-            new_parts =[p if not p.strip().lower().startswith("path=") else "Path=/" for p in new_parts]
-            # Strip secure flag to ensure cookies stick on http/localhost environments
-            new_parts =[p for p in new_parts if p.strip().lower() != "secure"]
-            resp_headers[k] = "; ".join(new_parts)
-            continue
-            
-        if k_lower == "location":
-            loc = urllib.parse.urljoin(target_url, v)
-            resp_headers[k] = f"/yellow-mirror/proxy/{loc}"
-            continue
-            
-        resp_headers[k] = v
-
-    # 4. FORCE CORS ALLOWANCE: Tells the browser it's allowed to load Twitch/YouTube modules via our proxy
-    req_origin = request.headers.get("origin", "*")
-    resp_headers["access-control-allow-origin"] = req_origin
-    resp_headers["access-control-allow-credentials"] = "true"
-    resp_headers["access-control-allow-methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    resp_headers["access-control-allow-headers"] = request.headers.get("access-control-request-headers", "*")
-    resp_headers["access-control-expose-headers"] = "*"
-
-    content = resp.content
-    content_type = resp_headers.get("content-type", "").lower()
+    msg_type = data.get("type")
     
-    if "text/html" in content_type:
-        html_str = content.decode("utf-8", errors="ignore")
-        content = rewrite_html(html_str, target_url).encode("utf-8")
+    if msg_type == "init":
+        url = data.get("url")
+        width, height = data.get("width", 1280), data.get("height", 720)
+        
+        p = await async_playwright().start()
+        session["playwright"] = p
+        
+        user_data_dir = f"/tmp/ym_{client_id}"
+        
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=user_data_dir,
+            headless=True, # Runs perfectly on HF Spaces!
+            args=[
+                "--autoplay-policy=no-user-gesture-required",
+                "--mute-audio",
+                "--window-size=1920,1080",
+                "--no-sandbox",
+                "--disable-dev-shm-usage"
+            ],
+            viewport={"width": width, "height": height}
+        )
+        session["context"] = context
+        page = context.pages[0] if context.pages else await context.new_page()
+        session["page"] = page
+        
+        async def on_nav(frame):
+            if frame == page.main_frame:
+                try: await session["client_ws"].send_json({"type": "navigated", "url": frame.url})
+                except: pass
+        page.on("framenavigated", on_nav)
+        
+        await page.goto(url)
+        
+        # ⚡ High-Speed CDP Screencast Setup
+        cdp = await context.new_cdp_session(page)
+        session["cdp"] = cdp
+        
+        async def on_screencast(event):
+            try:
+                # Send the compressed base64 frame straight to JS
+                await session["client_ws"].send_text(event["data"])
+                # Acknowledge receipt to unblock the next frame
+                await session["cdp"].send("Page.screencastFrameAck", {"sessionId": event["sessionId"]})
+            except Exception:
+                pass
 
-    return Response(content=content, status_code=resp.status_code, headers=resp_headers)
+        cdp.on("Page.screencastFrame", on_screencast)
+        await cdp.send("Page.startScreencast", {"format": "jpeg", "quality": 60, "maxWidth": width, "maxHeight": height})
+            
+    elif msg_type == "navigate":
+        if session.get("page"): await session["page"].goto(data.get("url"))
+        
+    elif msg_type == "resize":
+        if session.get("page"): 
+            await session["page"].set_viewport_size({"width": data.get("width"), "height": data.get("height")})
+            if session.get("cdp"):
+                try: await session["cdp"].send("Page.startScreencast", {"format": "jpeg", "quality": 60, "maxWidth": data.get("width"), "maxHeight": data.get("height")})
+                except: pass
+            
+    elif msg_type == "input" and session.get("page"):
+        page = session["page"]
+        action = data.get("action")
+        try:
+            if action == "mousemove": 
+                await page.mouse.move(data["x"], data["y"])
+            elif action == "mousedown": 
+                await page.mouse.down(button=data.get("button", "left"))
+            elif action == "mouseup": 
+                await page.mouse.up(button=data.get("button", "left"))
+            elif action == "wheel": 
+                await page.mouse.wheel(data.get("deltaX", 0), data.get("deltaY", 0))
+            
+            # Robust keyboard handling (Supports Cyrillic and Shortcuts)
+            elif action == "keydown":
+                key = data.get("key", "")
+                code = data.get("code", "")
+                ctrl = data.get("ctrlKey")
+                meta = data.get("metaKey")
+                
+                if (ctrl or meta) and code.startswith("Key"):
+                    char = code.replace("Key", "").lower()
+                    prefix = "Meta+" if meta else "Control+"
+                    await page.keyboard.press(f"{prefix}{char}")
+                elif len(key) == 1 and not (ctrl or meta or data.get("altKey")):
+                    await page.keyboard.insert_text(key)
+                else:
+                    await page.keyboard.down(key)
+                    
+            elif action == "keyup":
+                key = data.get("key", "")
+                if len(key) > 1:
+                    await page.keyboard.up(key)
+        except Exception:
+            pass 
+
+async def cleanup_session(client_id: str):
+    session = active_sessions.pop(client_id, None)
+    if session:
+        if session.get("context"):
+            try: await session["context"].close()
+            except: pass
+        if session.get("playwright"):
+            try: await session["playwright"].stop()
+            except: pass
+        shutil.rmtree(f"/tmp/ym_{client_id}", ignore_errors=True)
+        
+async def shutdown_clients():
+    for client_id in list(active_sessions.keys()):
+        await cleanup_session(client_id)

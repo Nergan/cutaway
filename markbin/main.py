@@ -1,25 +1,40 @@
-import uvicorn
+import sys
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
-from pathlib import Path
 
-from markbin.markbin import router
-
-app = FastAPI(title="Markbin Standalone")
+# 1. Standalone FastAPI Initialization
+app = FastAPI(title="markbin standalone")
 BASE_DIR = Path(__file__).parent
 
-# Mount exactly as it is mounted in Cutaway superproject
-app.mount('/markbin/static', StaticFiles(directory=BASE_DIR / 'static'), name='markbin-static')
-app.mount('/markbin/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='markbin-scripts')
+# 2. Namespace static mounting (Guarantees parity with root deployment)
+if (BASE_DIR / 'static').exists():
+    app.mount('/markbin/static', StaticFiles(directory=BASE_DIR / 'static'), name='markbin_static')
+if (BASE_DIR / 'scripts').exists():
+    app.mount('/markbin/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='markbin_scripts')
 
-# Include router WITH the exact same prefix as Cutaway
+# 3. Import and mount the core logic router
+from markbin import router
 app.include_router(router, prefix='/markbin')
 
-@app.get('/')
-async def root_redirect():
-    # Convenience redirect if you just go to localhost:8000
-    return RedirectResponse(url='/markbin/')
+@app.get("/")
+def root_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url='/markbin')
 
+# 4. The Dual-Boot Entrypoint
 if __name__ == '__main__':
-    uvicorn.run("markbin.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Launch Web Server if requested: `python main.py --web`
+    if "--web" in sys.argv:
+        import uvicorn
+        uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    # Default to Desktop App via Eel
+    else:
+        try:
+            import eel
+            eel.init(str(BASE_DIR))
+            # Finds the HTML file natively
+            html_file = 'templates/index.html' if (BASE_DIR / 'templates' / 'index.html').exists() else 'markbin.html'
+            eel.start(html_file, size=(1000, 850))
+        except ImportError:
+            print("Eel is not installed. To run the web server, use: python main.py --web")
