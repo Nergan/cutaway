@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formular</title>
+    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
+    <link href="/formular/static/css/base.css" rel="stylesheet">
+    <link href="/formular/static/css/bulk.css" rel="stylesheet">
+    <link href="/formular/static/css/components.css" rel="stylesheet">
+    <link href="/formular/static/css/queue.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="drag-overlay" id="dragOverlay">
+        <i class="bi bi-magic me-3"></i> RELEASE TO FORGE
+    </div>
+
+    <!-- Hidden Input -->
+    <input type="file" id="fileInput" multiple style="display: none;">
+
+    <div class="main-container" id="mainContainer">
+        <!-- Initial Center Text -->
+        <div class="empty-state" id="emptyState">
+            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png" alt="F" class="large-f">
+            <h2>CLICK OR DROP FILES ANYWHERE</h2>
+            <p>Documents • Images • Audio • Video • Archives • Data</p>
+        </div>
+
+        <!-- Files List Container -->
+        <div class="files-panel" id="filesList">
+            <div id="sortableContainer"></div>
+            <!-- Bottom Warning Label -->
+            <div class="warning-notice" id="warningNotice">
+                <i class="bi bi-exclamation-triangle"></i> Do not close this page until you have downloaded all necessary files.
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Panel -->
+    <div class="bulk-panel" id="bulkPanel">
+        <div class="bulk-panel-left">
+            <span id="bulkCount" style="font-weight: bold; color: var(--orange);">0 selected</span>
+            <select class="gothic-select" id="bulkTarget" style="min-width: 150px;">
+                <option value="" disabled selected>Target format...</option>
+            </select>
+            <span class="bulk-message" id="bulkMessage" style="display: none;">Incompatible formats for unified conversion</span>
+        </div>
+        <div class="bulk-panel-right">
+            <button class="btn-custom" id="bulkConvertBtn" disabled><i class="bi bi-lightning-charge me-1"></i> CONVERT</button>
+            <button class="btn-custom btn-download" id="bulkZipBtn"><i class="bi bi-file-earmark-zip me-1"></i> ZIP & DL</button>
+            <button class="btn-custom btn-remove" id="bulkDeleteBtn"><i class="bi bi-trash"></i></button>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <div class="fab" id="fabAdd" title="Add More Files">
+        <i class="bi bi-plus-lg"></i>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/formular/static/js/app.js"></script>
+    <script src="/formular/static/js/bulk.js"></script>
+    <script src="/formular/static/js/card.js"></script>
+    <script src="/formular/static/js/core.js"></script>
+    <script src="/formular/static/js/dropdown.js"></script>
+    <script src="/formular/static/js/lasso.js"></script>
+    <script src="/formular/static/js/uploader.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foundry VTT Character Viewer</title>
+  <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/dnd/foundry blank viewer favicon.png">
+  
+  <!-- Google Fonts: Lora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/dnd/static/styles/foundry_blank_viewer.css">
+</head>
+<body>
+
+<div class="main-wrapper">
+  <div class="container">
+
+    <!-- UPLOAD SECTION -->
+    <div id="upload-section" class="spirit-card" style="margin-top: 1rem;">
+      <p>Select a Foundry VTT <strong>.json</strong> actor file to read the character blank</p>
+      <input type="file" id="file-input" accept=".json" style="display:none;">
+      
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        Drop your JSON parchment here<br>
+        <span style="font-size: 0.9rem; opacity: 0.8;">(or click to browse)</span>
+      </div>
+    </div>
+
+    <!-- CHARACTER SHEET SECTION -->
+    <div id="character-sheet" style="display: none;">
+      <button class="btn-leaf" onclick="resetViewer()" style="margin-bottom: 2rem;">« Seal the Archive</button>
+
+      <!-- Header -->
+      <div class="char-header spirit-card">
+        <img id="char-img" class="char-img" src="" alt="Portrait" onerror="this.style.display='none'">
+        <div class="char-info">
+          <h2 id="char-name">Character Name</h2>
+          <div class="char-sub" id="char-subtitle">Level 1 Class | Race | Background</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="tabs">
+        <button class="btn-leaf active tab-btn" id="btn-core" onclick="showTab('core')">Core Stats</button>
+        <button class="btn-leaf tab-btn" id="btn-features" onclick="showTab('features')">Features & Traits</button>
+        <button class="btn-leaf tab-btn" id="btn-spells" onclick="showTab('spells')">Spellbook</button>
+        <button class="btn-leaf tab-btn" id="btn-inventory" onclick="showTab('inventory')">Inventory</button>
+        <button class="btn-leaf tab-btn" id="btn-bio" onclick="showTab('bio')">Biography</button>
+      </div>
+
+      <!-- TAB: CORE -->
+      <div id="tab-core" class="tab-content" style="display: block;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Armor Class</th>
+              <th>Hit Points</th>
+              <th>Speed (Walk)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span id="stat-ac" class="stat-ac">10</span></td>
+              <td><span id="stat-hp" class="stat-vital">0 / 0</span></td>
+              <td><span id="stat-speed" class="stat-ac">30 ft</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Attribute Roots</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>STR</th>
+              <th>DEX</th>
+              <th>CON</th>
+              <th>INT</th>
+              <th>WIS</th>
+              <th>CHA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="attr-row">
+              <!-- Injected via JS -->
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TAB: FEATURES -->
+      <div id="tab-features" class="tab-content">
+        <h3>Gifts of Nature & Training</h3>
+        <div id="list-features"></div>
+      </div>
+
+      <!-- TAB: SPELLS -->
+      <div id="tab-spells" class="tab-content">
+        <h3>Mystic Weavings</h3>
+        <div id="list-spells"></div>
+      </div>
+
+      <!-- TAB: INVENTORY -->
+      <div id="tab-inventory" class="tab-content">
+        <h3>Possessions & Relics</h3>
+        <div id="list-inventory"></div>
+      </div>
+
+      <!-- TAB: BIOGRAPHY -->
+      <div id="tab-bio" class="tab-content">
+        <h3>Tale of the Wanderer</h3>
+        <div class="bio-content" id="char-bio"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="bottom-controls">
+    <a href="/dnd" class="control-btn" title="Home">
+      <i class="bi bi-house-door-fill"></i>
+    </a>
+    <button id="themeToggle" class="control-btn" title="Toggle Theme">
+      <i class="bi bi-sun-fill"></i>
+    </button>
+  </div>
+</footer>
+
+<script src="/dnd/scripts/foundry_blank_viewer.js"></script>
+</body>
+</html>
