@@ -15,5 +15,18 @@ beautifulsoup4==4.14.3
 lxml==5.3.1
 aiogram==3.15.0
 curl_cffi==0.6.2
+websockets
+mammoth
+pymupdf
+python-magic
+pypandoc
+pandas
+openpyxl
+Pillow
+cairosvg
+pyyaml
+toml
+xmltodict
+
 # eel==0.16.0
 # llama-cpp-python>=0.2.56

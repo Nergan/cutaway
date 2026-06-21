@@ -98,10 +98,10 @@
             }
 
             isProcessing = true;
-            console.log('saving code...')
+            console.log('saving code...');
 
             try {
-                // Generate a UUID locally without needing to query the server
+                // Generate a UUID locally, serving as a proposal to the server
                 const newId = generateUUID();
 
                 const response = await fetch('./api/save', {
@@ -111,8 +111,11 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = `/toadbin/${newId}`;
-                    return true; // Never actually reached, but for consistency
+                    // Always use the ID dictated by the server's response.
+                    // This handles deduplication by redirecting to an existing ID if one was found!
+                    const data = await response.json();
+                    window.location.href = `/toadbin/${data.id}`;
+                    return true;
                 } else {
                     throw new Error('Failed to save code');
                 }
