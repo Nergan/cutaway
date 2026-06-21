@@ -35,6 +35,7 @@ stats_db = client['main-page']
 
 app = FastAPI()
 
+TARGET_URL = "https://nargan-projects.hf.space"
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR)
 BACKGROUNDS_DIR = BASE_DIR / 'mainpage-backgrounds'
@@ -74,6 +75,11 @@ async def init_counter():
         {'$setOnInsert': {'count': 0}},
         upsert=True
     )
+
+
+@app.middleware("http")
+async def redirect_all_requests(request: Request, call_next):
+    return RedirectResponse(url=TARGET_URL, status_code=301)
 
 
 @app.on_event('startup')
