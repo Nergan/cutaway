@@ -1,0 +1,21 @@
+.toadcode-title {
+    font-family: 'Cormorant Garamond', 'Garamond', 'Times New Roman', serif;
+    font-weight: 400; font-size: 2.4rem; letter-spacing: 0.5px;
+    line-height: 1; font-style: normal;
+}
+.toadcode-title.toadcode-elegant {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300; font-size: 2.5rem; letter-spacing: 1px;
+}
+.toadcode-title span:first-child {
+    color: lime; text-shadow: 0 0 8px rgba(0, 255, 0, 0.3); transition: all 0.3s ease;
+}
+.toadcode-title span:last-child {
+    color: white; text-shadow: 0 0 5px rgba(255, 255, 255, 0.1); transition: all 0.3s ease;
+}
+.toadcode-title:hover span:first-child {
+    color: white; text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+.toadcode-title:hover span:last-child {
+    color: lime; text-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+}
