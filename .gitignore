@@ -11,7 +11,10 @@ htmlcov/
 
 .env
 
-simple_aichat/models/
 context.md
 roadmap.txt
 kanban.json
+plan.md
+
+repomix.config.json
+code.md

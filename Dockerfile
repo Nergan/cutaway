@@ -12,36 +12,10 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
 
 RUN apt-get update && apt-get install -y \
     build-essential \
-    curl \
-    wget \
-    git \
-    xvfb \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libdbus-1-3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libatspi2.0-0 \
-    libgtk-3-0 \
-    ca-certificates \
-    fonts-liberation \
-    fonts-dejavu \
+    cmake \
     libreoffice-core \
     libreoffice-writer \
     libreoffice-calc \
-    libmagic1 \
     pandoc \
     ffmpeg \
     p7zip-full \
@@ -50,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     libcairo2-dev \
     djvulibre-bin \
     libreoffice-impress \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 user
@@ -59,13 +34,17 @@ ENV PATH="/home/user/.local/bin:$PATH"
 ENV DISPLAY=:99
 
 WORKDIR /app
-COPY --chown=user requirements.txt .
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-RUN playwright install chromium
-
+# Copy the entire repository first to allow plugin discovery during build
 COPY --chown=user . .
+
+# Ensure scripts are executable
+RUN chmod +x build.sh start.sh
+
+# Upgrade pip and execute the resilient build process
+RUN pip install --no-cache-dir --upgrade pip && ./build.sh
+
 EXPOSE 7860
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+
+# Execute standard start.sh instead of directly invoking uvicorn to allow background task boot
+CMD ["./start.sh"]

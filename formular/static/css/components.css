@@ -10,14 +10,31 @@
 .empty-state {
     position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    text-align: center; pointer-events: none;
+    text-align: center;
+    cursor: pointer;
+    
+    /* Modern file attachment styling */
+    border: 2px dashed var(--orange);
+    border-radius: 16px;
+    background-color: rgba(10, 10, 10, 0.6);
+    padding: 40px 20px;
+    width: 90%;
+    max-width: 600px;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+.empty-state:hover {
+    background-color: rgba(255, 107, 53, 0.08);
+    border-color: var(--orange-light);
+    box-shadow: 0 0 24px rgba(255, 107, 53, 0.15);
+}
+
 .large-f {
     width: 120px; height: auto; margin-bottom: 20px;
     user-select: none; filter: drop-shadow(2px 2px 8px rgba(255, 107, 53, 0.4));
 }
 .empty-state h2 { font-size: 2.5rem; letter-spacing: 2px; margin: 15px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-.empty-state p { color: var(--text-muted); font-size: 1.1rem; }
+.empty-state p { color: var(--text-muted); font-size: 1.1rem; margin: 0; }
 
 .btn-custom {
     background: var(--orange); color: var(--black); border: none; padding: 8px 15px;
