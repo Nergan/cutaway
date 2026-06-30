@@ -18,7 +18,7 @@
             --text-light: #f6f3e8;
             --text-secondary: #e2ddce;
             --accent-moss: #9ab87a;
-            --accent-earth: #cbab7a;
+            --accent-earth: #dbc49a; /* Улучшенный контраст */
             --border-glow: rgba(220, 200, 150, 0.3);
             --card-bg: rgba(35, 40, 28, 0.5);
             --shadow-soft: 0 12px 28px -8px rgba(0, 0, 0, 0.3);
@@ -97,39 +97,15 @@
         }
 
         @keyframes softDrift {
-            0% {
-                background-position: 0 0;
-                opacity: 0.3;
-            }
-            100% {
-                background-position: 5% 8%;
-                opacity: 0.45;
-            }
+            0% { background-position: 0 0; opacity: 0.3; }
+            100% { background-position: 5% 8%; opacity: 0.45; }
         }
 
-        ::-webkit-scrollbar {
-            width: 5px;
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(200, 190, 160, 0.25);
-            border-radius: 10px;
-            transition: background 0.2s;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(200, 190, 160, 0.45);
-        }
-
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(200, 190, 160, 0.25) transparent;
-        }
+        ::-webkit-scrollbar { width: 5px; background: transparent; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(200, 190, 160, 0.25); border-radius: 10px; transition: background 0.2s; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(200, 190, 160, 0.45); }
+        * { scrollbar-width: thin; scrollbar-color: rgba(200, 190, 160, 0.25) transparent; }
 
         .container {
             max-width: 1300px;
@@ -154,7 +130,6 @@
             -webkit-background-clip: text;
             color: transparent;
             margin-bottom: 1rem;
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
             line-height: 1.2;
         }
 
@@ -194,6 +169,7 @@
 
         .projects-grid {
             margin-top: 1rem;
+            animation: fadeIn 0.8s ease-out;
         }
 
         .row {
@@ -230,7 +206,7 @@
             justify-content: center;
             background-color: rgba(255, 255, 255, 0.02);
             transition: background-color 0.2s;
-            border-radius: 25%
+            border-radius: 25%; /* Исправлена точка с запятой */
         }
 
         .project-card:hover .project-icon {
@@ -294,6 +270,45 @@
             height: 100%;
         }
 
+        /* Стили для фокуса с клавиатуры */
+        .project-link:focus-visible {
+            outline: 2px solid var(--accent-moss);
+            outline-offset: 4px;
+            border-radius: 48px 24px 48px 24px;
+        }
+
+        /* OFFLINE PROJECT DIMMING STYLES */
+        .col.offline {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(100%);
+            transition: all 0.3s ease;
+        }
+
+        .col.offline .project-card {
+            background: rgba(15, 15, 15, 0.4);
+            border-color: rgba(100, 100, 100, 0.2);
+            box-shadow: none;
+        }
+
+        .col.offline .badge-category {
+            color: #d9534f !important;
+        }
+
+        .col.offline .badge-category::after {
+            content: " (OFFLINE)";
+            font-weight: 600;
+        }
+
+        .col.offline .corner-decoration {
+            opacity: 1;
+            color: #d9534f;
+        }
+
+        .col.offline .corner-decoration i::before {
+            content: "\F62A"; /* bi-x-circle replaces bi-arrow-up-right */
+        }
+
         .visitor-counter {
             position: fixed;
             bottom: 24px;
@@ -317,30 +332,34 @@
         }
 
         @media (max-width: 768px) {
-            body {
-                padding: 1.2rem;
-            }
-            .welcome-text {
-                font-size: 2rem;
-            }
-            .header-section {
-                padding-left: 1rem;
-            }
-            .row {
-                gap: 1.2rem;
-            }
-        }
-
-        .projects-grid {
-            animation: fadeIn 0.8s ease-out;
+            body { padding: 1.2rem; }
+            .welcome-text { font-size: 2rem; }
+            .header-section { padding-left: 1rem; }
+            .row { gap: 1.2rem; }
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Поддержка людей с вестибулярными нарушениями */
+        @media (prefers-reduced-motion: reduce) {
+            .bg-video { display: none; }
+            .grain-subtle { 
+                animation: none; 
+                opacity: 0.2; 
             }
-            to {
-                opacity: 1;
+            .project-card, 
+            .contact-link, 
+            .corner-decoration, 
+            .badge-category, 
+            .project-icon,
+            .visitor-counter {
+                transition: none;
+            }
+            .projects-grid {
+                animation: none;
             }
         }
     </style>
@@ -370,187 +389,8 @@
     </div>
 
     <div class="projects-grid">
-        <div class="row">
-            <div class="col">
-                <a href="/evenfest" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-1">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project1_title">evenfest</h5>
-                        <p class="card-text" data-i18n="project1_desc">cosplay community website</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project1_category">art</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/snake" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-2">
-                            <img src="https://psv4.userapi.com/s/v1/d2/AArGNCyJ26rCvrn3VEmn6UZBf2w6S44kTJ8WMu1mTdRB66TIwCw5c6N2Arb6cX6v25ZxfO62p3AMxzPOY2ddNsq1sUHxLNiDanZJg4fBBE1G0R7NhZcwQOG41K1EHW3HvhpYBIwMDtlQ/snack.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project2_title">snake</h5>
-                        <p class="card-text" data-i18n="project2_desc">just snake</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project2_category">game</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/toadbin" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-3">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project3_title"><span style="color: lime">toad</span>bin</h5>
-                        <p class="card-text" data-i18n="project3_desc">like katbin, but with syntax highlighting</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project3_category">dev</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col" data-project="scriptura">
-                <a href="https://t.me/hornychat42_bot" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-4">
-                            <img src="https://psv4.userapi.com/s/v1/d2/e-yj_4w7RQu2LrFqMGJpYp6RFdyKb5rbj8FYW4-y1QCAAetiEA4ajOz7Pwk-cl-B9DODlVQAao_KcYOuhH1qT6zMwC2WL4q-4KcU48AkzQfoHlm_KmSy17_AA3kTsXCOGZ17flvihNvK/rounded-in-photoretrica.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project4_title">horny chat</h5>
-                        <p class="card-text" data-i18n="project4_desc">telegram bot (not working)</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project4_category">ai</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/formular" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-5">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project5_title">formular</h5>
-                        <p class="card-text" data-i18n="project5_desc">any to any</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project5_category">doc</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/yellow-mirror" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-6">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/yellow-mirror/favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project6_title">yellow mirror</h5>
-                        <p class="card-text" data-i18n="project6_desc">simple web browser</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project6_category">web</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- <div class="col">
-                <a href="/simple-aichat" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-7">
-                            <img src="https://psv4.userapi.com/s/v1/d2/OSqPkzC3paP_Loan63kHv9L1eZTbPgIWp80oVBzuy0pgh8pYidTIYmf48f59dq3lQvwjzZ2UHkVYhvquwXcPez1QC7M3NzF-W7bB6WMwOq9k9Lkw6qe-M4cOCNhR5QkEHqYmA1mhL2Ni/4712027.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project7_title">simple aichat</h5>
-                        <p class="card-text" data-i18n="project7_desc">chat with a silly ai</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project7_category">ai</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div> -->
-
-            <div class="col">
-                <a href="/dnd" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-8">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/dnd/menu favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project8_title">d&d tools</h5>
-                        <p class="card-text" data-i18n="project8_desc">tools for d&d</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project8_category">game</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/markbin" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-9">
-                            <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project9_title"><span style="color: #e06c75">mark</span>bin</h5>
-                        <p class="card-text" data-i18n="project9_desc">markdown editor&viewer&sharer</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project9_category">doc</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col">
-                <a href="/kanban" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-10">
-                            <img src="https://psv4.userapi.com/s/v1/d2/cXhcvJAqHzGb946EebUXj0s6N-Tn0OyQRUjT027EuhZiYlNdmPjEnnlORJtDBb7fIDdrucwOMkStCRd_aoGv6hb7b1UeHbuRhEKShCVhpQGKP8PFkEMKhy3hAO2dFFzyn9tWrHv1edw_/kanban.png" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project10_title">kanban</h5>
-                        <p class="card-text" data-i18n="project10_desc">lite kanban board</p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project10_category">managment</span>
-                            <div class="corner-decoration">
-                                <i class="bi bi-arrow-up-right"></i>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
+        <div class="row" id="projects-container">
+            <!-- Projects are dynamically rendered here via JavaScript -->
         </div>
     </div>
 </main>
@@ -558,6 +398,18 @@
 <div class="visitor-counter" id="visitor-counter">visitors --</div>
 
 <script>
+    const projectsConfig = [
+        { i18n: 1, plugin: "evenfest", link: "/evenfest", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/favicon.png" },
+        { i18n: 2, plugin: "snake", link: "/snake", icon: "https://psv4.userapi.com/s/v1/d2/AArGNCyJ26rCvrn3VEmn6UZBf2w6S44kTJ8WMu1mTdRB66TIwCw5c6N2Arb6cX6v25ZxfO62p3AMxzPOY2ddNsq1sUHxLNiDanZJg4fBBE1G0R7NhZcwQOG41K1EHW3HvhpYBIwMDtlQ/snack.png" },
+        { i18n: 3, plugin: "toadcode", link: "/toadcode", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/toadcode/favicon.png" },
+        { i18n: 4, id: "scriptura", plugin: null, link: "/telegram-bot", icon: "https://psv4.userapi.com/s/v1/d2/e-yj_4w7RQu2LrFqMGJpYp6RFdyKb5rbj8FYW4-y1QCAAetiEA4ajOz7Pwk-cl-B9DODlVQAao_KcYOuhH1qT6zMwC2WL4q-4KcU48AkzQfoHlm_KmSy17_AA3kTsXCOGZ17flvihNvK/rounded-in-photoretrica.png" },
+        { i18n: 5, plugin: "formular", link: "/formular", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png" },
+        { i18n: 6, plugin: "yellow_mirror", link: "/yellow-mirror", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/yellow-mirror/favicon.png" },
+        { i18n: 8, plugin: "dnd", link: "/dnd", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/dnd/menu favicon.png" },
+        { i18n: 9, plugin: "markbin", link: "/markbin", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png" },
+        { i18n: 10, plugin: "kanban", link: "/kanban", icon: "https://psv4.userapi.com/s/v1/d2/cXhcvJAqHzGb946EebUXj0s6N-Tn0OyQRUjT027EuhZiYlNdmPjEnnlORJtDBb7fIDdrucwOMkStCRd_aoGv6hb7b1UeHbuRhEKShCVhpQGKP8PFkEMKhy3hAO2dFFzyn9tWrHv1edw_/kanban.png" }
+    ];
+
     const translations = {
         en: {
             welcome: "Welcome to the Nargan's website, here you will find some of my pet-projects.",
@@ -567,8 +419,8 @@
             project2_title: "snake",
             project2_desc: "just snake",
             project2_category: "game",
-            project3_title: '<span style="color: lime">toad</span>bin',
-            project3_desc: "like katbin, but with syntax highlighting",
+            project3_title: '<span style="color: lime">toad</span>code',
+            project3_desc: 'open workspace',
             project3_category: "dev",
             project4_title: "horny chat",
             project4_desc: "telegram bot (not working)",
@@ -579,9 +431,6 @@
             project6_title: "yellow mirror",
             project6_desc: "simple web browser",
             project6_category: "web",
-            project7_title: "simple aichat",
-            project7_desc: "chat with a silly ai",
-            project7_category: "ai",
             project8_title: "d&d tools",
             project8_desc: "tools for d&d",
             project8_category: "game",
@@ -590,7 +439,7 @@
             project9_category: "doc",
             project10_title: 'kanban',
             project10_desc: "lite kanban board",
-            project10_category: "managment"
+            project10_category: "management"
         },
         ru: {
             welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
@@ -600,8 +449,8 @@
             project2_title: "змейка",
             project2_desc: "просто змейка",
             project2_category: "игры",
-            project3_title: '<span style="color: lime">toad</span>bin',
-            project3_desc: "как katbin, но с подсветкой синтаксиса",
+            project3_title: '<span style="color: lime">toad</span>code',
+            project3_desc: 'pastebin на максималках',
             project3_category: "разработка",
             project4_title: "horny chat",
             project4_desc: "телеграм бот (не работает)",
@@ -612,9 +461,6 @@
             project6_title: "yellow mirror",
             project6_desc: "веб зеркало",
             project6_category: "веб",
-            project7_title: "simple aichat",
-            project7_desc: "чат с глупым ии",
-            project7_category: "ии",
             project8_title: "d&d tools",
             project8_desc: "инструменты для d&d",
             project8_category: "игры",
@@ -626,6 +472,48 @@
             project10_category: "управление"
         }
     };
+
+    function renderProjects() {
+        const container = document.getElementById('projects-container');
+        container.innerHTML = projectsConfig.map(p => `
+            <div class="col" ${p.id ? `data-project="${p.id}"` : ''} ${p.plugin ? `data-plugin="${p.plugin}"` : ''}>
+                <a href="${p.link}" class="project-link">
+                    <div class="project-card">
+                        <div class="project-icon icon-${p.i18n}">
+                            <img src="${p.icon}" alt="icon" class="custom-icon">
+                        </div>
+                        <h5 class="card-title" data-i18n="project${p.i18n}_title"></h5>
+                        <p class="card-text" data-i18n="project${p.i18n}_desc"></p>
+                        <div class="card-footer-links">
+                            <span class="badge-category" data-i18n="project${p.i18n}_category"></span>
+                            <div class="corner-decoration">
+                                <i class="bi bi-arrow-up-right"></i>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        `).join('');
+    }
+
+    async function fetchSystemStatus() {
+        try {
+            const response = await fetch('/api/status');
+            if (response.ok) {
+                const data = await response.json();
+                const plugins = data.plugins || {};
+                
+                document.querySelectorAll('.col[data-plugin]').forEach(col => {
+                    const pluginName = col.getAttribute('data-plugin');
+                    if (plugins[pluginName] && plugins[pluginName].status !== 'online') {
+                        col.classList.add('offline');
+                    }
+                });
+            }
+        } catch (error) {
+            console.warn('Could not fetch system status for UI dimming', error);
+        }
+    }
 
     function setLanguage(lang) {
         if (!translations[lang]) lang = 'en';
@@ -657,6 +545,15 @@
     async function trackVisitor() {
         const visitorId = getVisitorId();
         const counterEl = document.getElementById('visitor-counter');
+        
+        if (sessionStorage.getItem('tracked_this_session')) {
+            const savedCount = sessionStorage.getItem('last_known_count');
+            if (savedCount) {
+                counterEl.textContent = `visitors ${savedCount}`;
+                return;
+            }
+        }
+
         try {
             const response = await fetch('/api/track', {
                 method: 'POST',
@@ -666,6 +563,9 @@
             if (response.ok) {
                 const data = await response.json();
                 counterEl.textContent = `visitors ${data.count}`;
+                
+                sessionStorage.setItem('tracked_this_session', 'true');
+                sessionStorage.setItem('last_known_count', data.count);
             } else {
                 counterEl.textContent = 'visitors ?';
             }
@@ -718,8 +618,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        renderProjects();
         const lang = detectLanguage();
         setLanguage(lang);
+        fetchSystemStatus();
         trackVisitor();
         loadRandomBackground();
     });

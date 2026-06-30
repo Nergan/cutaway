@@ -132,7 +132,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
                     data = {'root': data}
                 f.write(xmltodict.unparse(data, pretty=True))
         return
-
+    
     # 1. Playwright
     if from_fmt == 'html' and to_fmt == 'pdf':
         async with async_playwright() as p:
@@ -140,7 +140,28 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             page = await browser.new_page()
             file_uri = pathlib.Path(input_path).resolve().as_uri()
             await page.goto(file_uri, wait_until="load")
-            await page.pdf(path=output_path, format="A4", print_background=True, margin={"top": "1in", "right": "1in", "bottom": "1in", "left": "1in"})
+            
+            # Neutralize Pandoc's default HTML constraints so Playwright 
+            # can apply uniform PDF margins across all pages.
+            await page.add_style_tag(content="""
+                body {
+                    max-width: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                /* Prevent top-margin collapse on the very first element */
+                body > *:first-child {
+                    margin-top: 0 !important;
+                }
+            """)
+            
+            # Now apply standard 1-inch document margins natively
+            await page.pdf(
+                path=output_path, 
+                format="A4", 
+                print_background=True, 
+                margin={"top": "1in", "right": "1in", "bottom": "1in", "left": "1in"}
+            )
             await browser.close()
         return
 
@@ -184,7 +205,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             if not stdout.strip(): raise Exception("No audio track found in the video file.")
         await _run_process("ffmpeg", "-y", "-i", input_path, output_path, timeout=600)
         return
-
+    
     # 6. Pandoc
     PANDOC_IN = {'md': 'markdown', 'txt': 'markdown', 'html': 'html', 'docx': 'docx', 'rtf': 'rtf', 'epub': 'epub', 'odt': 'odt'}
     PANDOC_OUT = {'md': 'markdown', 'txt': 'plain', 'html': 'html', 'docx': 'docx', 'rtf': 'rtf', 'epub': 'epub', 'odt': 'odt'}
@@ -192,7 +213,8 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         if from_fmt == 'txt' and to_fmt == 'md':
             shutil.copy(input_path, output_path)
             return
-        extra_args = ['--standalone', '--metadata', 'title=Document'] if to_fmt == 'html' else []
+        # FIX: Changed 'title=Document' to 'pagetitle=Document'
+        extra_args = ['--standalone', '--metadata', 'pagetitle=Document'] if to_fmt == 'html' else []
         pypandoc.convert_file(input_path, PANDOC_OUT[to_fmt], format=PANDOC_IN[from_fmt], outputfile=output_path, extra_args=extra_args)
         return
 

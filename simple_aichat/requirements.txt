@@ -1,5 +1,0 @@
-fastapi
-uvicorn[standard]
-websockets
-llama-cpp-python>=0.2.56
-eel
