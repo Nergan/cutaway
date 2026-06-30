@@ -1,0 +1,2 @@
+*.gguf filter=lfs diff=lfs merge=lfs -text
+simple_aichat/models/splitted[[:space:]]opus-v1.2-7b-gguf-iq-imatrix/* filter=lfs diff=lfs merge=lfs -text

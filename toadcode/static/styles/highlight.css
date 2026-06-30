@@ -1,0 +1,26 @@
+.hljs, .hljs code {
+    background: transparent !important;
+}
+
+.code-editor-wrapper pre.hljs {
+    pointer-events: none;
+}
+
+/* Line Numbers specific logic */
+.line-numbers {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3rem; padding: 1rem 0.5rem 1rem 0;
+    text-align: right; overflow: hidden;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    user-select: none; pointer-events: none;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px; line-height: 1.5;
+    background: transparent;
+    font-family: 'Consolas', monospace !important;
+    z-index: 2;
+}
+
+.code-editor, pre.hljs {
+    padding-left: 3.5rem !important;
+}

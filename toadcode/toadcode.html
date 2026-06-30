@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if code_id %}Toadcode - Repo {{ code_id }}{% else %}Toadcode - Share your workspace{% endif %}</title>
+    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/toadcode/favicon.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Playfair+Display:wght@400;500&family=Cinzel:wght@400;500&family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/toadcode/static/styles/base.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/editor.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/buttons.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/scrollbars.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/highlight.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/title.css">
+    <link rel="stylesheet" href="/toadcode/static/styles/tree.css">
+
+    <script id="repo-data" type="application/json">{{ repo_data|safe }}</script>
+</head>
+<body>
+    <video class="gif-background" autoplay loop muted playsinline></video>
+    <div class="overlay"></div>
+    
+    <div class="container-fluid h-100 p-3 d-flex flex-column" id="dropZone">
+        <!-- Top Navigation -->
+        <div class="header d-flex justify-content-between align-items-center flex-shrink-0">
+            <h1 class="h3 mb-0 d-flex align-items-center gap-3">
+                <a href="/toadcode" style="text-decoration: none;" class="d-flex align-items-center">
+                    <i class="bi bi-code-slash me-2 text-success"></i>
+                    <span class="toadcode-title toadcode-elegant">
+                        <span>Toad</span><span>code</span>
+                    </span>
+                </a>
+                {% if code_id %}
+                    <span class="text-muted copyable-link" id="uuid-display" style="font-size: 0.8rem; cursor: pointer;" title="Click to copy link">
+                        <i class="bi bi-link-45deg"></i> {{ code_id }}
+                    </span>
+                {% endif %}
+            </h1>
+            
+            <div class="d-flex gap-2 align-items-center position-relative">
+                {% if not code_id %}
+                    <input type="file" id="folderInput" webkitdirectory directory multiple class="d-none">
+                    <input type="file" id="filesInput" multiple class="d-none">
+                    <input type="file" id="zipInput" accept=".zip" class="d-none">
+                    
+                    <div class="dropdown">
+                        <button class="action-btn" type="button" data-bs-toggle="dropdown" title="Upload Repository">
+                            <i class="bi bi-cloud-upload"></i> Upload
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-transparent">
+                            <li><a class="dropdown-item" href="#" id="uploadFolderBtn"><i class="bi bi-folder-plus me-2"></i>Folder</a></li>
+                            <li><a class="dropdown-item" href="#" id="uploadFilesBtn"><i class="bi bi-file-earmark-plus me-2"></i>Files</a></li>
+                            <li><a class="dropdown-item" href="#" id="uploadZipBtn"><i class="bi bi-file-earmark-zip me-2"></i>.ZIP Archive</a></li>
+                            <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+                            <li><a class="dropdown-item" href="#" id="githubBtnToggle"><i class="bi bi-box-arrow-in-down me-2"></i>Import Repo Link</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Repository Link Prompt -->
+                    <div id="githubPrompt" class="position-absolute top-100 end-0 mt-2 p-2 rounded dropdown-menu-transparent d-none" style="width: 320px; z-index: 1000;">
+                        <div class="input-group input-group-sm">
+                            <!-- Removed HuggingFace text -->
+                            <input type="text" id="githubUrlInput" class="form-control bg-dark text-white border-secondary custom-font" placeholder="GitHub repository link">
+                            <button class="btn btn-outline-success" id="githubSubmitBtn" disabled title="Import">
+                                <i class="bi bi-cloud-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button id="publishBtn" class="action-btn ms-2 publish-btn" title="Publish Repository">
+                        <i class="bi bi-cloud-arrow-up"></i> Publish
+                    </button>
+                {% else %}
+                    <button id="forkBtn" class="action-btn ms-2 text-warning border-warning border-opacity-50" title="Edit a copy of this repository">
+                        <i class="bi bi-pencil-square"></i> Edit
+                    </button>
+                {% endif %}
+
+                <div class="dropdown ms-1">
+                    <button class="action-btn" type="button" data-bs-toggle="dropdown" title="Download Repository (Ctrl+S)" id="downloadDropdownBtn">
+                        <i class="bi bi-download"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-transparent">
+                        <li><a class="dropdown-item" href="#" id="downloadZip"><i class="bi bi-file-zip me-2"></i>Download .zip</a></li>
+                        <li><a class="dropdown-item" href="#" id="downloadMd"><i class="bi bi-markdown me-2"></i>Download .md</a></li>
+                    </ul>
+                </div>
+
+                <button id="toggleSidebarBtn" class="action-btn ms-2 d-none" title="Toggle Sidebar">
+                    <i class="bi bi-layout-sidebar-inset-reverse"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="main-workspace d-flex flex-grow-1 overflow-hidden gap-1 position-relative">
+            
+            <div class="editor-section d-flex flex-column flex-grow-1 position-relative h-100">
+                <div id="noFileScreen" class="flex-column align-items-center justify-content-center h-100 text-muted w-100 position-absolute top-0 start-0 z-3" style="display: flex;">
+                    <i class="bi bi-journal-code display-4 mb-3 opacity-50"></i>
+                    <h5 class="opacity-75 custom-font">No file selected</h5>
+                    <p class="small opacity-50 custom-font">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
+                </div>
+                
+                <textarea id="codeInput" class="code-editor w-100 h-100 d-none z-1" spellcheck="false" {% if code_id %}readonly{% endif %}></textarea>
+                
+                <div class="footer mt-1 d-flex justify-content-between align-items-center text-muted small flex-shrink-0 z-2" style="height: 24px;">
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                        <span id="currentFilePath" class="text-truncate custom-font"><i class="bi bi-terminal me-1"></i> Ready</span>
+                        <i class="bi bi-download d-none action-icon-btn" id="downloadCurrentFileBtn" title="Download active file"></i>
+                    </div>
+                    <div id="charCount" class="custom-font ms-2 text-nowrap">0 characters</div>
+                </div>
+            </div>
+            
+            <div id="sidebarResizer" class="resizer flex-shrink-0 d-none"></div>
+
+            <div id="sidebar" class="sidebar d-none flex-column h-100">
+                <div id="fileTree" class="file-tree flex-grow-1 overflow-auto p-1 position-relative" tabindex="0"></div>
+                
+                <div class="sidebar-footer d-flex flex-column gap-2 p-2 border-top border-secondary border-opacity-25 mt-auto">
+                    {% if not code_id %}
+                    <div class="repo-size-container d-flex flex-column gap-1 mb-1">
+                        <div class="d-flex justify-content-between text-muted custom-font" style="font-size: 0.65rem;">
+                            <span>Storage</span>
+                            <span><span id="repoSizeText">0.00</span> MB / 10 MB</span>
+                        </div>
+                        <div class="progress bg-dark border border-secondary border-opacity-25" style="height: 4px;">
+                            <div id="repoSizeProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button id="addFileBtn" class="action-btn flex-grow-1 custom-font" title="New File"><i class="bi bi-file-earmark-plus me-1"></i> File</button>
+                        <button id="addFolderBtn" class="action-btn flex-grow-1 custom-font" title="New Folder"><i class="bi bi-folder-plus me-1"></i> Folder</button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        window.IS_READONLY = {{ 'true' if code_id else 'false' }};
+        window.CODE_ID = "{{ code_id if code_id else '' }}";
+    </script>
+    <script src="/toadcode/scripts/random background.js"></script>
+    <script src="/toadcode/scripts/highlight.js"></script>
+    <script src="/toadcode/scripts/vfs.js"></script>
+    {% if not code_id %}<script src="/toadcode/scripts/codekeys.js"></script>{% endif %}
+</body>
+</html>
