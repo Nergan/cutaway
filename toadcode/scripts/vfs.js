@@ -355,7 +355,7 @@
         renderList.forEach((item, index) => {
             const { child, indent } = item;
             const div = document.createElement('div');
-            div.className = `tree-item ${child.path === activeFilePath && !child.isDir ? 'active' : ''}`;
+            div.className = `tree-item d-flex align-items-center flex-nowrap ${child.path === activeFilePath && !child.isDir ? 'active' : ''}`;
             div.style.paddingLeft = `${indent * 15 + 10}px`;
             div.dataset.path = child.path;
             div.dataset.isdir = child.isDir;
@@ -365,14 +365,14 @@
             if (focusedIndex === index) div.classList.add('focused-item');
 
             const icon = child.isDir ? (expandedDirs.has(child.path) ? 'bi-folder2-open' : 'bi-folder-fill') : 'bi-file-earmark-code';
-            const caret = child.isDir ? `<i class="bi ${expandedDirs.has(child.path) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'} me-1" style="font-size:0.7rem;"></i>` : `<span class="me-3"></span>`;
+            const caret = child.isDir ? `<i class="bi ${expandedDirs.has(child.path) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'} me-1 flex-shrink-0" style="font-size:0.7rem;"></i>` : `<span class="me-3 flex-shrink-0"></span>`;
             
-            let html = `${caret}<i class="bi ${icon} me-2 tree-icon"></i><span class="tree-name">${child.name}</span>`;
+            let html = `${caret}<i class="bi ${icon} me-2 tree-icon flex-shrink-0"></i><span class="tree-name text-truncate flex-grow-1">${child.name}</span>`;
             
             if (!window.IS_READONLY) {
-                html += `<div class="tree-actions ms-auto">
-                            <i class="bi bi-pencil rename-btn" title="Rename"></i>
-                            <i class="bi bi-trash delete-btn ms-2 text-danger" title="Delete"></i>
+                html += `<div class="tree-actions ms-2 flex-shrink-0 d-flex align-items-center">
+                            <i class="bi bi-pencil rename-btn action-icon-btn" title="Rename"></i>
+                            <i class="bi bi-trash delete-btn ms-2 text-danger action-icon-btn" title="Delete"></i>
                          </div>`;
             }
             div.innerHTML = html;
@@ -393,9 +393,12 @@
                 const path = item.dataset.path;
                 const isDir = item.dataset.isdir === 'true';
 
-                if (isDir) {
+                if (isDir && e.target.closest('.bi-caret-down-fill, .bi-caret-right-fill, .bi-folder-fill, .bi-folder2-open')) {
                     if (expandedDirs.has(path)) expandedDirs.delete(path);
                     else expandedDirs.add(path);
+                    saveStateToHistory();
+                    renderTree();
+                    return;
                 }
 
                 if (e.shiftKey && anchorIndex !== -1) {
@@ -472,7 +475,7 @@
                 let ghostEl = null;
 
                 item.addEventListener('touchstart', (e) => {
-                    if (e.target.closest('input')) return;
+                    if (e.target.closest('input') || e.target.closest('.action-icon-btn')) return;
                     touchTimer = setTimeout(() => {
                         isTouchDragging = true;
                         ghostEl = item.cloneNode(true);
@@ -480,7 +483,9 @@
                         ghostEl.style.opacity = '0.5';
                         ghostEl.style.pointerEvents = 'none';
                         ghostEl.style.zIndex = '9999';
+                        ghostEl.style.width = item.offsetWidth + 'px';
                         document.body.appendChild(ghostEl);
+                        
                         if (!selectedTreeNodes.has(item.dataset.path)) {
                             selectedTreeNodes.clear();
                             selectedTreeNodes.add(item.dataset.path);
@@ -537,11 +542,11 @@
         let lassoBox = null;
         let startX, startY;
 
-        ui.fileTree.addEventListener('mousedown', (e) => {
+        const startLasso = (clientX, clientY, e) => {
             if (e.target.closest('.tree-item')) return;
             isLassoing = true;
-            startX = e.clientX;
-            startY = e.clientY + ui.fileTree.scrollTop;
+            startX = clientX;
+            startY = clientY + ui.fileTree.scrollTop;
             
             lassoBox = document.createElement('div');
             lassoBox.className = 'lasso-selection';
@@ -551,12 +556,17 @@
                 selectedTreeNodes.clear();
                 Array.from(ui.fileTree.querySelectorAll('.tree-item.selected')).forEach(i => i.classList.remove('selected'));
             }
-        });
+        };
 
-        document.addEventListener('mousemove', (e) => {
+        ui.fileTree.addEventListener('mousedown', (e) => startLasso(e.clientX, e.clientY, e));
+        ui.fileTree.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) startLasso(e.touches[0].clientX, e.touches[0].clientY, e);
+        }, { passive: true });
+
+        const moveLasso = (clientX, clientY, e) => {
             if (!isLassoing) return;
-            const currentX = e.clientX;
-            const currentY = e.clientY + ui.fileTree.scrollTop;
+            const currentX = clientX;
+            const currentY = clientY + ui.fileTree.scrollTop;
             const left = Math.min(startX, currentX);
             const top = Math.min(startY, currentY);
             const width = Math.abs(currentX - startX);
@@ -585,14 +595,25 @@
                     item.classList.remove('selected');
                 }
             });
-        });
+        };
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mousemove', (e) => moveLasso(e.clientX, e.clientY, e));
+        document.addEventListener('touchmove', (e) => {
+            if (isLassoing) {
+                moveLasso(e.touches[0].clientX, e.touches[0].clientY, e);
+                e.preventDefault(); 
+            }
+        }, { passive: false });
+
+        const endLasso = () => {
             if (isLassoing) {
                 isLassoing = false;
                 if (lassoBox) lassoBox.remove();
             }
-        });
+        };
+
+        document.addEventListener('mouseup', endLasso);
+        document.addEventListener('touchend', endLasso);
     };
 
     const initiateRenameInline = (itemEl) => {
@@ -605,8 +626,9 @@
         const input = document.createElement('input');
         input.type = 'text';
         input.value = originalName;
-        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 ms-1 custom-font';
+        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 ms-1 custom-font flex-grow-1';
         input.style.height = '20px';
+        input.style.minWidth = '50px';
         
         nameSpan.replaceWith(input);
         input.focus();
@@ -653,12 +675,12 @@
         }
 
         const div = document.createElement('div');
-        div.className = 'tree-item ps-4';
-        div.innerHTML = `<i class="bi ${isDir ? 'bi-folder' : 'bi-file-earmark-code'} me-2 tree-icon"></i>`;
+        div.className = 'tree-item d-flex align-items-center flex-nowrap ps-4';
+        div.innerHTML = `<i class="bi ${isDir ? 'bi-folder' : 'bi-file-earmark-code'} me-2 tree-icon flex-shrink-0"></i>`;
         
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 custom-font';
+        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 custom-font flex-grow-1';
         input.style.height = '20px';
         input.placeholder = isDir ? 'Folder Name' : 'File Name';
         div.appendChild(input);
@@ -978,26 +1000,50 @@
 
     const bindResizer = () => {
         let isResizing = false;
-        ui.resizer.addEventListener('mousedown', (e) => {
+        
+        const startResize = () => {
             isResizing = true;
-            document.body.style.cursor = 'ew-resize';
-            ui.sidebar.style.transition = 'none'; 
-            e.preventDefault();
-        });
-        document.addEventListener('mousemove', (e) => {
+            ui.sidebar.style.transition = 'none';
+            document.body.style.cursor = window.innerWidth <= 768 ? 'ns-resize' : 'ew-resize';
+        };
+
+        ui.resizer.addEventListener('mousedown', (e) => { startResize(); e.preventDefault(); });
+        ui.resizer.addEventListener('touchstart', () => startResize(), { passive: true });
+
+        const handleMove = (clientX, clientY) => {
             if (!isResizing) return;
-            const newWidth = document.body.clientWidth - e.clientX - 10;
-            if (newWidth > 150 && newWidth < document.body.clientWidth * 0.8) {
-                ui.sidebar.style.setProperty('--sidebar-width', `${newWidth}px`);
+            if (window.innerWidth <= 768) {
+                const workspaceRect = ui.sidebar.parentElement.getBoundingClientRect();
+                const newHeight = workspaceRect.bottom - clientY;
+                if (newHeight > 50 && newHeight < workspaceRect.height * 0.85) {
+                    ui.sidebar.style.setProperty('--sidebar-height', `${newHeight}px`);
+                }
+            } else {
+                const newWidth = document.body.clientWidth - clientX - 10;
+                if (newWidth > 150 && newWidth < document.body.clientWidth * 0.8) {
+                    ui.sidebar.style.setProperty('--sidebar-width', `${newWidth}px`);
+                }
             }
-        });
-        document.addEventListener('mouseup', () => {
+        };
+
+        document.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+        document.addEventListener('touchmove', (e) => {
+            if (isResizing) {
+                handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault(); 
+            }
+        }, { passive: false });
+
+        const stopResize = () => {
             if (isResizing) {
                 isResizing = false;
                 document.body.style.cursor = 'default';
                 ui.sidebar.style.transition = '';
             }
-        });
+        };
+
+        document.addEventListener('mouseup', stopResize);
+        document.addEventListener('touchend', stopResize);
     };
 
     const fetchGithubZip = async (zipUrl, subpath) => {

@@ -1,6 +1,8 @@
 import os
 import uuid
 import hashlib
+from datetime import datetime, timezone, timedelta
+from typing import Optional
 from pathlib import Path
 
 from fastapi import APIRouter, Request, HTTPException
@@ -22,54 +24,63 @@ codes_collection = db.docs
 
 class DocRequest(BaseModel):
     content: str
+    ttl_seconds: Optional[int] = None
 
 @router.on_event("startup")
 async def create_indexes():
-    # Ensure we have fast, unique lookups for both UUIDs and content hashes.
-    # We use sparse=True so that old legacy documents without a 'hash' field 
-    # don't trigger a DuplicateKeyError upon startup.
     await codes_collection.create_index("hash", unique=True, sparse=True)
     await codes_collection.create_index("uuid", unique=True)
+    # Native MongoDB TTL cleanup: automatically deletes documents when 'expires_at' is reached
+    await codes_collection.create_index("expires_at", expireAfterSeconds=0)
 
 @router.post('/api/save')
 async def save_doc(doc: DocRequest):
-    # 1. Calculate a fast, secure SHA-256 hash of the incoming content
-    content_hash = hashlib.sha256(doc.content.encode('utf-8')).hexdigest()
+    # Include TTL in the hash to allow identical content to have distinct expirations
+    hash_input = doc.content + str(doc.ttl_seconds or 0)
+    content_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
     
-    # 2. Check if this exact content already exists using the lightning-fast index
     existing_doc = await codes_collection.find_one({"hash": content_hash})
     if existing_doc:
-        # Deduplication success! Return the existing URL.
         return {"uuid": existing_doc["uuid"]}
 
-    # 3. If it doesn't exist, generate a new short UUID
     doc_id = uuid.uuid4().hex[:8]
+    doc_payload = {
+        "uuid": doc_id,
+        "content": doc.content,
+        "hash": content_hash
+    }
     
+    if doc.ttl_seconds and doc.ttl_seconds > 0:
+        doc_payload["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=doc.ttl_seconds)
+
     try:
-        # 4. Insert the new document alongside its hash
-        await codes_collection.insert_one({
-            "uuid": doc_id,
-            "content": doc.content,
-            "hash": content_hash
-        })
+        await codes_collection.insert_one(doc_payload)
         return {"uuid": doc_id}
     except DuplicateKeyError:
-        # Race condition handling: In the extremely rare event that two users 
-        # submit the exact same text at the exact same millisecond.
         existing_doc = await codes_collection.find_one({"hash": content_hash})
         return {"uuid": existing_doc["uuid"]}
 
 @router.get('/api/docs/{doc_uuid}')
 async def get_doc(doc_uuid: str):
-    # Thanks to the index created on startup, fetching by UUID is now also faster!
     doc = await codes_collection.find_one({"uuid": doc_uuid})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+        
+    expires_at = doc.get("expires_at")
+    if expires_at:
+        # Enforce UTC timezone awareness for accurate frontend client parsing
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+        if datetime.now(timezone.utc) >= expires_at:
+            raise HTTPException(status_code=404, detail="Document expired")
+            
+        return {"content": doc["content"], "expires_at": expires_at.isoformat()}
+        
     return {"content": doc["content"]}
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request):
-    # Hardcoded base_url ensures absolute predictability for static/script paths
     return templates.TemplateResponse("markbin.html", {
         "request": request,
         "uuid": "",

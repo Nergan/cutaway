@@ -40,14 +40,14 @@
                 {% endif %}
             </h1>
             
-            <div class="d-flex gap-2 align-items-center position-relative">
+            <div class="d-flex gap-2 align-items-center position-relative flex-nowrap" id="toolbarActions">
                 {% if not code_id %}
                     <input type="file" id="folderInput" webkitdirectory directory multiple class="d-none">
                     <input type="file" id="filesInput" multiple class="d-none">
                     <input type="file" id="zipInput" accept=".zip" class="d-none">
                     
-                    <div class="dropdown">
-                        <button class="action-btn" type="button" data-bs-toggle="dropdown" title="Upload Repository">
+                    <div class="dropdown flex-shrink-0">
+                        <button class="action-btn text-nowrap" type="button" data-bs-toggle="dropdown" title="Upload Repository">
                             <i class="bi bi-cloud-upload"></i> Upload
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-transparent">
@@ -62,7 +62,6 @@
                     <!-- Repository Link Prompt -->
                     <div id="githubPrompt" class="position-absolute top-100 end-0 mt-2 p-2 rounded dropdown-menu-transparent d-none" style="width: 320px; z-index: 1000;">
                         <div class="input-group input-group-sm">
-                            <!-- Removed HuggingFace text -->
                             <input type="text" id="githubUrlInput" class="form-control bg-dark text-white border-secondary custom-font" placeholder="GitHub repository link">
                             <button class="btn btn-outline-success" id="githubSubmitBtn" disabled title="Import">
                                 <i class="bi bi-cloud-download"></i>
@@ -70,16 +69,17 @@
                         </div>
                     </div>
                     
-                    <button id="publishBtn" class="action-btn ms-2 publish-btn" title="Publish Repository">
+                    <button id="publishBtn" class="action-btn ms-2 publish-btn flex-shrink-0 text-nowrap" title="Publish Repository">
                         <i class="bi bi-cloud-arrow-up"></i> Publish
                     </button>
                 {% else %}
-                    <button id="forkBtn" class="action-btn ms-2 text-warning border-warning border-opacity-50" title="Edit a copy of this repository">
+                    <!-- Edit Button for Read-Only mode -->
+                    <button id="forkBtn" class="action-btn ms-2 text-warning border-warning border-opacity-50 flex-shrink-0 text-nowrap" title="Edit a copy of this repository">
                         <i class="bi bi-pencil-square"></i> Edit
                     </button>
                 {% endif %}
 
-                <div class="dropdown ms-1">
+                <div class="dropdown ms-1 flex-shrink-0">
                     <button class="action-btn" type="button" data-bs-toggle="dropdown" title="Download Repository (Ctrl+S)" id="downloadDropdownBtn">
                         <i class="bi bi-download"></i>
                     </button>
@@ -89,23 +89,26 @@
                     </ul>
                 </div>
 
-                <button id="toggleSidebarBtn" class="action-btn ms-2 d-none" title="Toggle Sidebar">
+                <button id="toggleSidebarBtn" class="action-btn ms-2 d-none flex-shrink-0" title="Toggle Sidebar">
                     <i class="bi bi-layout-sidebar-inset-reverse"></i>
                 </button>
             </div>
         </div>
         
+        <!-- Main Workspace -->
         <div class="main-workspace d-flex flex-grow-1 overflow-hidden gap-1 position-relative">
             
-            <div class="editor-section d-flex flex-column flex-grow-1 position-relative h-100">
+            <!-- Left: Editor & Footer -->
+            <div class="editor-section d-flex flex-column flex-grow-1 position-relative">
                 <div id="noFileScreen" class="flex-column align-items-center justify-content-center h-100 text-muted w-100 position-absolute top-0 start-0 z-3" style="display: flex;">
                     <i class="bi bi-journal-code display-4 mb-3 opacity-50"></i>
                     <h5 class="opacity-75 custom-font">No file selected</h5>
-                    <p class="small opacity-50 custom-font">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
+                    <p class="small opacity-50 custom-font text-center px-3">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
                 </div>
                 
                 <textarea id="codeInput" class="code-editor w-100 h-100 d-none z-1" spellcheck="false" {% if code_id %}readonly{% endif %}></textarea>
                 
+                <!-- Bottom Info Bar attached directly to Editor Section -->
                 <div class="footer mt-1 d-flex justify-content-between align-items-center text-muted small flex-shrink-0 z-2" style="height: 24px;">
                     <div class="d-flex align-items-center gap-2 text-truncate">
                         <span id="currentFilePath" class="text-truncate custom-font"><i class="bi bi-terminal me-1"></i> Ready</span>
@@ -117,11 +120,13 @@
             
             <div id="sidebarResizer" class="resizer flex-shrink-0 d-none"></div>
 
-            <div id="sidebar" class="sidebar d-none flex-column h-100">
-                <div id="fileTree" class="file-tree flex-grow-1 overflow-auto p-1 position-relative" tabindex="0"></div>
+            <!-- Right: Sidebar Tree (Height bounded by main-workspace) -->
+            <div id="sidebar" class="sidebar d-none flex-column">
+                <div id="fileTree" class="file-tree flex-grow-1 overflow-auto p-1 position-relative custom-font" tabindex="0"></div>
                 
-                <div class="sidebar-footer d-flex flex-column gap-2 p-2 border-top border-secondary border-opacity-25 mt-auto">
+                <div class="sidebar-footer d-flex flex-column gap-2 p-2 border-top border-secondary border-opacity-25 mt-auto flex-shrink-0">
                     {% if not code_id %}
+                    <!-- Progress Bar (Only visible in edit mode) -->
                     <div class="repo-size-container d-flex flex-column gap-1 mb-1">
                         <div class="d-flex justify-content-between text-muted custom-font" style="font-size: 0.65rem;">
                             <span>Storage</span>
@@ -142,6 +147,7 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>

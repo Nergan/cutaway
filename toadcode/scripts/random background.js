@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             videoElement.innerHTML = '';
             const source = document.createElement('source');
-            source.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/toadbin/backgrounds/${selectedBackground}`;
+            source.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/toadcode/backgrounds/${selectedBackground}`;
             source.type = 'video/mp4';
             videoElement.appendChild(source);
 

@@ -14,7 +14,7 @@ html, body {
 
 .overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.55);
+    background-color: rgba(0, 0, 0, 0.35); /* Reduced opacity by a third */
     z-index: -1;
 }
 
@@ -40,18 +40,24 @@ html, body {
 /* Workspace layout */
 .main-workspace { padding: 0; }
 
+.editor-section {
+    min-width: 0;
+    min-height: 0; /* Critical fix for flexbox scrolling inside the editor */
+}
+
 .sidebar {
     width: var(--sidebar-width, 250px); 
     min-width: 150px; 
     max-width: 80vw;
+    height: 100%;
     border-left: 1px solid rgba(255,255,255,0.1);
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: width;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width, height;
     overflow: hidden;
 }
 
 .sidebar.collapsed {
-    width: 0 !important; min-width: 0 !important; border: none; padding: 0;
+    width: 0 !important; min-width: 0 !important; border: none !important; padding: 0 !important;
 }
 
 .resizer {
@@ -59,8 +65,64 @@ html, body {
 }
 .resizer:hover, .resizer:active { background: rgba(255, 255, 255, 0.2); }
 
+/* Mobile Adaptations */
 @media (max-width: 768px) {
+    #dropZone { flex-direction: column-reverse !important; padding: 0.5rem !important; }
+    
+    .header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-bottom: none; border-top: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 0; margin-top: 0.5rem; padding-top: 0.5rem; padding-bottom: 0;
+        gap: 0.5rem;
+    }
+    .header > h1 { justify-content: space-between; width: 100%; }
+    
+    /* Horizontally scrollable buttons */
+    #toolbarActions {
+        width: 100%; overflow-x: auto;
+        justify-content: flex-start !important;
+        padding-bottom: 4px; scrollbar-width: none;
+    }
+    #toolbarActions::-webkit-scrollbar { display: none; }
+    
+    /* Mobile Dropdown Override (Escapes overflow clipping completely) */
+    .dropdown-menu {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 75px !important; /* Floats perfectly above the mobile bottom toolbar */
+        left: 10px !important;
+        right: auto !important;
+        transform: none !important;
+    }
+    .dropdown-menu-end {
+        left: auto !important;
+        right: 10px !important;
+    }
+    #githubPrompt {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 75px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        transform: none !important;
+    }
+
     .main-workspace { flex-direction: column; }
-    .sidebar { width: 100% !important; max-width: 100%; height: 30%; border-left: none; border-top: 1px solid rgba(255,255,255,0.1); }
-    .resizer { width: 100%; height: 6px; cursor: ns-resize; }
+    
+    .sidebar { 
+        width: 100% !important; max-width: 100%; 
+        height: var(--sidebar-height, 30vh) !important; 
+        border-left: none; border-top: 1px solid rgba(255,255,255,0.1); 
+    }
+    
+    .sidebar.collapsed {
+        height: 0 !important; min-height: 0 !important;
+    }
+    
+    .resizer { 
+        width: 100%; height: 16px; cursor: ns-resize; 
+        background: rgba(255,255,255,0.05); margin: -2px 0; z-index: 10; 
+    }
 }

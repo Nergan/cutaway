@@ -1,7 +1,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --bg-color: #222222;  /* Softer Sakura-Vader dark theme */
+    --bg-color: #222222;  
     --text-color: #c9cacc;
     --accent-color: #e06c75; 
     --border-color: #333333;
@@ -11,7 +11,8 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-family: system-ui, -apple-system, sans-serif;
+    /* Comfortaa globally injected */
+    font-family: 'Comfortaa', system-ui, -apple-system, sans-serif;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -69,6 +70,33 @@ body {
 .logo { font-weight: 600; font-size: 1.2rem; color: var(--accent-color); text-decoration: none; }
 .actions { display: flex; gap: 1rem; align-items: center; }
 
+/* UI Extras: Document Timer & TTL */
+.doc-timer {
+    color: var(--accent-color);
+    font-family: 'Comfortaa', monospace;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-right: 0.5rem;
+}
+
+.ttl-input {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    width: 100px;
+    font-family: inherit;
+    text-align: center;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    transition: 0.2s;
+}
+.ttl-input::placeholder { color: #666; }
+.ttl-input:focus { outline: none; border-color: var(--accent-color); }
+
 /* Icon Buttons & Unsaved State */
 .icon-btn { background: transparent; border: none; color: var(--text-color); font-size: 1.3rem; cursor: pointer; transition: 0.2s; }
 .icon-btn:hover { color: var(--accent-color); }
@@ -86,6 +114,8 @@ body {
     background-color: transparent !important; background: transparent !important;
     --panel-background-color: transparent !important; --textarea-background-color: transparent !important;
     border: none !important; 
+    /* Force rendering font onto external markdown library */
+    font-family: 'Comfortaa', system-ui, -apple-system, sans-serif !important;
 }
 .vditor-ir { padding: 0 !important; }
 
@@ -114,10 +144,20 @@ body {
 
 .hidden { display: none !important; }
 
-/* TOC Sidebar */
-.sidebar { width: 280px; border-left: 1px solid var(--border-color); background: var(--bg-color); padding: 1.5rem; overflow-y: auto; }
+/* Nested Table of Contents Sidebar */
+.sidebar { width: 320px; border-left: 1px solid var(--border-color); background: var(--bg-color); padding: 1.5rem; overflow-y: auto; }
 .sidebar h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--accent-color); margin-bottom: 1.5rem; }
-.toc-item { display: block; color: var(--text-color); text-decoration: none; margin-bottom: 0.8rem; font-size: 0.9rem; transition: 0.2s; }
+
+#toc-content ul { list-style: none; padding-left: 0; }
+#toc-content .toc-children { padding-left: 1.2rem; }
+.toc-item-wrapper { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem; }
+
+.toc-toggle { cursor: pointer; color: var(--text-color); font-size: 0.8rem; transition: transform 0.2s; }
+.toc-toggle:hover { color: var(--accent-color); }
+.toc-toggle.expanded { transform: rotate(90deg); }
+.toc-spacer { width: 0.8rem; display: inline-block; }
+
+.toc-item { display: block; color: var(--text-color); text-decoration: none; font-size: 0.9rem; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .toc-item:hover { color: var(--accent-color); }
 
 .spinner { animation: rotate 1s linear infinite; }
@@ -208,9 +248,7 @@ body {
     font-family: inherit;
 }
 
-.modal-btn:hover {
-    background: var(--hover-bg);
-}
+.modal-btn:hover { background: var(--hover-bg); }
 
 .modal-btn.primary {
     background: var(--accent-color);
@@ -219,7 +257,7 @@ body {
 }
 
 .modal-btn.primary:hover {
-    background: #d05c65; /* Brighter accent on hover */
+    background: #d05c65; 
     border-color: #d05c65;
 }
 
@@ -228,7 +266,6 @@ body {
     to { transform: scale(1); opacity: 1; }
 }
 
-/* Visually hidden for accessible inputs that bypass iOS JS execution blocks */
 .visually-hidden {
     position: absolute !important;
     width: 1px !important;

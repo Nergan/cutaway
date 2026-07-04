@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>markbin</title>
     
+    <!-- Google Fonts: Comfortaa -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet">
+    
     <!-- Unified render engine: Vditor handles both Editing and Viewing -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@3.9.6/dist/index.css" />
     <script src="https://cdn.jsdelivr.net/npm/vditor@3.9.6/dist/index.min.js"></script>
@@ -13,7 +18,7 @@
     <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png">
     
     <!-- Cache-buster appended to force mobile browsers to fetch the updated CSS -->
-    <link rel="stylesheet" href="{{ base_url }}/static/style.css?v=1.1">
+    <link rel="stylesheet" href="{{ base_url }}/static/style.css?v=1.2">
 </head>
 <body>
     <div id="toast" class="toast"></div>
@@ -32,13 +37,11 @@
 
     <div class="layout">
         <main class="editor-container" id="editor-container">
-            <!-- Visually hidden class bypasses iOS JS file-input blocks -->
             <input type="file" id="file-input" accept=".md,.txt" class="visually-hidden" />
             
             <div id="editor-wrapper">
                 <div id="editor"></div>
             </div>
-            <!-- Vditor will render directly into this div in View Mode -->
             <div id="viewer" class="markdown-body hidden"></div>
             
             <div id="loading" class="hidden">Loading document...</div>
@@ -59,15 +62,23 @@
         <nav class="bottom-bar">
             <a href="{{ base_url }}/" class="logo">mark<span style="color: white">bin</span>.</a>
             <div class="actions">
+                <!-- Live Countdown Timer -->
+                <div id="doc-timer" class="doc-timer hidden"></div>
+                <!-- Time-to-live input for Publish (HH:MM:SS) -->
+                <input type="text" id="ttl-input" class="ttl-input" placeholder="HH:MM:SS" title="Optional document lifetime" />
+
                 <button id="btn-toc" class="icon-btn" title="Toggle Structure" aria-label="Toggle Table of Contents">
                     <i class="bi bi-list-nested"></i>
                 </button>
                 
-                <!-- Changed button to a label mapping to #file-input, bypassing iOS security blocks natively -->
                 <label id="btn-upload" class="icon-btn" title="Load Markdown file" for="file-input" style="display: inline-flex; align-items: center; justify-content: center; margin: 0;">
                     <i class="bi bi-file-earmark-arrow-up"></i>
                 </label>
                 
+                <button id="btn-download" class="icon-btn" title="Download Markdown (Ctrl+S)" aria-label="Download Document">
+                    <i class="bi bi-download"></i>
+                </button>
+
                 <button id="btn-action" class="icon-btn disabled" aria-label="Action">
                     <!-- Icon dynamically injected -->
                 </button>
@@ -76,14 +87,12 @@
     </div>
 
     <script>
-        // Safely serialised config to prevent JS syntax breakage
         window.MARKBIN_CONFIG = {
             baseUrl: {{ base_url | tojson | safe }},
             uuid: {{ uuid | tojson | safe }}
         };
     </script>
     
-    <!-- Cache-buster appended to force mobile browsers to fetch the updated JS -->
-    <script src="{{ base_url }}/scripts/app.js?v=1.1"></script>
+    <script src="{{ base_url }}/scripts/app.js?v=1.2"></script>
 </body>
 </html>
