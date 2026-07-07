@@ -47,7 +47,7 @@ async def toad_backgrounds():
         "salmons.mp4", "sigh.mp4", "snowy.mp4", "swimming.mp4",
         "there is no god beyond.mp4", "toad at home.mp4", "toad in a dark forest.mp4",
         "toad with guitar.mp4", "wisdom toad.mp4", "with mushroom.mp4", "bug day.mp4",
-        "bug night.mp4"
+        "bug night.mp4", "pinus sylvestris.mp4"
     ]
     return JSONResponse(content={'backgrounds': mp4_files})
 
