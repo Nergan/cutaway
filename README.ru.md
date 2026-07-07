@@ -1,3 +1,12 @@
+---
+title: Nargan
+emoji: 🧩
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Экосистема проектов Nargan
 
 [Read in English (README.md)](README.md)
