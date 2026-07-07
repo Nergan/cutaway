@@ -1,20 +1,26 @@
-# Python cache
+### Python ###
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# pytest
+### Testing (pytest & coverage) ###
 .pytest_cache/
 .coverage
 htmlcov/
 
+### Environment & Secrets ###
 .env
 
+### Deployment ###
+vercel.json
+
+### Project Management & Documentation ###
 context.md
 roadmap.txt
 kanban.json
 plan.md
 
+### Tooling (Repomix) ###
 repomix.config.json
 code.md
