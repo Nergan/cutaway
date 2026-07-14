@@ -1,0 +1,26 @@
+Proprietary License
+
+Copyright (c) 2026 Nergan. All rights reserved.
+
+Project Name: NetLazy
+Repository URL: https://github.com/Nergan/netlazy
+
+1. DEFINITIONS
+"Software" refers to the source code, object code, user interface design (UI/UX), graphics, and all associated documentation contained within the "NetLazy" repository.
+"Licensor" refers to the copyright owner, Nergan.
+"You" refers to any individual or entity accessing, viewing, or interacting with the Software.
+
+2. LICENSE GRANT AND RESTRICTIONS
+The Software is licensed, not sold. Licensor strictly reserves all rights not expressly granted to You. 
+
+YOU ARE STRICTLY PROHIBITED FROM:
+a) Copying, duplicating, reproducing, or replicating the Software, in whole or in part, onto any local machine, external server, or cloud storage.
+b) Forking, creating derivative works, modifying, adapting, or altering the Software, except for the sole purpose of submitting contributions (Pull Requests) back to the Licensor within the GitHub platform.
+c) Utilizing the Software, its source code, architecture, or UI/UX design concepts for any commercial purposes, profit-making activities, or competing services.
+d) Distributing, hosting, sublicensing, renting, leasing, or selling the Software to third parties.
+
+3. GITHUB TERMS OF SERVICE EXCEPTION
+Notwithstanding the restrictions above, by hosting the Software publicly on GitHub, You are granted a limited, non-exclusive, non-transferable, and revocable right to view the source code through the GitHub interface and fork the repository within the GitHub platform solely as permitted by GitHub’s Terms of Service for public repositories. This exception does not grant any rights to run, deploy, or commercially exploit the Software.
+
+4. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

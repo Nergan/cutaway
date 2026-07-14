@@ -1,0 +1,44 @@
+:root {
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-elevated: #141414;
+  --border-subtle: #222222;
+  --border-focus: #555555;
+  
+  --text-main: #e0e0e0;
+  --text-muted: #777777;
+  
+  --accent-moss: #8da970;
+  --accent-danger: #bd6a5e;
+  --accent-info: #6e9dae;
+  --accent-earth: #c7b38a;
+  
+  --font-main: 'Comfortaa', sans-serif;
+  
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-pill: 50px;
+
+  /* Premium Shadow Variables */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --glow-accent: 0 0 15px rgba(141, 169, 112, 0.15);
+}
+
+body.light-theme {
+  --bg-base: #fefcf5;
+  --bg-surface: #f9f6ef;
+  --bg-elevated: #f0ebe1;
+  --border-subtle: #e5dfd3;
+  --border-focus: #b8aa92;
+  --text-main: #232323;
+  --text-muted: #666666; /* Improved contrast for accessibility */
+  --accent-moss: #68854c;
+  --accent-danger: #a3483b;
+  --accent-info: #4a7787;
+  --accent-earth: #9c855a;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 24px rgba(156, 133, 90, 0.08);
+  --glow-accent: 0 0 15px rgba(104, 133, 76, 0.1);
+}

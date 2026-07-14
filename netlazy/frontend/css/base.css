@@ -1,0 +1,25 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); }
+
+body {
+  background: var(--bg-base); color: var(--text-main);
+  line-height: 1.5; height: 100vh; overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Slim scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::selection { background: var(--border-focus); color: #fff; }
+
+#app { display: flex; height: 100vh; width: 100vw; }
+
+/* GENERIC RESIZER & SPINNERS */
+.resizer-v { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 10; }
+.resizer-v.left { right: auto; left: -3px; }
+.resizer-v:hover, .resizer-v.active { background: var(--border-focus); }
+.is-resizing, .is-resizing * { transition: none !important; }
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; display: inline-block; }

@@ -1,0 +1,117 @@
+/* INPUTS */
+.seamless-input { width: 100%; background: transparent; border: none; color: var(--text-main); outline: none; resize: none; }
+.seamless-input::placeholder { color: var(--text-muted); opacity: 0.6; }
+.editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 2rem; transition: border-color 0.3s; text-transform: none; }
+.editor-bio:focus { border-color: var(--border-focus); }
+.search-header-input { font-size: 0.95rem; }
+
+/* TAG CHIPS */
+.chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip { font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: var(--radius-pill); cursor: default; user-select: none; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted); transition: all 0.2s; }
+.chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
+.chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
+.chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
+#active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
+#active-tags-zone .chip:hover, #lib-tags-zone .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
+
+/* MEDIA GRID & DND */
+.media-zone { border: 1px dashed var(--border-focus); border-radius: var(--radius-md); padding: 2rem 1rem; text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
+.media-zone:hover { color: var(--text-main); border-color: var(--text-main); background: rgba(128,128,128,0.02); }
+.audio-player-zone { margin-bottom: 1.5rem; }
+
+.audio-minimal { height: 32px; outline: none; opacity: 0.8; transition: opacity 0.2s, filter 0.2s; border-radius: var(--radius-sm); background: transparent; filter: invert(1) hue-rotate(180deg); }
+.audio-minimal:hover { opacity: 1; }
+body.light-theme .audio-minimal { filter: none; }
+
+/* Telegram Layout Grid */
+.telegram-grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 90px; gap: 6px; margin-bottom: 2rem; }
+.media-thumb { border-radius: var(--radius-sm); background-size: cover; background-position: center; background-color: var(--bg-elevated); position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: border 0.15s, transform 0.15s; border: 2px solid transparent; }
+.media-thumb:hover { transform: scale(1.02); box-shadow: var(--shadow-sm); }
+.media-thumb img, .media-thumb video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.editor-layout .media-thumb { cursor: grab; }
+.editor-layout .media-thumb:active { cursor: grabbing; }
+.media-thumb.drag-over { border-color: var(--accent-moss); opacity: 0.7; }
+
+/* Media loader wrapper to avoid layout jumps during image/video loading */
+.media-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-elevated);
+  z-index: 1;
+}
+
+/* Grid mapping wide viewports */
+.telegram-grid > .media-thumb:first-child:nth-last-child(1) { grid-column: span 6; grid-row: span 3; }
+.telegram-grid > .media-thumb:first-child:nth-last-child(2),
+.telegram-grid > .media-thumb:first-child:nth-last-child(2) ~ .media-thumb { grid-column: span 3; grid-row: span 2; }
+.telegram-grid > .media-thumb:first-child:nth-last-child(3) { grid-column: span 6; grid-row: span 2; }
+.telegram-grid > .media-thumb:first-child:nth-last-child(3) ~ .media-thumb { grid-column: span 3; grid-row: span 1; }
+.telegram-grid > .media-thumb { grid-column: span 2; grid-row: span 1; }
+
+.media-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; z-index: 2; transition: background 0.2s; pointer-events: auto; }
+.media-remove:hover { background: var(--accent-danger); }
+.media-blur-toggle { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; z-index: 2; pointer-events: auto; }
+
+.mini-add { border: 1px dashed var(--border-focus); color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+.mini-add:hover { color: var(--text-main); border-color: var(--text-main); }
+
+/* SMART CONTACTS */
+.contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--border-subtle); }
+.contact-row:last-child { border-bottom: none; }
+.contact-icon { color: var(--text-muted); font-size: 1rem; width: 20px; text-align: center; }
+.contact-val { flex-grow: 1; font-size: 0.9rem; }
+.contact-action { cursor: pointer; font-size: 0.9rem; color: var(--text-muted); padding: 0.2rem; transition: color 0.2s; }
+.contact-action:hover { color: var(--text-main); }
+.contact-action.danger:hover { color: var(--accent-danger); }
+
+/* CUSTOM DROPDOWN */
+.custom-select { position: relative; width: 100%; font-size: 0.85rem; color: var(--text-main); background: var(--bg-elevated); padding: 0.5rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; margin-top: 0.5rem; border: 1px solid var(--border-subtle); transition: border-color 0.2s; }
+.custom-select:hover { border-color: var(--border-focus); }
+.custom-select-menu { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1px solid var(--border-focus); border-radius: var(--radius-sm); z-index: 999; max-height: 150px; overflow-y: auto; margin-bottom: 0.3rem; box-shadow: var(--shadow-md); animation: fadeIn 0.15s ease-out; }
+.custom-select-option { padding: 0.6rem; transition: background 0.2s; cursor: pointer; font-size: 0.85rem; color: var(--text-main); }
+.custom-select-option:hover { background: var(--bg-elevated); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* VAULT */
+.code-block { font-family: monospace; font-size: 0.95rem; color: var(--text-main); word-break: break-all; margin: 1rem 0; cursor: pointer; white-space: pre-wrap; line-height: 1.5; transition: filter 0.3s ease; padding: 1.2rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+
+/* TOASTS */
+.toast-container { position: fixed; top: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 20000; pointer-events: none; }
+.toast { background: var(--bg-surface); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-md); color: var(--text-main); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; border-radius: var(--radius-pill); animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards; }
+.toast.toast-minimal { background: transparent; border: none; box-shadow: none; color: var(--text-muted); }
+.toast.toast-danger { background: rgba(189, 106, 94, 0.15); border: 1px solid var(--accent-danger); color: var(--accent-danger); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* ANIMATIONS */
+.flying-tag { pointer-events: none; z-index: 9999; }
+.media-list-move { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.media-list-enter-active, .media-list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.media-list-enter-from, .media-list-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.media-list-leave-active {
+  position: absolute;
+  z-index: 0;
+}
