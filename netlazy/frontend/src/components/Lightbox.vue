@@ -4,13 +4,13 @@
       
       <button class="lightbox-close" @click.stop="closeLightbox"><i class="bi bi-x"></i></button>
 
-      <div v-if="currentMedia" class="lightbox-container" @click.stop @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+      <div v-if="currentMedia" class="lightbox-container" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
         
         <div class="lightbox-nav lightbox-nav-left" v-if="hasPrev" @click.stop="prevMedia">
           <i class="bi bi-chevron-left"></i>
         </div>
         
-        <div class="lightbox-content-wrapper">
+        <div class="lightbox-content-wrapper" @click.stop>
           <img v-if="currentMedia.media_type === 'image'" 
                :src="currentMedia.url" 
                class="lightbox-content"
