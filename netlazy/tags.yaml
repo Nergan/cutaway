@@ -1129,3 +1129,5 @@ tags:
     aliases: ["y2k", "у2к", "2000s", "нулевые"]
   - name: "cyberpunk / techwear"
     aliases: ["cyberpunk", "techwear", "сайберпанк", "киберпанк", "теквир"]
+  - name: "asmr"
+    aliases: ["asmr", "асмр", "автономная сенсорная меридиональная реакция", "autonomous sensory meridian response", "resposta sensorial meridiana autônoma"]
