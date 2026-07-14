@@ -4,6 +4,13 @@ __pycache__/
 *.pyo
 *.pyd
 
+### Netlazy Frontend ###
+node_modules/
+npm-debug.log*
+dist/
+.vite/
+netlazy/static/
+
 ### Testing (pytest & coverage) ###
 .pytest_cache/
 .coverage

@@ -13,6 +13,7 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
+    curl \
     libreoffice-core \
     libreoffice-writer \
     libreoffice-calc \
@@ -25,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     djvulibre-bin \
     libreoffice-impress \
     libmagic1 \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 user

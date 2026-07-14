@@ -7,6 +7,18 @@ pip install --no-cache-dir -r requirements.txt
 echo "Scanning for Tier 2 (Plugin) dependencies..."
 # Iterate over all directories in the base path
 for dir in */; do
+    if [ -f "${dir}package.json" ]; then
+        echo "Found package.json in ${dir}. Attempting npm build..."
+        set +e
+        (cd "${dir}" && npm ci && npm run build)
+        if [ $? -eq 0 ]; then
+            echo "Successfully built frontend for ${dir}"
+        else
+            echo "WARNING: Failed to build frontend for ${dir}. Skipping."
+        fi
+        set -e
+    fi
+
     if [ -f "${dir}requirements.txt" ]; then
         echo "Found requirements in ${dir}. Attempting installation..."
         
