@@ -115,7 +115,7 @@ export default {
     import_key_prompt: "или вставьте существующий приватный ключ сюда...",
     copy_raw: "скопировать ключ",
     log_out: "выйти",
-    regenerate_key: "перевыгенерировать ключ",
+    regenerate_key: "перегенерировать ключ",
     delete_account: "удалить аккаунт",
     key_imported: "ключ успешно загружен",
     identity_rotated: "личность успешно обновлена",
