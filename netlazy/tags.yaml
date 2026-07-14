@@ -114,9 +114,9 @@ tags:
   - name: "drinks alcohol"
     aliases: ["пьет", "beer", "drink", "пьет алкоголь", "alcohol", "bebe", "алкоголь", "beber", "пью", "алко", "bebe álcool", "álcool", "drinks alcohol", "wine", "drinks"]
   - name: "doesn't drink alcohol"
-    aliases: ["не пьет алкоголь", "пьет", "doesn't", "не", "drink", "teetotaler", "doesn't drink alcohol", "alcohol", "bebe", "алкоголь", "álcool", "não", "трезвенник", "no drink", "sober", "não bebe álcool", "sóbrio", "зож"]
+    aliases: ["не пьет алкоголь", "пьет", "doesn't", "не", "drink", "teetotaler", "doesn't drink alcohol", "alcohol", "bebe", "алкоголь", "álcool", "não", "трезвенник", "no drink", "sober", "não bebe álcool", "sóbrio", "зож", "straight edge", "sxe", "непьющий", "não bebo"]
   - name: "has a dog"
-    aliases: ["cão", "есть собака", "tem um cachorro", "dog", "tem", "has a dog", "um", "пёс", "a", "puppy", "cachorro", "есть", "собака", "has"]
+    aliases: ["cão", "есть собака", "tem um cachorro", "dog", "tem", "has a dog", "um", "пёс", "a", "puppy", "cachorro", "есть", "собака", "has", "cachorrinho", "собачка", "пёсель", "псина", "dogs"]
   - name: "dislikes dogs but loves animals"
     aliases: ["любит", "dislikes dogs but loves animals", "de", "gosta", "but", "не любит собак, но любит животных", "animals", "ama", "собак", "dogs", "dislikes", "не", "mas", "cães", "животные", "но", "animais", "não gosta de cães, mas ama animais", "cats", "loves", "животных", "não", "кошки"]
   - name: "loves caring for animals"
@@ -172,9 +172,9 @@ tags:
   - name: "scaly"
     aliases: ["furry", "monster", "scaly", "fetish"]
   - name: "goth look"
-    aliases: ["goth", "gothic", "alt", "fetish", "goth look", "look"]
+    aliases: ["goth", "gothic", "alt", "fetish", "goth look", "look", "alt girl", "alt boy", "alt", "emo", "grunge", "эмо", "готы"]
   - name: "femboy"
-    aliases: ["crossdress", "fetish", "femboy", "trap"]
+    aliases: ["crossdress", "fetish", "femboy", "trap", "tnwink", "твинк", "boy", "astolfo", "venti", "felix", "crossdresser", "cd", "кроссдрессер"]
   - name: "white skin"
     aliases: ["fair", "white skin", "fetish", "white", "skin"]
   - name: "black skin"
@@ -198,25 +198,25 @@ tags:
   - name: "vibe coding"
     aliases: ["вайб-кодинг", "вайб", "кодинг", "ии кодинг", "ai coding", "bolt", "vibe coding", "vibe", "cursor", "coding"]
   - name: "computer games"
-    aliases: ["jogos", "computador", "гейминг", "игры", "computer games", "jogos de computador", "gaming", "компьютерные игры", "games", "de", "pc", "компьютерные", "computer"]
+    aliases: ["jogos", "computador", "гейминг", "игры", "computer games", "jogos de computador", "gaming", "компьютерные игры", "games", "de", "pc", "компьютерные", "computer", "видеоигры", "video games", "геймер", "gamer"]
   - name: "indie games"
     aliases: ["indie games", "jogos indie", "инди-игры", "jogos", "indie", "игры", "инди", "games"]
   - name: "retro games"
     aliases: ["retro games", "retro", "nes", "jogos", "игры", "console", "games", "ретро-игры", "jogos retro", "ретро"]
   - name: "anime"
-    aliases: ["манга", "manga", "anime", "аниме"]
+    aliases: ["манга", "manga", "anime", "аниме", "manhwa", "manhua", "манхва", "дунхуа", "donghua", "манхуа", "фэндом", "fandom", "otaku", "отаку"]
   - name: "interest in languages"
     aliases: ["interesse em idiomas", "языки", "em", "интерес к языкам", "languages", "idiomas", "interesse", "интерес", "языкам", "in", "interest", "к", "interest in languages", "полиглот", "polyglot"]
   - name: "interest in ancient languages"
     aliases: ["línguas", "latin", "языки", "languages", "древние", "interesse", "латынь", "interest", "interest in ancient languages", "antigas", "interesse em línguas antigas", "in", "greek", "древние языки", "em", "ancient"]
   - name: "classic anime"
-    aliases: ["classic", "animes", "90s anime", "классическое аниме", "animes clássicos", "retro anime", "anime", "аниме", "старое аниме", "classic anime", "clássicos", "классическое"]
+    aliases: ["classic", "animes", "90s anime", "классическое аниме", "animes clássicos", "retro anime", "anime", "аниме", "старое аниме", "classic anime", "clássicos", "классическое", "ретро аниме", "old anime", "классика аниме"]
   - name: "cinema"
     aliases: ["movies", "кинематограф", "films", "cinema", "фильмы", "кино / кинематограф", "кино"]
   - name: "classic cinema"
     aliases: ["classic", "ретро фильмы", "cinema", "кино", "classic movies", "старое кино", "cinema clássico", "classic cinema", "clássico", "классическое", "классическое кино"]
   - name: "tabletop rpgs"
-    aliases: ["tabletop", "ролевые", "игры", "rpgs", "днд", "нри", "dnd", "настольные ролевые игры (нри)", "tabletop rpgs", "настольные", "de", "mesa", "настолки", "rpgs de mesa", "rpg"]
+    aliases: ["tabletop", "ролевые", "игры", "rpgs", "днд", "нри", "dnd", "настольные ролевые игры (нри)", "tabletop rpgs", "настольные", "de", "mesa", "настолки", "rpgs de mesa", "rpg", "dungeons and dragons", "d&d", "pathfinder", "патфайндер"]
   - name: "politically incorrect discussion"
     aliases: ["политика", "discussões politicamente incorretas", "discussões", "discussion", "politically incorrect discussion", "incorretas", "chans", "мемы", "politically", "неполиткорректные дискуссии", "неполиткорректные", "дискуссии", "politicamente", "incorrect", "dark humor", "база"]
   - name: "sports"
@@ -1023,3 +1023,109 @@ tags:
     aliases: ["belly", "inflation", "fetish", "stomach", "tummy", "guts"]
   - name: "asexual"
     aliases: ["dating", "отношения", "relacionamento", "sex", "пол", "ориентация", "sexo", "gender", "asexual", "асексуал", "assexual"]
+  - name: "has a cat"
+    aliases: ["gato", "есть кошка", "tem um gato", "cat", "tem", "has a cat", "кошка", "кот", "котенок", "gatinho", "has", "a", "коты", "gatos"]
+  - name: "cat person"
+    aliases: ["cat person", "кошатник", "amante de gatos", "louco dos gatos", "cats", "gatos"]
+  - name: "reading"
+    aliases: ["books", "reading", "книги", "чтение", "leitura", "livros", "ler", "bookworm", "книжный"]
+  - name: "travelling"
+    aliases: ["travel", "travelling", "путешествия", "туризм", "viagem", "viagens", "viajar", "wanderlust", "трипы", "trip"]
+  - name: "cooking"
+    aliases: ["cooking", "food", "foodie", "кулинария", "готовка", "еда", "cozinhar", "gastronomia", "рецепты"]
+  - name: "board games"
+    aliases: ["board games", "board", "настолки", "настольные игры", "jogos de tabuleiro", "tabuleiro", "boardgames"]
+  - name: "cosplay"
+    aliases: ["cosplay", "косплей"]
+  - name: "science"
+    aliases: ["science", "наука", "ciência", "physics", "astronomy", "космос", "физика", "научпоп"]
+  - name: "ui/ux design"
+    aliases: ["design", "ui/ux", "figma", "дизайн", "дизайнер", "ui", "ux", "web design", "дизайн интерфейсов"]
+  - name: "qa testing"
+    aliases: ["qa", "testing", "тестирование", "тестировщик", "manual testing", "automation testing", "qa engineer", "кьюа"]
+  - name: "product management"
+    aliases: ["pm", "product manager", "project manager", "управление проектами", "продакт", "проджект", "менеджмент"]
+  - name: "bondage"
+    aliases: ["bondage", "shibari", "шибари", "бондаж", "rope", "ropes", "fetish", "связывание"]
+  - name: "sadomasochism"
+    aliases: ["sadism", "masochism", "bdsm", "sadomasochism", "садизм", "мазохизм", "pain", "fetish", "sadomasoquismo", "sado", "mazo", "бдсм", "бдсм-практики"]
+  - name: "latex/leather"
+    aliases: ["latex", "leather", "латекс", "кожа", "fetish", "rubber", "винил", "vinyl"]
+  - name: "roleplay (fetish)"
+    aliases: ["roleplay", "cosplay", "ролевые игры", "fetish", "rp", "отыгрыш"]
+  - name: "tomboy"
+    aliases: ["tomboy", "пацанка", "томбой"]
+  - name: "zenless zone zero"
+    aliases: ["zzz", "zenless", "zenless zone zero", "ззз", "дзенлесс", "зенлесс", "zero", "hollow", "proxy"]
+  - name: "genshin impact"
+    aliases: ["genshin", "genshin impact", "геншин", "генш", "ги", "тейват", "paimon", "impact"]
+  - name: "league of legends"
+    aliases: ["league of legends", "lol", "лига легенд", "лига", "лижка", "лол", "wild rift"]
+  - name: "dota 2"
+    aliases: ["dota 2", "dota", "дота 2", "дота", "дока", "dota2", "d2"]
+  - name: "tales of wind"
+    aliases: ["tales of wind", "tow", "сказки ветра", "laplace m", "laplace", "radiant rebirth"]
+  - name: "honkai: star rail"
+    aliases: ["honkai: star rail", "hsr", "star rail", "хонкай", "стар рейл", "хср", "astral express"]
+  - name: "wuthering waves"
+    aliases: ["wuthering waves", "wuwa", "вува", "вд", "rover", "resonator", "kuro games"]
+  - name: "bungou stray dogs"
+    aliases: ["bungou stray dogs", "bsd", "бсд", "великий из бродячих псов", "бродячие псы", "дазай", "чуя"]
+  - name: "chainsaw man"
+    aliases: ["chainsaw man", "человек-бензопила", "бензопила", "csm", "пила", "макима", "почита", "дэндзи", "power", "пауэр"]
+  - name: "sousou no frieren"
+    aliases: ["frieren", "sousou no frieren", "фрирен", "провожающая в последний путь фрирен", "фрирен аниме"]
+  - name: "yani neko (tabako-neko)"
+    aliases: ["yani neko", "tabako-neko", "табакошка", "яни неко", "yanineko", "кошка-курильщица", "таба лапки"]
+  - name: "junji ito collection"
+    aliases: ["junji ito", "junji ito collection", "дзюндзи ито", "коллекция дзюндзи ито", "спираль", "uzumaki", "томиэ", "tomie"]
+  - name: "ergo proxy"
+    aliases: ["ergo proxy", "эрго прокси", "эрго", "прокси", "re-l"]
+  - name: "steins;gate"
+    aliases: ["steins;gate", "steins gate", "врата штейна", "окабэ", "курису", "эль пси конгру", "tuturu", "штейн"]
+  - name: "your name"
+    aliases: ["your name", "kimi no na wa", "твоё имя", "твое имя", "макото синкай", "shinkai"]
+  - name: "jujutsu kaisen"
+    aliases: ["jujutsu kaisen", "jjk", "магическая битва", "годжо", "итадори", "сукуна", "мб"]
+  - name: "demon slayer"
+    aliases: ["demon slayer", "kimetsu no yaiba", "клинок рассекающий демонов", "клинок", "крд", "тандзиро", "незуко"]
+  - name: "neon genesis evangelion"
+    aliases: ["evangelion", "neon genesis evangelion", "евангелион", "ева", "eva", "nge", "синдзи", "аска", "рей"]
+  - name: "jojo's bizarre adventure"
+    aliases: ["jojo's bizarre adventure", "jojo", "джоджо", "jjba", "жижа", "дио", "джотаро"]
+  - name: "attack on titan"
+    aliases: ["attack on titan", "атака титанов", "аот", "aot", "shingeki no kyojin", "эрен", "леви"]
+  - name: "one piece"
+    aliases: ["one piece", "ван пис", "вп", "луффи", "зоро", "пираты"]
+  - name: "hazbin hotel"
+    aliases: ["hazbin hotel", "hazbin", "отель хазбин", "хазбин", "адский босс", "helluva boss", "аластор", "инди-анимация"]
+  - name: "minecraft"
+    aliases: ["minecraft", "майнкрафт", "майн", "mc", "кубы"]
+  - name: "valorant"
+    aliases: ["valorant", "валорант", "валик", "val", "вало", "riot"]
+  - name: "counter-strike 2"
+    aliases: ["counter-strike 2", "cs2", "кс", "кс2", "cs", "csgo", "counter-strike"]
+  - name: "elden ring"
+    aliases: ["elden ring", "элден ринг", "элден", "соулслайк", "soulslike", "dark souls", "ds"]
+  - name: "roblox"
+    aliases: ["roblox", "роблокс", "роблоксер"]
+  - name: "mbti"
+    aliases: ["mbti", "мбти", "типология", "16 personalities", "infj", "intp", "enfp", "intj", "типы личности"]
+  - name: "introvert"
+    aliases: ["introvert", "интроверт", "интро", "introverted", "тихоня"]
+  - name: "extrovert"
+    aliases: ["extrovert", "экстраверт", "экстра", "extroverted", "активный"]
+  - name: "k-pop"
+    aliases: ["k-pop", "kpop", "к-поп", "кпоп", "bts", "stray kids", "blackpink", "newjeans", "айдолы"]
+  - name: "phonk"
+    aliases: ["phonk", "фонк", "drift phonk", "фонк дрифт"]
+  - name: "metal music"
+    aliases: ["metal", "метал", "metalcore", "deathmetal", "рок", "rock", "heavy metal", "альтернатива"]
+  - name: "lo-fi / chill"
+    aliases: ["lo-fi", "lofi", "chill", "лоуфай", "чилл", "фоновая музыка"]
+  - name: "grunge / alt"
+    aliases: ["grunge", "alt", "гранж", "альт", "альтушка", "эстетика"]
+  - name: "y2k style"
+    aliases: ["y2k", "у2к", "2000s", "нулевые"]
+  - name: "cyberpunk / techwear"
+    aliases: ["cyberpunk", "techwear", "сайберпанк", "киберпанк", "теквир"]
