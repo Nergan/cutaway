@@ -1,7 +1,10 @@
 <template>
   <div class="scrollable-content" style="padding-top:0;">
     <div class="feed-header blurred-header">
-      <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')">
+      <div style="position: relative; display: flex; align-items: center; width: 100%;">
+        <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
+        <i v-if="filterText" class="bi bi-x-lg" style="position: absolute; right: 0.8rem; cursor: pointer; color: var(--text-muted);" @click="filterText = ''"></i>
+      </div>
       <div class="tag-scroll-area" @wheel="handleWheel">
         <span class="chip" v-for="tag in visibleSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
           {{ tag.name }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>

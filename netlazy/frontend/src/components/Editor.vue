@@ -3,7 +3,10 @@
     <div class="tag-library-pane">
       <div class="tag-library-header blurred-header">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
-        <input type="text" class="seamless-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')">
+        <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
+          <input type="text" class="seamless-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
+          <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg" style="position: absolute; right: 0; cursor: pointer; color: var(--text-muted);" @click="store.state.tagSearchQuery = ''"></i>
+        </div>
       </div>
       
       <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start;">
