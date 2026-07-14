@@ -26,6 +26,14 @@
               <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in req.profile.tags" :key="tag">{{ tag }}</span>
             </div>
             <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
+
+            <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
+              <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0;">
+                 <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px;"></i>
+                 <span class="contact-val" style="font-size: 0.85rem;">{{ c.value }}</span>
+                 <i class="bi bi-copy contact-action" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+              </div>
+            </div>
             
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
               <div style="font-size: 0.75rem; color: var(--accent-info); margin-bottom: 0.2rem;">{{ req.type }}</div>
@@ -98,6 +106,14 @@
             </div>
             <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
+            <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
+              <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0;">
+                 <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px;"></i>
+                 <span class="contact-val" style="font-size: 0.85rem;">{{ c.value }}</span>
+                 <i class="bi bi-copy contact-action" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+              </div>
+            </div>
+
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
               <div style="font-size: 0.75rem; margin-bottom: 0.2rem; color: var(--accent-moss);">
                 {{ req.is_sender ? 'Sent' : 'Received' }} • {{ req.type }} • accepted
@@ -147,6 +163,14 @@
             </div>
             <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
+            <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
+              <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0;">
+                 <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px;"></i>
+                 <span class="contact-val" style="font-size: 0.85rem;">{{ c.value }}</span>
+                 <i class="bi bi-copy contact-action" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+              </div>
+            </div>
+
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
               <div style="font-size: 0.75rem; margin-bottom: 0.2rem; color: var(--text-muted);">
                 Sent • {{ req.type }} • pending
@@ -181,6 +205,14 @@
               <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in req.profile.tags" :key="tag">{{ tag }}</span>
             </div>
             <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
+
+            <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
+              <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0;">
+                 <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px;"></i>
+                 <span class="contact-val" style="font-size: 0.85rem;">{{ c.value }}</span>
+                 <i class="bi bi-copy contact-action" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+              </div>
+            </div>
 
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
               <div style="font-size: 0.75rem; margin-bottom: 0.2rem; color: var(--accent-danger);">
@@ -301,5 +333,13 @@ function stopResize() {
   document.removeEventListener('mousemove', doResize)
   document.removeEventListener('mouseup', stopResize)
   document.body.style.userSelect = ''
+}
+
+const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
+function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
+
+async function copyText(txt) {
+  await navigator.clipboard.writeText(txt)
+  store.addToast(store.t('copied'), "bi-check2")
 }
 </script>

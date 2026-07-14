@@ -33,6 +33,14 @@
           <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ tag }}</span>
         </div>
         <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
+
+        <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
+          <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0;">
+             <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px;"></i>
+             <span class="contact-val" style="font-size: 0.85rem;">{{ c.value }}</span>
+             <i class="bi bi-copy contact-action" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+          </div>
+        </div>
         
         <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
           <template v-if="!profile.sent">
@@ -227,5 +235,13 @@ async function sendRequest(profile, type, contactValue = null) {
 
 function closeAllMenus() {
   store.state.feed.forEach(p => p.showContactSelect = false)
+}
+
+const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
+function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
+
+async function copyText(txt) {
+  await navigator.clipboard.writeText(txt)
+  store.addToast(store.t('copied'), "bi-check2")
 }
 </script>
