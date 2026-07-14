@@ -33,6 +33,13 @@ class SensitiveRouteFilter(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(SensitiveRouteFilter())
 
+async def _async_insert_log(log_doc):
+    """Helper coroutine to safely execute the asynchronous write operation to MongoDB."""
+    try:
+        await db_instance.logs_collection.insert_one(log_doc)
+    except Exception:
+        pass
+
 class MongoLogHandler(logging.Handler):
     def emit(self, record):
         if db_instance.logs_collection is None:
@@ -48,7 +55,7 @@ class MongoLogHandler(logging.Handler):
             "name": record.name,
             "message": self.format(record)
         }
-        loop.create_task(db_instance.logs_collection.insert_one(log_doc))
+        loop.create_task(_async_insert_log(log_doc))
 
 mongo_handler = MongoLogHandler()
 mongo_handler.setLevel(logging.INFO)
