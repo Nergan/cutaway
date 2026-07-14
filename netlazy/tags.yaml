@@ -1,4 +1,1025 @@
-# sample
 tags:
-  - name: "foo"
-    aliases: ["foo"]
+  - name: "online"
+    aliases: ["онлайн", "online", "виртуально", "интернет", "remotely", "virtual"]
+  - name: "russia"
+    aliases: ["rússia", "россия", "russia", "ru", "рф", "location"]
+  - name: "vladivostok"
+    aliases: ["rússia", "vladivostok", "россия", "владивосток", "russia", "location"]
+  - name: "saint petersburg"
+    aliases: ["spb", "санкт-петербург", "russia", "saint petersburg", "россия", "петербург", "санкт", "petersburg", "спб", "são petersburgo", "são", "питер", "petersburgo", "saint", "location"]
+  - name: "novosibirsk"
+    aliases: ["новосибирск", "rússia", "россия", "russia", "novosibirsk", "location"]
+  - name: "moscow"
+    aliases: ["rússia", "мск", "msk", "москва", "россия", "moscou", "russia", "moscow", "location"]
+  - name: "yekaterinburg"
+    aliases: ["екатеринбург", "yekaterinburg", "rússia", "екб", "россия", "russia", "ecaterimburgo", "location"]
+  - name: "kazan"
+    aliases: ["казань", "rússia", "россия", "kazan", "russia", "location"]
+  - name: "united states"
+    aliases: ["eua", "states", "united", "америка", "сша", "estados", "unidos", "usa", "america", "estados unidos", "united states", "location"]
+  - name: "san francisco"
+    aliases: ["сан", "são", "francisco", "франциско", "são francisco", "estados unidos", "usa", "san", "сан-франциско", "san francisco", "sf", "united states", "сша", "location"]
+  - name: "new york"
+    aliases: ["nyc", "nova", "york", "ny", "estados unidos", "new", "nova york", "usa", "нью-йорк", "йорк", "нью", "united states", "сша", "new york", "location"]
+  - name: "los angeles"
+    aliases: ["angeles", "estados unidos", "анджелес", "usa", "los", "лос-анджелес", "лос", "los angeles", "united states", "california", "сша", "la", "location"]
+  - name: "chicago"
+    aliases: ["estados unidos", "usa", "chicago", "чикаго", "united states", "сша", "location"]
+  - name: "brazil"
+    aliases: ["br", "brasil", "brazil", "бразилия", "location"]
+  - name: "são paulo"
+    aliases: ["são", "сан", "brasil", "sp", "сан-паулу", "паулу", "бразилия", "paulo", "brazil", "sampa", "são paulo", "location"]
+  - name: "rio de janeiro"
+    aliases: ["brasil", "рио", "бразилия", "рио-де-жанейро", "rio", "rio de janeiro", "de", "де", "brazil", "janeiro", "rj", "жанейро", "location"]
+  - name: "portugal"
+    aliases: ["portugal", "pt", "португалия", "location"]
+  - name: "lisbon"
+    aliases: ["lisboa", "lisbon", "лиссабон", "portugal", "португалия", "location"]
+  - name: "porto"
+    aliases: ["порту", "porto", "португалия", "portugal", "location"]
+  - name: "18 years old"
+    aliases: ["лет", "idade", "возраст", "anos", "old", "18 years old", "год", "age", "18", "18 лет/год", "18 anos", "years"]
+  - name: "19 years old"
+    aliases: ["idade", "19 лет/год", "19 years old", "19", "возраст", "anos", "old", "год", "age", "19 anos", "лет", "years"]
+  - name: "20 years old"
+    aliases: ["20", "idade", "возраст", "anos", "old", "год", "age", "20 лет/год", "20 years old", "лет", "20 anos", "years"]
+  - name: "21 years old"
+    aliases: ["21", "idade", "возраст", "21 лет/год", "anos", "old", "год", "age", "21 years old", "лет", "21 anos", "years"]
+  - name: "22 years old"
+    aliases: ["idade", "22 years old", "возраст", "22 anos", "anos", "22", "old", "years", "age", "год", "лет", "22 лет/год"]
+  - name: "23 years old"
+    aliases: ["23 лет/год", "idade", "возраст", "anos", "old", "год", "age", "23", "23 anos", "23 years old", "лет", "years"]
+  - name: "24 years old"
+    aliases: ["лет", "idade", "24 лет/год", "возраст", "24 anos", "anos", "old", "год", "age", "24 years old", "24", "years"]
+  - name: "25 years old"
+    aliases: ["25 лет/год", "25", "idade", "возраст", "anos", "old", "год", "age", "25 anos", "лет", "25 years old", "years"]
+  - name: "26 years old"
+    aliases: ["26 лет/год", "лет", "idade", "26 years old", "возраст", "anos", "old", "год", "age", "26", "26 anos", "years"]
+  - name: "27 years old"
+    aliases: ["27", "27 years old", "idade", "27 лет/год", "возраст", "anos", "old", "год", "age", "лет", "27 anos", "years"]
+  - name: "28 years old"
+    aliases: ["28 лет/год", "idade", "возраст", "anos", "28 anos", "old", "год", "age", "28", "28 years old", "лет", "years"]
+  - name: "29 years old"
+    aliases: ["29 лет/год", "idade", "29", "29 anos", "возраст", "anos", "old", "years", "age", "год", "лет", "29 years old"]
+  - name: "30 years old"
+    aliases: ["30 years old", "30 anos", "idade", "30 лет/год", "возраст", "anos", "old", "год", "age", "30", "лет", "years"]
+  - name: "31 years old"
+    aliases: ["31 лет/год", "idade", "31 years old", "возраст", "anos", "old", "31 anos", "age", "год", "31", "лет", "years"]
+  - name: "32 years old"
+    aliases: ["32 anos", "idade", "32 years old", "возраст", "anos", "32 лет/год", "old", "год", "age", "32", "лет", "years"]
+  - name: "33 years old"
+    aliases: ["33 years old", "idade", "33", "возраст", "33 лет/год", "anos", "old", "год", "age", "33 anos", "лет", "years"]
+  - name: "34 years old"
+    aliases: ["idade", "34 years old", "возраст", "34 лет/год", "anos", "old", "34", "age", "год", "лет", "34 anos", "years"]
+  - name: "35 years old"
+    aliases: ["daddy", "mommy", "35 лет/год", "idade", "mature", "мамочка", "возраст", "35 anos", "anos", "old", "год", "age", "35 years old", "35", "папочка", "лет", "years"]
+  - name: "36 years old"
+    aliases: ["daddy", "mommy", "36 anos", "idade", "mature", "36 years old", "мамочка", "возраст", "anos", "old", "36 лет/год", "age", "год", "папочка", "лет", "36", "years"]
+  - name: "37 years old"
+    aliases: ["daddy", "mommy", "лет", "idade", "mature", "37", "37 years old", "мамочка", "возраст", "anos", "old", "год", "age", "37 anos", "папочка", "37 лет/год", "years"]
+  - name: "38 years old"
+    aliases: ["daddy", "mommy", "38", "idade", "mature", "38 anos", "мамочка", "возраст", "anos", "38 лет/год", "old", "год", "age", "38 years old", "папочка", "лет", "years"]
+  - name: "39 years old"
+    aliases: ["daddy", "mommy", "39 anos", "39 лет/год", "idade", "mature", "39 years old", "39", "мамочка", "возраст", "anos", "old", "год", "age", "папочка", "лет", "years"]
+  - name: "40 years old"
+    aliases: ["daddy", "mommy", "40", "idade", "mature", "мамочка", "возраст", "anos", "old", "40 years old", "age", "40 лет/год", "40 anos", "папочка", "год", "лет", "years"]
+  - name: "41 years old"
+    aliases: ["daddy", "mommy", "41 anos", "idade", "mature", "мамочка", "возраст", "anos", "old", "год", "age", "41 years old", "папочка", "41 лет/год", "41", "лет", "years"]
+  - name: "42 years old"
+    aliases: ["daddy", "mommy", "42 anos", "idade", "mature", "мамочка", "возраст", "anos", "old", "42", "age", "42 лет/год", "год", "папочка", "42 years old", "лет", "years"]
+  - name: "43 years old"
+    aliases: ["daddy", "mommy", "43 years old", "idade", "mature", "43 anos", "мамочка", "возраст", "anos", "old", "год", "age", "папочка", "43 лет/год", "лет", "43", "years"]
+  - name: "44 years old"
+    aliases: ["daddy", "mommy", "44 years old", "44", "idade", "mature", "мамочка", "возраст", "44 лет/год", "44 anos", "old", "anos", "год", "age", "папочка", "лет", "years"]
+  - name: "45 years old"
+    aliases: ["daddy", "mommy", "45 лет/год", "45", "45 years old", "idade", "mature", "мамочка", "возраст", "anos", "45 anos", "old", "год", "age", "папочка", "лет", "years"]
+  - name: "46 years old"
+    aliases: ["daddy", "mommy", "46", "idade", "mature", "46 anos", "мамочка", "возраст", "anos", "old", "год", "age", "46 years old", "46 лет/год", "папочка", "лет", "years"]
+  - name: "47 years old"
+    aliases: ["daddy", "mommy", "47 anos", "idade", "mature", "мамочка", "возраст", "47 лет/год", "47 years old", "old", "anos", "год", "age", "папочка", "лет", "47", "years"]
+  - name: "48 years old"
+    aliases: ["48", "daddy", "mommy", "48 anos", "idade", "mature", "48 лет/год", "мамочка", "возраст", "anos", "old", "год", "age", "48 years old", "папочка", "лет", "years"]
+  - name: "49 years old"
+    aliases: ["daddy", "mommy", "idade", "mature", "49 years old", "мамочка", "возраст", "anos", "old", "год", "age", "папочка", "49 anos", "49", "лет", "49 лет/год", "years"]
+  - name: "50 years old"
+    aliases: ["50 anos", "daddy", "mommy", "50 years old", "idade", "mature", "мамочка", "возраст", "anos", "old", "years", "age", "год", "папочка", "50", "лет", "50 лет/год"]
+  - name: "smoker (cigarettes)"
+    aliases: ["cigarettes", "fumante (cigarros)", "сигареты", "cigarros", "курящий (сигареты)", "smoker (cigarettes)", "smoke", "smoker", "курю", "fumante", "курящий", "fumar"]
+  - name: "non-smoker (cigarettes)"
+    aliases: ["cigarettes", "non-smoker (cigarettes)", "некурящий", "não fumante (cigarros)", "saude", "cigarros", "smoker", "не курю", "não", "não fumo", "non", "fumante", "no smoke"]
+  - name: "vaper"
+    aliases: ["электронки", "pod", "вейп", "вейпер", "vaper", "vape"]
+  - name: "non-vaper"
+    aliases: ["не вейпит", "no vape", "не вейплю", "clean", "não vaper", "не", "vaper", "não", "non-vaper", "non", "вейпит"]
+  - name: "drinks alcohol"
+    aliases: ["пьет", "beer", "drink", "пьет алкоголь", "alcohol", "bebe", "алкоголь", "beber", "пью", "алко", "bebe álcool", "álcool", "drinks alcohol", "wine", "drinks"]
+  - name: "doesn't drink alcohol"
+    aliases: ["не пьет алкоголь", "пьет", "doesn't", "не", "drink", "teetotaler", "doesn't drink alcohol", "alcohol", "bebe", "алкоголь", "álcool", "não", "трезвенник", "no drink", "sober", "não bebe álcool", "sóbrio", "зож"]
+  - name: "has a dog"
+    aliases: ["cão", "есть собака", "tem um cachorro", "dog", "tem", "has a dog", "um", "пёс", "a", "puppy", "cachorro", "есть", "собака", "has"]
+  - name: "dislikes dogs but loves animals"
+    aliases: ["любит", "dislikes dogs but loves animals", "de", "gosta", "but", "не любит собак, но любит животных", "animals", "ama", "собак", "dogs", "dislikes", "не", "mas", "cães", "животные", "но", "animais", "não gosta de cães, mas ama animais", "cats", "loves", "животных", "não", "кошки"]
+  - name: "loves caring for animals"
+    aliases: ["ухаживать", "любит", "cuidar", "veterinary", "de", "зооволонтер", "любит ухаживать за животными", "animals", "ama", "loves caring for animals", "pets", "ama cuidar de animais", "уход за животными", "caring", "за", "animais", "for", "loves", "животными"]
+  - name: "serious relationship"
+    aliases: ["семья", "compromisso", "брак", "relacionamento", "love", "marriage", "sério", "отношения", "dating", "relationship", "serious relationship", "любовь", "серьезные отношения", "serious", "серьезные", "relacionamento sério"]
+  - name: "casual relationship"
+    aliases: ["fun", "casual relationship", "relacionamento", "sem compromisso", "без обязательств", "dating", "свободные отношения", "relationship", "relacionamento casual", "отношения", "свободные", "casual"]
+  - name: "sex-only relationship"
+    aliases: ["foda", "отношения только для секса", "relacionamento", "fwb", "sex-only relationship", "ons", "секстрога", "секс", "only", "секса", "отношения", "relationship", "sexual", "только", "apenas relacionamento sexual", "sex", "для", "apenas"]
+  - name: "one-off chat"
+    aliases: ["one", "talk", "одноразовый чат", "one-off chat", "short", "болталка на вечер", "chat", "conversa única", "одноразовый", "única", "чат", "conversa", "off"]
+  - name: "dirty talk / horny"
+    aliases: ["nsfw", "talk", "horny", "dirty talk / horny", "excitado", "разговоры", "dirty talk / excitado", "грязные разговоры / пошлый", "пошлый", "вирт", "пошлое", "грязные", "safadeza", "dirty"]
+  - name: "casual chat"
+    aliases: ["простое", "talk", "простое общение", "bate", "casual chat", "chat", "флуд", "bate-papo casual", "общение", "casual", "papo", "conversar"]
+  - name: "networking"
+    aliases: ["связи", "colaboração", "нетворкинг", "networking", "нетворкинг / деловые связи", "деловые", "business", "work", "работа", "profissional", "бизнес", "networking profissional", "collab"]
+  - name: "guy"
+    aliases: ["boy", "garoto", "мужчина", "guy", "rapaz", "homem", "парень", "man"]
+  - name: "girl"
+    aliases: ["girl", "mulher", "moça", "woman", "девочка", "женщина", "девушка", "garota"]
+  - name: "straight"
+    aliases: ["hetero", "гетеро", "straight"]
+  - name: "gay"
+    aliases: ["gay", "гей", "homo"]
+  - name: "lesbian"
+    aliases: ["lésbica", "lesbian", "лесби", "лесбиянка"]
+  - name: "bi"
+    aliases: ["bi", "бисексуал", "би"]
+  - name: "submissive"
+    aliases: ["sub", "bdsm", "fetish", "slave", "submissive"]
+  - name: "dominant"
+    aliases: ["dom", "bdsm", "fetish", "dominant", "master"]
+  - name: "soft"
+    aliases: ["gentle", "vanilla", "soft", "fetish"]
+  - name: "facesitting"
+    aliases: ["sit", "facesitting", "facesit", "fetish"]
+  - name: "foot fetish"
+    aliases: ["feet", "toes", "fetish", "foot", "foot fetish"]
+  - name: "chubby"
+    aliases: ["bbw", "chubby", "fat", "fetish", "plus size"]
+  - name: "vore"
+    aliases: ["eating", "vore", "fetish"]
+  - name: "trampling"
+    aliases: ["trampling", "trample", "crush", "fetish"]
+  - name: "mommy fetish"
+    aliases: ["milf", "mommy", "fetish", "age", "mommy fetish"]
+  - name: "daddy fetish"
+    aliases: ["daddy", "daddy fetish", "fetish", "dild", "age"]
+  - name: "spitting"
+    aliases: ["spit", "spitting", "saliva", "fetish"]
+  - name: "scaly"
+    aliases: ["furry", "monster", "scaly", "fetish"]
+  - name: "goth look"
+    aliases: ["goth", "gothic", "alt", "fetish", "goth look", "look"]
+  - name: "femboy"
+    aliases: ["crossdress", "fetish", "femboy", "trap"]
+  - name: "white skin"
+    aliases: ["fair", "white skin", "fetish", "white", "skin"]
+  - name: "black skin"
+    aliases: ["ebony", "fetish", "black skin", "skin", "black"]
+  - name: "dark skin"
+    aliases: ["tan", "dark skin", "fetish", "skin", "dark"]
+  - name: "asian"
+    aliases: ["fetish", "east", "asian"]
+  - name: "latin"
+    aliases: ["latin", "latina", "latino", "fetish"]
+  - name: "art (creative partner)"
+    aliases: ["parceiro", "arte", "creative", "partner", "art (creative partner)", "criativo", "рисунок", "art", "творческий", "arte (parceiro criativo)", "поиск", "искусство", "искусство (творческий поиск)", "paint"]
+  - name: "visual arts"
+    aliases: ["painting", "artes visuais", "arts", "visuais", "artes", "фотография", "visual", "искусство", "visual arts", "визуальное", "sculpture", "визуальное искусство"]
+  - name: "music (interest in)"
+    aliases: ["песни", "listening", "música (interesse em)", "música", "music (interest in)", "интерес", "interesse", "меломан", "interest", "к", "in", "музыка", "concerts", "em", "музыка (интерес к)", "music"]
+  - name: "coding"
+    aliases: ["programming", "codificação", "кодинг", "разработка", "coding", "программирование"]
+  - name: "programming"
+    aliases: ["разработчик", "programming", "dev", "programação", "айти", "программирование"]
+  - name: "vibe coding"
+    aliases: ["вайб-кодинг", "вайб", "кодинг", "ии кодинг", "ai coding", "bolt", "vibe coding", "vibe", "cursor", "coding"]
+  - name: "computer games"
+    aliases: ["jogos", "computador", "гейминг", "игры", "computer games", "jogos de computador", "gaming", "компьютерные игры", "games", "de", "pc", "компьютерные", "computer"]
+  - name: "indie games"
+    aliases: ["indie games", "jogos indie", "инди-игры", "jogos", "indie", "игры", "инди", "games"]
+  - name: "retro games"
+    aliases: ["retro games", "retro", "nes", "jogos", "игры", "console", "games", "ретро-игры", "jogos retro", "ретро"]
+  - name: "anime"
+    aliases: ["манга", "manga", "anime", "аниме"]
+  - name: "interest in languages"
+    aliases: ["interesse em idiomas", "языки", "em", "интерес к языкам", "languages", "idiomas", "interesse", "интерес", "языкам", "in", "interest", "к", "interest in languages", "полиглот", "polyglot"]
+  - name: "interest in ancient languages"
+    aliases: ["línguas", "latin", "языки", "languages", "древние", "interesse", "латынь", "interest", "interest in ancient languages", "antigas", "interesse em línguas antigas", "in", "greek", "древние языки", "em", "ancient"]
+  - name: "classic anime"
+    aliases: ["classic", "animes", "90s anime", "классическое аниме", "animes clássicos", "retro anime", "anime", "аниме", "старое аниме", "classic anime", "clássicos", "классическое"]
+  - name: "cinema"
+    aliases: ["movies", "кинематограф", "films", "cinema", "фильмы", "кино / кинематограф", "кино"]
+  - name: "classic cinema"
+    aliases: ["classic", "ретро фильмы", "cinema", "кино", "classic movies", "старое кино", "cinema clássico", "classic cinema", "clássico", "классическое", "классическое кино"]
+  - name: "tabletop rpgs"
+    aliases: ["tabletop", "ролевые", "игры", "rpgs", "днд", "нри", "dnd", "настольные ролевые игры (нри)", "tabletop rpgs", "настольные", "de", "mesa", "настолки", "rpgs de mesa", "rpg"]
+  - name: "politically incorrect discussion"
+    aliases: ["политика", "discussões politicamente incorretas", "discussões", "discussion", "politically incorrect discussion", "incorretas", "chans", "мемы", "politically", "неполиткорректные дискуссии", "неполиткорректные", "дискуссии", "politicamente", "incorrect", "dark humor", "база"]
+  - name: "sports"
+    aliases: ["тренировки", "academia", "спорт", "football", "gym", "sports", "esportes"]
+  - name: "camping"
+    aliases: ["camping", "кемпинг / походы", "camping / trilhas", "trilhas", "походы", "hiking", "поход", "палатки", "outdoor", "туризм", "кемпинг"]
+  - name: "healthy lifestyle"
+    aliases: ["healthy", "правильное питание", "healthy lifestyle", "здоровый образ жизни (зож)", "lifestyle", "fitness", "estilo de vida saudável", "здоровый", "estilo", "de", "saudável", "vida", "жизни", "зож", "saúde", "образ"]
+  - name: "history (general)"
+    aliases: ["history (general)", "история (общая)", "geral", "история", "history", "общая", "história", "história (geral)", "general", "наука"]
+  - name: "history of ancient europe"
+    aliases: ["história da europa antiga", "greece", "древней", "history", "of", "история древней европы", "antiga", "história", "history of ancient europe", "ancient", "греция", "античность", "история", "rome", "europa", "europe", "европы", "da", "рим"]
+  - name: "ancient history of the near east"
+    aliases: ["oriente", "history", "история древнего ближнего востока", "востока", "of", "antiga", "médio", "ближнего", "egypt", "ancient history of the near east", "história", "ancient", "история", "história antiga do oriente médio", "египет", "вавилон", "east", "древнего", "mesopotamia", "шумеры", "do", "the", "near"]
+  - name: "history of east asia"
+    aliases: ["history of east asia", "history", "of", "самураи", "asiático", "китай", "азии", "история восточной азии", "história", "leste", "samurai", "história do leste asiático", "история", "япония", "east", "восточной", "japan", "do", "asia", "china"]
+  - name: "modern history"
+    aliases: ["новейшая", "ww2", "новая история", "história moderna", "moderna", "modern", "новейшая история", "history", "история", "história", "войны", "ww1", "modern history"]
+  - name: "history of medieval europe"
+    aliases: ["medieval", "рыцари", "europe", "history", "история", "европы", "crusades", "средневековье", "of", "крестоносцы", "history of medieval europe", "средневековой", "história", "da", "europa", "história da europa medieval", "история средневековой европы", "knights"]
+  - name: "us history"
+    aliases: ["история сша", "civil war", "history", "история", "dos", "us history", "história", "us", "história dos eua", "сша", "eua"]
+  - name: "analytic and ancient greek philosophy"
+    aliases: ["и", "analytic", "e", "grega", "aristotle", "greek", "философия", "antiga", "стоики", "древнегреческая", "plato", "and", "платон", "filosofia analítica e grega antiga", "ancient", "аналитическая", "analítica", "аналитическая и древнегреческая философия", "analytic and ancient greek philosophy", "philosophy", "filosofia"]
+  - name: "all other philosophy"
+    aliases: ["philosophy", "all", "вся остальная философия", "all other philosophy", "toda", "other", "nietzsche", "outra", "filosofia", "вся", "остальная", "toda outra filosofia", "философия", "kant"]
+  - name: "christianity (general)"
+    aliases: ["библия", "geral", "христианство", "bible", "общее", "jesus", "христианство (общее)", "christianity", "cristianismo (geral)", "christianity (general)", "cristianismo", "general"]
+  - name: "catholicism"
+    aliases: ["pope", "католицизм", "catolicismo", "catholic", "католики", "catholicism"]
+  - name: "orthodoxy"
+    aliases: ["иконы", "ortodoxia", "православие", "orthodox", "orthodoxy"]
+  - name: "protestantism"
+    aliases: ["protestant", "luther", "протестантизм", "протестанты", "protestantismo", "protestantism"]
+  - name: "judaism"
+    aliases: ["torah", "judaism", "иудаизм", "judaísmo", "hebrew", "тора"]
+  - name: "shintoism"
+    aliases: ["japan", "kami", "xintoísmo", "shintoism", "ками", "синтоизм"]
+  - name: "authentic germanic myths"
+    aliases: ["myths", "германские", "thor", "authentic", "germanic", "germânicos", "скандинавы", "autênticos", "мифы", "odin", "германские мифы", "mitos", "германская мифология", "mitos germânicos autênticos", "authentic germanic myths"]
+  - name: "celtic myths"
+    aliases: ["druids", "кельтская мифология", "mitos celtas", "myths", "друиды", "celtic", "celtas", "мифы", "celtic myths", "mitos", "ireland", "кельтские мифы", "кельтские"]
+  - name: "roman religion"
+    aliases: ["pantheon", "римские боги", "jupiter", "римская религия", "religion", "roman", "romana", "римская", "religião", "roman religion", "религия", "religião romana"]
+  - name: "greek myths"
+    aliases: ["myths", "gregos", "зевс", "hercules", "greek myths", "zeus", "греческие мифы", "mitos gregos", "греческие", "мифы", "mitos", "greek", "греческая мифология"]
+  - name: "buddhism"
+    aliases: ["budismo", "zen", "buddhism", "буддизм", "buddha", "дзен"]
+  - name: "germanic neopaganism (general)"
+    aliases: ["neopaganismo germânico (geral)", "neopaganismo", "германское неоязычество", "язычество", "geral", "germânico", "germanic", "неоязычество", "neopaganism", "германское", "general", "pagan", "germanic neopaganism (general)"]
+  - name: "odinism"
+    aliases: ["odinismo", "odinism", "odin", "pagan", "одинизм"]
+  - name: "ásatrú"
+    aliases: ["runes", "руны", "ásatrú", "асатру", "asatru"]
+  - name: "music (skilled)"
+    aliases: ["skilled", "music (skilled)", "creative", "composer", "música (habilidade)", "музыка (навык)", "música", "навык", "instruments", "композитор", "music production", "музыкант", "музыка", "music", "habilidade"]
+  - name: "art (skilled)"
+    aliases: ["arte (habilidade)", "painting", "skilled", "arte", "creative", "навык", "art", "art (skilled)", "искусство (навык)", "художник", "рисование", "искусство", "artist", "habilidade"]
+  - name: "drawing"
+    aliases: ["drawing", "sketch", "illustration", "desenho", "иллюстрация", "рисование", "рисую"]
+  - name: "3d modeling"
+    aliases: ["modeling", "3d-моделирование", "3d modeling", "3d", "3dмоделирование", "modelagem 3d", "rendering", "modelagem", "рендер", "моделирование"]
+  - name: "it ai dev"
+    aliases: ["it", "development", "ии разработчик", "ии", "desenvolvedor", "dev", "neural networks", "ai", "desenvolvedor de ia", "нейросети", "de", "llm", "ia", "it ии-разработка", "разработка", "it ai dev"]
+  - name: "art ai dev"
+    aliases: ["it", "ии", "dev", "de", "промптинг", "midjourney", "ai", "stable diffusion", "генерация ии-арта", "арта", "ia", "desenvolvedor", "por", "art ai dev", "desenvolvedor de arte por ia", "генерация", "arte", "art", "ии арт"]
+  - name: "media ai dev"
+    aliases: ["it", "видео", "медиа", "ии", "dev", "генерация медиа/видео через ии", "de", "runway", "mídia", "sora", "ai", "media ai dev", "desenvolvedor de mídia por ia", "монтаж", "ia", "desenvolvedor", "ии видео", "por", "генерация", "через", "media"]
+  - name: "python"
+    aliases: ["it", "programming", "python", "fastapi", "разработка", "django", "backend", "coding"]
+  - name: "javascript"
+    aliases: ["it", "web", "javascript", "js", "frontend", "разработка", "coding"]
+  - name: "typescript"
+    aliases: ["it", "web", "ts", "frontend", "coding", "typescript"]
+  - name: "c++"
+    aliases: ["it", "gamedev", "c++", "cpp", "unreal", "coding"]
+  - name: "rust"
+    aliases: ["it", "rustlang", "rust", "backend", "coding"]
+  - name: "go"
+    aliases: ["it", "go", "backend", "coding", "golang"]
+  - name: "sql"
+    aliases: ["it", "postgresql", "бд", "sql", "mysql", "databases"]
+  - name: "docker"
+    aliases: ["it", "docker", "devops", "докер", "containers"]
+  - name: "kubernetes"
+    aliases: ["it", "kubernetes", "k8s", "devops", "cloud"]
+  - name: "git"
+    aliases: ["it", "git", "gitlab", "github", "version control"]
+  - name: "blender"
+    aliases: ["modeling", "software", "3d", "blender", "блендер"]
+  - name: "maya"
+    aliases: ["modeling", "software", "3d", "maya", "autodesk"]
+  - name: "3ds max"
+    aliases: ["modeling", "software", "3d", "max", "autodesk", "3ds", "3ds max"]
+  - name: "zbrush"
+    aliases: ["zbrush", "3d", "sculpting", "software"]
+  - name: "premiere pro"
+    aliases: ["adobe", "premiere pro", "video editing", "pro", "premiere", "монтаж"]
+  - name: "davinci resolve"
+    aliases: ["davinci resolve", "davinci", "resolve", "video editing", "color grading", "монтаж"]
+  - name: "after effects"
+    aliases: ["анимация", "adobe", "vfx", "after effects", "effects", "after", "motion design"]
+  - name: "final cut pro"
+    aliases: ["mac", "apple", "video editing", "pro", "final", "cut", "final cut pro"]
+  - name: "english (native/fluent)"
+    aliases: ["english", "fluent", "язык", "английский (родной/свободный)", "fluente", "английский", "inglês", "родной", "native", "english (native/fluent)", "nativo", "inglês (nativo/fluente)", "свободный"]
+  - name: "russian (native/fluent)"
+    aliases: ["russian (native/fluent)", "russo", "fluent", "язык", "русский (родной/свободный)", "russo (nativo/fluente)", "russian", "fluente", "русский", "родной", "native", "свободный", "nativo"]
+  - name: "portuguese (native/fluent)"
+    aliases: ["portuguese (native/fluent)", "fluent", "язык", "португальский (родной/свободный)", "português", "português (nativo/fluente)", "fluente", "native", "родной", "portuguese", "португальский", "свободный", "nativo"]
+  - name: "spanish (native/fluent)"
+    aliases: ["испанский", "fluent", "язык", "испанский (родной/свободный)", "espanhol", "spanish (native/fluent)", "fluente", "spanish", "родной", "native", "свободный", "nativo", "espanhol (nativo/fluente)"]
+  - name: "french (native/fluent)"
+    aliases: ["fluent", "язык", "francês", "французский (родной/свободный)", "francês (nativo/fluente)", "fluente", "родной", "native", "nativo", "french", "французский", "french (native/fluent)", "свободный"]
+  - name: "german (native/fluent)"
+    aliases: ["fluent", "язык", "alemão", "german", "немецкий (родной/свободный)", "alemão (nativo/fluente)", "немецкий", "fluente", "родной", "native", "nativo", "свободный", "german (native/fluent)"]
+  - name: "japanese (native/fluent)"
+    aliases: ["japonês (nativo/fluente)", "fluent", "язык", "japanese (native/fluent)", "японский (родной/свободный)", "японский", "japonês", "fluente", "japanese", "родной", "native", "свободный", "nativo"]
+  - name: "learning english"
+    aliases: ["english", "изучает английский", "learning", "язык", "изучает", "aprendendo inglês", "английский", "inglês", "aprendendo", "learning english", "study", "изучаю"]
+  - name: "learning russian"
+    aliases: ["изучает", "язык", "изучает русский", "russian", "learning russian", "aprendendo russo", "русский", "aprendendo", "study", "russo", "learning", "изучаю"]
+  - name: "learning portuguese"
+    aliases: ["португальский", "изучает", "aprendendo", "язык", "aprendendo português", "português", "portuguese", "изучает португальский", "study", "learning", "изучаю", "learning portuguese"]
+  - name: "learning spanish"
+    aliases: ["aprendendo espanhol", "aprendendo", "изучает", "learning", "язык", "espanhol", "spanish", "learning spanish", "изучает испанский", "испанский", "study", "изучаю"]
+  - name: "kazakhstan"
+    aliases: ["kz", "казахстан", "cazaquistão", "kazakhstan", "location"]
+  - name: "japan"
+    aliases: ["nihon", "япония", "jp", "japão", "japan", "nippon", "location"]
+  - name: "myanmar"
+    aliases: ["myanmar", "burma", "бирмы", "мьянма", "mm", "location"]
+  - name: "philippines"
+    aliases: ["philippines", "ph", "filipinas", "филиппины", "location"]
+  - name: "singapore"
+    aliases: ["сингапур", "singapura", "singapore", "sg", "location"]
+  - name: "mongolia"
+    aliases: ["mongólia", "mn", "монголия", "mongolia", "location"]
+  - name: "china"
+    aliases: ["китай", "china", "cn", "location"]
+  - name: "taiwan"
+    aliases: ["taiwan", "тайвань", "tw", "location"]
+  - name: "finland"
+    aliases: ["finlândia", "finland", "fi", "финляндия", "location"]
+  - name: "poland"
+    aliases: ["pl", "poland", "польша", "polônia", "location"]
+  - name: "saint petersburg"
+    aliases: ["são", "петербург", "rússia", "são petersburgo", "saint", "санкт", "petersburgo", "spb", "россия", "saint petersburg", "спб", "санкт-петербург", "питер", "petersburg", "russia", "location"]
+  - name: "nizhny novgorod"
+    aliases: ["rússia", "нн", "россия", "новгород", "novgorod", "нижний новгород", "nizhny novgorod", "нижний", "russia", "nizhny", "location"]
+  - name: "samara"
+    aliases: ["rússia", "россия", "samara", "самара", "russia", "location"]
+  - name: "omsk"
+    aliases: ["омск", "rússia", "omsk", "россия", "russia", "location"]
+  - name: "rostov-on-don"
+    aliases: ["rússia", "ростов", "do", "on", "rostov", "rostov-on-don", "ростов-на-дону", "россия", "don", "rostov do don", "дону", "russia", "на", "location"]
+  - name: "chelyabinsk"
+    aliases: ["rússia", "chelyabinsk", "россия", "russia", "челябинск", "location"]
+  - name: "almaty"
+    aliases: ["almaty", "казахстан", "алматы", "cazaquistão", "kazakhstan", "алма-ата", "location"]
+  - name: "astana"
+    aliases: ["астана", "astana", "казахстан", "cazaquistão", "kazakhstan", "location"]
+  - name: "shymkent"
+    aliases: ["shymkent", "шымкент", "казахстан", "cazaquistão", "kazakhstan", "location"]
+  - name: "karaganda"
+    aliases: ["karaganda", "казахстан", "cazaquistão", "kazakhstan", "караганда", "location"]
+  - name: "aktobe"
+    aliases: ["aktobe", "актобе", "казахстан", "cazaquistão", "kazakhstan", "location"]
+  - name: "taraz"
+    aliases: ["taraz", "казахстан", "cazaquistão", "kazakhstan", "тараз", "location"]
+  - name: "pavlodar"
+    aliases: ["павлодар", "pavlodar", "казахстан", "cazaquistão", "kazakhstan", "location"]
+  - name: "tokyo"
+    aliases: ["japan", "токио", "japão", "япония", "tóquio", "tokyo", "location"]
+  - name: "yokohama"
+    aliases: ["japan", "yokohama", "japão", "япония", "иокогама", "location"]
+  - name: "osaka"
+    aliases: ["japan", "osaka", "japão", "япония", "осака", "location"]
+  - name: "nagoya"
+    aliases: ["japan", "нагоя", "nagoya", "japão", "япония", "location"]
+  - name: "sapporo"
+    aliases: ["japan", "саппоро", "japão", "япония", "sapporo", "location"]
+  - name: "kobe"
+    aliases: ["japan", "кобе", "japão", "kobe", "япония", "location"]
+  - name: "kyoto"
+    aliases: ["japan", "japão", "kyoto", "япония", "киото", "quioto", "location"]
+  - name: "fukuoka"
+    aliases: ["japan", "фукуока", "japão", "fukuoka", "япония", "location"]
+  - name: "yangon"
+    aliases: ["rangoon", "myanmar", "янгон", "yangon", "мьянма", "location"]
+  - name: "mandalay"
+    aliases: ["мандалай", "мьянма", "myanmar", "mandalay", "location"]
+  - name: "naypyidaw"
+    aliases: ["naypyidaw", "мьянма", "нейпьидо", "myanmar", "location"]
+  - name: "mawlamyine"
+    aliases: ["mawlamyine", "мьянма", "моламьяйн", "myanmar", "location"]
+  - name: "bago"
+    aliases: ["bago", "мьянма", "myanmar", "пегу", "location"]
+  - name: "manila"
+    aliases: ["philippines", "филиппины", "manila", "filipinas", "манила", "location"]
+  - name: "quezon city"
+    aliases: ["quezon", "кесон-сити", "cidade quezon", "cidade", "philippines", "сити", "филиппины", "quezon city", "filipinas", "кесон", "city", "location"]
+  - name: "davao city"
+    aliases: ["давао", "philippines", "davao", "филиппины", "filipinas", "city", "davao city", "location"]
+  - name: "cebu city"
+    aliases: ["cebu", "себу", "philippines", "филиппины", "cebu city", "filipinas", "city", "location"]
+  - name: "zamboanga city"
+    aliases: ["philippines", "филиппины", "filipinas", "замбоанга", "zamboanga", "zamboanga city", "city", "location"]
+  - name: "singapore planning areas"
+    aliases: ["áreas", "районы", "areas", "сингапур", "de", "singapore planning areas", "singapore", "áreas de planejamento de singapura", "planejamento", "singapura", "сингапур районы", "planning", "location"]
+  - name: "ulaanbaatar"
+    aliases: ["улан", "mongolia", "ub", "батор", "монголия", "ulaanbaatar", "mongólia", "улан-батор", "location"]
+  - name: "erdenet"
+    aliases: ["эрдэнэт", "mongolia", "монголия", "mongólia", "erdenet", "location"]
+  - name: "darkhan"
+    aliases: ["darkhan", "mongolia", "дархан", "монголия", "mongólia", "location"]
+  - name: "choibalsan"
+    aliases: ["чойбалсан", "mongolia", "choibalsan", "монголия", "mongólia", "location"]
+  - name: "beijing"
+    aliases: ["китай", "пекин", "beijing", "china", "peking", "pequim", "location"]
+  - name: "shanghai"
+    aliases: ["китай", "shanghai", "china", "xangai", "шанхай", "location"]
+  - name: "guangzhou"
+    aliases: ["китай", "гуанчжоу", "china", "cantão", "guangzhou", "location"]
+  - name: "shenzhen"
+    aliases: ["китай", "china", "shenzhen", "шэньчжэнь", "location"]
+  - name: "chengdu"
+    aliases: ["китай", "chengdu", "china", "чэнду", "location"]
+  - name: "hangzhou"
+    aliases: ["китай", "china", "hangzhou", "ханчжоу", "location"]
+  - name: "wuhan"
+    aliases: ["китай", "china", "ухань", "wuhan", "location"]
+  - name: "xi'an"
+    aliases: ["китай", "china", "сиань", "xi'an", "location"]
+  - name: "chongqing"
+    aliases: ["китай", "china", "чунцин", "chongqing", "location"]
+  - name: "taipei"
+    aliases: ["taiwan", "тайбэй", "taipei", "тайвань", "taipé", "location"]
+  - name: "kaohsiung"
+    aliases: ["тайвань", "taiwan", "kaohsiung", "гаосюн", "location"]
+  - name: "taichung"
+    aliases: ["тайчжун", "тайвань", "taiwan", "taichung", "location"]
+  - name: "tainan"
+    aliases: ["tainan", "тайнань", "тайвань", "taiwan", "location"]
+  - name: "hsinchu"
+    aliases: ["hsinchu", "тайвань", "taiwan", "синьчжу", "location"]
+  - name: "helsinki"
+    aliases: ["финляндия", "хельсинки", "helsinki", "finland", "helsínquia", "finlândia", "location"]
+  - name: "espoo"
+    aliases: ["финляндия", "finland", "espoo", "эспоо", "finlândia", "location"]
+  - name: "tampere"
+    aliases: ["финляндия", "finland", "тампере", "finlândia", "tampere", "location"]
+  - name: "vantaa"
+    aliases: ["финляндия", "вантаа", "vantaa", "finland", "finlândia", "location"]
+  - name: "oulu"
+    aliases: ["финляндия", "оулу", "finland", "oulu", "finlândia", "location"]
+  - name: "turku"
+    aliases: ["финляндия", "turku", "finland", "турку", "finlândia", "location"]
+  - name: "warsaw"
+    aliases: ["варшава", "польша", "varsóvia", "warsaw", "polônia", "poland", "location"]
+  - name: "kraków"
+    aliases: ["краков", "польша", "cracóvia", "kraków", "polônia", "poland", "location"]
+  - name: "łódź"
+    aliases: ["лодзь", "польша", "łódź", "polônia", "poland", "location"]
+  - name: "wrocław"
+    aliases: ["breslávia", "польша", "wrocław", "вроцлав", "polônia", "poland", "location"]
+  - name: "poznań"
+    aliases: ["познань", "польша", "poznań", "polônia", "poland", "location"]
+  - name: "gdańsk"
+    aliases: ["gdańsk", "гданьск", "польша", "polônia", "poland", "location"]
+  - name: "szczecin"
+    aliases: ["польша", "szczecin", "щецин", "estetino", "polônia", "poland", "location"]
+  - name: "java"
+    aliases: ["it", "enterprise", "backend", "coding", "java"]
+  - name: "kotlin"
+    aliases: ["it", "android", "kotlin", "mobile", "coding"]
+  - name: "swift"
+    aliases: ["it", "swift", "ios", "apple", "coding"]
+  - name: "c#"
+    aliases: ["it", "c#", "gamedev", "net", "unity", "coding"]
+  - name: "php"
+    aliases: ["it", "php", "backend", "wordpress", "coding"]
+  - name: "ruby"
+    aliases: ["rails", "it", "ruby", "backend", "coding"]
+  - name: "html/css"
+    aliases: ["it", "web", "html/css", "layout", "верстка", "css", "html", "frontend"]
+  - name: "linux"
+    aliases: ["it", "unix", "sysadmin", "bash", "linux"]
+  - name: "bash/shell"
+    aliases: ["it", "scripting", "shell", "bash", "linux", "terminal", "bash/shell"]
+  - name: "aws"
+    aliases: ["it", "aws", "web", "amazon web services", "devops", "amazon", "services", "cloud"]
+  - name: "google cloud"
+    aliases: ["it", "google", "devops", "gcp", "google cloud", "cloud"]
+  - name: "azure"
+    aliases: ["it", "azure", "microsoft", "microsoft azure", "devops", "cloud"]
+  - name: "nginx"
+    aliases: ["it", "nginx", "proxy", "webserver"]
+  - name: "postgresql"
+    aliases: ["it", "db", "postgresql", "sql", "postgres"]
+  - name: "mongodb"
+    aliases: ["it", "nosql", "db", "mongodb"]
+  - name: "redis"
+    aliases: ["it", "db", "cache", "redis"]
+  - name: "prometheus"
+    aliases: ["it", "prometheus", "devops", "monitoring"]
+  - name: "grafana"
+    aliases: ["it", "monitoring", "grafana", "dashboards"]
+  - name: "cinema 4d"
+    aliases: ["cinema 4d", "software", "3d", "cinema", "4d", "motion graphics"]
+  - name: "houdini"
+    aliases: ["procedural", "software", "3d", "vfx", "houdini"]
+  - name: "solidworks"
+    aliases: ["engineering", "modeling", "cad", "solidworks"]
+  - name: "autocad"
+    aliases: ["autocad", "cad", "drafting", "software"]
+  - name: "sony vegas"
+    aliases: ["sony vegas", "video editing", "vegas", "sony", "vegas pro"]
+  - name: "avid media composer"
+    aliases: ["avid", "composer", "media", "video editing", "avid media composer", "film editing"]
+  - name: "capcut"
+    aliases: ["capcut", "mobile", "tiktok", "video editing"]
+  - name: "premiere rush"
+    aliases: ["adobe", "video editing", "premiere", "premiere rush", "mobile", "rush"]
+  - name: "learning french"
+    aliases: ["французский", "изучает", "язык", "изучает французский", "francês", "aprendendo francês", "learning french", "aprendendo", "study", "french", "learning", "изучаю"]
+  - name: "learning german"
+    aliases: ["aprendendo", "изучает", "язык", "alemão", "aprendendo alemão", "german", "немецкий", "learning german", "изучает немецкий", "study", "learning", "изучаю"]
+  - name: "learning japanese"
+    aliases: ["изучает", "learning", "язык", "японский", "japonês", "aprendendo japonês", "learning japanese", "japanese", "изучает японский", "aprendendo", "study", "изучаю"]
+  - name: "chinese (native/fluent)"
+    aliases: ["chinês (nativo/fluente)", "chinese", "fluent", "язык", "китайский (родной/свободный)", "китайский", "chinese (native/fluent)", "fluente", "родной", "native", "свободный", "nativo", "chinês"]
+  - name: "learning chinese"
+    aliases: ["aprendendo chinês", "chinese", "изучает китайский", "learning", "язык", "изучает", "китайский", "aprendendo", "learning chinese", "study", "изучаю", "chinês"]
+  - name: "burmese (native/fluent)"
+    aliases: ["birmanês (nativo/fluente)", "fluent", "язык", "бирманский", "birmanês", "burmese", "burmese (native/fluent)", "fluente", "родной", "native", "свободный", "nativo", "бирманский (родной/свободный)"]
+  - name: "learning burmese"
+    aliases: ["изучает", "learning", "язык", "изучает бирманский", "бирманский", "birmanês", "burmese", "learning burmese", "aprendendo birmanês", "aprendendo", "study", "изучаю"]
+  - name: "tagalog (native/fluent)"
+    aliases: ["tagalo (nativo/fluente)", "fluent", "язык", "тагальский", "тагальский (родной/свободный)", "fluente", "tagalo", "родной", "native", "свободный", "tagalog (native/fluent)", "nativo", "tagalog"]
+  - name: "learning tagalog"
+    aliases: ["aprendendo", "изучает", "язык", "изучает тагальский", "aprendendo tagalo", "learning tagalog", "tagalo", "тагальский", "study", "learning", "изучаю", "tagalog"]
+  - name: "mongolian (native/fluent)"
+    aliases: ["mongolian", "fluent", "язык", "mongolian (native/fluent)", "монгольский (родной/свободный)", "mongol (nativo/fluente)", "монгольский", "fluente", "mongol", "родной", "native", "свободный", "nativo"]
+  - name: "learning mongolian"
+    aliases: ["aprendendo mongol", "mongolian", "learning mongolian", "изучает", "aprendendo", "язык", "изучает монгольский", "mongol", "монгольский", "study", "learning", "изучаю"]
+  - name: "finnish (native/fluent)"
+    aliases: ["fluent", "язык", "финский (родной/свободный)", "finnish (native/fluent)", "finnish", "finlandês (nativo/fluente)", "fluente", "finlandês", "родной", "native", "свободный", "финский", "nativo"]
+  - name: "learning finnish"
+    aliases: ["aprendendo finlandês", "изучает", "финский", "язык", "finnish", "изучает финский", "finlandês", "aprendendo", "study", "learning", "изучаю", "learning finnish"]
+  - name: "polish (native/fluent)"
+    aliases: ["polonês (nativo/fluente)", "polish (native/fluent)", "polish", "fluent", "язык", "польский (родной/свободный)", "польский", "polonês", "fluente", "родной", "native", "свободный", "nativo"]
+  - name: "learning polish"
+    aliases: ["polish", "learning", "язык", "изучает", "польский", "polonês", "learning polish", "изучает польский", "aprendendo", "study", "изучаю", "aprendendo polonês"]
+  - name: "united kingdom"
+    aliases: ["england", "англия", "united", "unido", "kingdom", "gb", "reino unido", "united kingdom", "scotland", "uk", "reino", "великобритания", "location"]
+  - name: "germany"
+    aliases: ["deutschland", "de", "germany", "германия", "alemanha", "location"]
+  - name: "spain"
+    aliases: ["es", "spain", "испания", "españa", "espanha", "location"]
+  - name: "france"
+    aliases: ["fr", "франция", "france", "frança", "location"]
+  - name: "italy"
+    aliases: ["италия", "itália", "it", "italy", "italia", "location"]
+  - name: "south korea"
+    aliases: ["korea", "coreia do sul", "do", "sul", "южная корея", "kr", "южная", "south korea", "south", "корея", "coreia", "location"]
+  - name: "vietnam"
+    aliases: ["vietnã", "vietnam", "вьетнам", "vn", "location"]
+  - name: "thailand"
+    aliases: ["thailand", "phuket", "th", "tailândia", "таиланд", "location"]
+  - name: "turkey"
+    aliases: ["турция", "turquia", "turkey", "türkiye", "tr", "location"]
+  - name: "ukraine"
+    aliases: ["ua", "ukraine", "ucrânia", "украина", "location"]
+  - name: "australia"
+    aliases: ["australia", "австралия", "austrália", "au", "location"]
+  - name: "canada"
+    aliases: ["ca", "canada", "canadá", "канада", "location"]
+  - name: "india"
+    aliases: ["индия", "índia", "india", "in", "location"]
+  - name: "london"
+    aliases: ["лондон", "reino unido", "united kingdom", "uk", "london", "великобритания", "londres", "location"]
+  - name: "manchester"
+    aliases: ["reino unido", "манчестер", "manchester", "united kingdom", "uk", "великобритания", "location"]
+  - name: "birmingham"
+    aliases: ["бирмингем", "reino unido", "united kingdom", "birmingham", "uk", "великобритания", "location"]
+  - name: "leeds"
+    aliases: ["reino unido", "united kingdom", "leeds", "uk", "великобритания", "лидс", "location"]
+  - name: "glasgow"
+    aliases: ["reino unido", "united kingdom", "глазго", "glasgow", "uk", "великобритания", "location"]
+  - name: "edinburgh"
+    aliases: ["reino unido", "edimburgo", "edinburgh", "united kingdom", "uk", "эдинбург", "великобритания", "location"]
+  - name: "berlin"
+    aliases: ["германия", "germany", "berlim", "berlin", "берлин", "alemanha", "location"]
+  - name: "munich"
+    aliases: ["германия", "munich", "germany", "munique", "мюнхен", "alemanha", "location"]
+  - name: "frankfurt"
+    aliases: ["германия", "germany", "frankfurt", "франкфурт", "alemanha", "location"]
+  - name: "hamburg"
+    aliases: ["германия", "germany", "гамбург", "alemanha", "hamburgo", "hamburg", "location"]
+  - name: "cologne"
+    aliases: ["германия", "germany", "colônia", "кёльн", "alemanha", "cologne", "location"]
+  - name: "stuttgart"
+    aliases: ["германия", "germany", "stuttgart", "штутгарт", "alemanha", "location"]
+  - name: "madrid"
+    aliases: ["испания", "espanha", "мадрид", "spain", "madrid", "location"]
+  - name: "barcelona"
+    aliases: ["испания", "espanha", "barcelona", "барселона", "spain", "location"]
+  - name: "valencia"
+    aliases: ["valencia", "испания", "espanha", "валенсия", "valência", "spain", "location"]
+  - name: "seville"
+    aliases: ["испания", "espanha", "sevilha", "seville", "spain", "севилья", "location"]
+  - name: "zaragoza"
+    aliases: ["zaragoza", "испания", "espanha", "saragoça", "сарагоса", "spain", "location"]
+  - name: "malaga"
+    aliases: ["испания", "espanha", "málaga", "малага", "spain", "malaga", "location"]
+  - name: "paris"
+    aliases: ["frança", "france", "париж", "франция", "paris", "location"]
+  - name: "lyon"
+    aliases: ["lyon", "frança", "france", "франция", "лион", "location"]
+  - name: "marseille"
+    aliases: ["frança", "france", "marseille", "франция", "marselha", "марсель", "location"]
+  - name: "toulouse"
+    aliases: ["frança", "france", "toulouse", "тулуза", "франция", "location"]
+  - name: "nice"
+    aliases: ["frança", "france", "франция", "niza", "nice", "ницца", "location"]
+  - name: "nantes"
+    aliases: ["frança", "france", "нант", "nantes", "франция", "location"]
+  - name: "rome"
+    aliases: ["италия", "roma", "italy", "rome", "рим", "itália", "location"]
+  - name: "milan"
+    aliases: ["италия", "italy", "милан", "itália", "milão", "milan", "location"]
+  - name: "naples"
+    aliases: ["италия", "naples", "italy", "nápoles", "itália", "неаполь", "location"]
+  - name: "turin"
+    aliases: ["италия", "turin", "italy", "турин", "itália", "turim", "location"]
+  - name: "palermo"
+    aliases: ["италия", "палермо", "italy", "itália", "palermo", "location"]
+  - name: "genoa"
+    aliases: ["италия", "italy", "genoa", "генуя", "itália", "gênova", "location"]
+  - name: "florence"
+    aliases: ["италия", "florence", "italy", "itália", "флоренция", "florença", "location"]
+  - name: "seoul"
+    aliases: ["coreia do sul", "южная корея", "skorea", "сеул", "seoul", "south korea", "seul", "location"]
+  - name: "busan"
+    aliases: ["coreia do sul", "южная корея", "пусан", "skorea", "busan", "south korea", "location"]
+  - name: "incheon"
+    aliases: ["coreia do sul", "южная корея", "skorea", "инчхон", "south korea", "incheon", "location"]
+  - name: "daegu"
+    aliases: ["coreia do sul", "южная корея", "skorea", "daegu", "тэгу", "south korea", "location"]
+  - name: "hanoi"
+    aliases: ["vietnã", "вьетнам", "vietnam", "hanói", "ханой", "hanoi", "location"]
+  - name: "ho chi minh city"
+    aliases: ["хошимин", "minh", "ho chi minh city", "cidade", "vietnã", "вьетнам", "ho", "de", "vietnam", "сайгон", "saigon", "chi", "city", "cidade de ho chi minh", "location"]
+  - name: "da nang"
+    aliases: ["vietnã", "дананг", "вьетнам", "vietnam", "da", "da nang", "nang", "location"]
+  - name: "haiphong"
+    aliases: ["vietnã", "вьетнам", "vietnam", "haiphong", "хайфон", "location"]
+  - name: "bangkok"
+    aliases: ["бангкок", "tailândia", "thailand", "bangkok", "таиланд", "location"]
+  - name: "chiang mai"
+    aliases: ["tailândia", "thailand", "chiang mai", "chiang", "чиангмай", "таиланд", "mai", "location"]
+  - name: "phuket"
+    aliases: ["tailândia", "thailand", "пхукет", "phuket", "таиланд", "location"]
+  - name: "pattaya"
+    aliases: ["tailândia", "паттайя", "thailand", "таиланд", "pattaya", "location"]
+  - name: "istanbul"
+    aliases: ["istambul", "istanbul", "turquia", "турция", "turkey", "стамбул", "location"]
+  - name: "ankara"
+    aliases: ["анкара", "ankara", "turquia", "турция", "turkey", "ancara", "location"]
+  - name: "izmir"
+    aliases: ["измир", "turquia", "турция", "turkey", "izmir", "location"]
+  - name: "bursa"
+    aliases: ["turquia", "турция", "turkey", "бурса", "bursa", "location"]
+  - name: "antalya"
+    aliases: ["antalya", "анталья", "turquia", "турция", "turkey", "antália", "location"]
+  - name: "kyiv"
+    aliases: ["украина", "kyiv", "киев", "ukraine", "kiev", "ucrânia", "location"]
+  - name: "kharkiv"
+    aliases: ["украина", "харьков", "ukraine", "kharkiv", "ucrânia", "location"]
+  - name: "odesa"
+    aliases: ["украина", "odessa", "одесса", "odesa", "ukraine", "ucrânia", "location"]
+  - name: "dnipro"
+    aliases: ["украина", "днепр", "dnipro", "ukraine", "ucrânia", "location"]
+  - name: "lviv"
+    aliases: ["украина", "львов", "lviv", "ukraine", "ucrânia", "location"]
+  - name: "sydney"
+    aliases: ["сидней", "австралия", "australia", "austrália", "sydney", "location"]
+  - name: "melbourne"
+    aliases: ["австралия", "australia", "austrália", "melbourne", "мельбурн", "location"]
+  - name: "brisbane"
+    aliases: ["австралия", "australia", "austrália", "brisbane", "брисбен", "location"]
+  - name: "perth"
+    aliases: ["австралия", "australia", "perth", "austrália", "перт", "location"]
+  - name: "adelaide"
+    aliases: ["австралия", "australia", "austrália", "adelaide", "аделаида", "location"]
+  - name: "toronto"
+    aliases: ["канада", "canadá", "toronto", "canada", "торонто", "location"]
+  - name: "vancouver"
+    aliases: ["канада", "canadá", "vancouver", "canada", "ванкувер", "location"]
+  - name: "montreal"
+    aliases: ["монреаль", "канада", "montreal", "canadá", "canada", "location"]
+  - name: "calgary"
+    aliases: ["канада", "canadá", "калгари", "calgary", "canada", "location"]
+  - name: "ottawa"
+    aliases: ["канада", "canadá", "ottawa", "canada", "оттава", "location"]
+  - name: "mumbai"
+    aliases: ["mumbai", "индия", "bombay", "мумбаи", "índia", "india", "location"]
+  - name: "delhi"
+    aliases: ["deli", "индия", "дели", "índia", "india", "delhi", "location"]
+  - name: "bangalore"
+    aliases: ["индия", "bangalore", "бангалор", "índia", "bengaluru", "india", "location"]
+  - name: "hyderabad"
+    aliases: ["хайдарабад", "hyderabad", "индия", "índia", "india", "location"]
+  - name: "chennai"
+    aliases: ["ченнаи", "chennai", "индия", "madras", "índia", "india", "location"]
+  - name: "kolkata"
+    aliases: ["calcutta", "индия", "índia", "kolkata", "india", "калькутта", "location"]
+  - name: "scala"
+    aliases: ["it", "functional", "backend", "coding", "scala"]
+  - name: "haskell"
+    aliases: ["it", "functional", "coding", "haskell"]
+  - name: "clojure"
+    aliases: ["lisp", "it", "functional", "coding", "clojure"]
+  - name: "elixir"
+    aliases: ["it", "functional", "elixir", "erlang", "coding"]
+  - name: "erlang"
+    aliases: ["it", "backend", "erlang", "coding", "concurrent"]
+  - name: "dart"
+    aliases: ["it", "flutter", "dart", "mobile", "coding"]
+  - name: "zig"
+    aliases: ["zig", "it", "systems", "coding"]
+  - name: "objective-c"
+    aliases: ["it", "ios", "objective", "apple", "c", "objective-c", "coding"]
+  - name: "perl"
+    aliases: ["it", "coding", "scripting", "perl"]
+  - name: "r language"
+    aliases: ["it", "linguagem", "r language", "linguagem r", "язык", "data science", "statistics", "language", "r", "coding", "язык r"]
+  - name: "cobol"
+    aliases: ["cobol", "it", "coding", "legacy"]
+  - name: "fortran"
+    aliases: ["it", "legacy", "scientific", "coding", "fortran"]
+  - name: "lisp"
+    aliases: ["lisp", "it", "functional", "coding"]
+  - name: "terraform"
+    aliases: ["it", "iac", "terraform", "devops", "cloud"]
+  - name: "ansible"
+    aliases: ["it", "automation", "devops", "ansible"]
+  - name: "jenkins"
+    aliases: ["it", "automation", "devops", "ci", "cd", "jenkins"]
+  - name: "ci/cd"
+    aliases: ["it", "integration", "deployment", "ci/cd", "integração", "continuous", "implantação", "devops", "ci", "ci/cd (integração/implantação contínua)", "cd", "ci/cd (continuous integration/deployment)", "contínua"]
+  - name: "apache kafka"
+    aliases: ["it", "kafka", "pubsub", "apache kafka", "apache", "backend"]
+  - name: "rabbitmq"
+    aliases: ["rabbitmq", "it", "backend", "pubsub"]
+  - name: "elasticsearch"
+    aliases: ["it", "elasticsearch", "elk", "search"]
+  - name: "kibana"
+    aliases: ["it", "kibana", "elk", "monitoring"]
+  - name: "logstash"
+    aliases: ["it", "logstash", "elk", "pipelines"]
+  - name: "docker compose"
+    aliases: ["it", "compose", "docker", "devops", "docker compose", "containers"]
+  - name: "helm"
+    aliases: ["it", "kubernetes", "k8s", "devops", "helm"]
+  - name: "cloudflare"
+    aliases: ["it", "dns", "security", "cdn", "cloudflare"]
+  - name: "graphql"
+    aliases: ["it", "graphql", "api"]
+  - name: "grpc"
+    aliases: ["grpc", "it", "api", "protobuf", "backend"]
+  - name: "sketchup"
+    aliases: ["architecture", "modeling", "3d", "sketchup"]
+  - name: "revit"
+    aliases: ["architecture", "bim", "cad", "revit"]
+  - name: "rhino 3d"
+    aliases: ["modeling", "cad", "3d", "rhino 3d", "rhino"]
+  - name: "modo"
+    aliases: ["modeling", "3d", "modo", "software"]
+  - name: "lightwave"
+    aliases: ["lightwave", "modeling", "3d", "software"]
+  - name: "fusion 360"
+    aliases: ["engineering", "cad", "fusion 360", "360", "autodesk", "fusion"]
+  - name: "tinkercad"
+    aliases: ["modeling", "3d", "educational", "tinkercad"]
+  - name: "hitfilm"
+    aliases: ["vfx", "hitfilm", "video editing"]
+  - name: "lightworks"
+    aliases: ["lightworks", "film editing", "video editing"]
+  - name: "shotcut"
+    aliases: ["open source", "video editing", "shotcut"]
+  - name: "imovie"
+    aliases: ["imovie", "ios", "mac", "video editing"]
+  - name: "kdenlive"
+    aliases: ["kdenlive", "open source", "video editing"]
+  - name: "camtasia"
+    aliases: ["camtasia", "video editing", "screen recording"]
+  - name: "arabic (native/fluent)"
+    aliases: ["árabe (nativo/fluente)", "fluent", "язык", "арабский (родной/свободный)", "fluente", "árabe", "родной", "native", "arabic", "nativo", "свободный", "арабский", "arabic (native/fluent)"]
+  - name: "learning arabic"
+    aliases: ["aprendendo árabe", "изучает", "язык", "изучает арабский", "арабский", "learning arabic", "árabe", "aprendendo", "arabic", "study", "learning", "изучаю"]
+  - name: "korean (native/fluent)"
+    aliases: ["korean", "корейский", "fluent", "язык", "coreano (nativo/fluente)", "korean (native/fluent)", "корейский (родной/свободный)", "coreano", "fluente", "родной", "native", "свободный", "nativo"]
+  - name: "learning korean"
+    aliases: ["korean", "корейский", "изучает", "язык", "coreano", "изучает корейский", "learning korean", "aprendendo", "study", "learning", "изучаю", "aprendendo coreano"]
+  - name: "hindi (native/fluent)"
+    aliases: ["fluent", "язык", "hindi (nativo/fluente)", "хинди", "хинди (родной/свободный)", "fluente", "hindi (native/fluent)", "родной", "native", "hindi", "nativo", "свободный"]
+  - name: "learning hindi"
+    aliases: ["learning hindi", "изучает", "язык", "изучает хинди", "хинди", "aprendendo hindi", "aprendendo", "study", "hindi", "learning", "изучаю"]
+  - name: "italian (native/fluent)"
+    aliases: ["fluent", "язык", "italiano (nativo/fluente)", "italian (native/fluent)", "italiano", "fluente", "italian", "родной", "native", "nativo", "свободный", "итальянский", "итальянский (родной/свободный)"]
+  - name: "learning italian"
+    aliases: ["learning italian", "изучает", "learning", "язык", "aprendendo", "изучает итальянский", "italiano", "italian", "aprendendo italiano", "итальянский", "study", "изучаю"]
+  - name: "vietnamese (native/fluent)"
+    aliases: ["вьетнамский (родной/свободный)", "vietnamita", "fluent", "язык", "vietnamese (native/fluent)", "vietnamese", "вьетнамский", "fluente", "родной", "native", "свободный", "nativo", "vietnamita (nativo/fluente)"]
+  - name: "learning vietnamese"
+    aliases: ["vietnamita", "изучает", "learning", "язык", "изучает вьетнамский", "vietnamese", "learning vietnamese", "вьетнамский", "aprendendo", "study", "изучаю", "aprendendo vietnamita"]
+  - name: "thai (native/fluent)"
+    aliases: ["тайский", "fluent", "язык", "tailandês (nativo/fluente)", "thai", "тайский (родной/свободный)", "thai (native/fluent)", "tailandês", "fluente", "native", "родной", "свободный", "nativo"]
+  - name: "learning thai"
+    aliases: ["тайский", "изучает", "язык", "изучает тайский", "learning thai", "thai", "tailandês", "aprendendo tailandês", "aprendendo", "study", "learning", "изучаю"]
+  - name: "turkish (native/fluent)"
+    aliases: ["fluent", "язык", "турецкий", "turkish", "turco", "turkish (native/fluent)", "fluente", "родной", "native", "турецкий (родной/свободный)", "turco (nativo/fluente)", "свободный", "nativo"]
+  - name: "learning turkish"
+    aliases: ["learning turkish", "изучает", "learning", "язык", "изучает турецкий", "турецкий", "turkish", "aprendendo turco", "aprendendo", "study", "turco", "изучаю"]
+  - name: "ukrainian (native/fluent)"
+    aliases: ["fluent", "язык", "ucrânia (nativo/fluente)", "ukrainian", "fluente", "украинский", "родной", "native", "nativo", "ucrânia", "свободный", "украинский (родной/свободный)", "ukrainian (native/fluent)"]
+  - name: "learning ukrainian"
+    aliases: ["изучает", "изучает украинский", "язык", "ukrainian", "aprendendo ucrânia", "украинский", "aprendendo", "study", "learning", "изучаю", "ucrânia", "learning ukrainian"]
+  - name: "swedish (native/fluent)"
+    aliases: ["fluent", "язык", "sueco (nativo/fluente)", "шведский", "swedish (native/fluent)", "sueco", "шведский (родной/свободный)", "fluente", "родной", "native", "свободный", "nativo", "swedish"]
+  - name: "learning swedish"
+    aliases: ["learning swedish", "изучает шведский", "изучает", "язык", "шведский", "aprendendo sueco", "sueco", "aprendendo", "study", "learning", "изучаю", "swedish"]
+  - name: "dutch (native/fluent)"
+    aliases: ["holandês (nativo/fluente)", "holandês", "fluent", "dutch", "язык", "dutch (native/fluent)", "fluente", "нидерландский", "native", "родной", "свободный", "нидерландский (родной/свободный)", "nativo"]
+  - name: "learning dutch"
+    aliases: ["aprendendo", "изучает", "holandês", "dutch", "язык", "learning dutch", "нидерландский", "aprendendo holandês", "study", "learning", "изучаю", "изучает нидерландский"]
+  - name: "norwegian (native/fluent)"
+    aliases: ["norwegian", "fluent", "язык", "norueguês", "norwegian (native/fluent)", "норвежский (родной/свободный)", "norueguês (nativo/fluente)", "fluente", "родной", "native", "норвежский", "свободный", "nativo"]
+  - name: "learning norwegian"
+    aliases: ["norwegian", "изучает", "learning norwegian", "язык", "aprendendo norueguês", "изучает норвежский", "норвежский", "aprendendo", "study", "norueguês", "learning", "изучаю"]
+  - name: "danish (native/fluent)"
+    aliases: ["danish", "fluent", "язык", "датский (родной/свободный)", "датский", "dinamarquês", "fluente", "родной", "native", "nativo", "свободный", "danish (native/fluent)", "dinamarquês (nativo/fluente)"]
+  - name: "learning danish"
+    aliases: ["danish", "aprendendo", "изучает", "learning", "язык", "aprendendo dinamarquês", "датский", "изучает датский", "dinamarquês", "learning danish", "study", "изучаю"]
+  - name: "hebrew (native/fluent)"
+    aliases: ["hebrew (native/fluent)", "иврит (родной/свободный)", "fluent", "язык", "hebrew", "иврит", "hebraico (nativo/fluente)", "fluente", "hebraico", "родной", "native", "свободный", "nativo"]
+  - name: "learning hebrew"
+    aliases: ["learning hebrew", "изучает", "изучает иврит", "язык", "hebrew", "иврит", "aprendendo hebraico", "hebraico", "aprendendo", "study", "learning", "изучаю"]
+  - name: "krasnoyarsk"
+    aliases: ["красноярск", "krasnoyarsk", "rússia", "россия", "russia", "location"]
+  - name: "ufa"
+    aliases: ["ufa", "уфа", "rússia", "россия", "russia", "location"]
+  - name: "krasnodar"
+    aliases: ["krasnodar", "rússia", "россия", "russia", "краснодар", "location"]
+  - name: "voronezh"
+    aliases: ["rússia", "воронеж", "россия", "russia", "voronezh", "location"]
+  - name: "perm"
+    aliases: ["rússia", "perm", "пермь", "россия", "russia", "location"]
+  - name: "volgograd"
+    aliases: ["stalingrad", "волгоград", "volgograd", "rússia", "россия", "russia", "сталинград", "location"]
+  - name: "tyumen"
+    aliases: ["tyumen", "rússia", "россия", "russia", "тюмень", "location"]
+  - name: "saratov"
+    aliases: ["saratov", "rússia", "россия", "russia", "саратов", "location"]
+  - name: "tolyatti"
+    aliases: ["тольятти", "rússia", "россия", "russia", "tolyatti", "location"]
+  - name: "makhachkala"
+    aliases: ["makhachkala", "rússia", "россия", "russia", "махачкала", "location"]
+  - name: "izhevsk"
+    aliases: ["rússia", "izhevsk", "россия", "russia", "ижевск", "location"]
+  - name: "khabarovsk"
+    aliases: ["rússia", "россия", "russia", "khabarovsk", "хабаровск", "location"]
+  - name: "ulyanovsk"
+    aliases: ["ульяновск", "rússia", "россия", "russia", "ulyanovsk", "location"]
+  - name: "barnaul"
+    aliases: ["barnaul", "rússia", "россия", "russia", "барнаул", "location"]
+  - name: "yaroslavl"
+    aliases: ["rússia", "ярославль", "россия", "yaroslavl", "russia", "location"]
+  - name: "irkutsk"
+    aliases: ["rússia", "россия", "иркутск", "russia", "irkutsk", "location"]
+  - name: "tomsk"
+    aliases: ["rússia", "россия", "russia", "томск", "tomsk", "location"]
+  - name: "kemerovo"
+    aliases: ["kemerovo", "кемерово", "rússia", "россия", "russia", "location"]
+  - name: "naberezhnye chelny"
+    aliases: ["набережные", "челны", "naberezhnye chelny", "rússia", "набережные челны", "россия", "russia", "naberezhnye", "chelny", "location"]
+  - name: "orenburg"
+    aliases: ["orenburg", "rússia", "россия", "russia", "оренбург", "location"]
+  - name: "novokuznetsk"
+    aliases: ["novokuznetsk", "rússia", "россия", "russia", "новокузнецк", "location"]
+  - name: "ryazan"
+    aliases: ["rússia", "россия", "ryazan", "russia", "рязань", "location"]
+  - name: "balashikha"
+    aliases: ["rússia", "россия", "russia", "балашиха", "balashikha", "location"]
+  - name: "penza"
+    aliases: ["penza", "пенза", "rússia", "россия", "russia", "location"]
+  - name: "cheboksary"
+    aliases: ["rússia", "россия", "russia", "чебоксары", "cheboksary", "location"]
+  - name: "lipetsk"
+    aliases: ["lipetsk", "rússia", "липецк", "россия", "russia", "location"]
+  - name: "kaliningrad"
+    aliases: ["kaliningrad", "rússia", "koenigsberg", "калининград", "россия", "кенигсберг", "russia", "location"]
+  - name: "tula"
+    aliases: ["rússia", "tula", "россия", "тула", "russia", "location"]
+  - name: "sochi"
+    aliases: ["sochi", "rússia", "россия", "russia", "сочи", "location"]
+  - name: "kursk"
+    aliases: ["rússia", "kursk", "россия", "russia", "курск", "location"]
+  - name: "tver"
+    aliases: ["тверь", "rússia", "россия", "russia", "tver", "location"]
+  - name: "stavropol"
+    aliases: ["stavropol", "rússia", "россия", "russia", "ставрополь", "location"]
+  - name: "bryansk"
+    aliases: ["rússia", "брянск", "россия", "russia", "bryansk", "location"]
+  - name: "ivanovo"
+    aliases: ["иваново", "rússia", "ivanovo", "россия", "russia", "location"]
+  - name: "magnitogorsk"
+    aliases: ["rússia", "россия", "russia", "магнитогорск", "magnitogorsk", "location"]
+  - name: "belgorod"
+    aliases: ["rússia", "belgorod", "россия", "russia", "белгород", "location"]
+  - name: "surgut"
+    aliases: ["rússia", "россия", "russia", "surgut", "сургут", "location"]
+  - name: "vladimir"
+    aliases: ["vladimir", "владимир", "rússia", "россия", "russia", "location"]
+  - name: "nizhny tagil"
+    aliases: ["rússia", "nizhny", "тагил", "россия", "russia", "нижний", "tagil", "nizhny tagil", "нижний тагил", "location"]
+  - name: "arkhangelsk"
+    aliases: ["rússia", "россия", "russia", "arkhangelsk", "архангельск", "location"]
+  - name: "chita"
+    aliases: ["chita", "чита", "rússia", "россия", "russia", "location"]
+  - name: "kaluga"
+    aliases: ["калуга", "kaluga", "rússia", "россия", "russia", "location"]
+  - name: "smolensk"
+    aliases: ["smolensk", "rússia", "россия", "russia", "смоленск", "location"]
+  - name: "volzhsky"
+    aliases: ["rússia", "россия", "russia", "volzhsky", "волжский", "location"]
+  - name: "kurgan"
+    aliases: ["kurgan", "rússia", "россия", "russia", "курган", "location"]
+  - name: "cherepovets"
+    aliases: ["rússia", "россия", "russia", "cherepovets", "череповец", "location"]
+  - name: "oryol"
+    aliases: ["oryol", "rússia", "россия", "russia", "орёл", "location"]
+  - name: "saransk"
+    aliases: ["rússia", "россия", "saransk", "russia", "саранск", "location"]
+  - name: "vologda"
+    aliases: ["rússia", "вологда", "россия", "russia", "vologda", "location"]
+  - name: "yakutsk"
+    aliases: ["yakutsk", "rússia", "россия", "russia", "якутск", "location"]
+  - name: "podolsk"
+    aliases: ["podolsk", "rússia", "подольск", "россия", "russia", "location"]
+  - name: "murmansk"
+    aliases: ["rússia", "россия", "russia", "murmansk", "мурманск", "location"]
+  - name: "grozny"
+    aliases: ["rússia", "россия", "russia", "grozny", "грозный", "location"]
+  - name: "tambov"
+    aliases: ["тамбов", "rússia", "россия", "russia", "tambov", "location"]
+  - name: "sterlitamak"
+    aliases: ["rússia", "россия", "стерлитамак", "russia", "sterlitamak", "location"]
+  - name: "petrozavodsk"
+    aliases: ["петрозаводск", "petrozavodsk", "rússia", "россия", "russia", "location"]
+  - name: "kostroma"
+    aliases: ["rússia", "россия", "russia", "kostroma", "кострома", "location"]
+  - name: "nizhnevartovsk"
+    aliases: ["нижневартовск", "rússia", "россия", "russia", "nizhnevartovsk", "location"]
+  - name: "novorossiysk"
+    aliases: ["новороссийск", "novorossiysk", "rússia", "россия", "russia", "location"]
+  - name: "yoshkar-ola"
+    aliases: ["yoshkar-ola", "ола", "йошкар", "йошкар-ола", "rússia", "россия", "russia", "ola", "yoshkar", "location"]
+  - name: "khimki"
+    aliases: ["rússia", "химки", "россия", "russia", "khimki", "location"]
+  - name: "taganrog"
+    aliases: ["rússia", "таганрог", "россия", "russia", "taganrog", "location"]
+  - name: "komsomolsk-on-amur"
+    aliases: ["komsomolsk-on-amur", "amur", "комсомольск", "rússia", "komsomolsk", "на", "россия", "russia", "on", "комсомольск-на-амуре", "амуре", "location"]
+  - name: "syktyvkar"
+    aliases: ["rússia", "россия", "сыктывкар", "russia", "syktyvkar", "location"]
+  - name: "nalchik"
+    aliases: ["nalchik", "rússia", "россия", "russia", "нальчик", "location"]
+  - name: "nizhnekamsk"
+    aliases: ["rússia", "nizhnekamsk", "россия", "russia", "нижнекамск", "location"]
+  - name: "shakhty"
+    aliases: ["rússia", "россия", "russia", "shakhty", "шахты", "location"]
+  - name: "dzerzhinsk"
+    aliases: ["rússia", "россия", "russia", "дзержинск", "dzerzhinsk", "location"]
+  - name: "bratsk"
+    aliases: ["rússia", "россия", "bratsk", "russia", "братск", "location"]
+  - name: "orsk"
+    aliases: ["rússia", "россия", "russia", "орск", "orsk", "location"]
+  - name: "angarsk"
+    aliases: ["ангарск", "rússia", "россия", "russia", "angarsk", "location"]
+  - name: "blagoveshchensk"
+    aliases: ["rússia", "благовещенск", "россия", "russia", "blagoveshchensk", "location"]
+  - name: "engels"
+    aliases: ["engels", "rússia", "россия", "russia", "энгельс", "location"]
+  - name: "stary oskol"
+    aliases: ["oskol", "rússia", "россия", "russia", "stary oskol", "stary", "старый оскол", "старый", "оскол", "location"]
+  - name: "veliky novgorod"
+    aliases: ["великий новгород", "новгород", "novgorod", "rússia", "великий", "veliky", "россия", "russia", "veliky novgorod", "location"]
+  - name: "pskov"
+    aliases: ["pskov", "псков", "rússia", "россия", "russia", "location"]
+  - name: "belly inflation"
+    aliases: ["belly", "inflation", "fetish", "stomach", "tummy", "guts"]
+  - name: "asexual"
+    aliases: ["dating", "отношения", "relacionamento", "sex", "пол", "ориентация", "sexo", "gender", "asexual", "асексуал", "assexual"]
