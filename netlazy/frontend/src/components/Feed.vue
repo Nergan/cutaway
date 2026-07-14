@@ -20,7 +20,7 @@
         </div>
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
-          <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(profile, m)">
+          <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(m, profile.media)">
              <div v-if="!m.isLoaded" class="media-loader">
                <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
              </div>
@@ -190,11 +190,14 @@ function handleWheel(e) {
   e.currentTarget.scrollLeft += e.deltaY
 }
 
-function handleMediaClick(profile, mediaObj) {
+function handleMediaClick(mediaObj, mediaList) {
   if (mediaObj.blur) mediaObj.blur = false
   else {
-    store.state.lightbox.media = mediaObj
-    store.state.lightbox.open = true
+    const idx = mediaList.findIndex(x => x.url === mediaObj.url);
+    store.state.lightbox.mediaList = mediaList;
+    store.state.lightbox.index = idx !== -1 ? idx : 0;
+    store.state.lightbox.isEditable = false;
+    store.state.lightbox.open = true;
   }
 }
 

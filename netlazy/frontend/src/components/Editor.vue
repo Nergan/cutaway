@@ -503,8 +503,12 @@ async function drop(idx) {
 }
 
 function openLightbox(m) {
-  store.state.lightbox.media = m
-  store.state.lightbox.open = true
+  const list = store.state.myProfile.media.filter(x => !x.isUploading);
+  const idx = list.findIndex(x => x.url === m.url);
+  store.state.lightbox.mediaList = list;
+  store.state.lightbox.index = idx !== -1 ? idx : 0;
+  store.state.lightbox.isEditable = true;
+  store.state.lightbox.open = true;
 }
 
 let startX, startW

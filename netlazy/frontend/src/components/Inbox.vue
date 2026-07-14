@@ -13,7 +13,7 @@
             </div>
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m)">
+              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                  <div v-if="!m.isLoaded" class="media-loader">
                    <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
                  </div>
@@ -92,7 +92,7 @@
             </div>
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m)">
+              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                  <div v-if="!m.isLoaded" class="media-loader">
                    <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
                  </div>
@@ -149,7 +149,7 @@
             </div>
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m)">
+              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                  <div v-if="!m.isLoaded" class="media-loader">
                    <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
                  </div>
@@ -192,7 +192,7 @@
             </div>
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m)">
+              <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                  <div v-if="!m.isLoaded" class="media-loader">
                    <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
                  </div>
@@ -256,11 +256,14 @@ onMounted(() => {
 })
 onUnmounted(() => document.removeEventListener('click', closeAllDropdowns))
 
-function handleMediaClick(mediaObj) {
+function handleMediaClick(mediaObj, mediaList) {
   if (mediaObj.blur) mediaObj.blur = false
   else {
-    store.state.lightbox.media = mediaObj
-    store.state.lightbox.open = true
+    const idx = mediaList.findIndex(x => x.url === mediaObj.url);
+    store.state.lightbox.mediaList = mediaList;
+    store.state.lightbox.index = idx !== -1 ? idx : 0;
+    store.state.lightbox.isEditable = false;
+    store.state.lightbox.open = true;
   }
 }
 

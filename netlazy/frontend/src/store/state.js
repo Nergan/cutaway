@@ -47,7 +47,7 @@ const defaultState = {
     feedTagSearch: "",
     feed: [],
     inbox: [],
-    lightbox: { open: false, media: null }
+    lightbox: { open: false, mediaList: [], index: 0, isEditable: false }
 };
 
 let instance = null;
