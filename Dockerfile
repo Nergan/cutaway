@@ -41,10 +41,10 @@ WORKDIR /app
 # Copy the entire repository first to allow plugin discovery during build
 COPY --chown=user . .
 
-# Очищаем файлы от CRLF и делаем их исполняемыми ДО запуска сборки
+# 1. СНАЧАЛА исправляем концы строк (CRLF -> LF)
 RUN sed -i 's/\r$//' start.sh build.sh && chmod +x build.sh start.sh
 
-# Upgrade pip and execute the resilient build process
+# 2. И ТОЛЬКО ПОТОМ запускаем сборку
 RUN pip install --no-cache-dir --upgrade pip && ./build.sh
 
 EXPOSE 7860
