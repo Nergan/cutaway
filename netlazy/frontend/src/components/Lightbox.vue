@@ -11,17 +11,21 @@
         </div>
         
         <div class="lightbox-content-wrapper" @click.stop>
-          <img v-if="currentMedia.media_type === 'image'" 
-               :src="currentMedia.url" 
-               class="lightbox-content"
-               :class="{'is-blurred': currentMedia.blur}"
-               alt="media" @click.stop="handleMediaClick(currentMedia)">
-               
-          <video v-else-if="currentMedia.media_type === 'video'" 
+          <transition name="lightbox-slide" mode="out-in">
+            <img v-if="currentMedia.media_type === 'image'" 
+                 :key="currentMedia.url"
                  :src="currentMedia.url" 
-                 class="lightbox-content" 
+                 class="lightbox-content"
                  :class="{'is-blurred': currentMedia.blur}"
-                 controls autoplay loop @click.stop="handleMediaClick(currentMedia)"></video>
+                 alt="media" @click.stop="handleMediaClick(currentMedia)">
+                 
+            <video v-else-if="currentMedia.media_type === 'video'" 
+                   :key="currentMedia.url"
+                   :src="currentMedia.url" 
+                   class="lightbox-content" 
+                   :class="{'is-blurred': currentMedia.blur}"
+                   controls autoplay loop @click.stop="handleMediaClick(currentMedia)"></video>
+          </transition>
 
           <div v-if="store.state.lightbox.isEditable" class="media-remove" @click.stop="!currentMedia.isDeleting && removeMedia(currentMedia)" style="width: 32px; height: 32px; font-size: 1.2rem; top: 8px; right: 8px;">
             <i class="bi" :class="currentMedia.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>

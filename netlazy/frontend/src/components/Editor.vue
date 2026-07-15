@@ -9,17 +9,27 @@
         </div>
       </div>
       
-      <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start;">
-        <span class="chip" 
-              :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
-              :id="'lib-tag-'+tag.name" 
-              v-for="tag in filteredTags" 
-              :key="tag.name" 
-              @click="flyTag($event, tag.name, !store.state.myProfile.tags.includes(tag.name), true)">
-          {{ store.getLocalizedTag(tag.name) }}
-          <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
-        </span>
-        <div v-if="filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;">
+      <div class="tag-library-list" id="lib-tags-zone" style="align-content: flex-start;">
+        
+        <div class="accordion" v-for="(tags, cat) in groupedTags" :key="cat" v-show="tags.length > 0">
+          <div class="accordion-header" @click="toggleAccordion(cat)">
+            {{ store.t(cat) || cat }} 
+            <i class="bi" :class="openAccordions[cat] ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          </div>
+          <div class="accordion-body chip-group" :class="{ open: openAccordions[cat] }">
+            <span class="chip" 
+                  :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
+                  :id="'lib-tag-'+tag.name" 
+                  v-for="tag in tags" 
+                  :key="tag.name" 
+                  @click="flyTag($event, tag.name, !store.state.myProfile.tags.includes(tag.name), true)">
+              {{ store.getLocalizedTag(tag.name) }}
+              <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
+            </span>
+          </div>
+        </div>
+
+        <div v-if="filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem; padding: 1.5rem;">
           {{ store.t('no_tags_found') }}
         </div>
       </div>
@@ -145,6 +155,42 @@ const filteredTags = computed(() => {
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
   )
 })
+
+const categoryKeywords = {
+  'Lifestyle': ['travel', 'food', 'vegan', 'fitness', 'health', 'morning', 'night', 'pets', 'minimalist', 'lifestyle', 'life', 'yoga', 'coffee', 'tea'],
+  'Hobbies': ['gaming', 'reading', 'music', 'art', 'photography', 'writing', 'sports', 'cooking', 'hobby', 'hobbies', 'dance', 'craft'],
+  'Interests': ['tech', 'science', 'history', 'movies', 'anime', 'fashion', 'politics', 'nature', 'interest', 'book', 'film'],
+  'Preferences': ['casual', 'serious', 'short-term', 'long-term', 'chat', 'meetup', 'remote', 'preference', 'local']
+};
+
+function getCategoryForTag(tagName) {
+  const lower = tagName.toLowerCase();
+  for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(kw => lower.includes(kw))) return cat;
+  }
+  return 'Other';
+}
+
+const groupedTags = computed(() => {
+  const groups = { 'Lifestyle': [], 'Hobbies': [], 'Interests': [], 'Preferences': [], 'Other': [] };
+  filteredTags.value.forEach(tag => {
+    const cat = getCategoryForTag(tag.name);
+    if (groups[cat]) groups[cat].push(tag);
+  });
+  return groups;
+});
+
+const openAccordions = ref({
+  'Lifestyle': true,
+  'Hobbies': true,
+  'Interests': true,
+  'Preferences': true,
+  'Other': true
+});
+
+function toggleAccordion(cat) {
+  openAccordions.value[cat] = !openAccordions.value[cat];
+}
 
 const validMedia = computed(() => {
   return (store.state.myProfile.media || []).filter(m => m && m.url)

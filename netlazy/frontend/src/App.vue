@@ -109,25 +109,31 @@
           <div style="width: 40px;"></div>
         </header>
 
-        <Editor v-show="store.state.currentView === 'editor'" />
-        <Feed v-show="store.state.currentView === 'feed'" />
-        <Inbox v-show="store.state.currentView === 'inbox'" />
+        <div style="position:relative; flex-grow:1; display:flex; flex-direction:column; overflow:hidden;">
+          <transition name="view-fade" mode="out-in">
+            <KeepAlive>
+              <Editor v-if="store.state.currentView === 'editor'" key="editor" />
+              <Feed v-else-if="store.state.currentView === 'feed'" key="feed" />
+              <Inbox v-else-if="store.state.currentView === 'inbox'" key="inbox" />
 
-        <div class="scrollable-content" v-show="store.state.currentView === 'vault'">
-           <div style="margin-bottom: 2rem; color:var(--text-muted);">
-             {{ store.t('vault_desc') }}
-           </div>
-           
-           <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-              <button class="footer-action" @click="copyKey"><i class="bi bi-clipboard"></i> {{ store.t('copy_raw') }}</button>
-              <button class="footer-action" style="color: var(--accent-earth);" @click="store.logout"><i class="bi bi-box-arrow-right"></i> {{ store.t('log_out') }}</button>
-              <button class="footer-action" style="color: var(--accent-info);" @click="rotateIdentityKey"><i class="bi bi-arrow-repeat"></i> {{ store.t('regenerate_key') }}</button>
-              <button class="footer-action" style="color: var(--accent-danger);" @click="store.deleteAccount"><i class="bi bi-trash3"></i> {{ store.t('delete_account') }}</button>
-           </div>
-           
-           <div class="code-block" :style="{filter: keyVisible ? 'none' : 'blur(5px)'}" @click="keyVisible = !keyVisible" :title="store.t('click_to_reveal')">
-             {{ displayPrivateKey }}
-           </div>
+              <div class="scrollable-content" v-else-if="store.state.currentView === 'vault'" key="vault">
+                 <div style="margin-bottom: 2rem; color:var(--text-muted);">
+                   {{ store.t('vault_desc') }}
+                 </div>
+                 
+                 <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <button class="footer-action" @click="copyKey"><i class="bi bi-clipboard"></i> {{ store.t('copy_raw') }}</button>
+                    <button class="footer-action" style="color: var(--accent-earth);" @click="store.logout"><i class="bi bi-box-arrow-right"></i> {{ store.t('log_out') }}</button>
+                    <button class="footer-action" style="color: var(--accent-info);" @click="rotateIdentityKey"><i class="bi bi-arrow-repeat"></i> {{ store.t('regenerate_key') }}</button>
+                    <button class="footer-action" style="color: var(--accent-danger);" @click="store.deleteAccount"><i class="bi bi-trash3"></i> {{ store.t('delete_account') }}</button>
+                 </div>
+                 
+                 <div class="code-block" :style="{filter: keyVisible ? 'none' : 'blur(5px)'}" @click="keyVisible = !keyVisible" :title="store.t('click_to_reveal')">
+                   {{ displayPrivateKey }}
+                 </div>
+              </div>
+            </KeepAlive>
+          </transition>
         </div>
       </main>
     </template>

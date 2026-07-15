@@ -12,6 +12,24 @@
       </div>
     </div>
 
+    <div class="empty-state" v-if="!isLoading && store.state.feed.length === 0">
+      <i class="bi bi-search empty-icon"></i>
+      <h3>{{ store.t('no_profiles_match') }}</h3>
+      <p>{{ store.t('empty_search_desc') }}</p>
+      <button class="create-btn" @click="resetFilters">
+        <i class="bi bi-arrow-counterclockwise"></i> {{ store.t('reset_filters') }}
+      </button>
+      
+      <div class="suggested-tags" v-if="suggestedTags.length > 0">
+        <p>{{ store.t('suggested_tags') }}</p>
+        <div class="chip-group" style="justify-content: center;">
+          <span class="chip" v-for="tag in suggestedTags" :key="tag.name" @click="setTagRequired(tag)">
+            {{ store.getLocalizedTag(tag.name) }} <i class="bi bi-plus"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+
     <div class="grid" @click="closeAllMenus">
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id">
         
@@ -83,9 +101,8 @@
       </div>
     </div>
     
-    <div id="feed-bottom" :style="{'padding-top': store.state.feed.length === 0 ? '4rem' : '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
+    <div id="feed-bottom" v-show="store.state.feed.length > 0 || isLoading" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
       <span v-if="isLoading"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
-      <span v-else-if="store.state.feed.length === 0">{{ store.t('no_profiles_match') }}</span>
       <span v-else-if="!hasMore">End of feed.</span>
     </div>
   </div>
@@ -118,6 +135,19 @@ const visibleSearchTags = computed(() => {
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
   )
 })
+
+const suggestedTags = computed(() => {
+  return store.state.availableSearchTags.filter(t => !t.hidden && t.state === 'neutral').slice(0, 5);
+})
+
+function resetFilters() {
+  filterText.value = '';
+  store.state.availableSearchTags.forEach(t => t.state = 'neutral');
+}
+
+function setTagRequired(tag) {
+  tag.state = 'require';
+}
 
 async function fetchFeed(reset = false) {
   if (isLoading.value || (!hasMore.value && !reset)) return

@@ -3,7 +3,7 @@
 body {
   background: var(--bg-base); color: var(--text-main);
   line-height: 1.5; height: 100vh; overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Slim scrollbars */

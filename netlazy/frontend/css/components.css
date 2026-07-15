@@ -5,9 +5,27 @@
 .editor-bio:focus { border-color: var(--border-focus); }
 .search-header-input { font-size: 0.95rem; }
 
+/* TACTILE MICRO-INTERACTIONS */
+.chip, .create-btn, .footer-action, .icon-btn, .custom-select, .nav-item {
+  transition: background-color 0.15s ease, transform 0.1s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.chip:hover, .create-btn:hover, .icon-btn:hover, .custom-select:hover {
+  transform: scale(1.02);
+}
+.chip:active, .create-btn:active, .icon-btn:active, .custom-select:active {
+  transform: scale(0.98);
+}
+.footer-action:active {
+  transform: scale(0.95);
+}
+.seamless-input:focus-visible, .editor-bio:focus-visible, button:focus-visible, .chip:focus-visible, .nav-item:focus-visible, .custom-select:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 /* TAG CHIPS */
 .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.chip { font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: var(--radius-pill); cursor: default; user-select: none; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted); transition: all 0.2s; }
+.chip { font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: var(--radius-pill); cursor: default; user-select: none; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted); }
 .chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
 .chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
 .chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
@@ -79,8 +97,7 @@ body.light-theme .audio-minimal { filter: none; }
 .contact-action.danger:hover { color: var(--accent-danger); }
 
 /* CUSTOM DROPDOWN */
-.custom-select { position: relative; width: 100%; font-size: 0.85rem; color: var(--text-main); background: var(--bg-elevated); padding: 0.5rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; margin-top: 0.5rem; border: 1px solid var(--border-subtle); transition: border-color 0.2s; }
-.custom-select:hover { border-color: var(--border-focus); }
+.custom-select { position: relative; width: 100%; font-size: 0.85rem; color: var(--text-main); background: var(--bg-elevated); padding: 0.5rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; margin-top: 0.5rem; border: 1px solid var(--border-subtle); }
 .custom-select-menu { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--bg-surface); border: 1px solid var(--border-focus); border-radius: var(--radius-sm); z-index: 999; max-height: 150px; overflow-y: auto; margin-bottom: 0.3rem; box-shadow: var(--shadow-md); animation: fadeIn 0.15s ease-out; }
 .custom-select-option { padding: 0.6rem; transition: background 0.2s; cursor: pointer; font-size: 0.85rem; color: var(--text-main); }
 .custom-select-option:hover { background: var(--bg-elevated); }
