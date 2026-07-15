@@ -155,6 +155,14 @@ export function useStore() {
         return txt;
     }
 
+    function getLocalizedTag(tagName) {
+        const tagObj = state.availableSearchTags.find(t => t.name === tagName);
+        if (tagObj && tagObj.i18n) {
+            return tagObj.i18n[state.lang] || tagObj.i18n['en'] || tagName;
+        }
+        return tagName;
+    }
+
     function showConfirm(title, message, onConfirm, isDanger = false, confirmText = "confirm", cancelText = "cancel") {
         state.confirmModal.title = title;
         state.confirmModal.message = message;
@@ -294,7 +302,13 @@ export function useStore() {
     async function fetchTags() {
         try {
             const res = await api.get('/tags/search');
-            state.availableSearchTags = res.data.map(t => ({ name: t.name, aliases: t.aliases || [], hidden: t.hidden, state: 'neutral' }));
+            state.availableSearchTags = res.data.map(t => ({ 
+                name: t.name, 
+                aliases: t.aliases || [], 
+                hidden: t.hidden, 
+                state: 'neutral',
+                i18n: t.i18n || {}
+            }));
         } catch (e) {}
     }
 
@@ -324,7 +338,7 @@ export function useStore() {
     if (state.theme === 'light') document.body.classList.add('light-theme');
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, getLocalizedTag
     };
     return instance;
 }

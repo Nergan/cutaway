@@ -9,6 +9,7 @@ class TagResponse(BaseModel):
     name: str
     aliases: List[str] = []
     hidden: bool = False
+    i18n: dict = {}
 
 @router.get("/search", response_model=List[TagResponse])
 async def search_tags(
@@ -18,4 +19,4 @@ async def search_tags(
         tags = await tag_service.browse()
     else:
         tags = await tag_service.search(q)
-    return [TagResponse(name=t.name, aliases=t.aliases, hidden=t.hidden) for t in tags]
+    return [TagResponse(name=t.name, aliases=t.aliases, hidden=t.hidden, i18n=t.i18n) for t in tags]

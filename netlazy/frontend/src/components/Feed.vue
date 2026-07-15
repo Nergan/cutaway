@@ -7,7 +7,7 @@
       </div>
       <div class="tag-scroll-area" @wheel="handleWheel">
         <span class="chip" v-for="tag in visibleSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
-          {{ tag.name }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+          {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
         </span>
       </div>
     </div>
@@ -30,7 +30,7 @@
         </div>
         
         <div class="chip-group" v-if="profile.tags && profile.tags.length > 0">
-          <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ tag }}</span>
+          <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
         </div>
         <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
 
@@ -112,7 +112,11 @@ const visibleSearchTags = computed(() => {
   if (!query) {
       return store.state.availableSearchTags.filter(t => !t.hidden)
   }
-  return store.state.availableSearchTags.filter(t => t.name.includes(query) || t.aliases.some(a => a.includes(query)))
+  return store.state.availableSearchTags.filter(t => 
+      (t.name && t.name.toLowerCase().includes(query)) || 
+      (t.aliases && t.aliases.some(a => a && a.toLowerCase().includes(query))) ||
+      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
+  )
 })
 
 async function fetchFeed(reset = false) {

@@ -16,7 +16,7 @@
               v-for="tag in filteredTags" 
               :key="tag.name" 
               @click="flyTag($event, tag.name, !store.state.myProfile.tags.includes(tag.name), true)">
-          {{ tag.name }}
+          {{ store.getLocalizedTag(tag.name) }}
           <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
         </span>
         <div v-if="filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;">
@@ -99,7 +99,7 @@
         <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:0.5rem;">{{ store.t('active_tags') }}</div>
         <div class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
           <span class="chip require" :id="'act-tag-'+tag" v-for="tag in store.state.myProfile.tags" :key="tag" @click="flyTag($event, tag, false, false)">
-            {{ tag }}
+            {{ store.getLocalizedTag(tag) }}
           </span>
           <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">{{ store.t('none') }}</span>
         </div>
@@ -139,7 +139,11 @@ const filteredTags = computed(() => {
   if (!query) {
       return store.state.availableSearchTags.filter(t => !t.hidden)
   }
-  return store.state.availableSearchTags.filter(t => t.name.includes(query) || t.aliases.some(a => a.includes(query)))
+  return store.state.availableSearchTags.filter(t => 
+      (t.name && t.name.toLowerCase().includes(query)) || 
+      (t.aliases && t.aliases.some(a => a && a.toLowerCase().includes(query))) ||
+      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
+  )
 })
 
 const validMedia = computed(() => {

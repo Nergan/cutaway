@@ -117,7 +117,7 @@ class MongoTagRepository(TagRepository):
         for tag in tags:
             await db_instance.tags_collection.update_one(
                 {"name": tag.name},
-                {"$set": {"aliases": tag.aliases, "hidden": tag.hidden}},
+                {"$set": {"aliases": tag.aliases, "hidden": tag.hidden, "i18n": tag.i18n}},
                 upsert=True,
             )
         await db_instance.tags_collection.delete_many({"name": {"$nin": valid_names}})
@@ -138,9 +138,13 @@ class MongoTagRepository(TagRepository):
         negative = [t[1:].lower() for t in tokens if t.startswith("-") and len(t) > 1]
         cursor = db_instance.tags_collection.find({})
         all_tags = [self._to_domain(doc) async for doc in cursor]
+        
         def matches(tag: Tag, term: str) -> bool:
             if term in tag.name.lower(): return True
-            return any(term in alias.lower() for alias in tag.aliases)
+            if any(term in alias.lower() for alias in tag.aliases): return True
+            if tag.i18n and any(term in str(v).lower() for v in tag.i18n.values()): return True
+            return False
+            
         if positive:
             results = [t for t in all_tags if any(matches(t, term) for term in positive)]
         else:
@@ -156,7 +160,9 @@ class MongoTagRepository(TagRepository):
     def _to_domain(self, doc: dict) -> Tag:
         return Tag(
             name=doc["name"],
-            aliases=doc.get("aliases", []), hidden=doc.get("hidden", False),
+            aliases=doc.get("aliases", []), 
+            hidden=doc.get("hidden", False),
+            i18n=doc.get("i18n", {})
         )
 
 class MongoProfileRepository(ProfileRepository):
