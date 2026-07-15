@@ -13,20 +13,30 @@ def load_tags_from_yaml(path: str) -> List[Tag]:
 
     tags = []
     for entry in raw.get("tags", []):
-        aliases = entry.get("aliases", [])
+        name_field = entry.get("name", "")
+        
+        if isinstance(name_field, dict):
+            # Extract aliases and hidden from inside 'name' if they were accidentally nested
+            aliases = name_field.pop("aliases", entry.get("aliases", []))
+            is_hidden = name_field.pop("hidden", entry.get("hidden", False))
+            
+            canonical_name = name_field.get("en")
+            if not canonical_name:
+                canonical_name = str(next(iter(name_field.values()))) if name_field else ""
+                
+            i18n_dict = name_field
+        else:
+            aliases = entry.get("aliases", [])
+            is_hidden = entry.get("hidden", False)
+            
+            canonical_name = str(name_field)
+            i18n_dict = {"en": canonical_name}
+
         if not isinstance(aliases, list):
             aliases = []
             
         lower_aliases = [str(a).lower() for a in aliases]
-        is_hidden = entry.get("hidden", False) or "age" in lower_aliases or "location" in lower_aliases
-        
-        name_field = entry.get("name", "")
-        if isinstance(name_field, dict):
-            canonical_name = name_field.get("en", str(name_field))
-            i18n_dict = name_field
-        else:
-            canonical_name = str(name_field)
-            i18n_dict = {"en": canonical_name}
+        is_hidden = bool(is_hidden) or "age" in lower_aliases or "location" in lower_aliases
 
         tags.append(Tag(
             name=canonical_name,

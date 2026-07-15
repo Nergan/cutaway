@@ -141,7 +141,7 @@ class MongoTagRepository(TagRepository):
         
         def matches(tag: Tag, term: str) -> bool:
             if term in tag.name.lower(): return True
-            if any(term in alias.lower() for alias in tag.aliases): return True
+            if any(term in str(alias).lower() for alias in tag.aliases): return True
             if tag.i18n and any(term in str(v).lower() for v in tag.i18n.values()): return True
             return False
             
