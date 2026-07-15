@@ -113,8 +113,8 @@ const visibleSearchTags = computed(() => {
       return store.state.availableSearchTags.filter(t => !t.hidden)
   }
   return store.state.availableSearchTags.filter(t => 
-      (t.name && t.name.toLowerCase().includes(query)) || 
-      (t.aliases && t.aliases.some(a => a && a.toLowerCase().includes(query))) ||
+      (t.name && String(t.name).toLowerCase().includes(query)) || 
+      (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
   )
 })

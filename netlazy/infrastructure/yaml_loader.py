@@ -14,7 +14,11 @@ def load_tags_from_yaml(path: str) -> List[Tag]:
     tags = []
     for entry in raw.get("tags", []):
         aliases = entry.get("aliases", [])
-        is_hidden = entry.get("hidden", False) or "age" in aliases or "location" in aliases
+        if not isinstance(aliases, list):
+            aliases = []
+            
+        lower_aliases = [str(a).lower() for a in aliases]
+        is_hidden = entry.get("hidden", False) or "age" in lower_aliases or "location" in lower_aliases
         
         name_field = entry.get("name", "")
         if isinstance(name_field, dict):
@@ -26,8 +30,8 @@ def load_tags_from_yaml(path: str) -> List[Tag]:
 
         tags.append(Tag(
             name=canonical_name,
-            aliases=aliases,
-            hidden=is_hidden,
+            aliases=[str(a) for a in aliases],
+            hidden=bool(is_hidden),
             i18n=i18n_dict
         ))
     return tags
