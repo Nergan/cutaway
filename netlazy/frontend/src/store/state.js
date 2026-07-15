@@ -62,17 +62,41 @@ export function useStore() {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
-                ['isRegistered', 'isBanned', 'currentView', 'theme', 'lang', 'sidebarWidth', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
+                
+                // 1. Load non-auth UI states immediately
+                ['theme', 'lang', 'sidebarWidth', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
 
-                if (state.isRegistered && state.privateKeyPem && !state.isBanned) {
-                    const keys = await loadPrivateKey(state.privateKeyPem);
-                    state.keyPair = keys.keyPair;
-                    
-                    await fetchTags(); 
-                    await fetchMyProfile();
-                    await fetchInbox();
+                if (parsed.isRegistered && parsed.privateKeyPem) {
+                    try {
+                        const keys = await loadPrivateKey(parsed.privateKeyPem);
+                        state.keyPair = keys.keyPair;
+                        
+                        // 2. Only restore auth-dependent variables AFTER the keyPair is initialized.
+                        // This prevents child components like <Feed /> from prematurely mounting and
+                        // firing API requests lacking cryptographic headers.
+                        ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
+                            if (parsed[k] !== undefined) state[k] = parsed[k];
+                        });
+                        
+                        if (!state.isBanned) {
+                            await fetchTags(); 
+                            await fetchMyProfile();
+                            await fetchInbox();
+                        }
+                    } catch (keyErr) {
+                        console.warn("Failed to load private key, logging out:", keyErr);
+                        state.isRegistered = false;
+                        state.isBanned = false;
+                        state.privateKeyPem = null;
+                        state.publicKeyPem = null;
+                        state.userId = null;
+                    }
+                } else {
+                    ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
+                        if (parsed[k] !== undefined) state[k] = parsed[k];
+                    });
                 }
             }
         } catch (e) {
@@ -91,16 +115,20 @@ export function useStore() {
                 theme: state.theme, lang: state.lang,
                 sidebarWidth: state.sidebarWidth, workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
-                userId: state.userId, privateKeyPem: state.publicKeyPem, publicKeyPem: state.publicKeyPem
+                // Fix: ensure the local cache saves the 'privateKeyPem' field correctly,
+                // instead of incorrectly overwriting it with the 'publicKeyPem'.
+                userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(saveObj));
         } catch (e) {}
     }, { deep: true });
 
     let toastId = 0;
-    function addToast(msg, icon = 'bi-info-circle', type = 'default') {
+    function addToast(msg, icon = 'bi-info-circle', type = 'minimal') {
         const id = toastId++;
-        state.toasts.push({ id, msg, icon, type });
+        // Force the type to 'minimal' internally so that all toasts use the
+        // subtle, transparent look originally used by the 'vault synced' alert.
+        state.toasts.push({ id, msg, icon, type: 'minimal' });
         setTimeout(() => {
             const idx = state.toasts.findIndex(t => t.id === id);
             if (idx !== -1) state.toasts.splice(idx, 1);
