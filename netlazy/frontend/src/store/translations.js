@@ -79,7 +79,8 @@ export default {
     no_matches: "no matches",
     declined: "declined",
     lang: "language",
-    reset_tags: "reset tags"
+    reset_tags: "reset tags",
+    end_of_feed: "end of feed"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -161,7 +162,8 @@ export default {
     no_matches: "нет совпадений",
     declined: "отклонено",
     lang: "язык",
-    reset_tags: "сбросить теги"
+    reset_tags: "сбросить теги",
+    end_of_feed: "конец ленты"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -243,10 +245,11 @@ export default {
     no_matches: "nenhuma combinação",
     declined: "recusado",
     lang: "idioma",
-    reset_tags: "redefinir tags"
+    reset_tags: "redefinir tags",
+    end_of_feed: "fim do feed"
   },
   zh: {
-    welcome_desc: "只是約會。沒有操縱性機制，沒有激進的貨幣化。請負責任 :^",
+    welcome_desc: "編譯器會在用戶端生成金鑰，保證通訊極致隱私安全。請負責地使用。 :^",
     create_account: "一鍵創建帳戶",
     light_mode: "亮色模式",
     dark_mode: "暗色模式",
@@ -325,7 +328,8 @@ export default {
     no_matches: "沒有配對",
     declined: "已拒絕",
     lang: "語言",
-    reset_tags: "重置標籤"
+    reset_tags: "重置標籤",
+    end_of_feed: "到底了"
   },
   ja: {
     welcome_desc: "ただのデートです。操作的な仕組みや、積極的な収益化はありません。責任を持って行動してください :^",
@@ -343,7 +347,7 @@ export default {
     active_tags: "アクティブなタグ",
     none: "なし",
     contacts: "連絡先",
-    contact_placeholder: "メール、電話、またはリンク...",
+    contact_placeholder: "メール, 電話, またはリンク...",
     audio: "音声",
     video: "動画",
     filter_tags_placeholder: "入力して利用可能なタグをフィルタリング...",
@@ -407,7 +411,8 @@ export default {
     no_matches: "マッチはありません",
     declined: "拒否されました",
     lang: "言語",
-    reset_tags: "タグをリセット"
+    reset_tags: "タグをリセット",
+    end_of_feed: "フィードの最後です"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -488,7 +493,8 @@ export default {
     delete_match: "매치 삭제",
     no_matches: "매치 없음",
     declined: "거절됨",
-    lang: "언어",
-    reset_tags: "태그 초기화"
+    lang: "연락처",
+    reset_tags: "태그 초기화",
+    end_of_feed: "피드의 끝입니다"
   }
 };

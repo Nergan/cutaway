@@ -93,7 +93,7 @@
     
     <div id="feed-bottom" v-show="store.state.feed.length > 0 || isLoading" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
       <span v-if="isLoading"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
-      <span v-else-if="!hasMore">End of feed.</span>
+      <span v-else-if="!hasMore">{{ store.t('end_of_feed') }}</span>
     </div>
   </div>
 </template>
