@@ -18,7 +18,7 @@
             {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
           </button>
           <button class="footer-action" @click="store.cycleLang">
-            <i class="bi bi-globe"></i> lang: {{ store.state.lang }}
+            <i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}
           </button>
         </div>
       </div>
@@ -50,7 +50,7 @@
             {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
           </button>
           <button class="footer-action" @click="store.cycleLang">
-            <i class="bi bi-globe"></i> lang: {{ store.state.lang }}
+            <i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}
           </button>
         </div>
       </div>
@@ -61,7 +61,7 @@
         <div class="resizer-v" @mousedown="startResize"></div>
         <div class="sidebar-content">
           <div class="brand-row">
-            <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="store.state.currentView = 'feed'">netlazy</div>
+            <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="reloadPage">netlazy</div>
             <button class="collapse-btn" @click="store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed" :style="{ margin: store.state.isSidebarCollapsed ? '0 auto' : '0' }">
               <i class="bi" :class="store.state.isSidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i>
             </button>
@@ -93,7 +93,7 @@
               <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i> 
               {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
             </button>
-            <button class="footer-action" @click="store.cycleLang"><i class="bi bi-globe"></i> lang: {{ store.state.lang }}</button>
+            <button class="footer-action" @click="store.cycleLang"><i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}</button>
           </div>
         </div>
       </nav>
@@ -173,6 +173,10 @@ const importKeyInput = ref('')
 const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
+
+function reloadPage() {
+  window.location.reload()
+}
 
 const pendingInboxCount = computed(() => {
   return store.state.inbox.filter(r => r.status === 'pending' && !r.is_sender).length

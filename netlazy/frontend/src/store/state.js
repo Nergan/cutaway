@@ -91,7 +91,7 @@ export function useStore() {
                 theme: state.theme, lang: state.lang,
                 sidebarWidth: state.sidebarWidth, workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
-                userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
+                userId: state.userId, privateKeyPem: state.publicKeyPem, publicKeyPem: state.publicKeyPem
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(saveObj));
         } catch (e) {}
@@ -113,7 +113,9 @@ export function useStore() {
     }
 
     function cycleLang() {
-        state.lang = state.lang === 'en' ? 'ru' : 'en';
+        const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
+        const currentIdx = langs.indexOf(state.lang);
+        state.lang = langs[(currentIdx + 1) % langs.length];
     }
 
     function t(key, replacements = {}) {
