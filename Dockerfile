@@ -41,8 +41,8 @@ WORKDIR /app
 # Copy the entire repository first to allow plugin discovery during build
 COPY --chown=user . .
 
-# Ensure scripts are executable
-RUN chmod +x build.sh start.sh
+# Очищаем файлы от CRLF и делаем их исполняемыми ДО запуска сборки
+RUN sed -i 's/\r$//' start.sh build.sh && chmod +x build.sh start.sh
 
 # Upgrade pip and execute the resilient build process
 RUN pip install --no-cache-dir --upgrade pip && ./build.sh
