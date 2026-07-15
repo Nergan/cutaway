@@ -1,5 +1,5 @@
 <template>
-  <div class="scrollable-content" style="padding-top:0;">
+  <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header blurred-header">
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
         <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
@@ -15,8 +15,8 @@
     <div class="empty-state" v-if="!isLoading && store.state.feed.length === 0">
       <i class="bi bi-search empty-icon"></i>
       <h3>{{ store.t('no_profiles_match') }}</h3>
-      <button class="footer-action" style="margin-top: 1rem;" @click="resetFilters">
-        <i class="bi bi-arrow-counterclockwise"></i> {{ store.t('reset_filters') }}
+      <button class="footer-action" style="margin-top: 1rem;" @click="resetFilters" v-if="hasActiveFilters">
+        <i class="bi bi-arrow-counterclockwise"></i> {{ store.t('reset_tags') }}
       </button>
     </div>
 
@@ -99,11 +99,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, onActivated } from 'vue'
 import { useStore } from '../store/state.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
 const store = useStore()
+const feedRoot = ref(null)
 const filterText = ref('')
 const isLoading = ref(false)
 const hasMore = ref(true)
@@ -113,6 +114,10 @@ let observer = null
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
 )
+
+const hasActiveFilters = computed(() => {
+  return filterText.value.trim() !== '' || store.state.availableSearchTags.some(t => t.state !== 'neutral')
+})
 
 const visibleSearchTags = computed(() => {
   const query = filterText.value.toLowerCase().trim()
@@ -190,6 +195,15 @@ onMounted(() => {
 onUnmounted(() => {
   if (observer) observer.disconnect()
   document.removeEventListener('click', closeAllMenus)
+})
+
+onActivated(() => {
+  if (feedRoot.value) {
+    const videos = feedRoot.value.querySelectorAll('video')
+    videos.forEach(v => {
+      if (v.paused) v.play().catch(() => {})
+    })
+  }
 })
 
 function cycleTagState(tagObj) {

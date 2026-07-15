@@ -1,5 +1,5 @@
 <template>
-  <div class="scrollable-content">
+  <div class="scrollable-content" ref="inboxRoot">
     <div class="inbox-layout">
       
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
@@ -233,11 +233,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, onActivated } from 'vue'
 import { useStore } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
+const inboxRoot = ref(null)
 
 const validPrivateContacts = computed(() => store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== ''))
 
@@ -255,6 +256,15 @@ onMounted(() => {
   document.addEventListener('click', closeAllDropdowns)
 })
 onUnmounted(() => document.removeEventListener('click', closeAllDropdowns))
+
+onActivated(() => {
+  if (inboxRoot.value) {
+    const videos = inboxRoot.value.querySelectorAll('video')
+    videos.forEach(v => {
+      if (v.paused) v.play().catch(() => {})
+    })
+  }
+})
 
 function handleMediaClick(mediaObj, mediaList) {
   if (mediaObj.blur) mediaObj.blur = false

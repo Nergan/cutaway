@@ -1,5 +1,5 @@
 <template>
-  <div class="editor-layout">
+  <div class="editor-layout" ref="editorRoot">
     <div class="tag-library-pane">
       <div class="tag-library-header blurred-header">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
@@ -120,11 +120,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onActivated } from 'vue'
 import { useStore } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
+const editorRoot = ref(null)
 const fileInput = ref(null)
 const dragOverIdx = ref(null)
 const isDraggingFiles = ref(false)
@@ -148,6 +149,15 @@ const filteredTags = computed(() => {
 
 const validMedia = computed(() => {
   return (store.state.myProfile.media || []).filter(m => m && m.url)
+})
+
+onActivated(() => {
+  if (editorRoot.value) {
+    const videos = editorRoot.value.querySelectorAll('video')
+    videos.forEach(v => {
+      if (v.paused) v.play().catch(() => {})
+    })
+  }
 })
 
 function triggerAutosave() {
