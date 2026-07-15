@@ -15,19 +15,9 @@
     <div class="empty-state" v-if="!isLoading && store.state.feed.length === 0">
       <i class="bi bi-search empty-icon"></i>
       <h3>{{ store.t('no_profiles_match') }}</h3>
-      <p>{{ store.t('empty_search_desc') }}</p>
-      <button class="create-btn" @click="resetFilters">
+      <button class="footer-action" style="margin-top: 1rem;" @click="resetFilters">
         <i class="bi bi-arrow-counterclockwise"></i> {{ store.t('reset_filters') }}
       </button>
-      
-      <div class="suggested-tags" v-if="suggestedTags.length > 0">
-        <p>{{ store.t('suggested_tags') }}</p>
-        <div class="chip-group" style="justify-content: center;">
-          <span class="chip" v-for="tag in suggestedTags" :key="tag.name" @click="setTagRequired(tag)">
-            {{ store.getLocalizedTag(tag.name) }} <i class="bi bi-plus"></i>
-          </span>
-        </div>
-      </div>
     </div>
 
     <div class="grid" @click="closeAllMenus">
@@ -136,17 +126,9 @@ const visibleSearchTags = computed(() => {
   )
 })
 
-const suggestedTags = computed(() => {
-  return store.state.availableSearchTags.filter(t => !t.hidden && t.state === 'neutral').slice(0, 5);
-})
-
 function resetFilters() {
   filterText.value = '';
   store.state.availableSearchTags.forEach(t => t.state = 'neutral');
-}
-
-function setTagRequired(tag) {
-  tag.state = 'require';
 }
 
 async function fetchFeed(reset = false) {

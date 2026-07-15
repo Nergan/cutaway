@@ -79,14 +79,7 @@ export default {
     no_matches: "no matches",
     declined: "declined",
     lang: "language",
-    empty_search_desc: "Try adjusting your filters or expanding your search range.",
-    reset_filters: "Reset Filters",
-    suggested_tags: "Suggested for you:",
-    Lifestyle: "Lifestyle",
-    Hobbies: "Hobbies",
-    Interests: "Interests",
-    Preferences: "Preferences",
-    Other: "Other"
+    reset_filters: "reset filters"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -162,18 +155,13 @@ export default {
     confirm_delete_match_title: "Удалить совпадение",
     confirm_delete_match_desc: "Вы уверены, что хотите навсегда удалить это мэтч? Пользователь будет удалён из списка.",
     match_deleted: "совпадение успешно удалено",
+    contact_hidden_exchange: "承認するまで連絡先は非表示になります",
+    account_banned: "this account has been banned",
     delete_match: "удалить совпадение",
     no_matches: "нет совпадений",
     declined: "отклонено",
     lang: "язык",
-    empty_search_desc: "Попробуйте изменить фильтры или расширить диапазон поиска.",
-    reset_filters: "Сбросить фильтры",
-    suggested_tags: "Предложено для вас:",
-    Lifestyle: "Образ жизни",
-    Hobbies: "Хобби",
-    Interests: "Интересы",
-    Preferences: "Предпочтения",
-    Other: "Другое"
+    reset_filters: "сбросить фильтры"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -255,14 +243,7 @@ export default {
     no_matches: "nenhuma combinação",
     declined: "recusado",
     lang: "idioma",
-    empty_search_desc: "Tente ajustar seus filtros ou expandir seu intervalo de pesquisa.",
-    reset_filters: "Redefinir Filtros",
-    suggested_tags: "Sugerido para você:",
-    Lifestyle: "Estilo de Vida",
-    Hobbies: "Hobbies",
-    Interests: "Interesses",
-    Preferences: "Preferências",
-    Other: "Outros"
+    reset_filters: "redefinir filtros"
   },
   zh: {
     welcome_desc: "只是約會。沒有操縱性機制，沒有激進的貨幣化。請負責任 :^",
@@ -344,14 +325,7 @@ export default {
     no_matches: "沒有配對",
     declined: "已拒絕",
     lang: "語言",
-    empty_search_desc: "嘗試調整您的過濾器或擴大您的搜尋範圍。",
-    reset_filters: "重置過濾器",
-    suggested_tags: "為您推薦：",
-    Lifestyle: "生活方式",
-    Hobbies: "興趣愛好",
-    Interests: "興趣",
-    Preferences: "偏好",
-    Other: "其他"
+    reset_filters: "重置過濾器"
   },
   ja: {
     welcome_desc: "ただのデートです。操作的な仕組みや、積極的な収益化はありません。責任を持って行動してください :^",
@@ -433,14 +407,7 @@ export default {
     no_matches: "マッチはありません",
     declined: "拒否されました",
     lang: "言語",
-    empty_search_desc: "フィルターを調整するか、検索範囲を広げてみてください。",
-    reset_filters: "フィルターをリセット",
-    suggested_tags: "おすすめのタグ:",
-    Lifestyle: "ライフスタイル",
-    Hobbies: "趣味",
-    Interests: "関心事",
-    Preferences: "設定",
-    Other: "その他"
+    reset_filters: "フィルターをリセット"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -522,13 +489,6 @@ export default {
     no_matches: "매치 없음",
     declined: "거절됨",
     lang: "언어",
-    empty_search_desc: "필터를 조정하거나 검색 범위를 넓혀 보세요.",
-    reset_filters: "필터 초기화",
-    suggested_tags: "추천 태그:",
-    Lifestyle: "라이프스타일",
-    Hobbies: "취미",
-    Interests: "관심사",
-    Preferences: "선호도",
-    Other: "기타"
+    reset_filters: "필터 초기화"
   }
 };
