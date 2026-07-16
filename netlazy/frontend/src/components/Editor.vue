@@ -5,17 +5,19 @@
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
           <input type="text" class="seamless-input search-header-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
-          <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
+          <transition name="fade">
+            <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
+          </transition>
         </div>
       </div>
       
-      <transition-group name="tag-list" tag="div" class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start; position: relative;">
+      <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start; position: relative;">
         <div v-if="store.state.availableSearchTags.length === 0" style="width: 100%; text-align: center; color: var(--text-muted);" key="loading-spin">
           <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i>
         </div>
         <span class="chip" 
               :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
-              v-for="tag in filteredTags" 
+              v-for="tag in filteredTags.slice(0, 150)" 
               :key="'ed-tg-'+tag.name" 
               @click="toggleTag(tag.name)">
           {{ store.getLocalizedTag(tag.name) }}
@@ -24,7 +26,7 @@
         <div v-if="store.state.availableSearchTags.length > 0 && filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;" key="no-found">
           {{ store.t('no_tags_found') }}
         </div>
-      </transition-group>
+      </div>
     </div>
 
     <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste">
@@ -336,7 +338,8 @@ async function processFiles(files) {
       }
     }).catch(e => {
       if (e.name === 'CanceledError') return;
-      store.addToast("Failed to upload audio", "bi-exclamation-triangle")
+      const msg = e.response && e.response.data && e.response.data.detail ? e.response.data.detail : "Failed to upload audio";
+      store.addToast(msg, "bi-exclamation-triangle")
       store.state.myProfile.audio = null
     })
   }
@@ -385,7 +388,8 @@ async function processFiles(files) {
       }
     }).catch(e => {
       if (e.name === 'CanceledError') return;
-      store.addToast("Failed to upload media", "bi-exclamation-triangle")
+      const msg = e.response && e.response.data && e.response.data.detail ? e.response.data.detail : "Failed to upload media";
+      store.addToast(msg, "bi-exclamation-triangle")
       store.state.myProfile.media = store.state.myProfile.media.filter(m => m.blobUrl !== temp.blobUrl)
     })
   })

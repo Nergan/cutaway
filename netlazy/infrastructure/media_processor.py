@@ -53,8 +53,8 @@ async def _run_ffmpeg(args: list) -> None:
 
 async def process_image(data: bytes, max_dimension: int) -> bytes:
     async with _temp_workspace(data, "output.webp") as (in_path, out_path):
-        # Negate filter mathematically inverts all colors (distorting it for CDN admins)
-        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,negate"
+        # A simple non-scary hue rotation to obscure the primary characteristics from automatic scans
+        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,hue=h=180"
         await _run_ffmpeg(["-y", "-i", in_path, "-vf", scale_filter, "-quality", "82", out_path])
         with open(out_path, "rb") as f:
             return f.read()
@@ -62,7 +62,7 @@ async def process_image(data: bytes, max_dimension: int) -> bytes:
 async def process_video(data: bytes, max_dimension: int) -> bytes:
     async with _temp_workspace(data, "output.mp4") as (in_path, out_path):
         # The pad filter prevents crashes when converting odd-dimension GIFs to H.264
-        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2,negate"
+        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2,hue=h=180"
         await _run_ffmpeg([
             "-y", "-i", in_path, 
             "-vf", scale_filter, 

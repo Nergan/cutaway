@@ -70,10 +70,14 @@
           
           <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem' }">
             <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
-              <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
+              <transition name="fade" mode="out-in">
+                <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+              </transition>
             </button>
-            <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang" :title="store.t('lang')">
-              {{ store.state.lang.toLowerCase() }}
+            <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 30px; justify-content: center; display: inline-flex;" @click="store.cycleLang" :title="store.t('lang')">
+              <transition name="fade" mode="out-in">
+                <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+              </transition>
             </button>
           </div>
         </div>
@@ -108,10 +112,14 @@
                  
                  <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;" class="mobile-only-settings">
                    <button class="footer-action icon-btn" @click="store.toggleTheme">
-                     <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
+                     <transition name="fade" mode="out-in">
+                       <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+                     </transition>
                    </button>
-                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang">
-                     {{ store.state.lang.toLowerCase() }}
+                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 30px; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+                     <transition name="fade" mode="out-in">
+                       <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+                     </transition>
                    </button>
                  </div>
 

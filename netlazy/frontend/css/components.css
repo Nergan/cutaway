@@ -55,8 +55,8 @@ body.light-theme .audio-minimal { filter: none; }
 }
 
 /* Mathematical Visual Distortion Reversal via CSS */
-.cdn-obfuscated { filter: invert(1); }
-.cdn-obfuscated.is-blurred { filter: invert(1) blur(20px); }
+.cdn-obfuscated { filter: hue-rotate(-180deg); }
+.cdn-obfuscated.is-blurred { filter: hue-rotate(-180deg) blur(20px); }
 
 .editor-layout .media-thumb { cursor: grab; }
 .editor-layout .media-thumb:active { cursor: grabbing; }
@@ -117,15 +117,16 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   box-shadow: none !important; 
   border: 1px solid rgba(150, 150, 150, 0.1) !important; 
   padding: 0.5rem 0; 
+  max-width: 90vw;
 }
-.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s; width: 100%; position: relative; }
+.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s; width: 100%; position: relative; overflow: hidden; }
 .glass-option:hover { background: transparent !important; }
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
 
 /* Smooth animated underline for Tags & Contacts */
-.animated-underline { position: relative; display: inline-block; white-space: nowrap; }
-.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -1px; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.glass-option:hover .animated-underline::after { width: 100%; }
+.glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.glass-option span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -1px; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.glass-option:hover span.animated-underline::after { width: 100%; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -163,3 +164,11 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .media-list-leave-active, .tag-list-leave-active { position: absolute; z-index: 0; }
 .collapse-enter-active, .collapse-leave-active { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
 .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}

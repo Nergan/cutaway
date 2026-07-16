@@ -3,7 +3,9 @@
     <div class="feed-header blurred-header">
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
         <input type="text" ref="searchInput" class="seamless-input search-header-input" v-model="filterText" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
-        <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
+        <transition name="fade">
+          <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
+        </transition>
         
         <transition name="view-fade">
           <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 250px; width: 100%;">
@@ -37,7 +39,7 @@
     </div>
 
     <div class="grid" @click="closeAllMenus" v-else>
-      <div class="card" v-for="profile in store.state.feed" :key="profile.user_id">
+      <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" :style="{ zIndex: profile.showContactSelect ? 10 : 1, position: 'relative' }">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
           <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
@@ -92,7 +94,7 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
-          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 250px; margin-bottom: 0.5rem;" @click.stop>
+          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
             <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
               <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
               <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
@@ -157,9 +159,12 @@ const visibleSearchTags = computed(() => {
 
 const sortedSearchTags = computed(() => {
   const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
-  return [...store.state.availableSearchTags].filter(t => t.state !== 'neutral').sort((a, b) => {
-    return order[a.state] - order[b.state];
-  }).concat([...store.state.availableSearchTags].filter(t => t.state === 'neutral'));
+  const activeTags = store.state.availableSearchTags.filter(t => t.state !== 'neutral');
+  activeTags.sort((a, b) => order[a.state] - order[b.state]);
+  
+  const neutralTags = store.state.availableSearchTags.filter(t => t.state === 'neutral' && !t.hidden);
+  
+  return activeTags.concat(neutralTags);
 })
 
 function navigateTags(dir) {

@@ -111,7 +111,12 @@ class ProfileService:
             raise MediaProcessingError(str(e)) from e
 
         public_id_hint = f"{user_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
-        upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)
+        
+        try:
+            upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)
+        except Exception as e:
+            raise MediaProcessingError(f"CDN Upload failed: {str(e)}")
+
         item = MediaItem(
             url=upload_res["url"], 
             media_type=media_type, 
