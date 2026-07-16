@@ -5,6 +5,10 @@
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
         <div style="color:var(--text-muted); font-size:0.8rem; margin-top:0.5rem; margin-bottom:0.5rem;">{{ store.t('received') }}</div>
         
+        <div v-if="store.state.isInboxLoading && pendingRequests.length === 0">
+          <div class="inbox-item card skeleton" style="height: 150px;" v-for="i in 2" :key="i"></div>
+        </div>
+
         <transition-group name="inbox-list" tag="div">
           <div class="inbox-item card" v-for="req in pendingRequests" :key="req.id" :class="{resolving: req.resolving, 'error-deleted': req.isErrorDeleted}">
             
@@ -14,11 +18,10 @@
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
               <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                 <div v-if="!m.isLoaded" class="media-loader">
-                   <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                 <div v-if="!m.isLoaded" class="media-loader skeleton">
                  </div>
                  <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop :class="{'is-blurred': m.blur}"></video>
+                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
               </div>
             </div>
 
@@ -49,10 +52,12 @@
               
               <div v-if="['mutual', 'demand', 'exchange'].includes(req.type)" style="margin-bottom:0.5rem;">
                  <div class="custom-select" @click.stop="toggleDropdown(req)">
-                   {{ req.selectedContact || store.t('select_contact_share') }}
+                   <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                     {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
+                   </span>
                    <div class="custom-select-menu" v-if="req.openDropdown" @click.stop>
-                     <div class="custom-select-option" v-for="c in validPrivateContacts" :key="c.value" @click="req.selectedContact = c.value; req.openDropdown = false">
-                       {{ c.type }}: {{ c.value }}
+                     <div class="custom-select-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
+                       <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check-square-fill' : 'bi-square'"></i> {{ c.type }}: {{ c.value }}
                      </div>
                    </div>
                  </div>
@@ -69,8 +74,8 @@
                     <i class="bi bi-x-lg"></i> {{ store.t('decline') }}
                   </button>
                   <button class="footer-action" style="color:var(--accent-moss);" @click="resolveRequest(req, 'accepted')" 
-                    :disabled="['mutual', 'demand', 'exchange'].includes(req.type) && !req.selectedContact" 
-                    :style="{opacity: (['mutual', 'demand', 'exchange'].includes(req.type) && !req.selectedContact) ? 0.3 : 1}">
+                    :disabled="['mutual', 'demand', 'exchange'].includes(req.type) && (!req.selectedContacts || req.selectedContacts.length === 0)" 
+                    :style="{opacity: (['mutual', 'demand', 'exchange'].includes(req.type) && (!req.selectedContacts || req.selectedContacts.length === 0)) ? 0.3 : 1}">
                     <i class="bi bi-check-lg"></i> {{ store.t('accept') }}
                   </button>
                 </template>
@@ -79,11 +84,16 @@
 
           </div>
         </transition-group>
-        <div v-if="pendingRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
+        <div v-if="!store.state.isInboxLoading && pendingRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
           {{ store.t('no_pending') }}
         </div>
 
-        <div v-if="acceptedRequests.length > 0" style="color:var(--text-muted); font-size:0.8rem; margin-top:1.5rem; margin-bottom:0.5rem;">{{ store.t('matches') }}</div>
+        <div v-if="acceptedRequests.length > 0 || store.state.isInboxLoading" style="color:var(--text-muted); font-size:0.8rem; margin-top:1.5rem; margin-bottom:0.5rem;">{{ store.t('matches') }}</div>
+        
+        <div v-if="store.state.isInboxLoading && acceptedRequests.length === 0">
+          <div class="inbox-item card skeleton" style="height: 150px;" v-for="i in 1" :key="i"></div>
+        </div>
+
         <transition-group name="inbox-list" tag="div">
           <div class="inbox-item card" v-for="req in acceptedRequests" :key="'acc'+req.id">
             
@@ -93,11 +103,10 @@
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
               <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                 <div v-if="!m.isLoaded" class="media-loader">
-                   <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                 <div v-if="!m.isLoaded" class="media-loader skeleton">
                  </div>
                  <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop :class="{'is-blurred': m.blur}"></video>
+                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
               </div>
             </div>
 
@@ -127,7 +136,7 @@
 
               <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
                 <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)" title="Delete Match">
-                  <i class="bi bi-trash3"></i>
+                  <i class="bi" :class="req.isDeletingMatch ? 'bi-hourglass-split spin' : 'bi-trash3'"></i>
                 </button>
               </div>
             </div>
@@ -150,11 +159,10 @@
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
               <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                 <div v-if="!m.isLoaded" class="media-loader">
-                   <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                 <div v-if="!m.isLoaded" class="media-loader skeleton">
                  </div>
                  <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop :class="{'is-blurred': m.blur}"></video>
+                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
               </div>
             </div>
 
@@ -179,7 +187,7 @@
 
           </div>
         </transition-group>
-        <div v-if="sentRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
+        <div v-if="!store.state.isInboxLoading && sentRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
           {{ store.t('no_pending') }}
         </div>
 
@@ -193,11 +201,10 @@
 
             <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
               <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                 <div v-if="!m.isLoaded" class="media-loader">
-                   <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                 <div v-if="!m.isLoaded" class="media-loader skeleton">
                  </div>
                  <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop :class="{'is-blurred': m.blur}"></video>
+                 <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
               </div>
             </div>
 
@@ -220,7 +227,7 @@
               </div>
               <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
                 <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)" title="Remove">
-                  <i class="bi bi-trash3"></i>
+                  <i class="bi" :class="req.isDeletingMatch ? 'bi-hourglass-split spin' : 'bi-trash3'"></i>
                 </button>
               </div>
             </div>
@@ -252,7 +259,9 @@ function filterMedia(mediaArr) {
 }
 
 onMounted(() => {
-  store.fetchInbox()
+  if (store.state.inbox.length === 0) {
+    store.fetchInbox()
+  }
   document.addEventListener('click', closeAllDropdowns)
 })
 onUnmounted(() => document.removeEventListener('click', closeAllDropdowns))
@@ -283,6 +292,13 @@ function toggleDropdown(req) {
   req.openDropdown = !stateBefore
 }
 
+function toggleReqContact(req, val) {
+  if (!req.selectedContacts) req.selectedContacts = [];
+  const idx = req.selectedContacts.indexOf(val);
+  if (idx === -1) req.selectedContacts.push(val);
+  else req.selectedContacts.splice(idx, 1);
+}
+
 function closeAllDropdowns() {
   store.state.inbox.forEach(r => r.openDropdown = false)
 }
@@ -294,15 +310,15 @@ async function resolveRequest(req, status) {
   try {
     const payload = {
       status: status,
-      returned_contact: req.selectedContact || null
+      returned_contact: req.selectedContacts ? req.selectedContacts.join(', ') : null
     }
     await api.post(`/inbox/handshakes/${req.id}/resolve`, payload)
     
     setTimeout(async () => {
       req.status = status
       req.resolving = false
-      if (status === 'accepted') req.returned_contact = req.selectedContact
-      await store.fetchInbox()
+      if (status === 'accepted') req.returned_contact = payload.returned_contact
+      await store.fetchInbox(true)
     }, 300)
     store.addToast(`Handshake ${status}`, "bi-check2")
   } catch (e) {
@@ -322,10 +338,12 @@ async function resolveRequest(req, status) {
 
 async function deleteMatch(req) {
   try {
+    req.isDeletingMatch = true;
     await api.delete(`/inbox/handshakes/${req.id}`)
     store.state.inbox = store.state.inbox.filter(r => r.id !== req.id)
     store.addToast(store.t('match_deleted'), "bi-trash")
   } catch (e) {
+    req.isDeletingMatch = false;
     store.addToast("Failed to delete match", "bi-x-circle")
   }
 }

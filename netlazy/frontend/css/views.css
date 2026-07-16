@@ -12,6 +12,7 @@
   outline: 2px dashed var(--accent-moss);
   outline-offset: -10px;
   background: rgba(141, 169, 112, 0.05);
+  border-radius: var(--radius-lg, 24px); /* Smoother edge */
 }
 
 .workspace-toggle-btn { position: absolute; left: 1.5rem; top: 1.65rem; z-index: 50; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; outline: none; }
@@ -133,7 +134,7 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
 }
-.create-btn:hover {
+.create-btn:hover:not(:disabled) {
   border-color: var(--accent-moss);
   background: var(--bg-elevated);
   box-shadow: var(--glow-accent);

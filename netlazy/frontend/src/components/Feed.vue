@@ -4,6 +4,12 @@
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
         <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
         <i v-if="filterText" class="bi bi-x-lg" style="position: absolute; right: 0.8rem; cursor: pointer; color: var(--text-muted);" @click="filterText = ''"></i>
+        
+        <div class="custom-select-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; bottom: auto; max-height: 200px; width: 100%;">
+          <div class="custom-select-option" v-for="tag in visibleSearchTags.slice(0, 10)" :key="'ac-'+tag.name" @click="selectTagFromAutocomplete(tag)">
+            {{ store.getLocalizedTag(tag.name) }}
+          </div>
+        </div>
       </div>
       <div class="tag-scroll-area" @wheel="handleWheel">
         <span class="chip" v-for="tag in visibleSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
@@ -12,7 +18,11 @@
       </div>
     </div>
 
-    <div class="empty-state" v-if="!isLoading && store.state.feed.length === 0">
+    <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
+      <div class="card skeleton" style="height: 350px;" v-for="i in 3" :key="i"></div>
+    </div>
+
+    <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0">
       <i class="bi bi-search empty-icon"></i>
       <h3>{{ store.t('no_profiles_match') }}</h3>
       <button class="footer-action" style="margin-top: 1rem;" @click="resetFilters" v-if="hasActiveFilters">
@@ -20,7 +30,7 @@
       </button>
     </div>
 
-    <div class="grid" @click="closeAllMenus">
+    <div class="grid" @click="closeAllMenus" v-else>
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
@@ -29,11 +39,10 @@
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
           <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(m, profile.media)">
-             <div v-if="!m.isLoaded" class="media-loader">
-               <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+             <div v-if="!m.isLoaded" class="media-loader skeleton">
              </div>
              <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop :class="{'is-blurred': m.blur}"></video>
+             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
           </div>
         </div>
         
@@ -82,8 +91,13 @@
             <div style="padding: 0.5rem; font-size: 0.75rem; color:var(--text-muted); border-bottom: 1px solid var(--border-subtle);">
               {{ store.t('select_contact_to', { type: profile.pendingReqType }) }}
             </div>
-            <div class="custom-select-option" v-for="c in validPrivateContacts" :key="c.value" @click="sendRequest(profile, profile.pendingReqType, c.value)">
-              {{ c.type }}: {{ c.value }}
+            <div class="custom-select-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
+              <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check-square-fill' : 'bi-square'"></i> {{ c.type }}: {{ c.value }}
+            </div>
+            <div style="padding: 0.5rem;">
+              <button class="create-btn" style="width: 100%; font-size: 0.8rem; padding: 0.4rem;" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
+                Send
+              </button>
             </div>
           </div>
         </div>
@@ -131,6 +145,11 @@ const visibleSearchTags = computed(() => {
   )
 })
 
+function selectTagFromAutocomplete(tag) {
+  if (tag.state === 'neutral') tag.state = 'require';
+  filterText.value = '';
+}
+
 function resetFilters() {
   filterText.value = '';
   store.state.availableSearchTags.forEach(t => t.state = 'neutral');
@@ -144,6 +163,7 @@ async function fetchFeed(reset = false) {
     hasMore.value = true
   }
   
+  store.state.isFeedLoading = true
   isLoading.value = true
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
@@ -162,6 +182,7 @@ async function fetchFeed(reset = false) {
       currentCursor = batch[batch.length - 1].created_at
       batch.forEach(p => {
           if (p.media) p.media.forEach(m => m.isLoaded = false)
+          p.selectedContacts = []
       })
       store.state.feed.push(...batch)
     }
@@ -169,6 +190,7 @@ async function fetchFeed(reset = false) {
     store.addToast("Failed to fetch feed", "bi-x-circle")
   } finally {
     isLoading.value = false
+    store.state.isFeedLoading = false
   }
 }
 
@@ -234,13 +256,24 @@ function handleMediaClick(mediaObj, mediaList) {
 function openContactSelect(profile, type) {
   closeAllMenus()
   profile.pendingReqType = type
+  profile.selectedContacts = []
   profile.showContactSelect = true
+}
+
+function toggleProfileContact(profile, val) {
+  if (!profile.selectedContacts) profile.selectedContacts = [];
+  const idx = profile.selectedContacts.indexOf(val);
+  if (idx === -1) profile.selectedContacts.push(val);
+  else profile.selectedContacts.splice(idx, 1);
 }
 
 async function sendRequest(profile, type, contactValue = null) {
   closeAllMenus()
-  store.addToast("Solving Proof of Work...", "bi-hourglass")
+  if (type !== 'demand' && !contactValue && profile.selectedContacts) {
+     contactValue = profile.selectedContacts.join(', ');
+  }
   
+  store.addToast("Solving Proof of Work...", "bi-hourglass")
   try {
     profile.isSendingReq = type
     const payload = {

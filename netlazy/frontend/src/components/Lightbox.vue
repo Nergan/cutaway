@@ -24,7 +24,7 @@
                    :src="currentMedia.url" 
                    class="lightbox-content" 
                    :class="{'is-blurred': currentMedia.blur}"
-                   controls autoplay loop @click.stop="handleMediaClick(currentMedia)"></video>
+                   controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
 
           <div v-if="store.state.lightbox.isEditable" class="media-remove" @click.stop="!currentMedia.isDeleting && removeMedia(currentMedia)" style="width: 32px; height: 32px; font-size: 1.2rem; top: 8px; right: 8px;">

@@ -100,13 +100,34 @@
       
       <div class="sidebar-backdrop" :class="{ active: !store.state.isSidebarCollapsed }" @click="store.state.isSidebarCollapsed = true"></div>
       
+      <!-- Native Mobile App Bottom Navigation -->
+      <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
+        <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
+          <i class="bi bi-compass"></i>
+          <span>{{ store.t('feed') }}</span>
+        </a>
+        <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
+          <i class="bi bi-person-lines-fill"></i>
+          <span>{{ store.t('editor') }}</span>
+        </a>
+        <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" style="position:relative;">
+          <i class="bi bi-inbox"></i>
+          <span v-if="pendingInboxCount > 0" class="badge" style="position:absolute; top:2px; right:20%; transform:translate(50%, -50%); margin:0;">{{ pendingInboxCount }}</span>
+          <span>{{ store.t('inbox') }}</span>
+        </a>
+        <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'">
+          <i class="bi bi-fingerprint"></i>
+          <span>{{ store.t('vault') }}</span>
+        </a>
+      </nav>
+
       <main class="main-view">
         <header class="mobile-top-bar">
           <button class="mobile-menu-btn" @click="store.state.isSidebarCollapsed = false" title="Menu">
             <i class="bi bi-list"></i>
           </button>
           <span class="mobile-view-title">{{ store.t(store.state.currentView) }}</span>
-          <div style="width: 40px;"></div>
+          <div style="width: 40px;" class="mobile-menu-btn"></div>
         </header>
 
         <div style="position:relative; flex-grow:1; display:flex; flex-direction:column; overflow:hidden;">

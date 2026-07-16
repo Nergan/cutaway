@@ -35,6 +35,10 @@ const defaultState = {
         isDanger: false
     },
     
+    isProfileLoading: false,
+    isFeedLoading: false,
+    isInboxLoading: false,
+
     myProfile: {
         bio: "",
         tags: [],
@@ -56,6 +60,17 @@ export function useStore() {
     if (instance) return instance;
 
     const state = reactive({ ...defaultState });
+    let pollInterval = null;
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(() => {
+            if (state.isRegistered && !state.isBanned) {
+                fetchInbox(true); // background fetch
+                fetchMyProfile(true); // background sync
+            }
+        }, 30000);
+    }
 
     async function loadSavedState() {
         try {
@@ -63,7 +78,6 @@ export function useStore() {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 
-                // 1. Load non-auth UI states immediately
                 ['theme', 'lang', 'sidebarWidth', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
@@ -73,17 +87,15 @@ export function useStore() {
                         const keys = await loadPrivateKey(parsed.privateKeyPem);
                         state.keyPair = keys.keyPair;
                         
-                        // 2. Only restore auth-dependent variables AFTER the keyPair is initialized.
-                        // This prevents child components like <Feed /> from prematurely mounting and
-                        // firing API requests lacking cryptographic headers.
                         ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
                             if (parsed[k] !== undefined) state[k] = parsed[k];
                         });
                         
                         if (!state.isBanned) {
-                            await fetchTags(); 
-                            await fetchMyProfile();
-                            await fetchInbox();
+                            fetchTags(); 
+                            fetchMyProfile();
+                            fetchInbox();
+                            startPolling();
                         }
                     } catch (keyErr) {
                         console.warn("Failed to load private key, logging out:", keyErr);
@@ -115,8 +127,6 @@ export function useStore() {
                 theme: state.theme, lang: state.lang,
                 sidebarWidth: state.sidebarWidth, workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
-                // Fix: ensure the local cache saves the 'privateKeyPem' field correctly,
-                // instead of incorrectly overwriting it with the 'publicKeyPem'.
                 userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(saveObj));
@@ -126,8 +136,6 @@ export function useStore() {
     let toastId = 0;
     function addToast(msg, icon = 'bi-info-circle', type = 'minimal') {
         const id = toastId++;
-        // Force the type to 'minimal' internally so that all toasts use the
-        // subtle, transparent look originally used by the 'vault synced' alert.
         state.toasts.push({ id, msg, icon, type: 'minimal' });
         setTimeout(() => {
             const idx = state.toasts.findIndex(t => t.id === id);
@@ -189,9 +197,10 @@ export function useStore() {
             state.isRegistered = true;
             state.currentView = 'vault';
             
-            await fetchTags();
-            await fetchMyProfile();
-            await fetchInbox();
+            fetchTags();
+            fetchMyProfile();
+            fetchInbox();
+            startPolling();
             
             addToast(t('new_identity_loaded'), "bi-person-plus");
         } catch (e) {
@@ -208,9 +217,10 @@ export function useStore() {
             state.keyPair = keys.keyPair;
             state.isRegistered = true;
             
-            await fetchTags();
-            await fetchMyProfile();
-            await fetchInbox();
+            fetchTags();
+            fetchMyProfile();
+            fetchInbox();
+            startPolling();
             addToast(t('key_imported'), "bi-shield-check");
         } catch (e) {
             addToast("Invalid Private Key format.", "bi-exclamation-triangle");
@@ -227,8 +237,8 @@ export function useStore() {
             state.userId = res.data.new_user_id;
             state.keyPair = keys.keyPair;
             
-            await fetchMyProfile();
-            await fetchInbox();
+            fetchMyProfile();
+            fetchInbox();
             
             addToast(t('identity_rotated'), "bi-check2-circle");
         } catch (e) {
@@ -247,6 +257,7 @@ export function useStore() {
         state.myProfile = { ...defaultState.myProfile };
         state.inbox = [];
         state.feed = [];
+        if (pollInterval) clearInterval(pollInterval);
     }
 
     function deleteAccount() {
@@ -268,20 +279,23 @@ export function useStore() {
         );
     }
 
-    async function fetchMyProfile() {
+    async function fetchMyProfile(isSilent = false) {
+        if (!isSilent) state.isProfileLoading = true;
         try {
             const res = await api.get('/profile/me');
             const data = res.data;
             data.contacts.forEach(c => c._id = Math.random().toString());
-            data.media.forEach(m => { m.isLoaded = false; m.isUploading = false; });
-            if (data.audio) { data.audio.isLoaded = false; data.audio.isUploading = false; }
+            data.media.forEach(m => { m.isLoaded = false; m.isUploading = false; m.uploadProgress = 0; });
+            if (data.audio) { data.audio.isLoaded = false; data.audio.isUploading = false; data.audio.uploadProgress = 0; }
             state.myProfile = data;
             
-            if (state.myProfile.contacts.length === 0) {
+            if (state.myProfile.contacts.length === 0 || state.myProfile.contacts[state.myProfile.contacts.length-1].value.trim() !== '') {
                 state.myProfile.contacts.push({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() });
             }
         } catch (e) {
             console.error("Profile sync failed");
+        } finally {
+            if (!isSilent) state.isProfileLoading = false;
         }
     }
 
@@ -312,7 +326,8 @@ export function useStore() {
         } catch (e) {}
     }
 
-    async function fetchInbox() {
+    async function fetchInbox(isSilent = false) {
+        if (!isSilent) state.isInboxLoading = true;
         try {
             const res = await api.get('/inbox');
             const oldInbox = state.inbox || [];
@@ -329,16 +344,25 @@ export function useStore() {
                     const oldA = oldR?.profile?.audio;
                     r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
                 }
-                return {...r, selectedContact: oldR ? oldR.selectedContact : "", openDropdown: oldR ? oldR.openDropdown : false, resolving: oldR ? oldR.resolving : false, isErrorDeleted: oldR ? oldR.isErrorDeleted : false};
+                return {
+                    ...r, 
+                    selectedContacts: oldR ? oldR.selectedContacts : [], 
+                    openDropdown: oldR ? oldR.openDropdown : false, 
+                    resolving: oldR ? oldR.resolving : false, 
+                    isErrorDeleted: oldR ? oldR.isErrorDeleted : false,
+                    isDeletingMatch: oldR ? oldR.isDeletingMatch : false
+                };
             });
-        } catch (e) {}
+        } catch (e) {} finally {
+            if (!isSilent) state.isInboxLoading = false;
+        }
     }
 
     loadSavedState();
     if (state.theme === 'light') document.body.classList.add('light-theme');
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, getLocalizedTag
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag
     };
     return instance;
 }
