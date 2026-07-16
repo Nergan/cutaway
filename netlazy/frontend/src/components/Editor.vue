@@ -1,21 +1,24 @@
 <template>
   <div class="editor-layout" ref="editorRoot">
     <div class="tag-library-pane">
-      <div class="tag-library-header blurred-header" style="position: relative;">
+      <div class="tag-library-header blurred-header" style="position: sticky; top: 0; z-index: 10;">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
           <input type="text" class="seamless-input search-header-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
           <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg" style="position: absolute; right: 0; cursor: pointer; color: var(--text-muted);" @click="store.state.tagSearchQuery = ''"></i>
         </div>
         
-        <div class="custom-select-menu" v-if="store.state.tagSearchQuery && filteredTags.length > 0" style="top: 100%; bottom: auto; max-height: 200px; left: 1.5rem; right: 1.5rem; width: auto; z-index: 1000;">
-          <div class="custom-select-option" v-for="tag in filteredTags.slice(0, 10)" :key="'ed-ac-'+tag.name" @click="selectTagFromAutocomplete(tag.name)">
+        <div class="glass-menu" v-if="store.state.tagSearchQuery && filteredTags.length > 0" style="position: absolute; top: 100%; left: 1.5rem; right: 1.5rem; margin-top: 0.5rem;">
+          <div class="glass-option" v-for="tag in filteredTags.slice(0, 10)" :key="'ed-ac-'+tag.name" @click="selectTagFromAutocomplete(tag.name)">
             {{ store.getLocalizedTag(tag.name) }}
           </div>
         </div>
       </div>
       
       <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start;">
+        <div v-if="store.state.availableSearchTags.length === 0" style="width: 100%; text-align: center; color: var(--text-muted);">
+          <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i>
+        </div>
         <span class="chip" 
               :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
               v-for="tag in filteredTags" 
@@ -24,7 +27,7 @@
           {{ store.getLocalizedTag(tag.name) }}
           <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
         </span>
-        <div v-if="filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;">
+        <div v-if="store.state.availableSearchTags.length > 0 && filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;">
           {{ store.t('no_tags_found') }}
         </div>
       </div>
@@ -44,7 +47,9 @@
            @dragleave.prevent="workspaceDragLeave"
            @drop.prevent="workspaceDrop">
 
-        <div v-if="store.state.isProfileLoading" class="skeleton" style="height: 100px; margin-bottom: 2rem;"></div>
+        <div v-if="store.state.isProfileLoading" style="text-align: center; padding: 2rem;">
+          <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+        </div>
         
         <template v-else>
           <div v-if="validMedia.length === 0 && !store.state.myProfile.audio" class="media-zone" @click="$refs.fileInput.click()">
@@ -52,16 +57,16 @@
           </div>
           
           <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;">
-             <template v-if="store.state.myProfile.audio.isUploading || !store.state.myProfile.audio.isLoaded">
+             <template v-if="store.state.myProfile.audio.isUploading">
                <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center;">
-                 <div class="progress-bar-bg" v-if="store.state.myProfile.audio.isUploading">
+                 <div class="progress-bar-bg">
                    <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
                  </div>
                  <span style="color:var(--text-muted); font-size:0.85rem; position:relative; z-index:2;">Uploading... {{ store.state.myProfile.audio.uploadProgress || 0 }}%</span>
                </div>
              </template>
              
-             <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.url" @loadeddata="store.state.myProfile.audio.isLoaded = true" controls style="flex-grow:1;"></audio>
+             <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.url" controls style="flex-grow:1;"></audio>
              
              <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
           </div>
@@ -79,15 +84,14 @@
                  @dragend="dragEnd"
                  @click="!m.isUploading && openLightbox(m)">
               
-              <div v-if="m.isUploading || !m.isLoaded" class="media-loader">
-                <div class="progress-bar-bg" v-if="m.isUploading">
-                  <div class="progress-bar-fill" :style="{height: (m.uploadProgress || 0) + '%'}"></div>
+              <div v-if="m.isUploading" class="media-loader">
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
                 </div>
-                <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted); position: relative; z-index: 2;"></i>
               </div>
               
-              <img v-if="m.media_type === 'image'" v-show="!m.isUploading && m.isLoaded" @load="m.isLoaded = true" @error="m.isLoaded = true" :src="m.url" :class="{'is-blurred': m.blur}">
-              <video v-else-if="m.media_type === 'video'" v-show="!m.isUploading && m.isLoaded" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+              <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
+              <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
               
               <div class="media-remove" @click.stop="!m.isDeleting && removeMedia(m, idx)">
                 <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
@@ -110,24 +114,41 @@
           </div>
           <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" placeholder="..." rows="3" @input="triggerAutosave"></textarea>
 
-          <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:0.5rem;">{{ store.t('active_tags') }}</div>
-          <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
-            <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
-              {{ store.getLocalizedTag(tag) }}
-            </span>
-            <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;" key="none-placeholder">{{ store.t('none') }}</span>
-          </transition-group>
-
-          <div style="color:var(--text-muted); font-size:0.75rem; margin-bottom:0.5rem;">{{ store.t('contacts') }}</div>
-          <div>
-            <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
-              <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
-              <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(idx)" @blur="handleContactBlur">
-              <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
-              <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
-              <i class="bi bi-x-lg contact-action danger" v-if="idx !== store.state.myProfile.contacts.length - 1" @click="removeContact(idx)"></i>
-            </div>
+          <div class="section-header" @click="showActiveTags = !showActiveTags">
+            <span>{{ store.t('active_tags') }}</span>
+            <i class="bi" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
+          <transition name="collapse">
+            <div v-show="showActiveTags">
+              <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
+                <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
+                  {{ store.getLocalizedTag(tag) }}
+                </span>
+                <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;" key="none-placeholder">{{ store.t('none') }}</span>
+              </transition-group>
+            </div>
+          </transition>
+
+          <div class="section-header" @click="showContacts = !showContacts">
+            <span>{{ store.t('contacts') }}</span>
+            <i class="bi" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          </div>
+          <transition name="collapse">
+            <div v-show="showContacts">
+              <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
+                <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
+                <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">
+                <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
+                <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
+                <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
+              </div>
+              <div class="contact-row">
+                <i class="bi contact-icon bi-plus-lg"></i>
+                <input type="text" class="seamless-input contact-val" v-model="newContact.value" :placeholder="store.t('contact_placeholder')" @input="handleNewContactInput" @blur="commitNewContact">
+                <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :title="store.t('toggle_privacy')"></i>
+              </div>
+            </div>
+          </transition>
         </template>
       </div>
     </div>
@@ -145,6 +166,9 @@ const fileInput = ref(null)
 const dragOverIdx = ref(null)
 const isDraggingFiles = ref(false)
 const isResizingWorkspace = ref(false)
+
+const showActiveTags = ref(true)
+const showContacts = ref(true)
 
 let dragIndex = null
 let saveTimeout = null
@@ -205,44 +229,35 @@ function toggleTag(tagName) {
 const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
 function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
 
-function handleContactInput(idx) {
-  const c = store.state.myProfile.contacts[idx]
-  const v = c.value.trim()
-  
-  if (v === '') c.type = 'unknown'
-  else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) c.type = 'email'
-  else if (/^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+)/.test(v)) c.type = 'link'
-  else if (/^\+?[0-9\s\-]{7,15}$/.test(v)) c.type = 'phone'
-  else c.type = 'unknown'
+const newContact = ref({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() });
 
-  const contacts = store.state.myProfile.contacts
-  const isLast = idx === contacts.length - 1;
-
-  if (isLast && c.type !== 'unknown' && v !== '') {
-    contacts.push({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() })
-  }
-
-  if (c.type !== 'unknown' || v === '') {
-    triggerAutosave()
-  }
+function inferContactType(v) {
+  if (v === '') return 'unknown'
+  else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'email'
+  else if (/^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+)/.test(v)) return 'link'
+  else if (/^\+?[0-9\s\-]{7,15}$/.test(v)) return 'phone'
+  return 'unknown'
 }
 
-function handleContactBlur() {
-  const contacts = store.state.myProfile.contacts
-  for (let i = contacts.length - 2; i >= 0; i--) {
-    if (contacts[i].value.trim() === '') contacts.splice(i, 1)
+function handleContactInput(c) {
+  c.type = inferContactType(c.value.trim());
+  triggerAutosave();
+}
+
+function handleNewContactInput() {
+  newContact.value.type = inferContactType(newContact.value.value.trim());
+}
+
+function commitNewContact() {
+  if (newContact.value.value.trim() !== '') {
+    store.state.myProfile.contacts.push({ ...newContact.value });
+    newContact.value = { type: 'unknown', value: '', is_private: true, _id: Math.random().toString() };
+    triggerAutosave();
   }
-  if (contacts.length === 0 || contacts[contacts.length-1].value.trim() !== '') {
-    contacts.push({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() })
-  }
-  triggerAutosave()
 }
 
 function removeContact(idx) {
   store.state.myProfile.contacts.splice(idx, 1)
-  if (store.state.myProfile.contacts.length === 0 || store.state.myProfile.contacts[store.state.myProfile.contacts.length-1].value.trim() !== '') {
-    store.state.myProfile.contacts.push({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() })
-  }
   triggerAutosave()
 }
 
@@ -254,8 +269,8 @@ async function copyText(txt) {
 function updateMediaList(resMedia, remainingTemps) {
     const updated = resMedia.map(newM => {
         const old = store.state.myProfile.media.find(m => m.url === newM.url);
-        return old ? { ...newM, isDeleting: old.isDeleting, isUpdatingBlur: old.isUpdatingBlur || false, isLoaded: old.isLoaded, isUploading: false } 
-                   : { ...newM, isLoaded: false, isUploading: false };
+        return old ? { ...newM, isDeleting: old.isDeleting, isUpdatingBlur: old.isUpdatingBlur || false, isLoaded: true, isUploading: false } 
+                   : { ...newM, isLoaded: true, isUploading: false };
     });
     store.state.myProfile.media = [...updated, ...remainingTemps];
 }
@@ -271,13 +286,13 @@ async function processFiles(files) {
     }
     
     const abortCtrl = new AbortController();
-    const tempId = Math.random().toString()
+    const tempUrl = URL.createObjectURL(file); // Immediately renderable
     const media_type = file.type.startsWith('video') ? 'video' : (file.type.startsWith('audio') ? 'audio' : 'image')
     
     if (media_type === 'audio') {
-      store.state.myProfile.audio = { url: tempId, media_type: 'audio', blur: false, isUploading: true, isLoaded: false, isDeleting: false, uploadProgress: 0, file, abortCtrl }
+      store.state.myProfile.audio = { url: tempUrl, media_type: 'audio', blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl }
     } else {
-      tempItems.push({ url: tempId, media_type, blur: false, isUploading: true, isLoaded: false, isDeleting: false, uploadProgress: 0, file, abortCtrl })
+      tempItems.push({ url: tempUrl, media_type, blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl })
     }
   }
   
@@ -307,12 +322,12 @@ async function processFiles(files) {
           if (desiredBlur !== res.data.audio.blur) {
               try {
                   const resBlur = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(res.data.audio.url)}&blur=${desiredBlur}`);
-                  store.state.myProfile.audio = { ...resBlur.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: false };
+                  store.state.myProfile.audio = { ...resBlur.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
               } catch (e) {
-                  store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: false };
+                  store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
               }
           } else {
-              store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: false };
+              store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
           }
       } else {
           store.state.myProfile.audio = null;
@@ -321,6 +336,8 @@ async function processFiles(files) {
       if (e.name === 'CanceledError') return;
       store.addToast("Failed to upload audio", "bi-exclamation-triangle")
       store.state.myProfile.audio = null
+    }).finally(() => {
+      URL.revokeObjectURL(tempAudio.url);
     })
   }
 
@@ -357,7 +374,7 @@ async function processFiles(files) {
       if (!store.state.myProfile.audio?.isUploading) {
         if (res.data.audio) {
             const oldAudio = store.state.myProfile.audio;
-            store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: oldAudio?.isLoaded };
+            store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
         } else {
             store.state.myProfile.audio = null;
         }
@@ -366,6 +383,8 @@ async function processFiles(files) {
       if (e.name === 'CanceledError') return;
       store.addToast("Failed to upload media", "bi-exclamation-triangle")
       store.state.myProfile.media = store.state.myProfile.media.filter(m => m.url !== temp.url)
+    }).finally(() => {
+      URL.revokeObjectURL(temp.url);
     })
   })
 
@@ -434,7 +453,7 @@ async function removeAudio() {
   try {
     store.state.myProfile.audio.isDeleting = true
     const res = await api.delete('/profile/me/audio')
-    store.state.myProfile.audio = res.data.audio ? { ...res.data.audio, isDeleting: false, isLoaded: false } : null
+    store.state.myProfile.audio = res.data.audio ? { ...res.data.audio, isDeleting: false, isLoaded: true } : null
   } catch(e) {
     if (store.state.myProfile.audio) {
       store.state.myProfile.audio.isDeleting = false
@@ -462,7 +481,7 @@ async function toggleBlur(m, idx) {
     if (!store.state.myProfile.audio?.isUploading) {
       if (res.data.audio) {
           const oldAudio = store.state.myProfile.audio;
-          store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: oldAudio?.isLoaded };
+          store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
       } else {
           store.state.myProfile.audio = null;
       }

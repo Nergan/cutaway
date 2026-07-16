@@ -42,7 +42,7 @@ const defaultState = {
     myProfile: {
         bio: "",
         tags: [],
-        contacts: [{ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() }],
+        contacts: [],
         media: [],
         audio: null
     },
@@ -64,12 +64,13 @@ export function useStore() {
 
     function startPolling() {
         if (pollInterval) clearInterval(pollInterval);
+        // Reduced to 10 seconds for seamless syncing
         pollInterval = setInterval(() => {
             if (state.isRegistered && !state.isBanned) {
-                fetchInbox(true); // background fetch
-                fetchMyProfile(true); // background sync
+                fetchInbox(true); // silent fetch
+                fetchMyProfile(true); // silent fetch
             }
-        }, 30000);
+        }, 10000);
     }
 
     async function loadSavedState() {
@@ -285,13 +286,24 @@ export function useStore() {
             const res = await api.get('/profile/me');
             const data = res.data;
             data.contacts.forEach(c => c._id = Math.random().toString());
-            data.media.forEach(m => { m.isLoaded = false; m.isUploading = false; m.uploadProgress = 0; });
-            if (data.audio) { data.audio.isLoaded = false; data.audio.isUploading = false; data.audio.uploadProgress = 0; }
-            state.myProfile = data;
             
-            if (state.myProfile.contacts.length === 0 || state.myProfile.contacts[state.myProfile.contacts.length-1].value.trim() !== '') {
-                state.myProfile.contacts.push({ type: 'unknown', value: '', is_private: true, _id: Math.random().toString() });
+            // Re-merge with local UI state to prevent jumping during polling updates
+            const currentMedia = state.myProfile.media || [];
+            data.media = data.media.map(m => { 
+                const old = currentMedia.find(om => om.url === m.url);
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: true, isUploading: false, uploadProgress: 0 };
+            });
+            const uploadingMedia = currentMedia.filter(m => m.isUploading);
+            data.media.push(...uploadingMedia);
+
+            if (data.audio) { 
+                const oldA = state.myProfile.audio;
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: true, isUploading: false, uploadProgress: 0 };
+            } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
+                data.audio = state.myProfile.audio;
             }
+
+            state.myProfile = data;
         } catch (e) {
             console.error("Profile sync failed");
         } finally {
@@ -337,12 +349,12 @@ export function useStore() {
                 if (r.profile && r.profile.media) {
                     r.profile.media.forEach(m => {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);
-                        m.isLoaded = oldM ? oldM.isLoaded : false;
+                        m.isLoaded = oldM ? oldM.isLoaded : true;
                     });
                 }
                 if (r.profile && r.profile.audio) {
                     const oldA = oldR?.profile?.audio;
-                    r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
+                    r.profile.audio.isLoaded = oldA ? oldA.isLoaded : true;
                 }
                 return {
                     ...r, 

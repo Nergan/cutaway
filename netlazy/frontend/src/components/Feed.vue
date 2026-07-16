@@ -5,21 +5,23 @@
         <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
         <i v-if="filterText" class="bi bi-x-lg" style="position: absolute; right: 0.8rem; cursor: pointer; color: var(--text-muted);" @click="filterText = ''"></i>
         
-        <div class="custom-select-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; bottom: auto; max-height: 200px; width: 100%;">
-          <div class="custom-select-option" v-for="tag in visibleSearchTags.slice(0, 10)" :key="'ac-'+tag.name" @click="selectTagFromAutocomplete(tag)">
+        <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 200px; width: 100%;">
+          <div class="glass-option" v-for="tag in visibleSearchTags.slice(0, 10)" :key="'ac-'+tag.name" @click="selectTagFromAutocomplete(tag)">
             {{ store.getLocalizedTag(tag.name) }}
           </div>
         </div>
       </div>
       <div class="tag-scroll-area" @wheel="handleWheel">
-        <span class="chip" v-for="tag in visibleSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
+        <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
           {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
         </span>
       </div>
     </div>
 
     <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
-      <div class="card skeleton" style="height: 350px;" v-for="i in 3" :key="i"></div>
+      <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+        <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+      </div>
     </div>
 
     <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0">
@@ -39,10 +41,8 @@
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
           <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(m, profile.media)">
-             <div v-if="!m.isLoaded" class="media-loader skeleton">
-             </div>
-             <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.url" @load="m.isLoaded = true" @error="m.isLoaded = true" :class="{'is-blurred': m.blur}">
-             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.url" @loadeddata="m.isLoaded = true" @error="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+             <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
+             <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
           </div>
         </div>
         
@@ -87,16 +87,14 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
-          <div class="custom-select-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 180px; margin-bottom: 0.5rem;" @click.stop>
-            <div style="padding: 0.5rem; font-size: 0.75rem; color:var(--text-muted); border-bottom: 1px solid var(--border-subtle);">
-              {{ store.t('select_contact_to', { type: profile.pendingReqType }) }}
+          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 180px; margin-bottom: 0.5rem;" @click.stop>
+            <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
+              <span>{{ c.type }}: {{ c.value }}</span>
+              <i v-if="profile.selectedContacts && profile.selectedContacts.includes(c.value)" class="bi bi-check2" style="color: var(--accent-moss);"></i>
             </div>
-            <div class="custom-select-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
-              <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check-square-fill' : 'bi-square'"></i> {{ c.type }}: {{ c.value }}
-            </div>
-            <div style="padding: 0.5rem;">
-              <button class="create-btn" style="width: 100%; font-size: 0.8rem; padding: 0.4rem;" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
-                Send
+            <div style="padding: 0.5rem; text-align: right;">
+              <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
+                <i class="bi bi-send"></i>
               </button>
             </div>
           </div>
@@ -145,6 +143,11 @@ const visibleSearchTags = computed(() => {
   )
 })
 
+const sortedSearchTags = computed(() => {
+  const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
+  return [...visibleSearchTags.value].sort((a, b) => order[a.state] - order[b.state]);
+})
+
 function selectTagFromAutocomplete(tag) {
   if (tag.state === 'neutral') tag.state = 'require';
   filterText.value = '';
@@ -163,7 +166,7 @@ async function fetchFeed(reset = false) {
     hasMore.value = true
   }
   
-  store.state.isFeedLoading = true
+  if (!currentCursor) store.state.isFeedLoading = true;
   isLoading.value = true
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
@@ -181,7 +184,7 @@ async function fetchFeed(reset = false) {
     if (batch.length > 0) {
       currentCursor = batch[batch.length - 1].created_at
       batch.forEach(p => {
-          if (p.media) p.media.forEach(m => m.isLoaded = false)
+          if (p.media) p.media.forEach(m => m.isLoaded = true)
           p.selectedContacts = []
       })
       store.state.feed.push(...batch)

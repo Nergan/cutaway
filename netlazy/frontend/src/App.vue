@@ -11,16 +11,6 @@
             <i class="bi bi-arrow-clockwise"></i> Check Status
           </button>
         </div>
-
-        <div class="welcome-footer">
-          <button class="footer-action" @click="store.toggleTheme">
-            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i> 
-            {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
-          </button>
-          <button class="footer-action" @click="store.cycleLang">
-            <i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}
-          </button>
-        </div>
       </div>
     </div>
 
@@ -41,16 +31,6 @@
                  @keyup.enter="handleImport">
           <button class="eye-btn" @click="importKeyVisible = !importKeyVisible" tabindex="-1">
             <i class="bi" :class="importKeyVisible ? 'bi-eye-slash' : 'bi-eye'"></i>
-          </button>
-        </div>
-
-        <div class="welcome-footer">
-          <button class="footer-action" @click="store.toggleTheme">
-            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i> 
-            {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
-          </button>
-          <button class="footer-action" @click="store.cycleLang">
-            <i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}
           </button>
         </div>
       </div>
@@ -88,48 +68,35 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" v-if="!store.state.isSidebarCollapsed">
-            <button class="footer-action" @click="store.toggleTheme">
-              <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i> 
-              {{ store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode') }}
+          <div class="sidebar-footer" v-if="!store.state.isSidebarCollapsed" style="flex-direction: row; justify-content: space-around; margin-top: auto;">
+            <button class="footer-action icon-btn" @click="store.toggleTheme">
+              <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
             </button>
-            <button class="footer-action" @click="store.cycleLang"><i class="bi bi-globe"></i> {{ store.t('lang') }}: {{ store.state.lang }}</button>
+            <button class="footer-action" style="font-weight: bold; text-transform: uppercase;" @click="store.cycleLang">
+              {{ store.state.lang }}
+            </button>
           </div>
         </div>
       </nav>
-      
-      <div class="sidebar-backdrop" :class="{ active: !store.state.isSidebarCollapsed }" @click="store.state.isSidebarCollapsed = true"></div>
       
       <!-- Native Mobile App Bottom Navigation -->
       <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
         <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
           <i class="bi bi-compass"></i>
-          <span>{{ store.t('feed') }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
           <i class="bi bi-person-lines-fill"></i>
-          <span>{{ store.t('editor') }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" style="position:relative;">
           <i class="bi bi-inbox"></i>
           <span v-if="pendingInboxCount > 0" class="badge" style="position:absolute; top:2px; right:20%; transform:translate(50%, -50%); margin:0;">{{ pendingInboxCount }}</span>
-          <span>{{ store.t('inbox') }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'">
           <i class="bi bi-fingerprint"></i>
-          <span>{{ store.t('vault') }}</span>
         </a>
       </nav>
 
       <main class="main-view">
-        <header class="mobile-top-bar">
-          <button class="mobile-menu-btn" @click="store.state.isSidebarCollapsed = false" title="Menu">
-            <i class="bi bi-list"></i>
-          </button>
-          <span class="mobile-view-title">{{ store.t(store.state.currentView) }}</span>
-          <div style="width: 40px;" class="mobile-menu-btn"></div>
-        </header>
-
         <div style="position:relative; flex-grow:1; display:flex; flex-direction:column; overflow:hidden;">
           <transition name="view-fade" mode="out-in">
             <KeepAlive>
@@ -138,6 +105,16 @@
               <Inbox v-else-if="store.state.currentView === 'inbox'" key="inbox" />
 
               <div class="scrollable-content" v-else-if="store.state.currentView === 'vault'" key="vault">
+                 
+                 <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;" class="mobile-only-settings">
+                   <button class="footer-action icon-btn" @click="store.toggleTheme">
+                     <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
+                   </button>
+                   <button class="footer-action" style="font-weight: bold; text-transform: uppercase;" @click="store.cycleLang">
+                     {{ store.state.lang }}
+                   </button>
+                 </div>
+
                  <div style="margin-bottom: 2rem; color:var(--text-muted);">
                    {{ store.t('vault_desc') }}
                  </div>
@@ -301,5 +278,8 @@ watch(() => store.state.currentView, () => {
   display: flex;
   height: 100vh;
   width: 100vw;
+}
+@media (min-width: 769px) {
+  .mobile-only-settings { display: none !important; }
 }
 </style>

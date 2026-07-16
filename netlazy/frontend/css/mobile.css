@@ -4,29 +4,16 @@
 .mobile-bottom-nav { display: none; }
 
 @media (max-width: 768px) {
-  .mobile-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Centered since hamburger is gone */
-    padding: 0 1.5rem;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-subtle);
-    height: 60px;
-    position: sticky;
-    top: 0;
-    z-index: 99;
+  /* Hide standard scrollbars for a clean app feel */
+  *::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    background: transparent;
   }
-  .mobile-menu-btn {
-    display: none !important; /* Hide hamburger for app-like bottom nav */
-  }
-  .mobile-view-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-  }
-
-  /* Bottom Navigation Bar replaces Sidebar */
+  
   .sidebar { display: none !important; }
+  
+  /* Native App Bottom Navigation */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -90,7 +77,7 @@
 
   .feed-header {
     position: fixed;
-    bottom: 65px; /* Stay above bottom nav */
+    bottom: 65px; /* Above bottom nav */
     left: 0;
     right: 0;
     top: auto;
