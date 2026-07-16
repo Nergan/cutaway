@@ -23,8 +23,8 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 }
 .search-header-input:focus-visible { outline: none; }
 
-.search-clear-btn { transition: color 0.2s, transform 0.2s, opacity 0.2s; cursor: pointer; color: var(--text-muted); position: absolute; right: 0; padding: 0.2rem; }
-.search-clear-btn:hover { color: var(--accent-danger); }
+.search-clear-btn { transition: color 0.2s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s; cursor: pointer; color: var(--text-muted); position: absolute; right: 0.5rem; padding: 0.2rem; }
+.search-clear-btn:hover { color: var(--accent-danger); transform: rotate(90deg); }
 .search-clear-btn:active { transform: scale(0.85) rotate(90deg); }
 
 /* TAG CHIPS */
@@ -36,13 +36,13 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 #active-tags-zone .chip:hover, #lib-tags-zone .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
 
-#lib-tags-zone .chip, #active-tags-zone .chip {
-  animation: chipAppear 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+#lib-tags-zone .chip, #active-tags-zone .chip, .tag-scroll-area .chip {
+  animation: tagAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
-@keyframes chipAppear {
-  0% { opacity: 0; transform: scale(0.92); }
-  100% { opacity: 1; transform: scale(1); }
+@keyframes tagAppear {
+  0% { opacity: 0; transform: scale(0.96) translateY(3px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* MEDIA GRID & DND */
@@ -267,19 +267,17 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   border-color: var(--border-focus);
   background: var(--bg-elevated);
 }
+.sheet-contact-row.is-selected {
+  background: rgba(141, 169, 112, 0.08);
+  border-color: var(--accent-moss);
+  color: var(--accent-moss);
+}
 .sheet-contact-row .sheet-contact-val {
   flex-grow: 1;
   font-size: 0.9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.sheet-contact-row .check-icon {
-  font-size: 1.1rem;
-  color: var(--text-muted);
-}
-.sheet-contact-row .bi-check-circle-fill {
-  color: var(--accent-moss);
 }
 
 .bottom-sheet-footer {

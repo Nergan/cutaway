@@ -68,7 +68,7 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', width: '100%' }">
+          <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', paddingLeft: '0', paddingRight: '0', width: '100%' }">
             <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
               <transition name="fade" mode="out-in">
                 <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
@@ -154,7 +154,7 @@
 
     <Lightbox />
 
-    <!-- Global Sliding Bottom Sheet / Dialog Overlay for Handshake Contact Selection -->
+    <!-- Minimalist Global Sliding Bottom Sheet Overlay for Handshake Contact Selection (Mobile) -->
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="store.state.contactSelect.open" @click="store.state.contactSelect.open = false">
         <div class="bottom-sheet-box" @click.stop>
@@ -167,10 +167,10 @@
             <div class="sheet-contact-row" 
                  v-for="c in validPrivateContacts" 
                  :key="c.value" 
+                 :class="{ 'is-selected': store.state.contactSelect.selectedContacts.includes(c.value) }"
                  @click="toggleGlobalContact(c.value)">
               <i class="bi" :class="getContactIcon(c.type)"></i>
               <span class="sheet-contact-val">{{ c.type }}: {{ c.value }}</span>
-              <i class="bi check-icon" :class="store.state.contactSelect.selectedContacts.includes(c.value) ? 'bi-check-circle-fill' : 'bi-circle'"></i>
             </div>
             
             <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">

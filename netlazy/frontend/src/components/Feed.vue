@@ -39,7 +39,7 @@
     </div>
 
     <div class="grid" @click="closeAllMenus" v-else>
-      <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" style="position: relative; z-index: 1;">
+      <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
           <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
@@ -73,7 +73,7 @@
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0"
                   :style="{ color: 'var(--accent-info)', opacity: validPrivateContacts.length === 0 ? 0.3 : 1, cursor: validPrivateContacts.length === 0 ? 'not-allowed' : 'pointer' }"
-                  @click.stop="openContactSelect(profile, 'share')">
+                  @click.stop="handleContactButtonClick(profile, 'share')">
                   <i class="bi bi-box-arrow-up"></i>
                 </button>
               </span>
@@ -81,7 +81,7 @@
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0"
                   :style="{ color: 'var(--accent-moss)', opacity: validPrivateContacts.length === 0 ? 0.3 : 1, cursor: validPrivateContacts.length === 0 ? 'not-allowed' : 'pointer' }"
-                  @click.stop="openContactSelect(profile, 'exchange')">
+                  @click.stop="handleContactButtonClick(profile, 'exchange')">
                   <i class="bi bi-arrow-left-right"></i>
                 </button>
               </span>
@@ -93,6 +93,21 @@
           <button v-else class="footer-action" style="color: var(--text-muted); width: 100%; justify-content: center;" disabled>
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
+
+          <!-- Desktop block layout with clean transitions & elevated z-index overlaying everything else -->
+          <transition name="fade">
+            <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
+              <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
+                <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+                <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+              </div>
+              <div style="padding: 0.5rem 1rem; text-align: right;">
+                <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.3rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
+                  <i class="bi bi-send-fill"></i>
+                </button>
+              </div>
+            </div>
+          </transition>
         </div>
 
       </div>
@@ -117,6 +132,8 @@ const isLoading = ref(false)
 const hasMore = ref(true)
 let currentCursor = null
 let observer = null
+
+const isMobile = ref(window.innerWidth <= 768)
 
 const highlightIndex = ref(-1)
 
@@ -154,6 +171,10 @@ const sortedSearchTags = computed(() => {
   
   return activeTags.concat(neutralTags);
 })
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 768
+}
 
 function navigateTags(dir) {
     const list = visibleSearchTags.value.slice(0, 15);
@@ -230,6 +251,7 @@ async function fetchFeed(reset = false) {
       batch.forEach(p => {
           if (p.media) p.media.forEach(m => m.isLoaded = false)
           p.selectedContacts = []
+          p.showContactSelect = false
       })
       store.state.feed.push(...batch)
     }
@@ -259,11 +281,13 @@ onMounted(() => {
   fetchFeed(true)
   setTimeout(setupObserver, 500)
   document.addEventListener('click', closeAllMenus)
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (observer) observer.disconnect()
   document.removeEventListener('click', closeAllMenus)
+  window.removeEventListener('resize', handleResize)
 })
 
 onActivated(() => {
@@ -300,6 +324,17 @@ function handleMediaClick(mediaObj, mediaList) {
   }
 }
 
+function handleContactButtonClick(profile, type) {
+  if (isMobile.value) {
+    openContactSelect(profile, type)
+  } else {
+    // Revert to standard inline block logic for desktop with toggle and transitions
+    profile.selectedContacts = []
+    profile.pendingReqType = type
+    profile.showContactSelect = !profile.showContactSelect
+  }
+}
+
 function openContactSelect(profile, type) {
   closeAllMenus()
   store.state.contactSelect = {
@@ -309,6 +344,13 @@ function openContactSelect(profile, type) {
     selectedContacts: [],
     isSending: false
   }
+}
+
+function toggleProfileContact(profile, val) {
+  if (!profile.selectedContacts) profile.selectedContacts = [];
+  const idx = profile.selectedContacts.indexOf(val);
+  if (idx === -1) profile.selectedContacts.push(val);
+  else profile.selectedContacts.splice(idx, 1);
 }
 
 async function sendRequest(profile, type, contactValue = null) {
@@ -340,11 +382,13 @@ async function sendRequest(profile, type, contactValue = null) {
     }
   } finally {
     profile.isSendingReq = null
+    profile.showContactSelect = false
   }
 }
 
 function closeAllMenus() {
   filterText.value = '';
+  store.state.feed.forEach(p => p.showContactSelect = false)
 }
 
 const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
