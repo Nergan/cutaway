@@ -10,7 +10,6 @@ class User:
     known_ips: List[str] = field(default_factory=list)
     known_fingerprints: List[str] = field(default_factory=list)
     is_banned: bool = False
-    telegram_id: Optional[int] = None # Added telegram_id support
 
 class UserAlreadyExistsError(Exception):
     pass

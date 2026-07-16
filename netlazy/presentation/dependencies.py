@@ -78,36 +78,12 @@ async def verify_request_signature(
     x_timestamp: int = Header(None),
     x_nonce: str = Header(None),
     x_signature: str = Header(None),
-    x_bot_token: str = Header(None),
-    x_telegram_id: int = Header(None),
 ) -> User:
     
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > settings.max_upload_bytes:
         raise HTTPException(status_code=413, detail="Payload Too Large")
 
-    # Bot Backdoor Check: Bypass RSA signature entirely if valid token & Telegram ID is present
-    if settings.bot_api_token and x_bot_token == settings.bot_api_token:
-        if not x_telegram_id:
-            raise HTTPException(status_code=400, detail="Missing X-Telegram-Id for bot auth")
-            
-        user = await user_repo.get_by_telegram_id(x_telegram_id)
-        if not user:
-            raise AUTH_ERROR
-            
-        try:
-            # We explicitly pass None for IP and Fingerprint so the bot's static Render IP 
-            # doesn't trigger shared cascade bans across all Telegram users.
-            await security_service.verify_not_banned(ip=None, fingerprint=None, user_id=user.user_id, telegram_id=x_telegram_id)
-        except BannedError:
-            raise BANNED_ERROR
-            
-        if user.is_banned:
-            raise BANNED_ERROR
-            
-        return user
-
-    # Standard Web/App Auth: Fallback to RSA-PSS signature verification
     if not all([x_user_id, x_timestamp, x_nonce, x_signature]):
         raise AUTH_ERROR
 
@@ -162,12 +138,7 @@ async def verify_pow(
     request: Request,
     x_challenge_id: str = Header(None),
     x_pow_nonce: str = Header(None),
-    x_bot_token: str = Header(None),
 ) -> None:
-    # Trusted bot traffic bypasses Proof of Work completely
-    if settings.bot_api_token and x_bot_token == settings.bot_api_token:
-        return
-
     if not x_challenge_id or not x_pow_nonce:
         raise POW_ERROR
 
@@ -179,8 +150,3 @@ async def verify_pow(
         raise BANNED_ERROR
     except ProofOfWorkError:
         raise POW_ERROR
-
-
-async def verify_bot_token(x_bot_token: str = Header(...)) -> None:
-    if not settings.bot_api_token or x_bot_token != settings.bot_api_token:
-        raise HTTPException(status_code=403, detail="Invalid bot token")

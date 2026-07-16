@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
-from netlazy.application.auth_service import InvalidPublicKeyError, AuthenticationError
+from netlazy.application.auth_service import InvalidPublicKeyError
 from netlazy.domain.models import UserAlreadyExistsError
 from netlazy.domain.models import User
 from netlazy.presentation.dependencies import (
@@ -9,7 +9,6 @@ from netlazy.presentation.dependencies import (
     inbox_service, 
     verify_pow, 
     verify_request_signature,
-    verify_bot_token,
     profile_repo,
     handshake_repo
 )
@@ -30,16 +29,6 @@ class UserRotateResponse(BaseModel):
     new_user_id: str
     message: str
 
-class BotRegisterRequest(BaseModel):
-    public_key: str = Field(..., max_length=4096)
-    telegram_id: int
-
-class BotLinkRequest(BaseModel):
-    user_id: str
-    telegram_id: int
-
-class BotUnlinkRequest(BaseModel):
-    telegram_id: int
 
 @router.get("/footprint-check")
 async def check_footprint(request: Request):
@@ -91,29 +80,3 @@ async def delete_account(user: User = Depends(verify_request_signature)):
     await profile_service.delete_profile(user.user_id)
     await auth_service.delete_user(user.user_id)
     await inbox_service.delete_user_handshakes(user.user_id)
-
-# --- BOT EXCLUSIVE ENDPOINTS ---
-
-@router.post("/bot/register", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_bot_token)])
-async def bot_register(body: BotRegisterRequest):
-    try:
-        # IP/Fingerprint logging is skipped for bot proxy registration
-        user = await auth_service.register_user(body.public_key, telegram_id=body.telegram_id)
-        return {"user_id": user.user_id, "message": "Bot registration successful"}
-    except InvalidPublicKeyError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except UserAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Public key already registered")
-
-@router.post("/bot/link", dependencies=[Depends(verify_bot_token)])
-async def bot_link(body: BotLinkRequest):
-    try:
-        user = await auth_service.link_telegram_id(body.user_id, body.telegram_id)
-        return {"user_id": user.user_id, "message": "Telegram ID linked successfully"}
-    except AuthenticationError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-@router.post("/bot/unlink", dependencies=[Depends(verify_bot_token)])
-async def bot_unlink(body: BotUnlinkRequest):
-    await auth_service.unlink_telegram_id(body.telegram_id)
-    return {"message": "Telegram ID unlinked successfully"}

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     bot_protection_delay: float = 0.5
 
     admin_api_key: str = ""
-    bot_api_token: str = "" # API key to authenticate Telegram bot requests
+    trusted_bot_ips: str = "" # Comma-separated Render static IPs for the Telegram bot
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
