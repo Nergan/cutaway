@@ -13,6 +13,14 @@ class UserRepository(ABC):
         ...
         
     @abstractmethod
+    async def get_by_telegram_id(self, telegram_id: int, session: Any = None) -> Optional[User]:
+        ...
+        
+    @abstractmethod
+    async def update_telegram_id(self, user_id: str, telegram_id: Optional[int], session: Any = None) -> None:
+        ...
+
+    @abstractmethod
     async def log_footprint(self, user_id: str, ip: str, fingerprint: str) -> None:
         ...
 
@@ -135,13 +143,13 @@ class SecurityRepository(ABC):
         ...
 
     @abstractmethod
-    async def is_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None) -> bool:
+    async def is_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None, telegram_id: Optional[int] = None) -> bool:
         ...
 
     @abstractmethod
-    async def apply_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
+    async def apply_bans(self, ips: List[str], fingerprints: List[str], user_id: str, telegram_id: Optional[int] = None) -> None:
         ...
         
     @abstractmethod
-    async def remove_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
+    async def remove_bans(self, ips: List[str], fingerprints: List[str], user_id: str, telegram_id: Optional[int] = None) -> None:
         ...

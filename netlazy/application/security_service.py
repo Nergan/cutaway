@@ -37,15 +37,17 @@ class SecurityService:
         if not result_hash.startswith(target_prefix):
             raise ProofOfWorkError("Invalid Proof of Work solution.")
 
-    async def verify_not_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None) -> None:
-        if await self._security_repo.is_banned(ip, fingerprint, user_id):
+    async def verify_not_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None, telegram_id: Optional[int] = None) -> None:
+        if await self._security_repo.is_banned(ip, fingerprint, user_id, telegram_id):
+            # Attempt ban lift on user un-banned check
             if user_id:
                 user = await self._user_repo.get_by_id(user_id)
                 if user and not user.is_banned:
                     await self._security_repo.remove_bans(
                         ips=user.known_ips + ([ip] if ip else []),
                         fingerprints=user.known_fingerprints + ([fingerprint] if fingerprint else []),
-                        user_id=user.user_id
+                        user_id=user.user_id,
+                        telegram_id=user.telegram_id
                     )
                     return
             raise BannedError("Access denied by security policy.")
@@ -58,5 +60,6 @@ class SecurityService:
         await self._security_repo.apply_bans(
             ips=user.known_ips,
             fingerprints=user.known_fingerprints,
-            user_id=user.user_id
+            user_id=user.user_id,
+            telegram_id=user.telegram_id
         )

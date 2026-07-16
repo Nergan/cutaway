@@ -22,6 +22,7 @@ class MongoUserRepository(UserRepository):
                 "known_ips": user.known_ips,
                 "known_fingerprints": user.known_fingerprints,
                 "is_banned": user.is_banned,
+                "telegram_id": user.telegram_id,
             }, session=session)
         except DuplicateKeyError:
             raise UserAlreadyExistsError(f"User {user.user_id} already registered")
@@ -29,6 +30,21 @@ class MongoUserRepository(UserRepository):
     async def get_by_id(self, user_id: str, session: Any = None) -> Optional[User]:
         doc = await db_instance.users_collection.find_one({"user_id": user_id}, session=session)
         if not doc: return None
+        return self._to_domain(doc)
+
+    async def get_by_telegram_id(self, telegram_id: int, session: Any = None) -> Optional[User]:
+        doc = await db_instance.users_collection.find_one({"telegram_id": telegram_id}, session=session)
+        if not doc: return None
+        return self._to_domain(doc)
+
+    async def update_telegram_id(self, user_id: str, telegram_id: Optional[int], session: Any = None) -> None:
+        await db_instance.users_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"telegram_id": telegram_id}},
+            session=session
+        )
+
+    def _to_domain(self, doc: dict) -> User:
         return User(
             user_id=doc["user_id"],
             public_key_pem=doc["public_key"],
@@ -36,6 +52,7 @@ class MongoUserRepository(UserRepository):
             known_ips=doc.get("known_ips", []),
             known_fingerprints=doc.get("known_fingerprints", []),
             is_banned=doc.get("is_banned", False),
+            telegram_id=doc.get("telegram_id")
         )
 
     async def log_footprint(self, user_id: str, ip: str, fingerprint: str) -> None:
@@ -83,31 +100,39 @@ class MongoSecurityRepository(SecurityRepository):
         if not doc: return None
         return PoWChallenge(id=doc["id"], difficulty=doc["difficulty"], created_at=_force_utc(doc["created_at"]))
 
-    async def is_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None) -> bool:
+    async def is_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None, telegram_id: Optional[int] = None) -> bool:
         queries = []
         if ip: queries.append({"type": "ip", "value": ip})
         if fingerprint: queries.append({"type": "fingerprint", "value": fingerprint})
         if user_id: queries.append({"type": "user_id", "value": user_id})
+        if telegram_id is not None: queries.append({"type": "telegram_id", "value": str(telegram_id)})
+        
         if not queries: return False
         doc = await db_instance.bans_collection.find_one({"$or": queries})
         return doc is not None
 
-    async def apply_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
+    async def apply_bans(self, ips: List[str], fingerprints: List[str], user_id: str, telegram_id: Optional[int] = None) -> None:
         ops = []
         for ip in ips: ops.append({"type": "ip", "value": ip, "created_at": datetime.now(timezone.utc)})
         for fp in fingerprints: ops.append({"type": "fingerprint", "value": fp, "created_at": datetime.now(timezone.utc)})
         ops.append({"type": "user_id", "value": user_id, "created_at": datetime.now(timezone.utc)})
+        if telegram_id is not None:
+            ops.append({"type": "telegram_id", "value": str(telegram_id), "created_at": datetime.now(timezone.utc)})
+            
         for op in ops:
             await db_instance.bans_collection.update_one(
                 {"type": op["type"], "value": op["value"]}, {"$set": op}, upsert=True
             )
         await db_instance.users_collection.update_one({"user_id": user_id}, {"$set": {"is_banned": True}})
 
-    async def remove_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
+    async def remove_bans(self, ips: List[str], fingerprints: List[str], user_id: str, telegram_id: Optional[int] = None) -> None:
         ops = []
         for ip in ips: ops.append({"type": "ip", "value": ip})
         for fp in fingerprints: ops.append({"type": "fingerprint", "value": fp})
         ops.append({"type": "user_id", "value": user_id})
+        if telegram_id is not None:
+            ops.append({"type": "telegram_id", "value": str(telegram_id)})
+            
         if ops:
             await db_instance.bans_collection.delete_many({"$or": ops})
 

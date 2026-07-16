@@ -19,7 +19,7 @@ class AuthService:
         self._user_repo = user_repo
         self._nonce_repo = nonce_repo
 
-    async def register_user(self, public_key_pem: str, ip: str = None, fingerprint: str = None) -> User:
+    async def register_user(self, public_key_pem: str, ip: str = None, fingerprint: str = None, telegram_id: int = None) -> User:
         try:
             user_id = crypto_adapter.derive_user_id(public_key_pem)
         except crypto_adapter.InvalidPublicKeyError as e:
@@ -30,10 +30,24 @@ class AuthService:
             public_key_pem=public_key_pem,
             created_at=datetime.now(timezone.utc),
             known_ips=[ip] if ip else [],
-            known_fingerprints=[fingerprint] if fingerprint else []
+            known_fingerprints=[fingerprint] if fingerprint else [],
+            telegram_id=telegram_id
         )
         await self._user_repo.create(user) 
         return user
+        
+    async def link_telegram_id(self, user_id: str, telegram_id: int) -> User:
+        user = await self._user_repo.get_by_id(user_id)
+        if not user:
+            raise AuthenticationError("User not found for linking")
+        await self._user_repo.update_telegram_id(user_id, telegram_id)
+        user.telegram_id = telegram_id
+        return user
+        
+    async def unlink_telegram_id(self, telegram_id: int) -> None:
+        user = await self._user_repo.get_by_telegram_id(telegram_id)
+        if user:
+            await self._user_repo.update_telegram_id(user.user_id, None)
 
     async def rotate_key(
         self,
@@ -57,13 +71,15 @@ class AuthService:
             old_user = await self._user_repo.get_by_id(old_user_id, session=session)
             known_ips = old_user.known_ips if old_user else []
             known_fingerprints = old_user.known_fingerprints if old_user else []
+            telegram_id = old_user.telegram_id if old_user else None
 
             new_user = User(
                 user_id=new_user_id,
                 public_key_pem=new_public_key_pem,
                 created_at=datetime.now(timezone.utc),
                 known_ips=known_ips,
-                known_fingerprints=known_fingerprints
+                known_fingerprints=known_fingerprints,
+                telegram_id=telegram_id
             )
             await self._user_repo.create(new_user, session=session)
 
