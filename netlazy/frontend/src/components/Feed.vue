@@ -2,13 +2,13 @@
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header blurred-header">
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
-        <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
+        <input type="text" ref="searchInput" class="seamless-input search-header-input" v-model="filterText" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
         <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
         
         <transition name="view-fade">
           <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 250px; width: 100%;">
             <transition-group name="tag-list" tag="div">
-              <div class="glass-option" v-for="tag in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" @mousedown="animateAndSelectTag($event, tag)">
+              <div class="glass-option" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}" @mousedown="animateAndSelectTag($event, tag)">
                 <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
               </div>
             </transition-group>
@@ -40,14 +40,14 @@
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-          <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+          <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
         </div>
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
           <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(m, profile.media)">
-             <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
-             <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
-             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+             <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
+             <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
           </div>
         </div>
         
@@ -118,7 +118,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, onActivated } from 'vue'
 import { useStore } from '../store/state.js'
-import { processMediaBlobs } from '../utils/media.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
 const store = useStore()
@@ -128,6 +127,8 @@ const isLoading = ref(false)
 const hasMore = ref(true)
 let currentCursor = null
 let observer = null
+
+const highlightIndex = ref(-1)
 
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
@@ -146,15 +147,35 @@ const visibleSearchTags = computed(() => {
       (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)));
      
-     if (t.hidden) return matchesQuery && query.length > 0;
+     if (t.hidden) {
+         // Age/local only appear if explicitly typed matches their alias/name
+         return matchesQuery && (t.name.toLowerCase() === query || t.aliases.some(a => a.toLowerCase() === query));
+     }
      return matchesQuery;
   })
 })
 
 const sortedSearchTags = computed(() => {
   const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
-  return [...store.state.availableSearchTags].sort((a, b) => order[a.state] - order[b.state]);
+  return [...store.state.availableSearchTags].filter(t => t.state !== 'neutral').sort((a, b) => {
+    return order[a.state] - order[b.state];
+  }).concat([...store.state.availableSearchTags].filter(t => t.state === 'neutral'));
 })
+
+function navigateTags(dir) {
+    const list = visibleSearchTags.value.slice(0, 15);
+    if (!list.length) return;
+    highlightIndex.value = (highlightIndex.value + dir + list.length) % list.length;
+}
+
+function selectHighlightedTag() {
+    const list = visibleSearchTags.value.slice(0, 15);
+    if (highlightIndex.value >= 0 && highlightIndex.value < list.length) {
+        selectTagFromAutocomplete(list[highlightIndex.value]);
+    }
+}
+
+watch(filterText, () => { highlightIndex.value = -1; });
 
 function animateAndSelectTag(e, tag) {
   const el = e.currentTarget;
@@ -173,6 +194,19 @@ function selectTagFromAutocomplete(tag) {
 function resetFilters() {
   filterText.value = '';
   store.state.availableSearchTags.forEach(t => t.state = 'neutral');
+}
+
+async function handleMediaError(profile, m) {
+    if (m.isErrorHandled) return;
+    m.isErrorHandled = true;
+    const realIdx = profile.media.findIndex(x => x.url === m.url);
+    if (realIdx !== -1) profile.media.splice(realIdx, 1);
+    if (profile.audio && profile.audio.url === m.url) profile.audio = null;
+    
+    // Auto-heal only if it's our profile. If it's feed/inbox, we just hide it locally
+    if (profile.user_id === store.state.userId) {
+        try { await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}`); } catch(e){}
+    }
 }
 
 async function fetchFeed(reset = false) {
@@ -205,12 +239,6 @@ async function fetchFeed(reset = false) {
           p.selectedContacts = []
       })
       store.state.feed.push(...batch)
-      
-      // Detached deterministic blob loading
-      batch.forEach(p => {
-          processMediaBlobs(p.media);
-          if (p.audio) processMediaBlobs([p.audio]);
-      });
     }
   } catch (e) {
     store.addToast("Failed to fetch feed", "bi-x-circle")
@@ -338,3 +366,9 @@ async function copyText(txt) {
   store.addToast(store.t('copied'), "bi-check2")
 }
 </script>
+
+<style scoped>
+.highlighted-option {
+  background: rgba(150, 150, 150, 0.2) !important;
+}
+</style>

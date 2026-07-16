@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
-import { processMediaBlobs } from '../utils/media.js';
+import { getRestoredAudioBlobUrl } from '../utils/media.js';
 import translations from './translations.js';
 
 const STORAGE_KEY = 'netlazy_state';
@@ -65,11 +65,10 @@ export function useStore() {
 
     function startPolling() {
         if (pollInterval) clearInterval(pollInterval);
-        // Reduced to 10 seconds for seamless syncing
         pollInterval = setInterval(() => {
             if (state.isRegistered && !state.isBanned) {
-                fetchInbox(true); // silent fetch
-                fetchMyProfile(true); // silent fetch
+                fetchInbox(true);
+                fetchMyProfile(true);
             }
         }, 10000);
     }
@@ -288,7 +287,6 @@ export function useStore() {
             const data = res.data;
             data.contacts.forEach(c => c._id = Math.random().toString());
             
-            // Re-merge with local UI state to prevent jumping during polling updates
             const currentMedia = state.myProfile.media || [];
             data.media = data.media.map(m => { 
                 const old = currentMedia.find(om => om.url === m.url);
@@ -300,16 +298,21 @@ export function useStore() {
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
                 data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0 };
+                // Fetch distorted audio
+                if (!data.audio.isLoaded && !data.audio.blobUrl) {
+                    getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
+                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); // 404 auto cleanup
+                        else if (bUrl && state.myProfile.audio) {
+                            state.myProfile.audio.blobUrl = bUrl;
+                            state.myProfile.audio.isLoaded = true;
+                        }
+                    });
+                }
             } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
                 data.audio = state.myProfile.audio;
             }
 
             state.myProfile = data;
-            
-            // Trigger asynchronous decryption and display of CDN media
-            processMediaBlobs(state.myProfile.media, true);
-            if (state.myProfile.audio) processMediaBlobs([state.myProfile.audio], true);
-
         } catch (e) {
             console.error("Profile sync failed");
         } finally {
@@ -356,15 +359,22 @@ export function useStore() {
                     r.profile.media.forEach(m => {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);
                         m.isLoaded = oldM ? oldM.isLoaded : false;
-                        if (oldM && oldM.blobUrl) m.blobUrl = oldM.blobUrl;
                     });
-                    processMediaBlobs(r.profile.media);
                 }
                 if (r.profile && r.profile.audio) {
                     const oldA = oldR?.profile?.audio;
                     r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
                     if (oldA && oldA.blobUrl) r.profile.audio.blobUrl = oldA.blobUrl;
-                    processMediaBlobs([r.profile.audio]);
+                    
+                    if (!r.profile.audio.isLoaded && !r.profile.audio.blobUrl) {
+                        getRestoredAudioBlobUrl(r.profile.audio.url).then(bUrl => {
+                            if (bUrl === null) r.profile.audio = null; // 404 remote cleanup visually
+                            else if (bUrl) {
+                                r.profile.audio.blobUrl = bUrl;
+                                r.profile.audio.isLoaded = true;
+                            }
+                        });
+                    }
                 }
                 return {
                     ...r, 

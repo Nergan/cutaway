@@ -9,22 +9,22 @@
         </div>
       </div>
       
-      <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start;">
-        <div v-if="store.state.availableSearchTags.length === 0" style="width: 100%; text-align: center; color: var(--text-muted);">
+      <transition-group name="tag-list" tag="div" class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start; position: relative;">
+        <div v-if="store.state.availableSearchTags.length === 0" style="width: 100%; text-align: center; color: var(--text-muted);" key="loading-spin">
           <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i>
         </div>
         <span class="chip" 
               :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
               v-for="tag in filteredTags" 
-              :key="tag.name" 
+              :key="'ed-tg-'+tag.name" 
               @click="toggleTag(tag.name)">
           {{ store.getLocalizedTag(tag.name) }}
           <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
         </span>
-        <div v-if="store.state.availableSearchTags.length > 0 && filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;">
+        <div v-if="store.state.availableSearchTags.length > 0 && filteredTags.length === 0" class="muted-italic" style="color:var(--text-muted); font-size:0.85rem;" key="no-found">
           {{ store.t('no_tags_found') }}
         </div>
-      </div>
+      </transition-group>
     </div>
 
     <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste">
@@ -65,7 +65,7 @@
                    </div>
                  </template>
                  
-                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || store.state.myProfile.audio.url" @error="handleMediaError(store.state.myProfile, store.state.myProfile.audio)" controls style="flex-grow:1;"></audio>
                  
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
@@ -73,7 +73,7 @@
               <transition-group name="media-list" tag="div" class="media-preview-grid telegram-grid" v-if="validMedia.length > 0">
                 <div class="media-thumb" 
                      v-for="(m, idx) in validMedia" 
-                     :key="m.url" 
+                     :key="m.url || m.blobUrl" 
                      :class="{'drag-over': dragOverIdx === idx}" 
                      draggable="true" 
                      @dragstart="!m.isUploading && dragStart(idx)" 
@@ -83,17 +83,17 @@
                      @dragend="dragEnd"
                      @click="!m.isUploading && openLightbox(m)">
                   
-                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur || m.isUploading}">
-                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur || m.isUploading}"></video>
+                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
                   
                   <div v-if="m.isUploading" class="media-loader">
                     <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
                   </div>
                   
-                  <div v-if="!m.isUploading" class="media-remove" @click.stop="!m.isDeleting && removeMedia(m, idx)">
+                  <div v-if="!m.isUploading" class="media-remove" @click.stop="!m.isDeleting && removeMedia(m)">
                     <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
                   </div>
-                  <div v-if="!m.isUploading" class="media-blur-toggle" @click.stop="toggleBlur(m, idx)" :title="m.blur ? store.t('accept') : store.t('decline')">
+                  <div v-if="!m.isUploading" class="media-blur-toggle" @click.stop="toggleBlur(m)" :title="m.blur ? store.t('accept') : store.t('decline')">
                     <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
                   </div>
                 </div>
@@ -120,9 +120,11 @@
             </div>
           </transition>
 
-          <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags">
-            <span style="font-size: 0.75rem;">active tags</span>
-            <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <div class="blurred-header" style="padding: 1rem 0; margin-bottom: 0.5rem; background: var(--bg-base); z-index: 9;">
+            <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
+              <span style="font-size: 0.75rem;">active tags</span>
+              <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
           </div>
           <transition name="collapse">
             <div v-show="showActiveTags" class="mobile-collapse-content">
@@ -216,14 +218,6 @@ function triggerAutosave() {
   }, 1000)
 }
 
-function selectTagFromAutocomplete(tagName) {
-  if (!store.state.myProfile.tags.includes(tagName)) {
-    store.state.myProfile.tags.push(tagName);
-    triggerAutosave();
-  }
-  store.state.tagSearchQuery = '';
-}
-
 function toggleTag(tagName) {
   const idx = store.state.myProfile.tags.indexOf(tagName);
   if (idx === -1) {
@@ -274,11 +268,23 @@ async function copyText(txt) {
   store.addToast(store.t('copied'), "bi-check2")
 }
 
+async function handleMediaError(profile, m) {
+    if (m.isErrorHandled || m.isUploading) return;
+    m.isErrorHandled = true;
+    const realIdx = profile.media.findIndex(x => x.url === m.url);
+    if (realIdx !== -1) profile.media.splice(realIdx, 1);
+    if (profile.audio && profile.audio.url === m.url) profile.audio = null;
+    
+    if (profile.user_id === store.state.userId) {
+        try { await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}`); } catch(e){}
+    }
+}
+
 function updateMediaList(resMedia, remainingTemps) {
     const updated = resMedia.map(newM => {
         const old = store.state.myProfile.media.find(m => m.url === newM.url);
         return old ? { ...newM, isDeleting: old.isDeleting, isUpdatingBlur: old.isUpdatingBlur || false, isLoaded: true, isUploading: false } 
-                   : { ...newM, isLoaded: true, isUploading: false }; // It will process dynamically via fetching
+                   : { ...newM, isLoaded: true, isUploading: false };
     });
     store.state.myProfile.media = [...updated, ...remainingTemps];
 }
@@ -324,21 +330,7 @@ async function processFiles(files) {
       updateMediaList(res.data.media, remainingTemps)
       if (res.data.audio) {
           const oldAudio = store.state.myProfile.audio;
-          const reactiveAudio = store.state.myProfile.audio;
-          const desiredBlur = reactiveAudio ? reactiveAudio.blur : tempAudio.blur;
-          
-          res.data.audio.blobUrl = tempAudio.blobUrl; // Persist the client side blob to skip re-downloading it instantly
-
-          if (desiredBlur !== res.data.audio.blur) {
-              try {
-                  const resBlur = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(res.data.audio.url)}&blur=${desiredBlur}`);
-                  store.state.myProfile.audio = { ...resBlur.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
-              } catch (e) {
-                  store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
-              }
-          } else {
-              store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
-          }
+          store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
       } else {
           store.state.myProfile.audio = null;
       }
@@ -368,7 +360,7 @@ async function processFiles(files) {
 
       if (newItem) {
         newItem.blur = desiredBlur;
-        newItem.blobUrl = temp.blobUrl; // Persist client-side render blob!
+        newItem.blobUrl = temp.blobUrl; // Persist client-side render blob to skip flashing
       }
 
       const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.blobUrl !== temp.blobUrl)
@@ -431,7 +423,7 @@ function handlePaste(e) {
   if (files.length > 0) processFiles(files)
 }
 
-async function removeMedia(m, idx) {
+async function removeMedia(m) {
   if (m.isUploading) {
     if (m.abortCtrl) m.abortCtrl.abort();
     store.state.myProfile.media = store.state.myProfile.media.filter(x => x.blobUrl !== m.blobUrl);
@@ -444,11 +436,17 @@ async function removeMedia(m, idx) {
       m.isDeleting = true
       const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
       const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
+      
+      // Optimistically remove from UI
+      store.state.myProfile.media.splice(realIdx, 1);
+      
       const res = await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`)
       const remainingTemps = store.state.myProfile.media.filter(x => x.isUploading)
       updateMediaList(res.data.media, remainingTemps)
     } catch (e) {
-      m.isDeleting = false
+      // Revert optimistic removal on fail
+      if (m) m.isDeleting = false
+      store.fetchMyProfile(true) 
     }
   }
 }
@@ -472,7 +470,7 @@ async function removeAudio() {
   }
 }
 
-async function toggleBlur(m, idx) {
+async function toggleBlur(m) {
   const realIdx = store.state.myProfile.media.findIndex(x => x.url === m.url);
   if (realIdx === -1) return;
 

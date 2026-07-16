@@ -20,14 +20,14 @@
               <div class="inbox-item card" v-for="req in pendingRequests" :key="req.id" :class="{resolving: req.resolving, 'error-deleted': req.isErrorDeleted}">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
-                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
                   </div>
                 </div>
 
@@ -116,14 +116,14 @@
               <div class="inbox-item card" v-for="req in acceptedRequests" :key="'acc'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
-                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
                   </div>
                 </div>
 
@@ -186,14 +186,14 @@
               <div class="inbox-item card" v-for="req in sentRequests" :key="'s'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
-                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
                   </div>
                 </div>
 
@@ -235,14 +235,14 @@
               <div class="inbox-item card" v-for="req in declinedRequests" :key="'d'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
-                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
                   </div>
                 </div>
 
@@ -319,6 +319,19 @@ onActivated(() => {
     })
   }
 })
+
+async function handleMediaError(profile, m) {
+    if (m.isErrorHandled) return;
+    m.isErrorHandled = true;
+    const realIdx = profile.media.findIndex(x => x.url === m.url);
+    if (realIdx !== -1) profile.media.splice(realIdx, 1);
+    if (profile.audio && profile.audio.url === m.url) profile.audio = null;
+    
+    // Auto-heal only if it's our profile. If it's feed/inbox, we just hide it locally
+    if (profile.user_id === store.state.userId) {
+        try { await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}`); } catch(e){}
+    }
+}
 
 function handleMediaClick(mediaObj, mediaList) {
   if (mediaObj.blur) mediaObj.blur = false

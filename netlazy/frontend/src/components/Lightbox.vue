@@ -14,16 +14,16 @@
           <transition name="lightbox-slide" mode="out-in">
             <img v-if="currentMedia.media_type === 'image'" 
                  :key="currentMedia.url"
-                 :src="currentMedia.blobUrl || ''" 
+                 :src="currentMedia.blobUrl || currentMedia.url" 
                  class="lightbox-content"
-                 :class="{'is-blurred': currentMedia.blur}"
+                 :class="{'is-blurred': currentMedia.blur, 'cdn-obfuscated': !currentMedia.blobUrl}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
                    :key="currentMedia.url"
-                   :src="currentMedia.blobUrl || ''" 
+                   :src="currentMedia.blobUrl || currentMedia.url" 
                    class="lightbox-content" 
-                   :class="{'is-blurred': currentMedia.blur}"
+                   :class="{'is-blurred': currentMedia.blur, 'cdn-obfuscated': !currentMedia.blobUrl}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
 
@@ -82,7 +82,6 @@ async function removeMedia(m) {
     m.isDeleting = true;
     const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
     const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
-    await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`);
     
     store.state.myProfile.media = store.state.myProfile.media.filter(x => x.url !== m.url);
     store.state.lightbox.mediaList = store.state.lightbox.mediaList.filter(x => x.url !== m.url);
@@ -92,8 +91,10 @@ async function removeMedia(m) {
     } else if (store.state.lightbox.index >= store.state.lightbox.mediaList.length) {
       store.state.lightbox.index = store.state.lightbox.mediaList.length - 1;
     }
+    
+    await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`);
   } catch (e) {
-    store.addToast("Failed to delete media", "bi-x-circle");
+    // Silent fail so we don't spam toasts if pessimistic deletion lags.
   } finally {
     if (m) m.isDeleting = false;
   }
@@ -117,7 +118,6 @@ async function toggleBlurMode(m) {
   }
 }
 
-// Touch swipe implementation for mobile users
 let touchStartX = 0
 let touchEndX = 0
 
