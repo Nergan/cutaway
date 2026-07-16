@@ -12,8 +12,8 @@
 .nav-section { margin-bottom: 1.5rem; }
 .nav-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.9rem; margin-bottom: 0.3rem; transition: all 0.2s; overflow: hidden; }
 .nav-item i { font-size: 1.1rem; flex-shrink: 0; }
-.nav-item:hover { color: var(--text-main); background: rgba(128,128,128,0.05); }
-.nav-item.active { color: var(--text-main); background: var(--bg-elevated); box-shadow: var(--shadow-sm); }
+.nav-item:hover { color: var(--text-main); }
+.nav-item.active { color: var(--accent-moss); font-weight: 600; background: transparent; box-shadow: none; }
 .badge { margin-left: auto; background: var(--text-main); color: var(--bg-base); font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: var(--radius-pill); font-weight: 700; }
 
 .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 0.8rem; padding: 0 0.5rem; }
@@ -27,15 +27,22 @@
 .scrollable-content { flex-grow: 1; overflow-y: auto; padding: 2rem 3rem; position: relative; }
 
 /* SHARED BLURRED HEADERS */
-.blurred-header { position: sticky; top: 0; z-index: 10; background: rgba(0,0,0,0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-subtle); }
-.light-theme .blurred-header { background: rgba(254, 252, 245, 0.4); border-bottom: 1px solid var(--border-subtle); }
+.blurred-header { position: sticky; top: 0; z-index: 10; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-subtle); }
+.light-theme .blurred-header { background: rgba(254, 252, 245, 0.3); border-bottom: 1px solid var(--border-subtle); }
 
 .tag-library-header.blurred-header {
   background: rgba(0, 0, 0, 0.15) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 body.light-theme .tag-library-header.blurred-header {
   background: rgba(254, 252, 245, 0.15) !important;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+/* DESKTOP EXCLUSIVES */
+@media (min-width: 769px) {
+  .mobile-collapse-content { display: block !important; }
+  .mobile-collapse-icon { display: none !important; }
+  .section-header { pointer-events: none; }
 }

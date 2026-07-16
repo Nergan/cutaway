@@ -12,7 +12,7 @@
   outline: 2px dashed var(--accent-moss);
   outline-offset: -10px;
   background: rgba(141, 169, 112, 0.05);
-  border-radius: var(--radius-lg, 24px); /* Smoother edge */
+  border-radius: var(--radius-md); /* Smooth edge */
 }
 
 .workspace-toggle-btn { position: absolute; left: 1.5rem; top: 1.65rem; z-index: 50; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; outline: none; }
@@ -39,6 +39,8 @@
   display: flex; 
   flex-direction: column; 
   width: 100%; 
+  max-width: 100vw;
+  box-sizing: border-box;
   background: var(--bg-surface); 
   border: 1px solid var(--border-subtle); 
   border-radius: var(--radius-md); 
@@ -73,7 +75,7 @@
 .inbox-list-enter-from, .inbox-list-leave-to { opacity: 0; transform: scale(0.95); }
 .inbox-list-leave-active { position: absolute; right: 1.5rem; left: 1.5rem; }
 
-.offered-item { font-family: var(--font-main); font-size: 0.85rem; padding: 0.25rem 0.5rem; background: var(--bg-elevated); border-radius: var(--radius-sm); margin-top: 0.25rem; word-break: break-all; }
+.offered-item { font-family: var(--font-main); font-size: 0.85rem; padding: 0.25rem 0; word-break: break-all; color: var(--text-muted); }
 
 /* MODALS / LIGHTBOX */
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
@@ -156,7 +158,7 @@
   transform: translateY(10px);
 }
 
-/* Lightbox Modal */
+/* Smoother Lightbox Modal Transitions */
 .lightbox-fade-enter-active, .lightbox-fade-leave-active {
   transition: opacity 0.15s ease-out;
 }
@@ -176,15 +178,16 @@
   transform: scale(0.95);
 }
 
+/* Smoother Lightbox Slide Switching */
 .lightbox-slide-enter-active, .lightbox-slide-leave-active {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  transition: transform 0.25s ease-out, opacity 0.25s ease-out;
 }
 .lightbox-slide-enter-from {
-  transform: translateX(30px);
+  transform: translateX(15px);
   opacity: 0;
 }
 .lightbox-slide-leave-to {
-  transform: translateX(-30px);
+  transform: translateX(-15px);
   opacity: 0;
 }
 

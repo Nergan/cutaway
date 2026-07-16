@@ -8,9 +8,9 @@
           <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg" style="position: absolute; right: 0; cursor: pointer; color: var(--text-muted);" @click="store.state.tagSearchQuery = ''"></i>
         </div>
         
-        <div class="glass-menu" v-if="store.state.tagSearchQuery && filteredTags.length > 0" style="position: absolute; top: 100%; left: 1.5rem; right: 1.5rem; margin-top: 0.5rem;">
+        <div class="glass-menu" v-if="store.state.tagSearchQuery && filteredTags.length > 0" style="top: 100%; bottom: auto; left: 1.5rem; right: 1.5rem; width: auto;">
           <div class="glass-option" v-for="tag in filteredTags.slice(0, 10)" :key="'ed-ac-'+tag.name" @click="selectTagFromAutocomplete(tag.name)">
-            {{ store.getLocalizedTag(tag.name) }}
+            <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
           </div>
         </div>
       </div>
@@ -52,74 +52,88 @@
         </div>
         
         <template v-else>
-          <div v-if="validMedia.length === 0 && !store.state.myProfile.audio" class="media-zone" @click="$refs.fileInput.click()">
-            <i class="bi bi-image" style="font-size: 1.5rem;"></i><br>{{ store.t('add_media_placeholder') }}
+          <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
+            <span style="font-size: 0.75rem;">MEDIA</span>
+            <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
-          
-          <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;">
-             <template v-if="store.state.myProfile.audio.isUploading">
-               <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center;">
-                 <div class="progress-bar-bg">
-                   <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
-                 </div>
-                 <span style="color:var(--text-muted); font-size:0.85rem; position:relative; z-index:2;">Uploading... {{ store.state.myProfile.audio.uploadProgress || 0 }}%</span>
-               </div>
-             </template>
-             
-             <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.url" controls style="flex-grow:1;"></audio>
-             
-             <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
-          </div>
-          
-          <transition-group name="media-list" tag="div" class="media-preview-grid telegram-grid" v-if="validMedia.length > 0">
-            <div class="media-thumb" 
-                 v-for="(m, idx) in validMedia" 
-                 :key="m.url" 
-                 :class="{'drag-over': dragOverIdx === idx}" 
-                 draggable="true" 
-                 @dragstart="!m.isUploading && dragStart(idx)" 
-                 @dragover.prevent="!m.isUploading && dragOver(idx)" 
-                 @dragleave="dragLeave" 
-                 @drop="!m.isUploading && drop(idx)" 
-                 @dragend="dragEnd"
-                 @click="!m.isUploading && openLightbox(m)">
+          <transition name="collapse">
+            <div v-show="showMedia" class="mobile-collapse-content">
+              <div v-if="validMedia.length === 0 && !store.state.myProfile.audio" class="media-zone" @click="$refs.fileInput.click()">
+                <i class="bi bi-image" style="font-size: 1.5rem;"></i><br>{{ store.t('add_media_placeholder') }}
+              </div>
               
-              <div v-if="m.isUploading" class="media-loader">
-                <div class="progress-bar-bg">
-                  <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
+              <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;">
+                 <template v-if="store.state.myProfile.audio.isUploading">
+                   <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center;">
+                     <div class="progress-bar-bg">
+                       <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
+                     </div>
+                   </div>
+                 </template>
+                 
+                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.url" controls style="flex-grow:1;"></audio>
+                 
+                 <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
+              </div>
+              
+              <transition-group name="media-list" tag="div" class="media-preview-grid telegram-grid" v-if="validMedia.length > 0">
+                <div class="media-thumb" 
+                     v-for="(m, idx) in validMedia" 
+                     :key="m.url" 
+                     :class="{'drag-over': dragOverIdx === idx}" 
+                     draggable="true" 
+                     @dragstart="!m.isUploading && dragStart(idx)" 
+                     @dragover.prevent="!m.isUploading && dragOver(idx)" 
+                     @dragleave="dragLeave" 
+                     @drop="!m.isUploading && drop(idx)" 
+                     @dragend="dragEnd"
+                     @click="!m.isUploading && openLightbox(m)">
+                  
+                  <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
+                  <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                  
+                  <div v-if="m.isUploading" class="media-loader">
+                    <div class="progress-bar-bg">
+                      <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
+                    </div>
+                  </div>
+                  
+                  <div v-if="!m.isUploading" class="media-remove" @click.stop="!m.isDeleting && removeMedia(m, idx)">
+                    <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
+                  </div>
+                  <div v-if="!m.isUploading" class="media-blur-toggle" @click.stop="toggleBlur(m, idx)" :title="m.blur ? store.t('accept') : store.t('decline')">
+                    <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
+                  </div>
                 </div>
-              </div>
-              
-              <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-              <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
-              
-              <div class="media-remove" @click.stop="!m.isDeleting && removeMedia(m, idx)">
-                <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
-              </div>
-              <div class="media-blur-toggle" @click.stop="toggleBlur(m, idx)" :title="m.blur ? store.t('accept') : store.t('decline')">
-                <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
-              </div>
+                
+                <div class="media-thumb mini-add" key="mini-add" @click="$refs.fileInput.click()" title="add media" v-if="validMedia.length < 10">
+                  <i class="bi bi-plus-lg"></i>
+                </div>
+              </transition-group>
             </div>
-            
-            <div class="media-thumb mini-add" key="mini-add" @click="$refs.fileInput.click()" title="add media" v-if="validMedia.length < 10">
-              <i class="bi bi-plus-lg"></i>
-            </div>
-          </transition-group>
+          </transition>
           
           <input type="file" ref="fileInput" hidden multiple accept="image/*,video/*,audio/*" @change="handleFileSelect">
 
-          <div style="margin-top:2rem; margin-bottom: 0.5rem; display:flex; justify-content:space-between; color:var(--text-muted); font-size: 0.75rem;">
+          <div class="section-header mobile-collapse-header" @click="showBio = !showBio" style="margin-top:2rem;">
             <span>{{ store.t('about_me') }}</span>
-            <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
-          </div>
-          <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" placeholder="..." rows="3" @input="triggerAutosave"></textarea>
-
-          <div class="section-header" @click="showActiveTags = !showActiveTags">
-            <span>{{ store.t('active_tags') }}</span>
-            <i class="bi" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
+              <i class="bi mobile-collapse-icon" :class="showBio ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
           </div>
           <transition name="collapse">
-            <div v-show="showActiveTags">
+            <div v-show="showBio" class="mobile-collapse-content">
+              <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" placeholder="..." rows="3" @input="triggerAutosave"></textarea>
+            </div>
+          </transition>
+
+          <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags">
+            <span>{{ store.t('active_tags') }}</span>
+            <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          </div>
+          <transition name="collapse">
+            <div v-show="showActiveTags" class="mobile-collapse-content">
               <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
@@ -129,12 +143,12 @@
             </div>
           </transition>
 
-          <div class="section-header" @click="showContacts = !showContacts">
+          <div class="section-header mobile-collapse-header" @click="showContacts = !showContacts">
             <span>{{ store.t('contacts') }}</span>
-            <i class="bi" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            <i class="bi mobile-collapse-icon" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
-            <div v-show="showContacts">
+            <div v-show="showContacts" class="mobile-collapse-content">
               <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
                 <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
                 <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">
@@ -144,7 +158,7 @@
               </div>
               <div class="contact-row">
                 <i class="bi contact-icon bi-plus-lg"></i>
-                <input type="text" class="seamless-input contact-val" v-model="newContact.value" :placeholder="store.t('contact_placeholder')" @input="handleNewContactInput" @blur="commitNewContact">
+                <input type="text" class="seamless-input contact-val" v-model="newContact.value" :placeholder="store.t('contact_placeholder')" @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
                 <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :title="store.t('toggle_privacy')"></i>
               </div>
             </div>
@@ -167,6 +181,8 @@ const dragOverIdx = ref(null)
 const isDraggingFiles = ref(false)
 const isResizingWorkspace = ref(false)
 
+const showMedia = ref(true)
+const showBio = ref(true)
 const showActiveTags = ref(true)
 const showContacts = ref(true)
 

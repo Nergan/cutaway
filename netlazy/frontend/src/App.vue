@@ -68,12 +68,13 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" v-if="!store.state.isSidebarCollapsed" style="flex-direction: row; justify-content: space-around; margin-top: auto;">
-            <button class="footer-action icon-btn" @click="store.toggleTheme">
+          <!-- Preserved vertically in sidebar on desktop -->
+          <div class="sidebar-footer" style="flex-direction: column; align-items: center; gap: 1.5rem; margin-top: auto; padding-bottom: 1rem;">
+            <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
               <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
             </button>
-            <button class="footer-action" style="font-weight: bold; text-transform: uppercase;" @click="store.cycleLang">
-              {{ store.state.lang }}
+            <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang" :title="store.t('lang')">
+              {{ store.state.lang.toLowerCase() }}
             </button>
           </div>
         </div>
@@ -110,8 +111,8 @@
                    <button class="footer-action icon-btn" @click="store.toggleTheme">
                      <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
                    </button>
-                   <button class="footer-action" style="font-weight: bold; text-transform: uppercase;" @click="store.cycleLang">
-                     {{ store.state.lang }}
+                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang">
+                     {{ store.state.lang.toLowerCase() }}
                    </button>
                  </div>
 

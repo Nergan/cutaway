@@ -3,9 +3,9 @@
     <div class="inbox-layout">
       
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
-        <div class="section-header" @click="showReceived = !showReceived">
+        <div class="section-header mobile-collapse-header" @click="showReceived = !showReceived">
           <span>{{ store.t('received') }}</span>
-          <i class="bi" :class="showReceived ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <i class="bi mobile-collapse-icon" :class="showReceived ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
         
         <div v-if="store.state.isInboxLoading && pendingRequests.length === 0">
@@ -15,7 +15,7 @@
         </div>
 
         <transition name="collapse">
-          <div v-show="showReceived">
+          <div v-show="showReceived" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in pendingRequests" :key="req.id" :class="{resolving: req.resolving, 'error-deleted': req.isErrorDeleted}">
                 
@@ -50,11 +50,11 @@
                     <span v-if="req.status === 'pending' && ['exchange', 'mutual'].includes(req.type)" style="color: var(--text-muted); font-style: italic;">
                       {{ store.t('contact_hidden_exchange') }}
                     </span>
-                    <span v-else>
+                    <div v-else>
                       <div class="offered-item" v-for="contact in req.offered_contact.split(', ')" :key="contact">
                         {{ contact }}
                       </div>
-                    </span>
+                    </div>
                   </div>
                   
                   <div v-if="['mutual', 'demand', 'exchange'].includes(req.type)" style="margin-bottom:0.5rem; position: relative;">
@@ -62,7 +62,7 @@
                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                          {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
                        </span>
-                       <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%;">
+                       <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 220px;">
                          <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
                            <span>{{ c.type }}: {{ c.value }}</span>
                            <i v-if="req.selectedContacts && req.selectedContacts.includes(c.value)" class="bi bi-check2" style="color: var(--accent-moss);"></i>
@@ -98,9 +98,9 @@
           </div>
         </transition>
 
-        <div class="section-header" @click="showMatches = !showMatches" style="margin-top: 1.5rem;">
+        <div class="section-header mobile-collapse-header" @click="showMatches = !showMatches" style="margin-top: 1.5rem;">
           <span>{{ store.t('matches') }}</span>
-          <i class="bi" :class="showMatches ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <i class="bi mobile-collapse-icon" :class="showMatches ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
         
         <div v-if="store.state.isInboxLoading && acceptedRequests.length === 0">
@@ -110,7 +110,7 @@
         </div>
 
         <transition name="collapse">
-          <div v-show="showMatches">
+          <div v-show="showMatches" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in acceptedRequests" :key="'acc'+req.id">
                 
@@ -146,12 +146,12 @@
                   <div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">Shared Details:</div>
                     <div v-if="req.offered_contact">
-                      <div class="offered-item" v-for="contact in req.offered_contact.split(', ')" :key="contact">
+                      <div class="offered-item" v-for="contact in req.offered_contact.split(', ')" :key="'off'+contact">
                         Offered: {{ contact }}
                       </div>
                     </div>
                     <div v-if="req.returned_contact">
-                      <div class="offered-item" v-for="contact in req.returned_contact.split(', ')" :key="contact">
+                      <div class="offered-item" v-for="contact in req.returned_contact.split(', ')" :key="'ret'+contact">
                         Returned: {{ contact }}
                       </div>
                     </div>
@@ -173,13 +173,13 @@
       <div class="resizer-v left" style="position:relative; left:0; width:4px; height:100%; cursor:col-resize; background:var(--border-subtle);" @mousedown="startResize"></div>
       
       <div class="inbox-col" :style="{width: (100 - store.state.inboxSplit) + '%'}">
-        <div class="section-header" @click="showSent = !showSent">
+        <div class="section-header mobile-collapse-header" @click="showSent = !showSent">
           <span>{{ store.t('sent_resolved') }}</span>
-          <i class="bi" :class="showSent ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <i class="bi mobile-collapse-icon" :class="showSent ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
         
         <transition name="collapse">
-          <div v-show="showSent">
+          <div v-show="showSent" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in sentRequests" :key="'s'+req.id">
                 
@@ -221,13 +221,13 @@
           </div>
         </transition>
 
-        <div class="section-header" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
+        <div class="section-header mobile-collapse-header" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
           <span>{{ store.t('no_matches') }}</span>
-          <i class="bi" :class="showDeclined ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <i class="bi mobile-collapse-icon" :class="showDeclined ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
         
         <transition name="collapse">
-          <div v-show="showDeclined">
+          <div v-show="showDeclined" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in declinedRequests" :key="'d'+req.id">
                 

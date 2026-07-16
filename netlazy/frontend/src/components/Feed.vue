@@ -7,7 +7,7 @@
         
         <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 200px; width: 100%;">
           <div class="glass-option" v-for="tag in visibleSearchTags.slice(0, 10)" :key="'ac-'+tag.name" @click="selectTagFromAutocomplete(tag)">
-            {{ store.getLocalizedTag(tag.name) }}
+            <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
           </div>
         </div>
       </div>
@@ -87,14 +87,14 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
-          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 180px; margin-bottom: 0.5rem;" @click.stop>
+          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 220px; margin-bottom: 0.5rem;" @click.stop>
             <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
               <span>{{ c.type }}: {{ c.value }}</span>
               <i v-if="profile.selectedContacts && profile.selectedContacts.includes(c.value)" class="bi bi-check2" style="color: var(--accent-moss);"></i>
             </div>
             <div style="padding: 0.5rem; text-align: right;">
               <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
-                <i class="bi bi-send"></i>
+                <i class="bi bi-send-fill"></i>
               </button>
             </div>
           </div>
@@ -145,7 +145,9 @@ const visibleSearchTags = computed(() => {
 
 const sortedSearchTags = computed(() => {
   const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
-  return [...visibleSearchTags.value].sort((a, b) => order[a.state] - order[b.state]);
+  return [...store.state.availableSearchTags].sort((a, b) => {
+    return order[a.state] - order[b.state];
+  });
 })
 
 function selectTagFromAutocomplete(tag) {

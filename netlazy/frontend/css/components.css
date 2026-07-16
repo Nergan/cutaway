@@ -21,6 +21,7 @@ button:focus-visible, .chip:focus-visible, .nav-item:focus-visible, .custom-sele
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
+.search-header-input:focus-visible { outline: none; }
 
 /* TAG CHIPS */
 .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -45,25 +46,26 @@ body.light-theme .audio-minimal { filter: none; }
 .media-thumb { border-radius: var(--radius-sm); background-size: cover; background-position: center; background-color: var(--bg-elevated); position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: border 0.15s, transform 0.15s; border: 2px solid transparent; }
 .media-thumb:hover { transform: scale(1.02); box-shadow: var(--shadow-sm); }
 .media-thumb img, .media-thumb video {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover; pointer-events: none;
 }
 .editor-layout .media-thumb { cursor: grab; }
 .editor-layout .media-thumb:active { cursor: grabbing; }
 .media-thumb.drag-over { border-color: var(--accent-moss); opacity: 0.7; }
 
-/* Upload Progress */
+/* Elegant Upload Progress */
 .media-loader {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.4); z-index: 1;
-}
-.progress-bar-bg {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
-  background: transparent; overflow: hidden; border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  z-index: 10; display: flex; background: rgba(0,0,0,0.1);
 }
 .progress-bar-fill-horizontal {
-  height: 100%; background: var(--text-muted); transition: width 0.2s linear; width: 0%;
+  height: 100%;
+  background: rgba(141, 169, 112, 0.45); /* Rich green */
+  transition: width 0.2s linear; width: 0%;
+}
+.audio-player-zone .progress-bar-fill-horizontal {
+  background: rgba(141, 169, 112, 0.2);
 }
 
 /* Grid mapping wide viewports */
@@ -74,9 +76,9 @@ body.light-theme .audio-minimal { filter: none; }
 .telegram-grid > .media-thumb:first-child:nth-last-child(3) ~ .media-thumb { grid-column: span 3; grid-row: span 1; }
 .telegram-grid > .media-thumb { grid-column: span 2; grid-row: span 1; }
 
-.media-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; z-index: 2; transition: background 0.2s; pointer-events: auto; }
+.media-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; z-index: 11; transition: background 0.2s; pointer-events: auto; }
 .media-remove:hover { background: var(--accent-danger); }
-.media-blur-toggle { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; z-index: 2; pointer-events: auto; }
+.media-blur-toggle { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; z-index: 11; pointer-events: auto; }
 
 .mini-add { border: 1px dashed var(--border-focus); color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
 .mini-add:hover { color: var(--text-main); border-color: var(--text-main); }
@@ -95,15 +97,33 @@ body.light-theme .audio-minimal { filter: none; }
 .section-header:hover { color: var(--text-main); }
 
 /* MINIMALIST GLASS DROPDOWNS */
-.glass-menu { position: absolute; background: rgba(10, 10, 10, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: var(--radius-sm); z-index: 999; overflow-y: auto; box-shadow: var(--shadow-md); animation: fadeIn 0.15s ease-out; }
-body.light-theme .glass-menu { background: rgba(250, 250, 250, 0.4); }
+.glass-menu { position: absolute; background: rgba(15, 15, 15, 0.25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: var(--radius-sm); z-index: 999; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 0; animation: fadeIn 0.15s ease-out; }
+body.light-theme .glass-menu { background: rgba(250, 250, 250, 0.25); border: 1px solid rgba(0,0,0,0.05); }
 
-.glass-option { padding: 0.6rem 0.8rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
-.glass-option:hover { text-decoration: underline; background: transparent; }
+.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; width: 100%; position: relative; }
+.glass-option:hover { background: transparent !important; }
+
+/* Smooth animated underline */
+.glass-option span.animated-underline { position: relative; display: inline-block; }
+.glass-option span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -2px; left: 0; background-color: var(--text-main); transition: width 0.3s ease; }
+.glass-option:hover span.animated-underline::after { width: 100%; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* SKELETON LOADING */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border-subtle) 50%, var(--bg-elevated) 75%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-md);
+  border: none !important;
+}
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* VAULT */

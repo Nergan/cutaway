@@ -22,6 +22,10 @@ def sniff_mime_type(data: bytes) -> str:
     return magic.from_buffer(data, mime=True)
 
 def classify_media_type(mime_type: str) -> str:
+    # Explicitly route GIFs to the video processor so they convert to MP4
+    if mime_type == "image/gif":
+        return "video"
+        
     for media_type, prefix in SUPPORTED_TYPE_PREFIXES.items():
         if mime_type.startswith(prefix + "/"):
             return media_type
