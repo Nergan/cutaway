@@ -68,13 +68,13 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem' }">
-            <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+          <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', width: '100%' }">
+            <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
               <transition name="fade" mode="out-in">
                 <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
               </transition>
             </button>
-            <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 30px; justify-content: center; display: inline-flex;" @click="store.cycleLang" :title="store.t('lang')">
+            <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
               <transition name="fade" mode="out-in">
                 <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
               </transition>
@@ -116,7 +116,7 @@
                        <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                      </transition>
                    </button>
-                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 30px; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang">
                      <transition name="fade" mode="out-in">
                        <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
                      </transition>
@@ -128,10 +128,18 @@
                  </div>
                  
                  <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                    <button class="footer-action" @click="copyKey"><i class="bi bi-clipboard"></i> {{ store.t('copy_raw') }}</button>
-                    <button class="footer-action" style="color: var(--accent-earth);" @click="store.logout"><i class="bi bi-box-arrow-right"></i> {{ store.t('log_out') }}</button>
-                    <button class="footer-action" style="color: var(--accent-info);" @click="rotateIdentityKey"><i class="bi bi-arrow-repeat"></i> {{ store.t('regenerate_key') }}</button>
-                    <button class="footer-action" style="color: var(--accent-danger);" @click="store.deleteAccount"><i class="bi bi-trash3"></i> {{ store.t('delete_account') }}</button>
+                    <button class="footer-action" @click="copyKey">
+                      <i class="bi bi-clipboard"></i> <span class="animated-underline">{{ store.t('copy_raw') }}</span>
+                    </button>
+                    <button class="footer-action" style="color: var(--accent-earth);" @click="store.logout">
+                      <i class="bi bi-box-arrow-right"></i> <span class="animated-underline">{{ store.t('log_out') }}</span>
+                    </button>
+                    <button class="footer-action" style="color: var(--accent-info);" @click="rotateIdentityKey">
+                      <i class="bi bi-arrow-repeat"></i> <span class="animated-underline">{{ store.t('regenerate_key') }}</span>
+                    </button>
+                    <button class="footer-action" style="color: var(--accent-danger);" @click="store.deleteAccount">
+                      <i class="bi bi-trash3"></i> <span class="animated-underline">{{ store.t('delete_account') }}</span>
+                    </button>
                  </div>
                  
                  <div class="code-block" :style="{filter: keyVisible ? 'none' : 'blur(5px)'}" @click="keyVisible = !keyVisible" :title="store.t('click_to_reveal')">
@@ -145,6 +153,46 @@
     </template>
 
     <Lightbox />
+
+    <!-- Global Sliding Bottom Sheet / Dialog Overlay for Handshake Contact Selection -->
+    <transition name="sheet-fade">
+      <div class="bottom-sheet-backdrop" v-if="store.state.contactSelect.open" @click="store.state.contactSelect.open = false">
+        <div class="bottom-sheet-box" @click.stop>
+          <div class="bottom-sheet-header">
+            <i class="bi" :class="store.state.contactSelect.type === 'share' ? 'bi-box-arrow-up' : 'bi-arrow-left-right'"></i>
+            {{ store.t('select_contact_to', { type: store.state.contactSelect.type }) }}
+          </div>
+          
+          <div class="bottom-sheet-body">
+            <div class="sheet-contact-row" 
+                 v-for="c in validPrivateContacts" 
+                 :key="c.value" 
+                 @click="toggleGlobalContact(c.value)">
+              <i class="bi" :class="getContactIcon(c.type)"></i>
+              <span class="sheet-contact-val">{{ c.type }}: {{ c.value }}</span>
+              <i class="bi check-icon" :class="store.state.contactSelect.selectedContacts.includes(c.value) ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+            </div>
+            
+            <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
+              {{ store.t('no_valid_private') }}
+            </div>
+          </div>
+          
+          <div class="bottom-sheet-footer">
+            <button class="footer-action" style="color: var(--text-muted);" @click="store.state.contactSelect.open = false">
+              <span class="animated-underline">{{ store.t('cancel') }}</span>
+            </button>
+            <button class="create-btn" 
+                    :disabled="store.state.contactSelect.selectedContacts.length === 0 || store.state.contactSelect.isSending" 
+                    @click="submitGlobalHandshake" 
+                    style="padding: 0.5rem 1.5rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
+              {{ store.t('send') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <div class="toast-container">
       <div class="toast" v-for="toast in store.state.toasts" :key="toast.id" :class="{'toast-minimal': toast.type === 'minimal', 'toast-danger': toast.type === 'danger'}">
@@ -174,7 +222,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useStore } from './store/state.js'
-import api from './utils/api.js'
+import api, { apiWithPoW } from './utils/api.js'
 import Lightbox from './components/Lightbox.vue'
 import Editor from './components/Editor.vue'
 import Feed from './components/Feed.vue'
@@ -202,6 +250,60 @@ const displayPrivateKey = computed(() => {
     .replace(/\r?\n|\r/g, '')
     .trim();
 })
+
+// Computed list of valid private contacts
+const validPrivateContacts = computed(() => 
+  store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
+)
+
+const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
+function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
+
+function toggleGlobalContact(val) {
+  const idx = store.state.contactSelect.selectedContacts.indexOf(val);
+  if (idx === -1) {
+    store.state.contactSelect.selectedContacts.push(val);
+  } else {
+    store.state.contactSelect.selectedContacts.splice(idx, 1);
+  }
+}
+
+async function submitGlobalHandshake() {
+  const cs = store.state.contactSelect;
+  if (!cs.profile) return;
+  
+  cs.isSending = true;
+  store.addToast("Solving Proof of Work...", "bi-hourglass");
+  
+  try {
+    const contactValue = cs.selectedContacts.join(', ');
+    const payload = {
+      receiver_id: cs.profile.user_id,
+      type: cs.type,
+      offered_contact: contactValue
+    };
+    
+    await apiWithPoW('post', '/inbox/handshakes', payload);
+    
+    // Update feed state locally
+    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
+    if (feedProfile) {
+      feedProfile.sent = true;
+      feedProfile.sentType = cs.type;
+    }
+    
+    store.addToast(store.t('sent', { type: cs.type }), 'bi-send-check');
+    cs.open = false;
+  } catch (e) {
+    if (e.response && e.response.data && e.response.data.detail) {
+      store.addToast(e.response.data.detail, "bi-x-circle");
+    } else {
+      store.addToast("Failed to send handshake", "bi-x-circle");
+    }
+  } finally {
+    cs.isSending = false;
+  }
+}
 
 async function checkBanStatus() {
   if (!store.state.userId || !store.state.keyPair) {

@@ -23,9 +23,9 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 }
 .search-header-input:focus-visible { outline: none; }
 
-.search-clear-btn { transition: color 0.2s, transform 0.1s; cursor: pointer; color: var(--text-muted); position: absolute; right: 0; padding: 0.2rem; }
+.search-clear-btn { transition: color 0.2s, transform 0.2s, opacity 0.2s; cursor: pointer; color: var(--text-muted); position: absolute; right: 0; padding: 0.2rem; }
 .search-clear-btn:hover { color: var(--accent-danger); }
-.search-clear-btn:active { transform: scale(0.85); }
+.search-clear-btn:active { transform: scale(0.85) rotate(90deg); }
 
 /* TAG CHIPS */
 .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -35,6 +35,15 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 .chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 #active-tags-zone .chip:hover, #lib-tags-zone .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
+
+#lib-tags-zone .chip, #active-tags-zone .chip {
+  animation: chipAppear 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+@keyframes chipAppear {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
 
 /* MEDIA GRID & DND */
 .media-zone { border: 1px dashed var(--border-focus); border-radius: var(--radius-md); padding: 2rem 1rem; text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
@@ -55,8 +64,8 @@ body.light-theme .audio-minimal { filter: none; }
 }
 
 /* Mathematical Visual Distortion Reversal via CSS */
-.cdn-obfuscated { filter: hue-rotate(-180deg); }
-.cdn-obfuscated.is-blurred { filter: hue-rotate(-180deg) blur(20px); }
+.cdn-obfuscated { transform: rotate(180deg); }
+.cdn-obfuscated.is-blurred { transform: rotate(180deg); filter: blur(20px); }
 
 .editor-layout .media-thumb { cursor: grab; }
 .editor-layout .media-thumb:active { cursor: grabbing; }
@@ -124,9 +133,16 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
 
 /* Smooth animated underline for Tags & Contacts */
+.animated-underline { position: relative; display: inline-block; white-space: nowrap; }
+.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -1px; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.glass-option:hover .animated-underline::after,
+.footer-action:hover .animated-underline::after,
+.nav-item:hover .animated-underline::after {
+  width: 100%;
+}
+
 .glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.glass-option span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -1px; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.glass-option:hover span.animated-underline::after { width: 100%; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -171,4 +187,126 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+
+/* Sidebar Bottom Toggles Alignment Fix */
+.sidebar-footer .footer-action {
+  justify-content: center;
+}
+
+/* Bottom Sheet / Modal for Contact Selection */
+.bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 30000;
+  display: flex;
+  align-items: flex-end; /* Slide up from bottom on mobile */
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.bottom-sheet-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  width: 100%;
+  max-width: 500px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transform: translateY(0);
+}
+
+@media (min-width: 769px) {
+  /* On desktop, center it like a standard modal dialog */
+  .bottom-sheet-backdrop {
+    align-items: center;
+  }
+  .bottom-sheet-box {
+    border-radius: var(--radius-md);
+    border-bottom: 1px solid var(--border-subtle);
+    max-width: 420px;
+  }
+}
+
+.bottom-sheet-header {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.bottom-sheet-body {
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-right: 0.2rem;
+}
+
+.sheet-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sheet-contact-row:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-elevated);
+}
+.sheet-contact-row .sheet-contact-val {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-contact-row .check-icon {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+.sheet-contact-row .bi-check-circle-fill {
+  color: var(--accent-moss);
+}
+
+.bottom-sheet-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Slide Up and Fade Sheet Transitions */
+.sheet-fade-enter-active, .sheet-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.sheet-fade-enter-from, .sheet-fade-leave-to {
+  opacity: 0;
+}
+.sheet-fade-enter-active .bottom-sheet-box,
+.sheet-fade-leave-active .bottom-sheet-box {
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+.sheet-fade-enter-from .bottom-sheet-box,
+.sheet-fade-leave-to .bottom-sheet-box {
+  transform: translateY(100%);
+}
+@media (min-width: 769px) {
+  .sheet-fade-enter-from .bottom-sheet-box,
+  .sheet-fade-leave-to .bottom-sheet-box {
+    transform: scale(0.92) translateY(10px);
+  }
 }

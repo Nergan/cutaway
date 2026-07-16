@@ -36,6 +36,14 @@ const defaultState = {
         isDanger: false
     },
     
+    contactSelect: {
+        open: false,
+        profile: null,
+        type: 'share',
+        selectedContacts: [],
+        isSending: false
+    },
+    
     isProfileLoading: false,
     isFeedLoading: false,
     isInboxLoading: false,
