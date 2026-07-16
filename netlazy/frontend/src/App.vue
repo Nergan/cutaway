@@ -49,32 +49,32 @@
           
           <div class="nav-section">
             <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'" :title="store.t('search_profiles')">
-              <i class="bi bi-compass"></i> <span v-if="!store.state.isSidebarCollapsed">{{ store.t('search_profiles') }}</span>
+              <i class="bi bi-compass"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'" :title="store.t('my_profile')">
-              <i class="bi bi-person-lines-fill"></i> <span v-if="!store.state.isSidebarCollapsed">{{ store.t('my_profile') }}</span>
+              <i class="bi bi-person-lines-fill"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('my_profile') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" :title="store.t('inbox')">
               <i v-if="!store.state.isSidebarCollapsed || pendingInboxCount === 0" class="bi bi-inbox"></i> 
               <span v-else class="badge" style="margin: 0;">{{ pendingInboxCount }}</span>
-              <span v-if="!store.state.isSidebarCollapsed">{{ store.t('inbox') }}</span>
+              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('inbox') }}</span>
               <span class="badge" v-if="pendingInboxCount > 0 && !store.state.isSidebarCollapsed">{{ pendingInboxCount }}</span>
             </a>
           </div>
 
           <div class="nav-section">
             <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
-              <i class="bi bi-fingerprint"></i> <span v-if="!store.state.isSidebarCollapsed">{{ store.t('identity_vault') }}</span>
+              <i class="bi bi-fingerprint"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
             </a>
           </div>
           
-          <!-- Preserved vertically in sidebar on desktop -->
-          <div class="sidebar-footer" style="flex-direction: column; align-items: center; gap: 1.5rem; margin-top: auto; padding-bottom: 1rem;">
-            <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+          <!-- Desktop Theme/Lang Switchers pinned to bottom -->
+          <div class="sidebar-footer" style="flex-direction: row; justify-content: space-around; margin-top: auto;">
+            <button class="footer-action icon-btn" @click="store.toggleTheme">
               <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
             </button>
-            <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang" :title="store.t('lang')">
-              {{ store.state.lang.toLowerCase() }}
+            <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang">
+              {{ store.state.lang }}
             </button>
           </div>
         </div>
@@ -112,7 +112,7 @@
                      <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
                    </button>
                    <button class="footer-action" style="font-weight: bold; text-transform: lowercase;" @click="store.cycleLang">
-                     {{ store.state.lang.toLowerCase() }}
+                     {{ store.state.lang }}
                    </button>
                  </div>
 

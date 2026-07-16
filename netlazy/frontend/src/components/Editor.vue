@@ -5,13 +5,7 @@
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
           <input type="text" class="seamless-input search-header-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
-          <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg" style="position: absolute; right: 0; cursor: pointer; color: var(--text-muted);" @click="store.state.tagSearchQuery = ''"></i>
-        </div>
-        
-        <div class="glass-menu" v-if="store.state.tagSearchQuery && filteredTags.length > 0" style="top: 100%; bottom: auto; left: 1.5rem; right: 1.5rem; width: auto;">
-          <div class="glass-option" v-for="tag in filteredTags.slice(0, 10)" :key="'ed-ac-'+tag.name" @click="selectTagFromAutocomplete(tag.name)">
-            <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
-          </div>
+          <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
         </div>
       </div>
       
@@ -53,7 +47,7 @@
         
         <template v-else>
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
-            <span style="font-size: 0.75rem;">MEDIA</span>
+            <span style="font-size: 0.75rem;">media</span>
             <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
@@ -65,13 +59,13 @@
               <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;">
                  <template v-if="store.state.myProfile.audio.isUploading">
                    <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center;">
-                     <div class="progress-bar-bg">
+                     <div class="progress-bar-bg" style="border-radius: 0;">
                        <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
                      </div>
                    </div>
                  </template>
                  
-                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.url" controls style="flex-grow:1;"></audio>
+                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
                  
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
@@ -89,13 +83,11 @@
                      @dragend="dragEnd"
                      @click="!m.isUploading && openLightbox(m)">
                   
-                  <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-                  <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur || m.isUploading}">
+                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur || m.isUploading}"></video>
                   
                   <div v-if="m.isUploading" class="media-loader">
-                    <div class="progress-bar-bg">
-                      <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
-                    </div>
+                    <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
                   </div>
                   
                   <div v-if="!m.isUploading" class="media-remove" @click.stop="!m.isDeleting && removeMedia(m, idx)">
@@ -116,7 +108,7 @@
           <input type="file" ref="fileInput" hidden multiple accept="image/*,video/*,audio/*" @change="handleFileSelect">
 
           <div class="section-header mobile-collapse-header" @click="showBio = !showBio" style="margin-top:2rem;">
-            <span>{{ store.t('about_me') }}</span>
+            <span style="font-size: 0.75rem;">about me</span>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
               <i class="bi mobile-collapse-icon" :class="showBio ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
@@ -129,7 +121,7 @@
           </transition>
 
           <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags">
-            <span>{{ store.t('active_tags') }}</span>
+            <span style="font-size: 0.75rem;">active tags</span>
             <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
@@ -144,7 +136,7 @@
           </transition>
 
           <div class="section-header mobile-collapse-header" @click="showContacts = !showContacts">
-            <span>{{ store.t('contacts') }}</span>
+            <span style="font-size: 0.75rem;">contacts</span>
             <i class="bi mobile-collapse-icon" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
@@ -202,7 +194,7 @@ const filteredTags = computed(() => {
 })
 
 const validMedia = computed(() => {
-  return (store.state.myProfile.media || []).filter(m => m && m.url)
+  return (store.state.myProfile.media || []).filter(m => m && (m.url || m.blobUrl))
 })
 
 onActivated(() => {
@@ -286,7 +278,7 @@ function updateMediaList(resMedia, remainingTemps) {
     const updated = resMedia.map(newM => {
         const old = store.state.myProfile.media.find(m => m.url === newM.url);
         return old ? { ...newM, isDeleting: old.isDeleting, isUpdatingBlur: old.isUpdatingBlur || false, isLoaded: true, isUploading: false } 
-                   : { ...newM, isLoaded: true, isUploading: false };
+                   : { ...newM, isLoaded: true, isUploading: false }; // It will process dynamically via fetching
     });
     store.state.myProfile.media = [...updated, ...remainingTemps];
 }
@@ -302,13 +294,13 @@ async function processFiles(files) {
     }
     
     const abortCtrl = new AbortController();
-    const tempUrl = URL.createObjectURL(file); // Immediately renderable
+    const tempUrl = URL.createObjectURL(file); // Immediately renderable client-side stub
     const media_type = file.type.startsWith('video') ? 'video' : (file.type.startsWith('audio') ? 'audio' : 'image')
     
     if (media_type === 'audio') {
-      store.state.myProfile.audio = { url: tempUrl, media_type: 'audio', blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl }
+      store.state.myProfile.audio = { url: null, blobUrl: tempUrl, media_type: 'audio', blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl }
     } else {
-      tempItems.push({ url: tempUrl, media_type, blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl })
+      tempItems.push({ url: null, blobUrl: tempUrl, media_type, blur: false, isUploading: true, isLoaded: true, isDeleting: false, uploadProgress: 0, file, abortCtrl })
     }
   }
   
@@ -334,16 +326,18 @@ async function processFiles(files) {
           const oldAudio = store.state.myProfile.audio;
           const reactiveAudio = store.state.myProfile.audio;
           const desiredBlur = reactiveAudio ? reactiveAudio.blur : tempAudio.blur;
+          
+          res.data.audio.blobUrl = tempAudio.blobUrl; // Persist the client side blob to skip re-downloading it instantly
 
           if (desiredBlur !== res.data.audio.blur) {
               try {
                   const resBlur = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(res.data.audio.url)}&blur=${desiredBlur}`);
-                  store.state.myProfile.audio = { ...resBlur.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+                  store.state.myProfile.audio = { ...resBlur.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
               } catch (e) {
-                  store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+                  store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
               }
           } else {
-              store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+              store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
           }
       } else {
           store.state.myProfile.audio = null;
@@ -352,8 +346,6 @@ async function processFiles(files) {
       if (e.name === 'CanceledError') return;
       store.addToast("Failed to upload audio", "bi-exclamation-triangle")
       store.state.myProfile.audio = null
-    }).finally(() => {
-      URL.revokeObjectURL(tempAudio.url);
     })
   }
 
@@ -363,7 +355,7 @@ async function processFiles(files) {
       signal: temp.abortCtrl.signal,
       onUploadProgress: (e) => {
         if (e.total) {
-          const m = store.state.myProfile.media.find(x => x.url === temp.url);
+          const m = store.state.myProfile.media.find(x => x.blobUrl === temp.blobUrl);
           if (m) m.uploadProgress = Math.round((e.loaded * 100) / e.total);
         }
       }
@@ -371,18 +363,22 @@ async function processFiles(files) {
       const existingUrls = new Set(store.state.myProfile.media.filter(m => !m.isUploading).map(m => m.url));
       const newItem = res.data.media.find(m => !existingUrls.has(m.url));
       
-      const reactiveTemp = store.state.myProfile.media.find(m => m.url === temp.url);
+      const reactiveTemp = store.state.myProfile.media.find(m => m.blobUrl === temp.blobUrl);
       const desiredBlur = reactiveTemp ? reactiveTemp.blur : temp.blur;
 
-      if (newItem) newItem.blur = desiredBlur;
+      if (newItem) {
+        newItem.blur = desiredBlur;
+        newItem.blobUrl = temp.blobUrl; // Persist client-side render blob!
+      }
 
-      const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.url !== temp.url)
+      const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.blobUrl !== temp.blobUrl)
       updateMediaList(res.data.media, remainingTemps)
 
       if (newItem && desiredBlur !== false) {
           try {
               const newIdx = res.data.media.findIndex(m => m.url === newItem.url);
               const resBlur = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(newItem.url)}&blur=${desiredBlur}&index=${newIdx}`);
+              resBlur.data.media.find(m => m.url === newItem.url).blobUrl = temp.blobUrl;
               updateMediaList(resBlur.data.media, remainingTemps);
           } catch (e) {}
       }
@@ -390,7 +386,7 @@ async function processFiles(files) {
       if (!store.state.myProfile.audio?.isUploading) {
         if (res.data.audio) {
             const oldAudio = store.state.myProfile.audio;
-            store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+            store.state.myProfile.audio = { ...res.data.audio, blobUrl: oldAudio?.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
         } else {
             store.state.myProfile.audio = null;
         }
@@ -398,9 +394,7 @@ async function processFiles(files) {
     }).catch(e => {
       if (e.name === 'CanceledError') return;
       store.addToast("Failed to upload media", "bi-exclamation-triangle")
-      store.state.myProfile.media = store.state.myProfile.media.filter(m => m.url !== temp.url)
-    }).finally(() => {
-      URL.revokeObjectURL(temp.url);
+      store.state.myProfile.media = store.state.myProfile.media.filter(m => m.blobUrl !== temp.blobUrl)
     })
   })
 
@@ -438,22 +432,23 @@ function handlePaste(e) {
 }
 
 async function removeMedia(m, idx) {
+  if (m.isUploading) {
+    if (m.abortCtrl) m.abortCtrl.abort();
+    store.state.myProfile.media = store.state.myProfile.media.filter(x => x.blobUrl !== m.blobUrl);
+    return;
+  }
+  
   const realIdx = store.state.myProfile.media.findIndex(x => x.url === m.url);
   if (realIdx !== -1) {
-    if (m.isUploading) {
-      if (m.abortCtrl) m.abortCtrl.abort();
-      store.state.myProfile.media.splice(realIdx, 1);
-      return;
-    }
     try {
       m.isDeleting = true
       const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
-      const res = await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}&index=${completedIdx !== -1 ? completedIdx : ''}`)
+      const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
+      const res = await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`)
       const remainingTemps = store.state.myProfile.media.filter(x => x.isUploading)
       updateMediaList(res.data.media, remainingTemps)
     } catch (e) {
       m.isDeleting = false
-      store.addToast("Failed to delete media", "bi-x-circle")
     }
   }
 }
@@ -474,7 +469,6 @@ async function removeAudio() {
     if (store.state.myProfile.audio) {
       store.state.myProfile.audio.isDeleting = false
     }
-    store.addToast("Failed to delete audio", "bi-x-circle")
   }
 }
 
@@ -490,7 +484,8 @@ async function toggleBlur(m, idx) {
     m.isUpdatingBlur = true
     const newBlurState = !m.blur
     const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
-    const res = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(m.url)}&blur=${newBlurState}&index=${completedIdx !== -1 ? completedIdx : ''}`)
+    const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
+    const res = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(m.url)}&blur=${newBlurState}${idxParam}`)
     const remainingTemps = store.state.myProfile.media.filter(x => x.isUploading)
     updateMediaList(res.data.media, remainingTemps)
     

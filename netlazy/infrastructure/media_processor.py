@@ -60,11 +60,12 @@ async def process_image(data: bytes, max_dimension: int) -> bytes:
 
 async def process_video(data: bytes, max_dimension: int) -> bytes:
     async with _temp_workspace(data, "output.mp4") as (in_path, out_path):
-        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease"
+        # The pad filter ensures even dimensions, which is required when converting varying-size GIFs to h264 MP4s
+        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2"
         await _run_ffmpeg([
             "-y", "-i", in_path, 
             "-vf", scale_filter, 
-            "-c:v", "libx264", "-preset", "fast", "-crf", "28", 
+            "-c:v", "libx264", "-preset", "fast", "-crf", "28", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "128k", 
             "-movflags", "+faststart", 
             out_path

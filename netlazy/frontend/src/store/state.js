@@ -1,6 +1,7 @@
 import { reactive, watch } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
+import { processMediaBlobs } from '../utils/media.js';
 import translations from './translations.js';
 
 const STORAGE_KEY = 'netlazy_state';
@@ -291,19 +292,24 @@ export function useStore() {
             const currentMedia = state.myProfile.media || [];
             data.media = data.media.map(m => { 
                 const old = currentMedia.find(om => om.url === m.url);
-                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: true, isUploading: false, uploadProgress: 0 };
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0 };
             });
             const uploadingMedia = currentMedia.filter(m => m.isUploading);
             data.media.push(...uploadingMedia);
 
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
-                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: true, isUploading: false, uploadProgress: 0 };
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0 };
             } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
                 data.audio = state.myProfile.audio;
             }
 
             state.myProfile = data;
+            
+            // Trigger asynchronous decryption and display of CDN media
+            processMediaBlobs(state.myProfile.media, true);
+            if (state.myProfile.audio) processMediaBlobs([state.myProfile.audio], true);
+
         } catch (e) {
             console.error("Profile sync failed");
         } finally {
@@ -349,12 +355,16 @@ export function useStore() {
                 if (r.profile && r.profile.media) {
                     r.profile.media.forEach(m => {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);
-                        m.isLoaded = oldM ? oldM.isLoaded : true;
+                        m.isLoaded = oldM ? oldM.isLoaded : false;
+                        if (oldM && oldM.blobUrl) m.blobUrl = oldM.blobUrl;
                     });
+                    processMediaBlobs(r.profile.media);
                 }
                 if (r.profile && r.profile.audio) {
                     const oldA = oldR?.profile?.audio;
-                    r.profile.audio.isLoaded = oldA ? oldA.isLoaded : true;
+                    r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
+                    if (oldA && oldA.blobUrl) r.profile.audio.blobUrl = oldA.blobUrl;
+                    processMediaBlobs([r.profile.audio]);
                 }
                 return {
                     ...r, 

@@ -3,7 +3,7 @@
     <div class="inbox-layout">
       
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
-        <div class="section-header mobile-collapse-header" @click="showReceived = !showReceived">
+        <div class="section-header desktop-uncollapsible" @click="showReceived = !showReceived">
           <span>{{ store.t('received') }}</span>
           <i class="bi mobile-collapse-icon" :class="showReceived ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
@@ -20,13 +20,14 @@
               <div class="inbox-item card" v-for="req in pendingRequests" :key="req.id" :class="{resolving: req.resolving, 'error-deleted': req.isErrorDeleted}">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.url" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
                   </div>
                 </div>
 
@@ -62,10 +63,10 @@
                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                          {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
                        </span>
-                       <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 220px;">
+                       <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
                          <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
-                           <span>{{ c.type }}: {{ c.value }}</span>
-                           <i v-if="req.selectedContacts && req.selectedContacts.includes(c.value)" class="bi bi-check2" style="color: var(--accent-moss);"></i>
+                           <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+                           <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
                          </div>
                        </div>
                      </div>
@@ -98,7 +99,7 @@
           </div>
         </transition>
 
-        <div class="section-header mobile-collapse-header" @click="showMatches = !showMatches" style="margin-top: 1.5rem;">
+        <div class="section-header desktop-uncollapsible" @click="showMatches = !showMatches" style="margin-top: 1.5rem;">
           <span>{{ store.t('matches') }}</span>
           <i class="bi mobile-collapse-icon" :class="showMatches ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
@@ -115,13 +116,14 @@
               <div class="inbox-item card" v-for="req in acceptedRequests" :key="'acc'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.url" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
                   </div>
                 </div>
 
@@ -173,7 +175,7 @@
       <div class="resizer-v left" style="position:relative; left:0; width:4px; height:100%; cursor:col-resize; background:var(--border-subtle);" @mousedown="startResize"></div>
       
       <div class="inbox-col" :style="{width: (100 - store.state.inboxSplit) + '%'}">
-        <div class="section-header mobile-collapse-header" @click="showSent = !showSent">
+        <div class="section-header desktop-uncollapsible" @click="showSent = !showSent">
           <span>{{ store.t('sent_resolved') }}</span>
           <i class="bi mobile-collapse-icon" :class="showSent ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
@@ -184,13 +186,14 @@
               <div class="inbox-item card" v-for="req in sentRequests" :key="'s'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.url" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
                   </div>
                 </div>
 
@@ -221,7 +224,7 @@
           </div>
         </transition>
 
-        <div class="section-header mobile-collapse-header" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
+        <div class="section-header desktop-uncollapsible" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
           <span>{{ store.t('no_matches') }}</span>
           <i class="bi mobile-collapse-icon" :class="showDeclined ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
@@ -232,13 +235,14 @@
               <div class="inbox-item card" v-for="req in declinedRequests" :key="'d'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-                  <audio class="audio-minimal" :src="req.profile.audio.url" controls style="flex-grow:1;"></audio>
+                  <audio class="audio-minimal" :src="req.profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
                   <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
-                     <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-                     <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+                     <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+                     <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
+                     <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
                   </div>
                 </div>
 
@@ -296,7 +300,7 @@ const acceptedRequests = computed(() => store.state.inbox.filter(r => r.status =
 const declinedRequests = computed(() => store.state.inbox.filter(r => r.status === 'declined' && r.is_sender))
 
 function filterMedia(mediaArr) {
-  return (mediaArr || []).filter(m => m && m.url);
+  return (mediaArr || []).filter(m => m && (m.url || m.blobUrl));
 }
 
 onMounted(() => {
@@ -351,7 +355,7 @@ async function resolveRequest(req, status) {
   try {
     const payload = {
       status: status,
-      returned_contact: req.selectedContacts ? req.selectedContacts.join(', ') : null
+      returned_contact: req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : null
     }
     await api.post(`/inbox/handshakes/${req.id}/resolve`, payload)
     

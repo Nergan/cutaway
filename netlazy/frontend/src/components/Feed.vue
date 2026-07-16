@@ -3,13 +3,17 @@
     <div class="feed-header blurred-header">
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
         <input type="text" class="seamless-input search-header-input" v-model="filterText" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
-        <i v-if="filterText" class="bi bi-x-lg" style="position: absolute; right: 0.8rem; cursor: pointer; color: var(--text-muted);" @click="filterText = ''"></i>
+        <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
         
-        <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 200px; width: 100%;">
-          <div class="glass-option" v-for="tag in visibleSearchTags.slice(0, 10)" :key="'ac-'+tag.name" @click="selectTagFromAutocomplete(tag)">
-            <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+        <transition name="view-fade">
+          <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" style="top: 100%; left: 0; right: 0; max-height: 250px; width: 100%;">
+            <transition-group name="tag-list" tag="div">
+              <div class="glass-option" v-for="tag in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" @mousedown="animateAndSelectTag($event, tag)">
+                <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+              </div>
+            </transition-group>
           </div>
-        </div>
+        </transition>
       </div>
       <div class="tag-scroll-area" @wheel="handleWheel">
         <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
@@ -36,13 +40,14 @@
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-          <audio class="audio-minimal" :src="profile.audio.url" controls style="flex-grow:1;"></audio>
+          <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" controls style="flex-grow:1;"></audio>
         </div>
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
           <div class="media-thumb" v-for="m in profile.media" :key="m.url" @click="handleMediaClick(m, profile.media)">
-             <img v-if="m.media_type === 'image'" :src="m.url" :class="{'is-blurred': m.blur}">
-             <video v-else-if="m.media_type === 'video'" :src="m.url" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
+             <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+             <img v-if="m.media_type === 'image'" v-show="m.isLoaded" :src="m.blobUrl || ''" :class="{'is-blurred': m.blur}">
+             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded" :src="m.blobUrl || ''" muted autoplay loop playsinline :class="{'is-blurred': m.blur}"></video>
           </div>
         </div>
         
@@ -87,13 +92,13 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
-          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 220px; margin-bottom: 0.5rem;" @click.stop>
+          <div class="glass-menu" v-if="profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; min-width: 250px; margin-bottom: 0.5rem;" @click.stop>
             <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
-              <span>{{ c.type }}: {{ c.value }}</span>
-              <i v-if="profile.selectedContacts && profile.selectedContacts.includes(c.value)" class="bi bi-check2" style="color: var(--accent-moss);"></i>
+              <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+              <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
             </div>
-            <div style="padding: 0.5rem; text-align: right;">
-              <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
+            <div style="padding: 0.5rem 1rem; text-align: right;">
+              <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.3rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
                 <i class="bi bi-send-fill"></i>
               </button>
             </div>
@@ -113,6 +118,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, onActivated } from 'vue'
 import { useStore } from '../store/state.js'
+import { processMediaBlobs } from '../utils/media.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
 const store = useStore()
@@ -133,22 +139,31 @@ const hasActiveFilters = computed(() => {
 
 const visibleSearchTags = computed(() => {
   const query = filterText.value.toLowerCase().trim()
-  if (!query) {
-      return store.state.availableSearchTags.filter(t => !t.hidden)
-  }
-  return store.state.availableSearchTags.filter(t => 
-      (t.name && String(t.name).toLowerCase().includes(query)) || 
+  if (!query) return [];
+  
+  return store.state.availableSearchTags.filter(t => {
+     const matchesQuery = (t.name && String(t.name).toLowerCase().includes(query)) || 
       (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
-      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
-  )
+      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)));
+     
+     if (t.hidden) return matchesQuery && query.length > 0;
+     return matchesQuery;
+  })
 })
 
 const sortedSearchTags = computed(() => {
   const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
-  return [...store.state.availableSearchTags].sort((a, b) => {
-    return order[a.state] - order[b.state];
-  });
+  return [...store.state.availableSearchTags].sort((a, b) => order[a.state] - order[b.state]);
 })
+
+function animateAndSelectTag(e, tag) {
+  const el = e.currentTarget;
+  el.classList.add('clicked');
+  setTimeout(() => {
+    selectTagFromAutocomplete(tag);
+    el.classList.remove('clicked');
+  }, 150);
+}
 
 function selectTagFromAutocomplete(tag) {
   if (tag.state === 'neutral') tag.state = 'require';
@@ -186,10 +201,16 @@ async function fetchFeed(reset = false) {
     if (batch.length > 0) {
       currentCursor = batch[batch.length - 1].created_at
       batch.forEach(p => {
-          if (p.media) p.media.forEach(m => m.isLoaded = true)
+          if (p.media) p.media.forEach(m => m.isLoaded = false)
           p.selectedContacts = []
       })
       store.state.feed.push(...batch)
+      
+      // Detached deterministic blob loading
+      batch.forEach(p => {
+          processMediaBlobs(p.media);
+          if (p.audio) processMediaBlobs([p.audio]);
+      });
     }
   } catch (e) {
     store.addToast("Failed to fetch feed", "bi-x-circle")
@@ -305,6 +326,7 @@ async function sendRequest(profile, type, contactValue = null) {
 }
 
 function closeAllMenus() {
+  filterText.value = '';
   store.state.feed.forEach(p => p.showContactSelect = false)
 }
 

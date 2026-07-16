@@ -14,14 +14,14 @@
           <transition name="lightbox-slide" mode="out-in">
             <img v-if="currentMedia.media_type === 'image'" 
                  :key="currentMedia.url"
-                 :src="currentMedia.url" 
+                 :src="currentMedia.blobUrl || ''" 
                  class="lightbox-content"
                  :class="{'is-blurred': currentMedia.blur}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
                    :key="currentMedia.url"
-                   :src="currentMedia.url" 
+                   :src="currentMedia.blobUrl || ''" 
                    class="lightbox-content" 
                    :class="{'is-blurred': currentMedia.blur}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
@@ -81,7 +81,8 @@ async function removeMedia(m) {
   try {
     m.isDeleting = true;
     const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
-    await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}&index=${completedIdx !== -1 ? completedIdx : ''}`);
+    const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
+    await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`);
     
     store.state.myProfile.media = store.state.myProfile.media.filter(x => x.url !== m.url);
     store.state.lightbox.mediaList = store.state.lightbox.mediaList.filter(x => x.url !== m.url);
@@ -103,7 +104,8 @@ async function toggleBlurMode(m) {
     m.isUpdatingBlur = true;
     const newBlurState = !m.blur;
     const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
-    await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(m.url)}&blur=${newBlurState}&index=${completedIdx !== -1 ? completedIdx : ''}`);
+    const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
+    await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(m.url)}&blur=${newBlurState}${idxParam}`);
     
     m.blur = newBlurState;
     const profileMedia = store.state.myProfile.media.find(x => x.url === m.url);
