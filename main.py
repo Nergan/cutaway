@@ -43,6 +43,21 @@ def mount_if_exists(path: str, name: str, dir_path: Path):
     if dir_path.exists() and dir_path.is_dir():
         app.mount(path, StaticFiles(directory=dir_path), name=name)
 
+# --- Route Priority Sorter ---
+def sort_routes(app: FastAPI):
+    def get_route_score(route):
+        path = getattr(route, "path", "")
+        # Identify catch-all/wildcard routes
+        if any(term in path for term in [":path}", "full_path}", "rest_of_path}", "page_name}"]):
+            priority = 3  # Low priority (wildcards)
+        elif "{" in path:
+            priority = 2  # Medium priority (parameterized)
+        else:
+            priority = 1  # High priority (static and mounts)
+        return (priority, -len(path))
+
+    app.router.routes.sort(key=get_route_score)
+
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
 shutdown_callbacks = []
@@ -221,3 +236,7 @@ async def not_found_handler(request: Request, exc: HTTPException):
 async def get_mainpage_backgrounds():
     mp4_files = ["autumn.mp4", "hardtimes.mp4", "lamp.mp4", "minecraft.mp4", "warmlight.mp4"]
     return JSONResponse(content={'backgrounds': mp4_files})
+
+# Ensure route priorities are sorted to prevent catch-all wildcard routes
+# from intercepting StaticFiles mounts
+sort_routes(app)
