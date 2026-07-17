@@ -17,7 +17,7 @@
                  :key="currentMedia.url"
                  :src="currentMedia.blobUrl" 
                  class="lightbox-content"
-                 :class="{'cdn-obfuscated': currentMedia.isLegacy}"
+                 :class="{'cdn-obfuscated': currentMedia.isLegacy, 'is-blurred': currentMedia.blur}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
@@ -25,7 +25,7 @@
                    :key="currentMedia.url"
                    :src="currentMedia.blobUrl" 
                    class="lightbox-content" 
-                   :class="{'cdn-obfuscated': currentMedia.isLegacy}"
+                   :class="{'cdn-obfuscated': currentMedia.isLegacy, 'is-blurred': currentMedia.blur}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
           

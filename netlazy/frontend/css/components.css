@@ -6,7 +6,7 @@
 
 /* TACTILE MICRO-INTERACTIONS */
 .chip, .create-btn, .footer-action, .icon-btn, .custom-select {
-  transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .chip:hover, .create-btn:hover, .icon-btn:hover, .custom-select:hover {
   transform: scale(1.02);
@@ -25,7 +25,7 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 
 /* Rotating Cross & Privacy Icons */
 .search-clear-btn, .contact-action.danger, .media-remove, .lightbox-close, .contact-action.bi-lock, .contact-action.bi-globe { 
-  transition: color 0.2s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s; 
+  transition: color 0.2s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s; 
   cursor: pointer; 
 }
 .search-clear-btn { color: var(--text-muted); position: absolute; right: 0.5rem; padding: 0.2rem; }
@@ -163,7 +163,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 /* Smooth animated underline for Tags & Contacts */
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
-.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
 .glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-bottom: 2px; margin-bottom: -2px; }
 
@@ -204,7 +204,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 @keyframes fadeOut { to { opacity: 0; } }
 
 /* ANIMATIONS */
-.media-list-move { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.media-list-move { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 .media-list-enter-active, .media-list-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .media-list-enter-from, .media-list-leave-to { opacity: 0; transform: scale(0.8); }
 .media-list-leave-active { position: absolute; z-index: 0; }

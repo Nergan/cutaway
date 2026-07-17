@@ -123,9 +123,9 @@
         <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
           <i class="bi bi-person-lines-fill"></i>
         </a>
-        <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" style="position:relative;">
-          <i class="bi bi-inbox"></i>
-          <span v-if="pendingInboxCount > 0" class="badge" style="position:absolute; top:2px; right:20%; transform:translate(50%, -50%); margin:0;">{{ pendingInboxCount }}</span>
+        <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'">
+          <i v-if="pendingInboxCount === 0" class="bi bi-inbox"></i>
+          <span v-else class="badge" style="margin: 0; font-size: 0.8rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">{{ pendingInboxCount }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'">
           <i class="bi bi-fingerprint"></i>

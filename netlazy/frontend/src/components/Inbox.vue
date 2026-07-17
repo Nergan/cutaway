@@ -4,8 +4,11 @@
       
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
         <div class="section-header desktop-uncollapsible" @click="showReceived = !showReceived">
-          <span>{{ store.t('received') }}</span>
-          <i class="bi mobile-collapse-icon" :class="showReceived ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <span>
+            {{ store.t('received') }}
+            <span class="badge" v-if="pendingRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ pendingRequests.length }}</span>
+          </span>
+          <i class="bi bi-chevron-down mobile-collapse-icon" :class="{ 'is-expanded': showReceived }"></i>
         </div>
         
         <div v-if="store.state.isInboxLoading && pendingRequests.length === 0">
@@ -14,7 +17,14 @@
           </div>
         </div>
 
-        <transition name="collapse">
+        <transition
+          @before-enter="beforeEnter"
+          @enter="enter"
+          @after-enter="afterEnter"
+          @before-leave="beforeLeave"
+          @leave="leave"
+          @after-leave="afterLeave"
+        >
           <div v-show="showReceived" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in pendingRequests" :key="req.id" :class="{resolving: req.resolving, 'error-deleted': req.isErrorDeleted}">
@@ -103,8 +113,11 @@
         </transition>
 
         <div class="section-header desktop-uncollapsible" @click="showMatches = !showMatches" style="margin-top: 1.5rem;">
-          <span>{{ store.t('matches') }}</span>
-          <i class="bi mobile-collapse-icon" :class="showMatches ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <span>
+            {{ store.t('matches') }}
+            <span class="badge" v-if="acceptedRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ acceptedRequests.length }}</span>
+          </span>
+          <i class="bi bi-chevron-down mobile-collapse-icon" :class="{ 'is-expanded': showMatches }"></i>
         </div>
         
         <div v-if="store.state.isInboxLoading && acceptedRequests.length === 0">
@@ -113,7 +126,14 @@
           </div>
         </div>
 
-        <transition name="collapse">
+        <transition
+          @before-enter="beforeEnter"
+          @enter="enter"
+          @after-enter="afterEnter"
+          @before-leave="beforeLeave"
+          @leave="leave"
+          @after-leave="afterLeave"
+        >
           <div v-show="showMatches" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in acceptedRequests" :key="'acc'+req.id">
@@ -180,8 +200,11 @@
       
       <div class="inbox-col" :style="{width: (100 - store.state.inboxSplit) + '%'}">
         <div class="section-header desktop-uncollapsible" @click="showSent = !showSent">
-          <span>{{ store.t('sent_resolved') }}</span>
-          <i class="bi mobile-collapse-icon" :class="showSent ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <span>
+            {{ store.t('sent_resolved') }}
+            <span class="badge" v-if="sentRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ sentRequests.length }}</span>
+          </span>
+          <i class="bi bi-chevron-down mobile-collapse-icon" :class="{ 'is-expanded': showSent }"></i>
         </div>
 
         <div v-if="store.state.isInboxLoading && sentRequests.length === 0">
@@ -190,13 +213,20 @@
           </div>
         </div>
         
-        <transition name="collapse">
+        <transition
+          @before-enter="beforeEnter"
+          @enter="enter"
+          @after-enter="afterEnter"
+          @before-leave="beforeLeave"
+          @leave="leave"
+          @after-leave="afterLeave"
+        >
           <div v-show="showSent" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in sentRequests" :key="'s'+req.id">
                 
                 <div v-if="req.profile && req.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(req.profile.audio, req.profile.user_id)">
-                  <audio v-if="req.profile.audio.blobUrl" class="audio-minimal" :src="req.profile.audio.blobUrl" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1;"></audio>
+                  <audio v-if="req.profile.audio.blobUrl" class="audio-minimal" :src="req.profile.audio.blobUrl" @error="handleMediaError(req.profile, req.profile.audio)" controls style="flex-grow:1"></audio>
                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
                 </div>
 
@@ -236,8 +266,11 @@
         </transition>
 
         <div class="section-header desktop-uncollapsible" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
-          <span>{{ store.t('no_matches') }}</span>
-          <i class="bi mobile-collapse-icon" :class="showDeclined ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <span>
+            {{ store.t('no_matches') }}
+            <span class="badge" v-if="declinedRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ declinedRequests.length }}</span>
+          </span>
+          <i class="bi bi-chevron-down mobile-collapse-icon" :class="{ 'is-expanded': showDeclined }"></i>
         </div>
 
         <div v-if="store.state.isInboxLoading && declinedRequests.length === 0">
@@ -246,7 +279,14 @@
           </div>
         </div>
         
-        <transition name="collapse">
+        <transition
+          @before-enter="beforeEnter"
+          @enter="enter"
+          @after-enter="afterEnter"
+          @before-leave="beforeLeave"
+          @leave="leave"
+          @after-leave="afterLeave"
+        >
           <div v-show="showDeclined" class="mobile-collapse-content">
             <transition-group name="inbox-list" tag="div">
               <div class="inbox-item card" v-for="req in declinedRequests" :key="'d'+req.id">
@@ -320,6 +360,44 @@ const declinedRequests = computed(() => store.state.inbox.filter(r => r.status =
 function filterMedia(mediaArr) {
   return (mediaArr || []).filter(m => m && (m.url || m.blobUrl));
 }
+
+// Reusable fluid JS collapse transitions
+const beforeEnter = (el) => {
+  el.style.height = '0';
+  el.style.opacity = '0';
+  el.style.overflow = 'hidden';
+};
+
+const enter = (el) => {
+  el.offsetHeight; // force reflow
+  el.style.transition = 'height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
+  el.style.height = el.scrollHeight + 'px';
+  el.style.opacity = '1';
+};
+
+const afterEnter = (el) => {
+  el.style.height = '';
+  el.style.overflow = '';
+  el.style.transition = '';
+};
+
+const beforeLeave = (el) => {
+  el.style.height = el.scrollHeight + 'px';
+  el.style.overflow = 'hidden';
+};
+
+const leave = (el) => {
+  el.offsetHeight; // force reflow
+  el.style.transition = 'height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease';
+  el.style.height = '0';
+  el.style.opacity = '0';
+};
+
+const afterLeave = (el) => {
+  el.style.height = '';
+  el.style.overflow = '';
+  el.style.transition = '';
+};
 
 onMounted(() => {
   if (store.state.inbox.length === 0) {
