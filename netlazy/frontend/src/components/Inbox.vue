@@ -179,6 +179,12 @@
           <span>{{ store.t('sent_resolved') }}</span>
           <i class="bi mobile-collapse-icon" :class="showSent ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </div>
+
+        <div v-if="store.state.isInboxLoading && sentRequests.length === 0">
+          <div style="text-align: center; padding: 2rem;">
+            <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+          </div>
+        </div>
         
         <transition name="collapse">
           <div v-show="showSent" class="mobile-collapse-content">
@@ -227,6 +233,12 @@
         <div class="section-header desktop-uncollapsible" @click="showDeclined = !showDeclined" style="margin-top: 1.5rem;">
           <span>{{ store.t('no_matches') }}</span>
           <i class="bi mobile-collapse-icon" :class="showDeclined ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+        </div>
+
+        <div v-if="store.state.isInboxLoading && declinedRequests.length === 0">
+          <div style="text-align: center; padding: 2rem;">
+            <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+          </div>
         </div>
         
         <transition name="collapse">
