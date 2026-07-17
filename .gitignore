@@ -1,15 +1,42 @@
+### logs ###
+*.log
+
+
 ### Python ###
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-### Netlazy Frontend ###
+### Netlazy Frontend & Web Builds ###
+netlazy/assets/
+netlazy/node_modules/
+netlazy/npm-debug.log*
+netlazy/dist/
+netlazy/.vite/
+netlazy/static/
+assets/
 node_modules/
 npm-debug.log*
 dist/
 .vite/
-netlazy/static/
+static/
+
+### Capacitor & Native Mobile Platforms ###
+android/
+ios/
+
+### Mobile Build Output, IDE Caches & Signing Keys ###
+*.apk
+*.aab
+*.ipa
+*.keystore
+*.jks
+local.properties
+.gradle/
+build/
+.idea/
+*.iml
 
 ### Testing (pytest & coverage) ###
 .pytest_cache/
