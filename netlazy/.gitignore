@@ -10,6 +10,12 @@ __pycache__/
 
 ### Netlazy Frontend & Web Builds ###
 netlazy/assets/
+netlazy/node_modules/
+netlazy/npm-debug.log*
+netlazy/dist/
+netlazy/.vite/
+netlazy/static/
+assets/
 node_modules/
 npm-debug.log*
 dist/
