@@ -89,14 +89,24 @@
     right: 0;
     top: auto;
     z-index: 100;
-    background: var(--bg-surface);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border-top: 1px solid var(--border-subtle);
     border-bottom: none;
     padding: 0.65rem 1.2rem !important;
     margin: 0 !important;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+  }
+  .feed-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--bg-surface) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    pointer-events: none;
   }
   .feed-header .search-header-input {
     background: transparent !important;
