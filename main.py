@@ -11,7 +11,6 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSON
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
@@ -24,39 +23,13 @@ client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=Tru
 stats_db = client['main-page']
 
 app = FastAPI(title="Nargan's Projects Ecosystem")
-
-# --- Security/CORS Configuration for Capacitor (Mobile Wrapper) ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # For native mobile interceptors like capacitor://localhost
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
-)
-
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
 # --- Safe Static Mounting ---
 def mount_if_exists(path: str, name: str, dir_path: Path):
     if dir_path.exists() and dir_path.is_dir():
         app.mount(path, StaticFiles(directory=dir_path), name=name)
-
-# --- Route Priority Sorter ---
-def sort_routes(app: FastAPI):
-    def get_route_score(route):
-        path = getattr(route, "path", "")
-        # Identify catch-all/wildcard routes
-        if any(term in path for term in [":path}", "full_path}", "rest_of_path}", "page_name}"]):
-            priority = 3  # Low priority (wildcards)
-        elif "{" in path:
-            priority = 2  # Medium priority (parameterized)
-        else:
-            priority = 1  # High priority (static and mounts)
-        return (priority, -len(path))
-
-    app.router.routes.sort(key=get_route_score)
 
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
@@ -236,7 +209,3 @@ async def not_found_handler(request: Request, exc: HTTPException):
 async def get_mainpage_backgrounds():
     mp4_files = ["autumn.mp4", "hardtimes.mp4", "lamp.mp4", "minecraft.mp4", "warmlight.mp4"]
     return JSONResponse(content={'backgrounds': mp4_files})
-
-# Ensure route priorities are sorted to prevent catch-all wildcard routes
-# from intercepting StaticFiles mounts
-sort_routes(app)
