@@ -25,14 +25,22 @@ stats_db = client['main-page']
 
 app = FastAPI(title="Nargan's Projects Ecosystem")
 
-# --- Reverse Proxy HTTPS Scheme Fix ---
-@app.middleware("http")
-async def forward_proto_middleware(request: Request, call_next):
-    # Detect the scheme from the standard X-Forwarded-Proto header 
-    # to avoid HTTP -> HTTPS redirect loops behind secure reverse proxies
-    if "x-forwarded-proto" in request.headers:
-        request.scope["scheme"] = request.headers["x-forwarded-proto"]
-    return await call_next(request)
+# --- Raw ASGI Middleware for Proxy Scheme Alignment ---
+# Avoids Starlette's BaseHTTPMiddleware stream bugs (EndOfStream exceptions on 404)
+class ReverseProxySchemeMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            headers = scope.get("headers", [])
+            for key, value in headers:
+                if key == b"x-forwarded-proto":
+                    scope["scheme"] = value.decode("latin1")
+                    break
+        await self.app(scope, receive, send)
+
+app.add_middleware(ReverseProxySchemeMiddleware)
 
 # --- Security/CORS Configuration for Capacitor (Mobile Wrapper) ---
 app.add_middleware(
@@ -50,7 +58,10 @@ templates = Jinja2Templates(directory=BASE_DIR)
 # --- Safe Static Mounting ---
 def mount_if_exists(path: str, name: str, dir_path: Path):
     if dir_path.exists() and dir_path.is_dir():
+        logger.info(f"Mounting static files from {dir_path} at {path}")
         app.mount(path, StaticFiles(directory=dir_path), name=name)
+    else:
+        logger.warning(f"Static directory not found or invalid: {dir_path}")
 
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
@@ -219,8 +230,15 @@ async def track_visitor(request: Request, payload: TrackRequest):
 # --- Refined 404 Exception Handler ---
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
-    # Only redirect to root if the client is a browser requesting an HTML page.
-    # This avoids redirecting broken static asset or API requests, preventing infinite loops.
+    path = request.url.path
+    
+    # Explicitly prevent redirecting static assets or API endpoints.
+    # This prevents infinite 307 redirect loops on broken or missing static resources.
+    if any(path.endswith(ext) for ext in [".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".json", ".xml", ".woff", ".woff2", ".ttf"]):
+        raise exc
+    if "/static/" in path or "/api/" in path:
+        raise exc
+        
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         return RedirectResponse(url='/')
