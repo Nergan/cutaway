@@ -23,13 +23,17 @@ client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=Tru
 stats_db = client['main-page']
 
 app = FastAPI(title="Nargan's Projects Ecosystem")
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
 # --- Safe Static Mounting ---
 def mount_if_exists(path: str, name: str, dir_path: Path):
-    if dir_path.exists() and dir_path.is_dir():
-        app.mount(path, StaticFiles(directory=dir_path), name=name)
+    abs_path = dir_path.resolve()
+    if abs_path.exists() and abs_path.is_dir():
+        logger.info(f"Mounting static files: {path} -> {abs_path}")
+        app.mount(path, StaticFiles(directory=abs_path), name=name)
+    else:
+        logger.warning(f"Static directory not found for mounting: {dir_path} (resolved: {abs_path})")
 
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
