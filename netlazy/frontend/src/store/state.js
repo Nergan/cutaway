@@ -158,9 +158,18 @@ export function useStore() {
     }
 
     function cycleLang() {
-        const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
-        const currentIdx = langs.indexOf(state.lang);
-        state.lang = langs[(currentIdx + 1) % langs.length];
+        // Trigger a global blur/fade via a CSS class on the body to mask the text swap
+        document.body.classList.add('is-translating');
+        
+        setTimeout(() => {
+            const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
+            const currentIdx = langs.indexOf(state.lang);
+            state.lang = langs[(currentIdx + 1) % langs.length];
+            
+            setTimeout(() => {
+                document.body.classList.remove('is-translating');
+            }, 50);
+        }, 150); // wait for fade out
     }
 
     function t(key, replacements = {}) {
@@ -306,10 +315,10 @@ export function useStore() {
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
                 data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0 };
-                // Fetch distorted audio
+                
                 if (!data.audio.isLoaded && !data.audio.blobUrl) {
                     getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
-                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); // 404 auto cleanup
+                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
                         else if (bUrl && state.myProfile.audio) {
                             state.myProfile.audio.blobUrl = bUrl;
                             state.myProfile.audio.isLoaded = true;
@@ -376,7 +385,7 @@ export function useStore() {
                     
                     if (!r.profile.audio.isLoaded && !r.profile.audio.blobUrl) {
                         getRestoredAudioBlobUrl(r.profile.audio.url).then(bUrl => {
-                            if (bUrl === null) r.profile.audio = null; // 404 remote cleanup visually
+                            if (bUrl === null) r.profile.audio = null; 
                             else if (bUrl) {
                                 r.profile.audio.blobUrl = bUrl;
                                 r.profile.audio.isLoaded = true;

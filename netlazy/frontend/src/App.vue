@@ -2,19 +2,45 @@
   <div id="app-container">
     
     <div v-if="store.state.isBanned" class="welcome-container">
+      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem;">
+        <button class="footer-action icon-btn" @click="store.toggleTheme">
+          <transition name="fade" mode="out-in">
+            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+          </transition>
+        </button>
+        <button class="footer-action" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+          <transition name="fade" mode="out-in">
+            <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+          </transition>
+        </button>
+      </div>
+
       <div class="welcome-box">
         <h1 class="welcome-brand" style="color: var(--accent-danger);">banned</h1>
         <p class="welcome-desc">{{ store.t('account_banned') }}</p>
         
         <div class="welcome-footer" style="margin-top: 2rem;">
-          <button class="create-btn" @click="checkBanStatus" style="font-size: 0.9rem; padding: 0.6rem 1.2rem;">
-            <i class="bi bi-arrow-clockwise"></i> Check Status
+          <button class="create-btn" @click="checkBanStatus" style="font-size: 0.9rem; padding: 0.6rem 1.2rem; text-transform: lowercase;">
+            <i class="bi bi-arrow-clockwise"></i> {{ store.t('check_status') }}
           </button>
         </div>
       </div>
     </div>
 
     <div v-else-if="!store.state.isRegistered" class="welcome-container">
+      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem;">
+        <button class="footer-action icon-btn" @click="store.toggleTheme">
+          <transition name="fade" mode="out-in">
+            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+          </transition>
+        </button>
+        <button class="footer-action" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+          <transition name="fade" mode="out-in">
+            <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+          </transition>
+        </button>
+      </div>
+
       <div class="welcome-box">
         <h1 class="welcome-brand">netlazy</h1>
         <p class="welcome-desc">{{ store.t('welcome_desc') }}</p>
@@ -158,18 +184,12 @@
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="store.state.contactSelect.open" @click="store.state.contactSelect.open = false">
         <div class="bottom-sheet-box" @click.stop>
-          <div class="bottom-sheet-header">
-            <i class="bi" :class="store.state.contactSelect.type === 'share' ? 'bi-box-arrow-up' : 'bi-arrow-left-right'"></i>
-            {{ store.t('select_contact_to', { type: store.state.contactSelect.type }) }}
-          </div>
-          
           <div class="bottom-sheet-body">
             <div class="sheet-contact-row" 
                  v-for="c in validPrivateContacts" 
                  :key="c.value" 
                  :class="{ 'is-selected': store.state.contactSelect.selectedContacts.includes(c.value) }"
                  @click="toggleGlobalContact(c.value)">
-              <i class="bi" :class="getContactIcon(c.type)"></i>
               <span class="sheet-contact-val">{{ c.type }}: {{ c.value }}</span>
             </div>
             
@@ -255,9 +275,6 @@ const displayPrivateKey = computed(() => {
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
 )
-
-const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }
-function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
 
 function toggleGlobalContact(val) {
   const idx = store.state.contactSelect.selectedContacts.indexOf(val);

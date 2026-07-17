@@ -80,7 +80,9 @@ export default {
     declined: "declined",
     lang: "language",
     reset_tags: "reset tags",
-    end_of_feed: "end of feed"
+    end_of_feed: "end of feed",
+    check_status: "check status",
+    send: "send"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -156,14 +158,16 @@ export default {
     confirm_delete_match_title: "Удалить совпадение",
     confirm_delete_match_desc: "Вы уверены, что хотите навсегда удалить это мэтч? Пользователь будет удалён из списка.",
     match_deleted: "совпадение успешно удалено",
-    contact_hidden_exchange: "承認するまで連絡先は非表示になります",
-    account_banned: "this account has been banned",
+    contact_hidden_exchange: "контакт скрыт до принятия",
+    account_banned: "этот аккаунт заблокирован",
     delete_match: "удалить совпадение",
     no_matches: "нет совпадений",
     declined: "отклонено",
     lang: "язык",
     reset_tags: "сбросить теги",
-    end_of_feed: "конец ленты"
+    end_of_feed: "конец ленты",
+    check_status: "проверить статус",
+    send: "отправить"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -246,7 +250,9 @@ export default {
     declined: "recusado",
     lang: "idioma",
     reset_tags: "redefinir tags",
-    end_of_feed: "fim do feed"
+    end_of_feed: "fim do feed",
+    check_status: "verificar status",
+    send: "enviar"
   },
   zh: {
     welcome_desc: "編譯器會在用戶端生成金鑰，保證通訊極致隱私安全。請負責地使用。 :^",
@@ -329,7 +335,9 @@ export default {
     declined: "已拒絕",
     lang: "語言",
     reset_tags: "重置標籤",
-    end_of_feed: "到底了"
+    end_of_feed: "到底了",
+    check_status: "檢查狀態",
+    send: "發送"
   },
   ja: {
     welcome_desc: "ただのデートです。操作的な仕組みや、積極的な収益化はありません。責任を持って行動してください :^",
@@ -412,7 +420,9 @@ export default {
     declined: "拒否されました",
     lang: "言語",
     reset_tags: "タグをリセット",
-    end_of_feed: "フィードの最後です"
+    end_of_feed: "フィードの最後です",
+    check_status: "ステータスを確認",
+    send: "送信"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -495,6 +505,8 @@ export default {
     declined: "거절됨",
     lang: "연락처",
     reset_tags: "태그 초기화",
-    end_of_feed: "피드의 끝입니다"
+    end_of_feed: "피드의 끝입니다",
+    check_status: "상태 확인",
+    send: "보내기"
   }
 };
