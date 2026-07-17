@@ -1,0 +1,13 @@
+{
+  "appId": "com.nargan.netlazy",
+  "appName": "netlazy",
+  "webDir": "static",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true
+    }
+  }
+}
