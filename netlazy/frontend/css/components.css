@@ -23,8 +23,8 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 }
 .search-header-input:focus-visible { outline: none; }
 
-/* Rotating Cross Animations */
-.search-clear-btn, .contact-action.danger, .media-remove, .lightbox-close { 
+/* Rotating Cross & Privacy Icons */
+.search-clear-btn, .contact-action.danger, .media-remove, .lightbox-close, .contact-action.bi-lock, .contact-action.bi-globe { 
   transition: color 0.2s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s; 
   cursor: pointer; 
 }
@@ -34,8 +34,16 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
   color: var(--accent-danger); 
   transform: rotate(90deg); 
 }
+.contact-action.bi-lock:hover, .contact-action.bi-globe:hover {
+  color: var(--text-main);
+  transform: scale(1.15);
+}
+
 .search-clear-btn:active, .contact-action.danger:active, .media-remove:active, .lightbox-close:active { 
   transform: scale(0.85) rotate(90deg); 
+}
+.contact-action.bi-lock:active, .contact-action.bi-globe:active {
+  transform: scale(0.9);
 }
 
 /* TAG CHIPS */
@@ -74,9 +82,9 @@ body.light-theme .audio-minimal { filter: none; }
   object-fit: cover; pointer-events: none; transition: filter 0.3s ease;
 }
 
-/* Mathematical Visual Distortion Reversal via CSS */
-.cdn-obfuscated { transform: scale(-1, -1); filter: invert(1) hue-rotate(-180deg); }
-.cdn-obfuscated.is-blurred { transform: scale(-1, -1); filter: invert(1) hue-rotate(-180deg) blur(20px); }
+/* Reverses the intense hardware decoding layer and applies blur if needed */
+.cdn-obfuscated { transform: scale(-1, -1); filter: hue-rotate(-180deg) invert(1) url(#channel-restore); }
+.cdn-obfuscated.is-blurred { transform: scale(-1, -1); filter: hue-rotate(-180deg) invert(1) url(#channel-restore) blur(20px); }
 
 .editor-layout .media-thumb { cursor: grab; }
 .editor-layout .media-thumb:active { cursor: grabbing; }
@@ -195,31 +203,26 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
-  transform: scale(0.95);
-}
-
-/* Sidebar Bottom Toggles Alignment Fix */
-.sidebar-footer .footer-action {
-  justify-content: center;
+  transform: scale(0.8) rotate(-90deg); /* specific rotation scaling target for X buttons */
 }
 
 /* Minimalist Blurred Bottom Sheet for Contacts */
 .bottom-sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.2); /* Faint dark overlay */
+  background: rgba(0, 0, 0, 0.15);
   z-index: 30000;
   display: flex;
-  align-items: flex-end; /* Slide up from bottom on mobile */
+  align-items: flex-end;
   justify-content: center;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .bottom-sheet-box {
-  background: rgba(10, 10, 10, 0.15); /* Very transparent base */
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 32px 32px 0 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 36px 36px 0 0;
   width: 100%;
   max-width: 500px;
   padding: 2.5rem 1.5rem 2rem 1.5rem;
@@ -230,12 +233,11 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 
 .light-theme .bottom-sheet-box {
-  background: rgba(250, 250, 250, 0.3);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 @media (min-width: 769px) {
-  /* Hide this specific mobile overlay on desktop just in case */
   .bottom-sheet-backdrop { display: none !important; }
 }
 
@@ -254,8 +256,8 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   gap: 0.8rem;
   padding: 1rem 1.2rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   cursor: pointer;
@@ -263,21 +265,21 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   color: var(--text-main);
 }
 .light-theme .sheet-contact-row {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .sheet-contact-row:hover {
   border-color: var(--border-focus);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.25);
 }
 .light-theme .sheet-contact-row:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .sheet-contact-row.is-selected {
-  background: rgba(141, 169, 112, 0.15);
-  border-color: rgba(141, 169, 112, 0.4);
+  background: rgba(141, 169, 112, 0.3);
+  border-color: rgba(141, 169, 112, 0.5);
   color: var(--accent-moss);
 }
 
@@ -287,14 +289,13 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: center; /* Center aligned for minimalist feel */
+  text-align: center;
 }
 
 .bottom-sheet-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1.5rem;
   margin-top: 0.5rem;
 }
 

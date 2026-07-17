@@ -285,8 +285,14 @@ async function handleMediaError(profile, m) {
 function updateMediaList(resMedia, remainingTemps) {
     const updated = resMedia.map(newM => {
         const old = store.state.myProfile.media.find(m => m.url === newM.url);
-        return old ? { ...newM, isDeleting: old.isDeleting, isUpdatingBlur: old.isUpdatingBlur || false, isLoaded: true, isUploading: false } 
-                   : { ...newM, isLoaded: true, isUploading: false };
+        return {
+            ...newM,
+            isDeleting: old?.isDeleting || false,
+            isUpdatingBlur: old?.isUpdatingBlur || false,
+            isLoaded: old?.isLoaded || true,
+            isUploading: false,
+            blobUrl: newM.blobUrl || (old ? old.blobUrl : null)
+        };
     });
     store.state.myProfile.media = [...updated, ...remainingTemps];
 }
@@ -324,7 +330,8 @@ async function processFiles(files) {
       signal: tempAudio.abortCtrl.signal,
       onUploadProgress: (e) => {
         if (e.total && store.state.myProfile.audio) {
-          store.state.myProfile.audio.uploadProgress = Math.round((e.loaded * 100) / e.total);
+          // Cap Axios upload at 85%, the rest is backend processing
+          store.state.myProfile.audio.uploadProgress = Math.round((e.loaded * 85) / e.total);
         }
       }
     }).then(async res => {
@@ -351,7 +358,7 @@ async function processFiles(files) {
       onUploadProgress: (e) => {
         if (e.total) {
           const m = store.state.myProfile.media.find(x => x.blobUrl === temp.blobUrl);
-          if (m) m.uploadProgress = Math.round((e.loaded * 100) / e.total);
+          if (m) m.uploadProgress = Math.round((e.loaded * 85) / e.total);
         }
       }
     }).then(async res => {
@@ -363,7 +370,7 @@ async function processFiles(files) {
 
       if (newItem) {
         newItem.blur = desiredBlur;
-        newItem.blobUrl = temp.blobUrl; // Persist client-side render blob to skip flashing
+        newItem.blobUrl = temp.blobUrl; // Explicitly map before array overwrite to prevent flash
       }
 
       const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.blobUrl !== temp.blobUrl)

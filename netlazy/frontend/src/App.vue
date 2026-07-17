@@ -2,7 +2,7 @@
   <div id="app-container">
     
     <div v-if="store.state.isBanned" class="welcome-container">
-      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem;">
+      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
         <button class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
@@ -28,7 +28,7 @@
     </div>
 
     <div v-else-if="!store.state.isRegistered" class="welcome-container">
-      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem;">
+      <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
         <button class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
@@ -190,7 +190,7 @@
                  :key="c.value" 
                  :class="{ 'is-selected': store.state.contactSelect.selectedContacts.includes(c.value) }"
                  @click="toggleGlobalContact(c.value)">
-              <span class="sheet-contact-val">{{ c.type }}: {{ c.value }}</span>
+              <span class="sheet-contact-val">{{ c.value }}</span>
             </div>
             
             <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
@@ -199,15 +199,15 @@
           </div>
           
           <div class="bottom-sheet-footer">
-            <button class="footer-action" style="color: var(--text-muted);" @click="store.state.contactSelect.open = false">
-              <span class="animated-underline">{{ store.t('cancel') }}</span>
+            <button class="footer-action icon-btn search-clear-btn" style="position: static; font-size: 1.5rem;" @click="store.state.contactSelect.open = false">
+              <i class="bi bi-x-lg"></i>
             </button>
-            <button class="create-btn" 
+            <button class="footer-action icon-btn" 
                     :disabled="store.state.contactSelect.selectedContacts.length === 0 || store.state.contactSelect.isSending" 
                     @click="submitGlobalHandshake" 
-                    style="padding: 0.5rem 1.5rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                    style="font-size: 1.5rem;"
+                    :style="{ color: store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0 ? 'var(--border-focus)' : 'var(--accent-moss)' }">
               <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
-              {{ store.t('send') }}
             </button>
           </div>
         </div>
@@ -236,6 +236,18 @@
         </div>
       </div>
     </transition>
+
+    <!-- Invisible Global Hardware Decoder for Media Obfuscation -->
+    <svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
+      <filter id="channel-restore">
+        <feColorMatrix type="matrix" values="
+          0 1 0 0 0
+          0 0 1 0 0
+          1 0 0 0 0
+          0 0 0 1 0
+        "/>
+      </filter>
+    </svg>
   </div>
 </template>
 
@@ -271,7 +283,6 @@ const displayPrivateKey = computed(() => {
     .trim();
 })
 
-// Computed list of valid private contacts
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
 )
@@ -302,7 +313,6 @@ async function submitGlobalHandshake() {
     
     await apiWithPoW('post', '/inbox/handshakes', payload);
     
-    // Update feed state locally
     const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
     if (feedProfile) {
       feedProfile.sent = true;

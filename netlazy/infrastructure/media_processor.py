@@ -53,15 +53,15 @@ async def _run_ffmpeg(args: list) -> None:
 
 async def process_image(data: bytes, max_dimension: int) -> bytes:
     async with _temp_workspace(data, "output.webp") as (in_path, out_path):
-        # Flips, inverts colors, and rotates hues to completely break AI skin/shape recognition
-        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,hflip,vflip,negate,hue=h=180"
+        # Swaps RGB channels + inverts + hue rotates + flips axes (alien camouflage)
+        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,colorchannelmixer=0:0:1:0:1:0:0:0:0:1:0:0,negate,hue=h=180,hflip,vflip"
         await _run_ffmpeg(["-y", "-i", in_path, "-vf", scale_filter, "-quality", "82", out_path])
         with open(out_path, "rb") as f:
             return f.read()
 
 async def process_video(data: bytes, max_dimension: int) -> bytes:
     async with _temp_workspace(data, "output.mp4") as (in_path, out_path):
-        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2,hflip,vflip,negate,hue=h=180"
+        scale_filter = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2,colorchannelmixer=0:0:1:0:1:0:0:0:0:1:0:0,negate,hue=h=180,hflip,vflip"
         await _run_ffmpeg([
             "-y", "-i", in_path, 
             "-vf", scale_filter, 
@@ -75,7 +75,7 @@ async def process_video(data: bytes, max_dimension: int) -> bytes:
 
 async def process_audio(data: bytes, bitrate: str) -> bytes:
     async with _temp_workspace(data, "output.mp3") as (in_path, out_path):
-        # areverse physically plays the audio backwards (unintelligible noise to CDN admins & speech-to-text)
+        # areverse physically plays the audio backwards (unintelligible noise to CDN admins)
         await _run_ffmpeg(["-y", "-i", in_path, "-af", "areverse", "-ac", "1", "-c:a", "libmp3lame", "-b:a", bitrate, out_path])
         with open(out_path, "rb") as f:
             return f.read()
