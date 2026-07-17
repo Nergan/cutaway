@@ -122,7 +122,8 @@
             </div>
           </transition>
 
-          <div class="blurred-header" style="padding: 1rem 0; margin-bottom: 0.5rem; background: var(--bg-base); z-index: 9;">
+          <!-- Simplified active tags header wrapper layout cleanly resolving previous empty spacing backdrop-filter bleed errors -->
+          <div style="padding: 1rem 0; margin-bottom: 0.5rem; z-index: 9;">
             <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
               <span style="font-size: 0.75rem;">active tags</span>
               <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
@@ -130,7 +131,8 @@
           </div>
           <transition name="collapse">
             <div v-show="showActiveTags" class="mobile-collapse-content">
-              <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
+              <!-- Rewritten active tag group utilizing simple scale/fade-only transitions targeting active-tags-zone chips -->
+              <transition-group name="tag-fade" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px; position: relative;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
                 </span>
@@ -255,9 +257,15 @@ function handleNewContactInput() {
   newContact.value.type = inferContactType(newContact.value.value.trim());
 }
 
+// Native check preventing any invalid/unknown contact fields from being appended locally
 function commitNewContact() {
-  if (newContact.value.value.trim() !== '') {
-    store.state.myProfile.contacts.push({ ...newContact.value });
+  const val = newContact.value.value.trim();
+  if (val !== '') {
+    const inferred = inferContactType(val);
+    if (inferred === 'unknown') {
+      return; 
+    }
+    store.state.myProfile.contacts.push({ ...newContact.value, type: inferred });
     newContact.value = { type: 'unknown', value: '', is_private: true, _id: Math.random().toString() };
     triggerAutosave();
   }
@@ -500,7 +508,7 @@ async function toggleBlur(m) {
     if (!store.state.myProfile.audio?.isUploading) {
       if (res.data.audio) {
           const oldAudio = store.state.myProfile.audio;
-          store.state.myProfile.audio = { ...res.data.audio, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+          store.state.myProfile.audio = { ...res.data.audio, blobUrl: oldAudio?.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
       } else {
           store.state.myProfile.audio = null;
       }

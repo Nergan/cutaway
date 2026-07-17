@@ -243,6 +243,14 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   width: 100%;
 }
 
+/* Bulletproof and extremely simple fade transition for removing/adding active tags */
+.tag-fade-enter-active, .tag-fade-leave-active {
+  transition: opacity 0.12s ease-out;
+}
+.tag-fade-enter-from, .tag-fade-leave-to {
+  opacity: 0;
+}
+
 /* Minimalist Blurred Bottom Sheet for Contacts */
 .bottom-sheet-backdrop {
   position: fixed;

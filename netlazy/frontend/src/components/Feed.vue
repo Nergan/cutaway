@@ -287,7 +287,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (observer) observer.disconnect()
   document.removeEventListener('click', closeAllMenus)
-  window.removeEventListener('resize', handleResize)
+  window.addEventListener('resize', handleResize)
 })
 
 onActivated(() => {
@@ -400,7 +400,4 @@ async function copyText(txt) {
 </script>
 
 <style scoped>
-.highlighted-option {
-  background: rgba(150, 150, 150, 0.2) !important;
-}
 </style>
