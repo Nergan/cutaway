@@ -1,7 +1,13 @@
 <template>
   <div id="app-container">
     
-    <div v-if="store.state.isBanned" class="welcome-container">
+    <!-- Neutral app-wide splash screen to block structural pop-in during async hydration -->
+    <div v-if="!store.state.isInitialized" class="welcome-container" style="justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; gap: 1.5rem;">
+      <h1 class="welcome-brand" style="cursor: default;">netlazy</h1>
+      <i class="bi bi-arrow-repeat spin" style="font-size: 2.2rem; color: var(--accent-moss);"></i>
+    </div>
+
+    <div v-else-if="store.state.isBanned" class="welcome-container">
       <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
         <button class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">

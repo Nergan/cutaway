@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from netlazy.config import settings
@@ -97,7 +97,23 @@ async def serve_spa(request: Request, full_path: str = ""):
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return {"error": "Frontend build not found. Run Vite build first."}
+    
+    # HTML fallback info during local development
+    return HTMLResponse(
+        content="""
+        <html>
+        <head><title>netlazy - Development Fallback</title></head>
+        <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #000000; color: #ffffff; margin: 0; padding: 1.5rem; box-sizing: border-box;">
+            <h1 style="color: #8da970; font-weight: 600; margin-bottom: 0.5rem;">Frontend Not Built Yet</h1>
+            <p style="color: #a3a3a3; max-width: 480px; text-align: center; margin-bottom: 1.5rem; line-height: 1.5;">The compiled static assets were not found. To build and run the frontend, navigate into the project directory and build the assets.</p>
+            <div style="background: #0a0a0a; border: 1px solid #222222; padding: 1.25rem 2rem; border-radius: 8px; font-family: monospace; color: #dbc49a;">
+                cd netlazy && npm run build
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=200
+    )
 
 # Dual-Boot Support Hook
 if __name__ == '__main__':

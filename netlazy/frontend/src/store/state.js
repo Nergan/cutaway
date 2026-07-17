@@ -8,6 +8,7 @@ import { Preferences } from '@capacitor/preferences';
 const STORAGE_KEY = 'netlazy_state';
 
 const defaultState = {
+    isInitialized: false, // Prevents layout pop-in on cold boots
     isRegistered: false,
     isBanned: false,
     currentView: 'editor',
@@ -126,14 +127,24 @@ export function useStore() {
             }
         } catch (e) {
             console.warn("could not read preferences state:", e);
+        } finally {
+            // Apply loaded theme classes correctly once evaluation finishes
+            if (state.theme === 'light') {
+                document.body.classList.add('light-theme');
+            } else {
+                document.body.classList.remove('light-theme');
+            }
+            state.isInitialized = true;
         }
     }
 
+    // Safety Gate: Ensure we don't save empty states back to memory during startup evaluation
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang,
         state.sidebarWidth, state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
         state.userId, state.privateKeyPem, state.publicKeyPem
     ], async () => {
+        if (!state.isInitialized) return;
         try {
             const saveObj = {
                 isRegistered: state.isRegistered, isBanned: state.isBanned, currentView: state.currentView,
@@ -172,6 +183,7 @@ export function useStore() {
         }, 150);
     }
 
+    // Dynamic templating function
     function t(key, replacements = {}) {
         const lang = state.lang || 'en';
         let txt = (translations[lang] && translations[lang][key]) || (translations['en'] && translations['en'][key]) || key;
