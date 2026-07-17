@@ -10,7 +10,8 @@ for dir in */; do
     if [ -f "${dir}package.json" ]; then
         echo "Found package.json in ${dir}. Attempting npm build..."
         set +e
-        (cd "${dir}" && npm ci && npm run build)
+        # Fall back to standard npm install if npm ci fails due to an out-of-sync lockfile
+        (cd "${dir}" && (npm ci || npm install --no-audit --no-fund) && npm run build)
         if [ $? -eq 0 ]; then
             echo "Successfully built frontend for ${dir}"
         else
