@@ -95,7 +95,7 @@
           </button>
 
           <!-- Desktop block layout with clean transitions & elevated z-index overlaying everything else -->
-          <transition name="fade">
+          <transition name="dropdown-fade">
             <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
               <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
                 <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
@@ -328,7 +328,6 @@ function handleContactButtonClick(profile, type) {
   if (isMobile.value) {
     openContactSelect(profile, type)
   } else {
-    // Revert to standard inline block logic for desktop with toggle and transitions
     profile.selectedContacts = []
     profile.pendingReqType = type
     profile.showContactSelect = !profile.showContactSelect

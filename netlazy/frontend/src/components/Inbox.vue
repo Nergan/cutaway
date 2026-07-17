@@ -63,12 +63,14 @@
                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                          {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
                        </span>
-                       <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
-                         <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
-                           <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
-                           <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+                       <transition name="dropdown-fade">
+                         <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
+                           <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
+                             <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+                             <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+                           </div>
                          </div>
-                       </div>
+                       </transition>
                      </div>
                   </div>
 

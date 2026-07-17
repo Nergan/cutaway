@@ -6,7 +6,7 @@
 
 /* TACTILE MICRO-INTERACTIONS */
 .chip, .create-btn, .footer-action, .icon-btn, .custom-select {
-  transition: background-color 0.15s ease, transform 0.1s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 .chip:hover, .create-btn:hover, .icon-btn:hover, .custom-select:hover {
   transform: scale(1.02);
@@ -55,6 +55,16 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 #active-tags-zone .chip:hover, #lib-tags-zone .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
 
+/* Subtle Tactile Animation for Tag Selection */
+@keyframes tagSelectPulse {
+  0% { transform: scale(0.94); filter: brightness(1.1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); filter: none; }
+}
+.chip.require, .chip.exclude, .chip.bonus {
+  animation: tagSelectPulse 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
 #lib-tags-zone .chip, #active-tags-zone .chip, .tag-scroll-area .chip {
   animation: tagAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
@@ -80,7 +90,6 @@ body.light-theme .audio-minimal { filter: none; }
 .media-thumb img, .media-thumb video {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover; pointer-events: none; 
-  /* Intentionally removed transition: filter 0.3s ease; to prevent SVG filter hardware decoding glitches */
 }
 
 /* Advanced Visual Distortion Reversal via CSS & SVG */
@@ -147,9 +156,16 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   padding: 0.5rem 0; 
   max-width: 90vw;
 }
-.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s; width: 100%; position: relative; overflow: hidden; }
-.glass-option:hover { background: transparent !important; }
+.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s, color 0.15s; width: 100%; position: relative; overflow: hidden; }
+.glass-option:hover { background: transparent !important; color: var(--accent-moss) !important; }
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
+
+/* Suggestions & Dropdown Highlight Underline Matching Sidebar */
+.glass-option:hover .animated-underline::after,
+.glass-option.highlighted-option .animated-underline::after {
+  width: 100%;
+  background-color: var(--accent-moss) !important;
+}
 
 /* Smooth animated underline for Tags & Contacts */
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; }
@@ -208,6 +224,31 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   transform: scale(0.8) rotate(-90deg);
 }
 
+/* Smooth understated transition for showing/hiding dropdowns without flashy rotation */
+.dropdown-fade-enter-active, .dropdown-fade-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.dropdown-fade-enter-from, .dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+
+/* Smooth animation for deleting a contact */
+.contact-list-move {
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.contact-list-enter-active, .contact-list-leave-active {
+  transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.contact-list-enter-from, .contact-list-leave-to {
+  opacity: 0;
+  transform: translateX(-15px);
+}
+.contact-list-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
 /* Minimalist Blurred Bottom Sheet for Contacts */
 .bottom-sheet-backdrop {
   position: fixed;
@@ -258,8 +299,8 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   gap: 0.8rem;
   padding: 1rem 1.2rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   cursor: pointer;
@@ -267,16 +308,16 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   color: var(--text-main);
 }
 .light-theme .sheet-contact-row {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .sheet-contact-row:hover {
   border-color: var(--border-focus);
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
 }
 .light-theme .sheet-contact-row:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .sheet-contact-row.is-selected {

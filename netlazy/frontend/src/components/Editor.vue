@@ -144,14 +144,16 @@
             <i class="bi mobile-collapse-icon" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
-            <div v-show="showContacts" class="mobile-collapse-content">
-              <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
-                <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
-                <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">
-                <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
-                <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
-                <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
-              </div>
+            <div v-show="showContacts" class="mobile-collapse-content" style="position: relative;">
+              <transition-group name="contact-list" tag="div">
+                <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
+                  <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
+                  <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">
+                  <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
+                  <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
+                  <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
+                </div>
+              </transition-group>
               <div class="contact-row">
                 <i class="bi contact-icon bi-plus-lg"></i>
                 <input type="text" class="seamless-input contact-val" v-model="newContact.value" :placeholder="store.t('contact_placeholder')" @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
@@ -211,6 +213,7 @@ onActivated(() => {
 })
 
 function triggerAutosave() {
+  store.state.lastProfileEditTimestamp = Date.now();
   if (store.state.myProfile.bio.length > 200) {
     store.state.myProfile.bio = store.state.myProfile.bio.substring(0, 200)
   }

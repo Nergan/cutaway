@@ -25,6 +25,7 @@ const defaultState = {
     inboxSplit: 50,
     toasts: [],
     tagSearchQuery: '',
+    lastProfileEditTimestamp: 0,
     
     confirmModal: {
         open: false,
@@ -302,34 +303,51 @@ export function useStore() {
         try {
             const res = await api.get('/profile/me');
             const data = res.data;
-            data.contacts.forEach(c => c._id = Math.random().toString());
             
-            const currentMedia = state.myProfile.media || [];
-            data.media = data.media.map(m => { 
-                const old = currentMedia.find(om => om.url === m.url);
-                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0 };
-            });
-            const uploadingMedia = currentMedia.filter(m => m.isUploading);
-            data.media.push(...uploadingMedia);
-
-            if (data.audio) { 
-                const oldA = state.myProfile.audio;
-                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0 };
+            // Prevent wiping user entries when synchronization lag happens during rapid editing
+            const wasRecentlyEdited = state.lastProfileEditTimestamp && (Date.now() - state.lastProfileEditTimestamp < 8000);
+            
+            if (wasRecentlyEdited) {
+                // Keep the current bio, tags, and contacts; only update media, audio, and metadata
+                state.myProfile.media = data.media.map(m => {
+                    const old = state.myProfile.media.find(om => om.url === m.url);
+                    return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+                });
                 
-                if (!data.audio.isLoaded && !data.audio.blobUrl) {
-                    getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
-                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
-                        else if (bUrl && state.myProfile.audio) {
-                            state.myProfile.audio.blobUrl = bUrl;
-                            state.myProfile.audio.isLoaded = true;
-                        }
-                    });
+                if (data.audio) {
+                    const oldA = state.myProfile.audio;
+                    state.myProfile.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
                 }
-            } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
-                data.audio = state.myProfile.audio;
-            }
+            } else {
+                data.contacts.forEach(c => c._id = Math.random().toString());
+                
+                const currentMedia = state.myProfile.media || [];
+                data.media = data.media.map(m => { 
+                    const old = currentMedia.find(om => om.url === m.url);
+                    return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+                });
+                const uploadingMedia = currentMedia.filter(m => m.isUploading);
+                data.media.push(...uploadingMedia);
 
-            state.myProfile = data;
+                if (data.audio) { 
+                    const oldA = state.myProfile.audio;
+                    data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
+                    
+                    if (!data.audio.isLoaded && !data.audio.blobUrl) {
+                        getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
+                            if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
+                            else if (bUrl && state.myProfile.audio) {
+                                state.myProfile.audio.blobUrl = bUrl;
+                                state.myProfile.audio.isLoaded = true;
+                            }
+                        });
+                    }
+                } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
+                    data.audio = state.myProfile.audio;
+                }
+
+                state.myProfile = data;
+            }
         } catch (e) {
             console.error("Profile sync failed");
         } finally {

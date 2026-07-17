@@ -211,3 +211,10 @@
   margin-bottom: 0.5rem;
   font-size: 1.25rem;
 }
+
+/* Guarantee channel-restore filter specificity even when blurred */
+.cdn-obfuscated.is-blurred,
+.is-blurred.cdn-obfuscated {
+  transform: scale(-1, -1) !important;
+  filter: hue-rotate(-180deg) invert(1) url(#channel-restore) blur(20px) !important;
+}
