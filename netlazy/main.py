@@ -104,8 +104,19 @@ if __name__ == '__main__':
     if "--web" in sys.argv:
         import uvicorn
         from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
         
         standalone_app = FastAPI(title="netlazy standalone")
+        
+        standalone_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            expose_headers=["*"]
+        )
+        
         if (BASE_DIR / 'static').exists():
             standalone_app.mount('/netlazy/static', StaticFiles(directory=BASE_DIR / 'static'), name='netlazy_static')
         standalone_app.include_router(router, prefix='/netlazy')

@@ -255,19 +255,43 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useStore } from './store/state.js'
 import api, { apiWithPoW } from './utils/api.js'
 import Lightbox from './components/Lightbox.vue'
 import Editor from './components/Editor.vue'
 import Feed from './components/Feed.vue'
 import Inbox from './components/Inbox.vue'
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 const store = useStore()
 const importKeyInput = ref('')
 const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
+
+onMounted(() => {
+  if (Capacitor.isNativePlatform()) {
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (store.state.lightbox.open) {
+        store.state.lightbox.open = false;
+      } else if (store.state.contactSelect.open) {
+        store.state.contactSelect.open = false;
+      } else if (store.state.confirmModal.open) {
+        store.state.confirmModal.open = false;
+      } else if (store.state.currentView !== 'feed') {
+        store.state.currentView = 'feed';
+      } else {
+        if (canGoBack) {
+          window.history.back();
+        } else {
+          CapacitorApp.exitApp();
+        }
+      }
+    });
+  }
+});
 
 function reloadPage() {
   window.location.reload()

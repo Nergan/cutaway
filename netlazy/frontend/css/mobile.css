@@ -84,7 +84,7 @@
 
   .feed-header {
     position: fixed;
-    bottom: 65px; /* Above bottom nav */
+    bottom: calc(65px + env(safe-area-inset-bottom)); /* Above bottom nav and safe area */
     left: 0;
     right: 0;
     top: auto;
@@ -121,7 +121,7 @@
   .card { gap: 0.6rem; margin-bottom: 0; width: 100%; max-width: calc(100vw - 3rem); box-sizing: border-box; overflow: hidden; }
 
   .toast-container {
-    top: 1rem;
+    top: calc(1rem + env(safe-area-inset-top)); /* Adjust for notch overlay */
     right: 50%;
     transform: translateX(50%);
     align-items: center;

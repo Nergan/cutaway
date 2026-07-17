@@ -6,13 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:mobile": "CAPACITOR_BUILD=true vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
     "axios": "^1.6.8",
     "vue": "^3.4.21"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "vite": "^5.2.8"
   }

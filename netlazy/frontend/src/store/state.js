@@ -3,6 +3,7 @@ import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
+import { Preferences } from '@capacitor/preferences';
 
 const STORAGE_KEY = 'netlazy_state';
 
@@ -86,7 +87,7 @@ export function useStore() {
 
     async function loadSavedState() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
+            const { value: raw } = await Preferences.get({ key: STORAGE_KEY });
             if (raw) {
                 const parsed = JSON.parse(raw);
                 
@@ -124,7 +125,7 @@ export function useStore() {
                 }
             }
         } catch (e) {
-            console.warn("could not read local storage state:", e);
+            console.warn("could not read preferences state:", e);
         }
     }
 
@@ -132,7 +133,7 @@ export function useStore() {
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang,
         state.sidebarWidth, state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
         state.userId, state.privateKeyPem, state.publicKeyPem
-    ], () => {
+    ], async () => {
         try {
             const saveObj = {
                 isRegistered: state.isRegistered, isBanned: state.isBanned, currentView: state.currentView,
@@ -141,7 +142,7 @@ export function useStore() {
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
                 userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(saveObj));
+            await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(saveObj) });
         } catch (e) {}
     }, { deep: true });
 

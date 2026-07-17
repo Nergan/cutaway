@@ -4,6 +4,7 @@ body {
   background: var(--bg-base); color: var(--text-main);
   line-height: 1.5; height: 100vh; overflow: hidden;
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overscroll-behavior-y: none; /* Disable bounce/overscroll on mobile Native App contexts */
 }
 
 /* Slim scrollbars */
@@ -16,6 +17,7 @@ body {
 #app { 
   display: flex; height: 100vh; width: 100vw; 
   transition: opacity 0.15s ease-in-out, filter 0.15s ease-in-out;
+  padding-top: env(safe-area-inset-top); /* Notch and Status Bar support for iOS/Android Native containers */
 }
 
 /* Smooth Translation Transition applied to body */

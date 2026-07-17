@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSON
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
@@ -23,6 +24,17 @@ client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=Tru
 stats_db = client['main-page']
 
 app = FastAPI(title="Nargan's Projects Ecosystem")
+
+# --- Security/CORS Configuration for Capacitor (Mobile Wrapper) ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For native mobile interceptors like capacitor://localhost
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
+
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
