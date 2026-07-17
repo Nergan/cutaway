@@ -35,7 +35,7 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
 # --- Safe Static Mounting ---
