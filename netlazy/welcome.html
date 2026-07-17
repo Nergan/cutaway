@@ -1198,6 +1198,19 @@
     document.addEventListener('click', () => {
       document.getElementById('mock-dropdown').style.display = 'none';
     });
+
+    // Dynamic path correction to robustly redirect to /netlazy
+    document.addEventListener("DOMContentLoaded", () => {
+      const path = window.location.pathname;
+      const welcomeIndex = path.lastIndexOf('/welcome');
+      if (welcomeIndex !== -1) {
+        // Extracts the correct prefix base path up to '/netlazy'
+        const netlazyPath = path.substring(0, welcomeIndex);
+        document.querySelectorAll('a[href="./netlazy"]').forEach(link => {
+          link.href = netlazyPath || "/";
+        });
+      }
+    });
   </script>
 </body>
 </html>
