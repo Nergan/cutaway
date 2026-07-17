@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>welcome to  netlazy</title>
+  <title>nwelcome to  netlazy</title>
   
   <!-- Font and Icon Dependencies -->
   <link rel="icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/favicon.png">
@@ -858,7 +858,7 @@
         telegram_bot: "telegram miniapp",
         web_version: "web version",
         features_title: "что у нас есть",
-        feature_auth_title: "вместо савйпов - лента",
+        feature_auth_title: "вместо сайпов - лента",
         feature_auth_desc: "У Вас есть лента анкет, чтобы Вы могли эффектвинее искать партёнров.",
         feature_media_title: "много-много тегов",
         feature_media_desc: "Мы стараемся добавлять теги практически на всё, чтобы Вы могли эффетивнее искать анкеты, и сами конктроллировать этот поиск.",
@@ -1002,23 +1002,64 @@
     let currentLang = 'en';
     const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
 
+    // HELPER: Detect the closest match to the user's browser language settings
+    function detectClosestLanguage() {
+      const userLangs = navigator.languages || [navigator.language || 'en'];
+      for (let userLang of userLangs) {
+        if (!userLang) continue;
+        const langCode = userLang.split('-')[0].toLowerCase();
+        
+        if (langs.includes(langCode)) {
+          return langCode;
+        }
+        
+        // Post-Soviet / CIS languages mapping to Russian fallback
+        const ruGroup = ['ru', 'kk', 'be', 'uk', 'ky', 'tg', 'uz', 'tk', 'az', 'hy', 'ka', 'mn'];
+        if (ruGroup.includes(langCode)) {
+          return 'ru';
+        }
+        
+        // Romance languages mapping to Portuguese fallback (closest relative)
+        const ptGroup = ['pt', 'es', 'it', 'fr', 'gl', 'ca', 'ro'];
+        if (ptGroup.includes(langCode)) {
+          return 'pt';
+        }
+        
+        // Chinese language variants mapping to standard Chinese
+        const zhGroup = ['zh', 'zt', 'sg'];
+        if (zhGroup.includes(langCode)) {
+          return 'zh';
+        }
+      }
+      return 'en'; // Global fallback
+    }
+
+    // Appling translations globally
+    function setLanguage(lang) {
+      if (!langs.includes(lang)) lang = 'en';
+      currentLang = lang;
+      
+      // Update tag indicator
+      const indicator = document.getElementById('lang-indicator');
+      if (indicator) {
+        indicator.textContent = currentLang;
+      }
+
+      // Perform translation updates via data-t tags
+      document.querySelectorAll('[data-t]').forEach(el => {
+        const key = el.getAttribute('data-t');
+        if (translations[currentLang] && translations[currentLang][key]) {
+          el.innerHTML = translations[currentLang][key];
+        }
+      });
+    }
+
     function cycleLanguage() {
       document.body.classList.add('is-translating');
       setTimeout(() => {
         const currentIdx = langs.indexOf(currentLang);
-        currentLang = langs[(currentIdx + 1) % langs.length];
-        
-        // Update tag indicator
-        document.getElementById('lang-indicator').textContent = currentLang;
-
-        // Perform translation updates via data-t tags
-        document.querySelectorAll('[data-t]').forEach(el => {
-          const key = el.getAttribute('data-t');
-          if (translations[currentLang] && translations[currentLang][key]) {
-            el.innerHTML = translations[currentLang][key];
-          }
-        });
-
+        const nextLang = langs[(currentIdx + 1) % langs.length];
+        setLanguage(nextLang);
         setTimeout(() => document.body.classList.remove('is-translating'), 50);
       }, 150);
     }
@@ -1201,6 +1242,11 @@
 
     // Dynamic path correction to robustly redirect to /netlazy
     document.addEventListener("DOMContentLoaded", () => {
+      // 1. Detect closest browser language and apply translations
+      const detectedLang = detectClosestLanguage();
+      setLanguage(detectedLang);
+
+      // 2. Perform base path determination for web version links
       const path = window.location.pathname;
       const welcomeIndex = path.lastIndexOf('/welcome');
       if (welcomeIndex !== -1) {
