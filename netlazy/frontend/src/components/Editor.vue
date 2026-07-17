@@ -122,17 +122,13 @@
             </div>
           </transition>
 
-          <!-- Simplified active tags header wrapper layout cleanly resolving previous empty spacing backdrop-filter bleed errors -->
-          <div style="padding: 1rem 0; margin-bottom: 0.5rem; z-index: 9;">
-            <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
-              <span style="font-size: 0.75rem;">active tags</span>
-              <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-            </div>
+          <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin-top: 1.5rem;">
+            <span style="font-size: 0.75rem;">active tags</span>
+            <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
           </div>
           <transition name="collapse">
             <div v-show="showActiveTags" class="mobile-collapse-content">
-              <!-- Rewritten active tag group utilizing simple scale/fade-only transitions targeting active-tags-zone chips -->
-              <transition-group name="tag-fade" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px; position: relative;">
+              <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
                 </span>
@@ -150,7 +146,10 @@
               <transition-group name="contact-list" tag="div" style="position: relative;">
                 <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
                   <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
-                  <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">
+                  <input type="text" class="seamless-input contact-val" 
+                         :style="{ color: c.type === 'unknown' && c.value ? 'var(--accent-danger)' : '' }"
+                         v-model="c.value" :placeholder="store.t('contact_placeholder')" 
+                         @input="handleContactInput(c)" @blur="cleanExistingContact(c, idx)" @keyup.enter="$event.target.blur()">
                   <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
                   <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
                   <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
@@ -158,7 +157,10 @@
               </transition-group>
               <div class="contact-row">
                 <i class="bi contact-icon bi-plus-lg"></i>
-                <input type="text" class="seamless-input contact-val" v-model="newContact.value" :placeholder="store.t('contact_placeholder')" @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
+                <input type="text" class="seamless-input contact-val" 
+                       :style="{ color: newContact.type === 'unknown' && newContact.value ? 'var(--accent-danger)' : '' }"
+                       v-model="newContact.value" :placeholder="store.t('contact_placeholder')" 
+                       @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
                 <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :title="store.t('toggle_privacy')"></i>
               </div>
             </div>
@@ -253,16 +255,25 @@ function handleContactInput(c) {
   triggerAutosave();
 }
 
+function cleanExistingContact(c, idx) {
+    if (c.type === 'unknown' || c.value.trim() === '') {
+        removeContact(idx);
+    } else {
+        triggerAutosave();
+    }
+}
+
 function handleNewContactInput() {
   newContact.value.type = inferContactType(newContact.value.value.trim());
 }
 
-// Native check preventing any invalid/unknown contact fields from being appended locally
 function commitNewContact() {
   const val = newContact.value.value.trim();
   if (val !== '') {
     const inferred = inferContactType(val);
     if (inferred === 'unknown') {
+      newContact.value.value = '';
+      newContact.value.type = 'unknown';
       return; 
     }
     store.state.myProfile.contacts.push({ ...newContact.value, type: inferred });

@@ -304,11 +304,12 @@ export function useStore() {
             const res = await api.get('/profile/me');
             const data = res.data;
             
-            // Protect local unsaved inputs gracefully utilizing a larger debounce overlap window (15s) against 10s poll cycle
-            const wasRecentlyEdited = state.lastProfileEditTimestamp && (Date.now() - state.lastProfileEditTimestamp < 15000);
+            // If the user is actively viewing the editor, NEVER overwrite their text inputs 
+            // from a background poll. This absolutely protects the UX and prevents data loss/cursor jumping.
+            const isEditing = state.currentView === 'editor';
             const currentContacts = state.myProfile.contacts || [];
             
-            if (wasRecentlyEdited) {
+            if (isEditing) {
                 // Let user keep their transient edits un-disturbed, only sync media logic.
                 state.myProfile.media = data.media.map(m => {
                     const old = state.myProfile.media.find(om => om.url === m.url);
@@ -365,17 +366,13 @@ export function useStore() {
             const payload = {
                 bio: state.myProfile.bio,
                 tags: state.myProfile.tags,
-                contacts: state.myProfile.contacts.filter(c => c.value.trim() !== "")
+                contacts: state.myProfile.contacts.filter(c => c.value.trim() !== "" && c.type !== 'unknown')
             };
             const res = await api.put('/profile/me', payload);
             
-            // Reconcile response back to state to firmly confirm and settle local edits.
+            // Reconcile response back to state gently without overwriting text values.
+            // This prevents cursor jumping and input deletion during rapid typing.
             const data = res.data;
-            const currentContacts = state.myProfile.contacts || [];
-            data.contacts.forEach(c => {
-                const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
-                c._id = existing ? existing._id : (c.type + ':' + c.value);
-            });
             
             // Preserve media blobUrls
             const currentMedia = state.myProfile.media || [];
@@ -393,7 +390,9 @@ export function useStore() {
                 data.audio = state.myProfile.audio;
             }
 
-            state.myProfile = data;
+            state.myProfile.media = data.media;
+            state.myProfile.audio = data.audio;
+
             addToast(t('vault_synced'), "bi-cloud-check", "minimal");
         } catch (e) {
             addToast("Sync failed", "bi-x-circle");

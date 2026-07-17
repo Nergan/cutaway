@@ -287,7 +287,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (observer) observer.disconnect()
   document.removeEventListener('click', closeAllMenus)
-  window.addEventListener('resize', handleResize)
+  window.removeEventListener('resize', handleResize)
 })
 
 onActivated(() => {
@@ -398,6 +398,3 @@ async function copyText(txt) {
   store.addToast(store.t('copied'), "bi-check2")
 }
 </script>
-
-<style scoped>
-</style>

@@ -1,7 +1,7 @@
 /* INPUTS */
 .seamless-input { width: 100%; background: transparent; border: none; color: var(--text-main); outline: none; resize: none; }
 .seamless-input::placeholder { color: var(--text-muted); opacity: 0.6; }
-.editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 2rem; transition: border-color 0.3s; text-transform: none; }
+.editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 0.5rem; transition: border-color 0.3s; text-transform: none; }
 .seamless-input:focus-visible, .editor-bio:focus-visible { outline: none !important; border-color: var(--border-focus); }
 
 /* TACTILE MICRO-INTERACTIONS */
@@ -137,7 +137,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--border-subtle); }
 .contact-row:last-child { border-bottom: none; }
 .contact-icon { color: var(--text-muted); font-size: 1rem; width: 20px; text-align: center; }
-.contact-val { flex-grow: 1; font-size: 0.9rem; }
+.contact-val { flex-grow: 1; font-size: 0.9rem; transition: color 0.2s; }
 .contact-action { cursor: pointer; font-size: 0.9rem; color: var(--text-muted); padding: 0.2rem; transition: color 0.2s; }
 .contact-action:hover { color: var(--text-main); }
 
@@ -203,10 +203,11 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 @keyframes fadeOut { to { opacity: 0; } }
 
 /* ANIMATIONS */
-.media-list-move, .tag-list-move { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.media-list-enter-active, .media-list-leave-active, .tag-list-enter-active, .tag-list-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
-.media-list-enter-from, .media-list-leave-to, .tag-list-enter-from, .tag-list-leave-to { opacity: 0; transform: scale(0.8); }
-.media-list-leave-active, .tag-list-leave-active { position: absolute; z-index: 0; }
+.media-list-move { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.media-list-enter-active, .media-list-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+.media-list-enter-from, .media-list-leave-to { opacity: 0; transform: scale(0.8); }
+.media-list-leave-active { position: absolute; z-index: 0; }
+
 .collapse-enter-active, .collapse-leave-active { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
 .collapse-enter-from, .collapse-leave-to { max-height: 0; opacity: 0; }
 
@@ -217,6 +218,12 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   opacity: 0;
   transform: scale(0.8) rotate(-90deg);
 }
+
+/* Clean, Simple Tag Animation */
+.tag-list-move { transition: transform 0.2s ease-out; }
+.tag-list-enter-active, .tag-list-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.tag-list-enter-from, .tag-list-leave-to { opacity: 0; transform: scale(0.95); }
+.tag-list-leave-active { position: absolute; z-index: 0; }
 
 /* Smooth understated transition for showing/hiding dropdowns without flashy rotation */
 .dropdown-fade-enter-active, .dropdown-fade-leave-active {
@@ -241,14 +248,6 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .contact-list-leave-active {
   position: absolute;
   width: 100%;
-}
-
-/* Bulletproof and extremely simple fade transition for removing/adding active tags */
-.tag-fade-enter-active, .tag-fade-leave-active {
-  transition: opacity 0.12s ease-out;
-}
-.tag-fade-enter-from, .tag-fade-leave-to {
-  opacity: 0;
 }
 
 /* Minimalist Blurred Bottom Sheet for Contacts */
