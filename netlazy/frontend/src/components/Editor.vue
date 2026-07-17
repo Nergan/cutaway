@@ -145,7 +145,7 @@
           </div>
           <transition name="collapse">
             <div v-show="showContacts" class="mobile-collapse-content" style="position: relative;">
-              <transition-group name="contact-list" tag="div">
+              <transition-group name="contact-list" tag="div" style="position: relative;">
                 <div class="contact-row" v-for="(c, idx) in store.state.myProfile.contacts" :key="c._id">
                   <i class="bi contact-icon" :class="getContactIcon(c.type)"></i>
                   <input type="text" class="seamless-input contact-val" v-model="c.value" :placeholder="store.t('contact_placeholder')" @input="handleContactInput(c)" @blur="triggerAutosave">

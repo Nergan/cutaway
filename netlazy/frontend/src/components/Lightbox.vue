@@ -16,14 +16,14 @@
                  :key="currentMedia.url"
                  :src="currentMedia.blobUrl || currentMedia.url" 
                  class="lightbox-content"
-                 :class="{'is-blurred': currentMedia.blur, 'cdn-obfuscated': !currentMedia.blobUrl}"
+                 :class="{'cdn-obfuscated': !currentMedia.blobUrl}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
                    :key="currentMedia.url"
                    :src="currentMedia.blobUrl || currentMedia.url" 
                    class="lightbox-content" 
-                   :class="{'is-blurred': currentMedia.blur, 'cdn-obfuscated': !currentMedia.blobUrl}"
+                   :class="{'cdn-obfuscated': !currentMedia.blobUrl}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
 

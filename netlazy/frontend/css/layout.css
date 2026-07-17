@@ -17,8 +17,8 @@
 .badge { margin-left: auto; background: var(--text-main); color: var(--bg-base); font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: var(--radius-pill); font-weight: 700; }
 
 /* Sidebar Navigation Animated Underline */
-.nav-item span.animated-underline { position: relative; display: inline-block; white-space: nowrap; }
-.nav-item span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: -2px; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.nav-item span.animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
+.nav-item span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .nav-item:hover span.animated-underline::after { width: 100%; }
 .nav-item.active span.animated-underline::after { width: 100%; background-color: var(--accent-moss); }
 .sidebar-collapsed .nav-item.active span.animated-underline::after { display: none; }
@@ -34,18 +34,13 @@
 .scrollable-content { flex-grow: 1; overflow-y: auto; padding: 2rem 3rem; position: relative; }
 
 /* SHARED BLURRED HEADERS */
-.blurred-header { position: sticky; top: 0; z-index: 10; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-subtle); padding: 1rem 1.5rem; }
-.light-theme .blurred-header { background: rgba(254, 252, 245, 0.3); border-bottom: 1px solid var(--border-subtle); }
-
-.tag-library-header.blurred-header {
-  background: rgba(0, 0, 0, 0.15) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+.blurred-header { position: sticky; top: 0; z-index: 10; padding: 1rem 1.5rem; background: transparent !important; border-bottom: none !important; }
+.blurred-header::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-subtle); pointer-events: none;
 }
-body.light-theme .tag-library-header.blurred-header {
-  background: rgba(254, 252, 245, 0.15) !important;
-  border-bottom: 1px solid var(--border-subtle);
-}
+.light-theme .blurred-header::before { background: rgba(254, 252, 245, 0.3); border-bottom: 1px solid var(--border-subtle); }
 
 /* DESKTOP EXCLUSIVES */
 @media (min-width: 769px) {

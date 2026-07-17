@@ -304,11 +304,12 @@ export function useStore() {
             const res = await api.get('/profile/me');
             const data = res.data;
             
-            // Prevent wiping user entries when synchronization lag happens during rapid editing
-            const wasRecentlyEdited = state.lastProfileEditTimestamp && (Date.now() - state.lastProfileEditTimestamp < 8000);
+            // Protect local unsaved inputs gracefully utilizing a larger debounce overlap window (15s) against 10s poll cycle
+            const wasRecentlyEdited = state.lastProfileEditTimestamp && (Date.now() - state.lastProfileEditTimestamp < 15000);
+            const currentContacts = state.myProfile.contacts || [];
             
             if (wasRecentlyEdited) {
-                // Keep the current bio, tags, and contacts; only update media, audio, and metadata
+                // Let user keep their transient edits un-disturbed, only sync media logic.
                 state.myProfile.media = data.media.map(m => {
                     const old = state.myProfile.media.find(om => om.url === m.url);
                     return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
@@ -319,7 +320,11 @@ export function useStore() {
                     state.myProfile.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
                 }
             } else {
-                data.contacts.forEach(c => c._id = Math.random().toString());
+                // Smart contact reconciliation locking _id to content so FLIP array swaps aren't triggered
+                data.contacts.forEach(c => {
+                    const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
+                    c._id = existing ? existing._id : (c.type + ':' + c.value);
+                });
                 
                 const currentMedia = state.myProfile.media || [];
                 data.media = data.media.map(m => { 
@@ -362,7 +367,33 @@ export function useStore() {
                 tags: state.myProfile.tags,
                 contacts: state.myProfile.contacts.filter(c => c.value.trim() !== "")
             };
-            await api.put('/profile/me', payload);
+            const res = await api.put('/profile/me', payload);
+            
+            // Reconcile response back to state to firmly confirm and settle local edits.
+            const data = res.data;
+            const currentContacts = state.myProfile.contacts || [];
+            data.contacts.forEach(c => {
+                const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
+                c._id = existing ? existing._id : (c.type + ':' + c.value);
+            });
+            
+            // Preserve media blobUrls
+            const currentMedia = state.myProfile.media || [];
+            data.media = data.media.map(m => { 
+                const old = currentMedia.find(om => om.url === m.url);
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+            });
+            const uploadingMedia = currentMedia.filter(m => m.isUploading);
+            data.media.push(...uploadingMedia);
+
+            if (data.audio) { 
+                const oldA = state.myProfile.audio;
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
+            } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
+                data.audio = state.myProfile.audio;
+            }
+
+            state.myProfile = data;
             addToast(t('vault_synced'), "bi-cloud-check", "minimal");
         } catch (e) {
             addToast("Sync failed", "bi-x-circle");
