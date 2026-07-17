@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:mobile": "CAPACITOR_BUILD=true vite build",
+    "build:mobile": "cross-env CAPACITOR_BUILD=true vite build",
     "preview": "vite preview"
   },
   "dependencies": {

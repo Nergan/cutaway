@@ -4,7 +4,7 @@ import { useStore } from '../store/state.js';
 import { Capacitor } from '@capacitor/core';
 
 const baseURL = Capacitor.isNativePlatform() 
-    ? (import.meta.env.VITE_API_URL || 'https://nargan.net/netlazy/api')
+    ? (import.meta.env.VITE_API_URL || 'https://nargan-projects.hf.space/netlazy/api')
     : '/netlazy/api';
 
 const api = axios.create({
