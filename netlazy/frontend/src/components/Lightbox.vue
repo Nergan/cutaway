@@ -16,14 +16,14 @@
                  :key="currentMedia.url"
                  :src="currentMedia.blobUrl || currentMedia.url" 
                  class="lightbox-content"
-                 :class="{'cdn-obfuscated': !currentMedia.blobUrl}"
+                 :class="{'cdn-obfuscated': currentMedia.isLegacy}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
                    :key="currentMedia.url"
                    :src="currentMedia.blobUrl || currentMedia.url" 
                    class="lightbox-content" 
-                   :class="{'cdn-obfuscated': !currentMedia.blobUrl}"
+                   :class="{'cdn-obfuscated': currentMedia.isLegacy}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
 
@@ -94,7 +94,6 @@ async function removeMedia(m) {
     
     await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`);
   } catch (e) {
-    // Silent fail so we don't spam toasts if pessimistic deletion lags.
   } finally {
     if (m) m.isDeleting = false;
   }

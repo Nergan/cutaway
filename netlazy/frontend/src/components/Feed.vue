@@ -42,14 +42,14 @@
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
         
         <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-          <audio class="audio-minimal" :src="profile.audio.blobUrl || ''" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
+          <audio class="audio-minimal" :src="profile.audio.blobUrl || profile.audio.url" @error="handleMediaError(profile, profile.audio)" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)" controls style="flex-grow:1;"></audio>
         </div>
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
-          <div class="media-thumb" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)">
+          <div class="media-thumb" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
              <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
-             <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
-             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
+             <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
+             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
           </div>
         </div>
         
@@ -94,7 +94,6 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
-          <!-- Desktop block layout with clean transitions & elevated z-index overlaying everything else -->
           <transition name="dropdown-fade">
             <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
               <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
@@ -155,7 +154,6 @@ const visibleSearchTags = computed(() => {
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)));
      
      if (t.hidden) {
-         // Age/local only appear if explicitly typed matches their alias/name
          return matchesQuery && (t.name.toLowerCase() === query || t.aliases.some(a => a.toLowerCase() === query));
      }
      return matchesQuery;
@@ -217,7 +215,6 @@ async function handleMediaError(profile, m) {
     if (realIdx !== -1) profile.media.splice(realIdx, 1);
     if (profile.audio && profile.audio.url === m.url) profile.audio = null;
     
-    // Auto-heal only if it's our profile. If it's feed/inbox, we just hide it locally
     if (profile.user_id === store.state.userId) {
         try { await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}`); } catch(e){}
     }
@@ -398,6 +395,3 @@ async function copyText(txt) {
   store.addToast(store.t('copied'), "bi-check2")
 }
 </script>
-
-<style scoped>
-</style>

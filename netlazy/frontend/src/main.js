@@ -1,5 +1,19 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import '../style.css' // We will assume style.css is placed in frontend/style.css as provided in ui.md
+import '../style.css'
 
-createApp(App).mount('#app')
+const app = createApp(App)
+
+app.directive('intersect', {
+  mounted(el, binding) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        binding.value();
+        observer.disconnect();
+      }
+    }, { rootMargin: '300px' });
+    observer.observe(el);
+  }
+})
+
+app.mount('#app')

@@ -100,17 +100,19 @@ class ProfileService:
 
         try:
             if media_type == "image":
-                processed = await media_processor.process_image(raw_bytes, self._image_max_dimension)
+                processed = await media_processor.process_image(raw_bytes, self._image_max_dimension, user_id)
             elif media_type == "video":
-                processed = await media_processor.process_video(raw_bytes, self._image_max_dimension)
+                processed = await media_processor.process_video(raw_bytes, self._image_max_dimension, user_id)
             elif media_type == "audio":
-                processed = await media_processor.process_audio(raw_bytes, self._audio_bitrate)
+                processed = await media_processor.process_audio(raw_bytes, self._audio_bitrate, user_id)
             else:
                 processed = raw_bytes
         except media_processor.MediaProcessingError as e:
             raise MediaProcessingError(str(e)) from e
 
-        public_id_hint = f"{user_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
+        ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
+        ext = ext_map.get(media_type, "bin")
+        public_id_hint = f"{user_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
         
         try:
             upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)

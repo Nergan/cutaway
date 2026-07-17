@@ -67,7 +67,7 @@
                    </div>
                  </template>
                  
-                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || store.state.myProfile.audio.url" @error="handleMediaError(store.state.myProfile, store.state.myProfile.audio)" controls style="flex-grow:1;"></audio>
+                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || store.state.myProfile.audio.url" @error="handleMediaError(store.state.myProfile, store.state.myProfile.audio)" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.userId)" controls style="flex-grow:1;"></audio>
                  
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
@@ -83,10 +83,11 @@
                      @dragleave="dragLeave" 
                      @drop="!m.isUploading && drop(idx)" 
                      @dragend="dragEnd"
-                     @click="!m.isUploading && openLightbox(m)">
+                     @click="!m.isUploading && openLightbox(m)"
+                     v-intersect="() => store.loadDecryptedMedia(m, store.state.userId)">
                   
-                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
-                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
+                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
+                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
                   
                   <div v-if="m.isUploading" class="media-loader">
                     <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
@@ -330,7 +331,7 @@ async function processFiles(files) {
     }
     
     const abortCtrl = new AbortController();
-    const tempUrl = URL.createObjectURL(file); // Immediately renderable client-side stub
+    const tempUrl = URL.createObjectURL(file); 
     const media_type = file.type.startsWith('video') ? 'video' : (file.type.startsWith('audio') ? 'audio' : 'image')
     
     if (media_type === 'audio') {
@@ -352,7 +353,6 @@ async function processFiles(files) {
       signal: tempAudio.abortCtrl.signal,
       onUploadProgress: (e) => {
         if (e.total && store.state.myProfile.audio) {
-          // Cap Axios upload at 85%, the rest is backend processing
           store.state.myProfile.audio.uploadProgress = Math.round((e.loaded * 85) / e.total);
         }
       }
@@ -392,7 +392,7 @@ async function processFiles(files) {
 
       if (newItem) {
         newItem.blur = desiredBlur;
-        newItem.blobUrl = temp.blobUrl; // Explicitly map before array overwrite to prevent flash
+        newItem.blobUrl = temp.blobUrl; 
       }
 
       const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.blobUrl !== temp.blobUrl)

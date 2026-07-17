@@ -14,11 +14,11 @@ cloudinary.config(
     urllib3_kwargs={'maxsize': 10}
 )
 
-_RESOURCE_TYPE_MAP = {"image": "image", "video": "video", "audio": "video"}
+_RESOURCE_TYPE_MAP = {"image": "raw", "video": "raw", "audio": "raw"}
 
 class CloudinaryMediaStorage(MediaStorage):
     async def upload(self, file_bytes: bytes, media_type: str, public_id_hint: str) -> dict:
-        resource_type = _RESOURCE_TYPE_MAP.get(media_type, "auto")
+        resource_type = _RESOURCE_TYPE_MAP.get(media_type, "raw")
         
         result = await asyncio.to_thread(
             cloudinary.uploader.upload,
@@ -41,6 +41,7 @@ class CloudinaryMediaStorage(MediaStorage):
                 match = re.search(r'/upload/(?:v\d+/)?(.+?)(?:\.[a-zA-Z0-9]+)?$', url)
                 if match:
                     pid = match.group(1)
+                    await asyncio.to_thread(cloudinary.uploader.destroy, pid, resource_type="raw")
                     rtype = "image" if "image" in url else "video"
                     await asyncio.to_thread(cloudinary.uploader.destroy, pid, resource_type=rtype)
         except Exception:

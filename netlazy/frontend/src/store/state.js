@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
-import { getRestoredAudioBlobUrl } from '../utils/media.js';
+import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
 
 const STORAGE_KEY = 'netlazy_state';
@@ -77,8 +77,6 @@ export function useStore() {
         pollInterval = setInterval(() => {
             if (state.isRegistered && !state.isBanned) {
                 fetchInbox(true);
-                // Completely skip background profile sync if the user is looking at the Editor 
-                // to absolutely guarantee we never interrupt or queue their local edits.
                 if (state.currentView !== 'editor') {
                     fetchMyProfile(true);
                 }
@@ -163,7 +161,6 @@ export function useStore() {
     }
 
     function cycleLang() {
-        // Trigger a global blur/fade via a CSS class on the body to mask the text swap
         document.body.classList.add('is-translating');
         
         setTimeout(() => {
@@ -174,7 +171,7 @@ export function useStore() {
             setTimeout(() => {
                 document.body.classList.remove('is-translating');
             }, 50);
-        }, 150); // wait for fade out
+        }, 150);
     }
 
     function t(key, replacements = {}) {
@@ -302,6 +299,16 @@ export function useStore() {
         );
     }
 
+    async function loadDecryptedMedia(mediaItem, userId) {
+        if (!mediaItem || mediaItem.blobUrl || mediaItem.isUploading) return;
+        const res = await fetchAndDecryptMedia(mediaItem.url, userId, mediaItem.media_type);
+        if (res) {
+            mediaItem.blobUrl = res.blobUrl;
+            mediaItem.isLegacy = res.isLegacy;
+            mediaItem.isLoaded = true;
+        }
+    }
+
     async function fetchMyProfile(isSilent = false) {
         if (!isSilent) state.isProfileLoading = true;
         try {
@@ -309,7 +316,6 @@ export function useStore() {
             const data = res.data;
             const currentContacts = state.myProfile.contacts || [];
             
-            // Smart contact reconciliation locking _id to content so FLIP array swaps aren't triggered
             data.contacts.forEach(c => {
                 const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
                 c._id = existing ? existing._id : (c.type + ':' + c.value);
@@ -326,16 +332,6 @@ export function useStore() {
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
                 data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
-                
-                if (!data.audio.isLoaded && !data.audio.blobUrl) {
-                    getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
-                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
-                        else if (bUrl && state.myProfile.audio) {
-                            state.myProfile.audio.blobUrl = bUrl;
-                            state.myProfile.audio.isLoaded = true;
-                        }
-                    });
-                }
             } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
                 data.audio = state.myProfile.audio;
             }
@@ -357,12 +353,8 @@ export function useStore() {
                 contacts: state.myProfile.contacts.filter(c => c.value.trim() !== "" && c.type !== 'unknown')
             };
             const res = await api.put('/profile/me', payload);
-            
-            // Reconcile response back to state gently without overwriting text values.
-            // This prevents cursor jumping and input deletion during rapid typing.
             const data = res.data;
             
-            // Preserve media blobUrls
             const currentMedia = state.myProfile.media || [];
             data.media = data.media.map(m => { 
                 const old = currentMedia.find(om => om.url === m.url);
@@ -412,22 +404,13 @@ export function useStore() {
                     r.profile.media.forEach(m => {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);
                         m.isLoaded = oldM ? oldM.isLoaded : false;
+                        if (oldM && oldM.blobUrl) m.blobUrl = oldM.blobUrl;
                     });
                 }
                 if (r.profile && r.profile.audio) {
                     const oldA = oldR?.profile?.audio;
                     r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
                     if (oldA && oldA.blobUrl) r.profile.audio.blobUrl = oldA.blobUrl;
-                    
-                    if (!r.profile.audio.isLoaded && !r.profile.audio.blobUrl) {
-                        getRestoredAudioBlobUrl(r.profile.audio.url).then(bUrl => {
-                            if (bUrl === null) r.profile.audio = null; 
-                            else if (bUrl) {
-                                r.profile.audio.blobUrl = bUrl;
-                                r.profile.audio.isLoaded = true;
-                            }
-                        });
-                    }
                 }
                 return {
                     ...r, 
@@ -447,7 +430,7 @@ export function useStore() {
     if (state.theme === 'light') document.body.classList.add('light-theme');
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia
     };
     return instance;
 }
