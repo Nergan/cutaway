@@ -68,8 +68,8 @@ async def process_image(data: bytes, max_dimension: int, user_id: str) -> bytes:
     async with _temp_workspace(data, "output.webp") as (in_path, out_path):
         out_cover = in_path + "_cover.webp"
         
-        # Heavy uniform pixelation + blur ensures absolute visual destruction of content.
-        cover_vf = "scale=32:32,scale=320:320:flags=neighbor,gblur=sigma=5"
+        # Heavy pixelation -> upscale nearest neighbor -> extreme blur -> saturation boost
+        cover_vf = "scale=16:16,scale=320:320:flags=neighbor,gblur=sigma=20,eq=saturation=1.5"
         await _run_ffmpeg(["-y", "-i", in_path, "-vf", cover_vf, "-vframes", "1", "-quality", "50", out_cover])
         
         await _run_ffmpeg(["-y", "-i", in_path, "-vf", f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease", "-quality", "82", out_path])
@@ -83,7 +83,7 @@ async def process_video(data: bytes, max_dimension: int, user_id: str) -> bytes:
     async with _temp_workspace(data, "output.mp4") as (in_path, out_path):
         out_cover = in_path + "_cover.mp4"
         
-        cover_vf = "scale=32:32,scale=320:320:flags=neighbor,gblur=sigma=5"
+        cover_vf = "scale=16:16,scale=320:320:flags=neighbor,gblur=sigma=20,eq=saturation=1.5"
         await _run_ffmpeg([
             "-y", "-i", in_path, "-vframes", "1",
             "-vf", cover_vf,
@@ -93,12 +93,11 @@ async def process_video(data: bytes, max_dimension: int, user_id: str) -> bytes:
         
         payload_vf = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2"
         
-        # Letting FFMPEG automatically handle audio tracking avoids mapping errors on audio-less files (like GIFs).
+        # Removed hardcoded audio bitrate (-b:a) allowing ffmpeg to gracefully skip it for audio-less files (like GIFs)
         await _run_ffmpeg([
             "-y", "-i", in_path, 
             "-vf", payload_vf, 
             "-c:v", "libx264", "-preset", "fast", "-crf", "28", "-pix_fmt", "yuv420p",
-            "-b:a", "128k", 
             "-movflags", "+faststart", 
             out_path
         ])

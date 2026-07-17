@@ -13,19 +13,25 @@
         <div class="lightbox-content-wrapper" @click.stop>
           <transition name="lightbox-slide" mode="out-in">
             <img v-if="currentMedia.media_type === 'image'" 
+                 v-show="currentMedia.blobUrl"
                  :key="currentMedia.url"
-                 :src="currentMedia.blobUrl || currentMedia.url" 
+                 :src="currentMedia.blobUrl" 
                  class="lightbox-content"
                  :class="{'cdn-obfuscated': currentMedia.isLegacy}"
                  alt="media" @click.stop="handleMediaClick(currentMedia)">
                  
             <video v-else-if="currentMedia.media_type === 'video'" 
+                   v-show="currentMedia.blobUrl"
                    :key="currentMedia.url"
-                   :src="currentMedia.blobUrl || currentMedia.url" 
+                   :src="currentMedia.blobUrl" 
                    class="lightbox-content" 
                    :class="{'cdn-obfuscated': currentMedia.isLegacy}"
                    controls autoplay loop playsinline @click.stop="handleMediaClick(currentMedia)"></video>
           </transition>
+          
+          <div v-if="!currentMedia.blobUrl" class="media-loader spin" style="font-size: 3rem; color: white;">
+             <i class="bi bi-arrow-repeat"></i>
+          </div>
 
           <div v-if="store.state.lightbox.isEditable" class="media-remove" @click.stop="!currentMedia.isDeleting && removeMedia(currentMedia)" style="width: 32px; height: 32px; font-size: 1.2rem; top: 8px; right: 8px;">
             <i class="bi" :class="currentMedia.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>

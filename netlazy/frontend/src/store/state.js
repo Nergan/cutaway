@@ -162,15 +162,12 @@ export function useStore() {
 
     function cycleLang() {
         document.body.classList.add('is-translating');
-        
         setTimeout(() => {
             const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
             const currentIdx = langs.indexOf(state.lang);
             state.lang = langs[(currentIdx + 1) % langs.length];
             
-            setTimeout(() => {
-                document.body.classList.remove('is-translating');
-            }, 50);
+            setTimeout(() => document.body.classList.remove('is-translating'), 50);
         }, 150);
     }
 
@@ -305,7 +302,7 @@ export function useStore() {
         if (res) {
             mediaItem.blobUrl = res.blobUrl;
             mediaItem.isLegacy = res.isLegacy;
-            mediaItem.isLoaded = true;
+            // Removed: mediaItem.isLoaded = true; // Let native DOM events handle this so nothing blinks!
         }
     }
 

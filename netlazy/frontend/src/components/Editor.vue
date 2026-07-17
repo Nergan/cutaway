@@ -60,8 +60,8 @@
               
               <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.userId)">
                  <template v-if="store.state.myProfile.audio.isUploading">
-                   <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--border-subtle); border-radius: var(--radius-sm);">
-                     <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
+                   <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                     <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%', height: '100%'}"></div>
                    </div>
                  </template>
                  <template v-else>
@@ -363,7 +363,7 @@ async function processFiles(files) {
       updateMediaList(res.data.media, remainingTemps)
       if (res.data.audio) {
           const oldAudio = store.state.myProfile.audio;
-          store.state.myProfile.audio = { ...res.data.audio, blobUrl: null, isDeleting: oldAudio?.isDeleting, isLoaded: false };
+          store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true, isUploading: false };
       } else {
           store.state.myProfile.audio = null;
       }
@@ -394,12 +394,12 @@ async function processFiles(files) {
 
       if (newItem) {
         newItem.blur = desiredBlur;
-        // Nullify blobUrl if backend changed file format (e.g. GIF converted to MP4)
         if (newItem.media_type === temp.media_type) {
           newItem.blobUrl = temp.blobUrl; 
         } else {
           newItem.blobUrl = null;
           newItem.isLoaded = false;
+          store.loadDecryptedMedia(newItem, store.state.userId);
         }
       }
 
@@ -417,14 +417,6 @@ async function processFiles(files) {
           } catch (e) {}
       }
 
-      if (!store.state.myProfile.audio?.isUploading) {
-        if (res.data.audio) {
-            const oldAudio = store.state.myProfile.audio;
-            store.state.myProfile.audio = { ...res.data.audio, blobUrl: oldAudio?.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: !!oldAudio?.blobUrl };
-        } else {
-            store.state.myProfile.audio = null;
-        }
-      }
     }).catch(e => {
       if (e.name === 'CanceledError') return;
       const msg = e.response && e.response.data && e.response.data.detail ? e.response.data.detail : "Failed to upload media";
