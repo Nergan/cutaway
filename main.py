@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSON
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
@@ -23,17 +24,33 @@ client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=Tru
 stats_db = client['main-page']
 
 app = FastAPI(title="Nargan's Projects Ecosystem")
-BASE_DIR = Path(__file__).resolve().parent
+
+# --- Reverse Proxy HTTPS Scheme Fix ---
+@app.middleware("http")
+async def forward_proto_middleware(request: Request, call_next):
+    # Detect the scheme from the standard X-Forwarded-Proto header 
+    # to avoid HTTP -> HTTPS redirect loops behind secure reverse proxies
+    if "x-forwarded-proto" in request.headers:
+        request.scope["scheme"] = request.headers["x-forwarded-proto"]
+    return await call_next(request)
+
+# --- Security/CORS Configuration for Capacitor (Mobile Wrapper) ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For native mobile interceptors like capacitor://localhost
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
+
+BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
 # --- Safe Static Mounting ---
 def mount_if_exists(path: str, name: str, dir_path: Path):
-    abs_path = dir_path.resolve()
-    if abs_path.exists() and abs_path.is_dir():
-        logger.info(f"Mounting static files: {path} -> {abs_path}")
-        app.mount(path, StaticFiles(directory=abs_path), name=name)
-    else:
-        logger.warning(f"Static directory not found for mounting: {dir_path} (resolved: {abs_path})")
+    if dir_path.exists() and dir_path.is_dir():
+        app.mount(path, StaticFiles(directory=dir_path), name=name)
 
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
@@ -130,12 +147,6 @@ async def get_system_status():
 class TrackRequest(BaseModel):
     uuid: str
 
-async def init_counter():
-    await stats_db.stats.update_one({'_id': 'unique_visitors'}, {'$setOnInsert': {'count': 0}}, upsert=True)
-
-@app.on_event('startup')
-async def startup_event():
-    await init_counter()
 
 @app.on_event('shutdown')
 async def shutdown_event():
@@ -205,9 +216,15 @@ async def track_visitor(request: Request, payload: TrackRequest):
         
     return {'count': TOTAL_VISITORS}
 
+# --- Refined 404 Exception Handler ---
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
-    return RedirectResponse(url='/')
+    # Only redirect to root if the client is a browser requesting an HTML page.
+    # This avoids redirecting broken static asset or API requests, preventing infinite loops.
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return RedirectResponse(url='/')
+    raise exc
 
 @app.get('/api/mainpage-backgrounds')
 async def get_mainpage_backgrounds():
