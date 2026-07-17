@@ -1,3 +1,7 @@
+### logs ###
+*.log
+
+
 ### Python ###
 __pycache__/
 *.pyc
