@@ -1,0 +1,71 @@
+.code-editor {
+    flex-grow: 1;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e9ecef;
+    resize: none;
+    white-space: pre-wrap;
+    overflow: auto;
+    transition: border-color 0.15s ease-in-out;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.code-editor:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: none;
+}
+
+.code-editor::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.code-editor::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.code-editor::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.code-editor::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.code-editor::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.code-editor::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+.code-editor {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .code-editor {
+        font-size: 13px;
+        padding: 0.75rem;
+        border-width: 1px;
+    }
+}
+
+@media (max-width: 576px) {
+    .code-editor {
+        font-size: 12px;
+        padding: 0.5rem;
+    }
+}

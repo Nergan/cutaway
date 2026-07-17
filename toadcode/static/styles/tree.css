@@ -1,0 +1,60 @@
+.file-tree:focus { outline: none; }
+.file-tree { position: relative; } /* Important for lasso overlay */
+
+.tree-item {
+    padding: 4px 8px; cursor: pointer; border-radius: 4px;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.85rem; font-family: 'Comfortaa', sans-serif;
+    transition: background 0.1s, color 0.1s; user-select: none;
+    min-width: 0; /* CRITICAL FOR FLEX TRUNCATION */
+}
+
+.tree-item:hover { background: rgba(255,255,255,0.1); color: white; }
+.tree-item.selected { background: rgba(255,255,255,0.15); color: lime; }
+.tree-item.focused-item { outline: 1px dotted rgba(255,255,255,0.4); outline-offset: -1px; }
+
+.tree-item.active {
+    background: rgba(0, 255, 0, 0.15); color: lime; font-weight: bold; border-left: 2px solid lime;
+}
+.tree-item.drag-hover { background: rgba(255,255,255,0.2) !important; }
+
+.tree-icon { font-size: 1rem; opacity: 0.7; }
+
+/* Lasso Tool (Dotted Outline) */
+.lasso-selection {
+    position: absolute;
+    border: 1px dotted rgba(0, 255, 0, 0.8);
+    background: rgba(0, 255, 0, 0.1);
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Inline Action Buttons (Rename/Delete) */
+.tree-actions { display: none; }
+.tree-item:hover .tree-actions,
+.tree-item.active .tree-actions,
+.tree-item.selected .tree-actions { 
+    display: flex !important; /* Overrides none during interaction states */
+}
+.tree-actions i { opacity: 0.7; font-size: 0.9rem; transition: opacity 0.2s, transform 0.2s; }
+.tree-actions i:hover { opacity: 1; transform: scale(1.1); }
+
+.action-btn {
+    background: transparent; border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px; color: rgba(255, 255, 255, 0.7);
+    padding: 0.3rem 0.6rem; font-size: 0.9rem; transition: all 0.2s ease;
+}
+
+.action-icon-btn { cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+.action-icon-btn:hover { opacity: 1; }
+
+.action-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.publish-btn { border-color: lime; color: lime; }
+.publish-btn:hover { background: rgba(0,255,0,0.1); }
+.publish-btn.btn-danger { border-color: #dc3545 !important; color: #dc3545 !important; }
+
+.inline-edit-input:focus {
+    box-shadow: none !important;
+    border-color: lime !important;
+    outline: none !important;
+}

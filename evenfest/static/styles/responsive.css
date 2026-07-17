@@ -1,0 +1,63 @@
+/* -------------------- Адаптивность -------------------- */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100% !important;
+        height: auto;
+        border-right: none;
+        border-top: 2px solid #b49a6b;
+        backdrop-filter: blur(15px);
+        z-index: 1000;
+    }
+    
+    .sidebar-sticky {
+        height: auto;
+        padding: 5px;
+    }
+    
+    .nav-logo {
+        display: none;
+    }
+    
+    .nav {
+        flex-direction: row !important;
+        justify-content: space-around;
+    }
+    
+    .nav-link {
+        flex-direction: column;
+        padding: 8px 5px;
+        border-left: none;
+        border-bottom: 2px solid transparent;
+    }
+    
+    .nav-link i {
+        margin-right: 0;
+        margin-bottom: 3px;
+    }
+    
+    .badge-custom {
+        position: static;
+        margin-left: 0;
+    }
+    
+    .sidebar-resizer {
+        display: none;
+    }
+    
+    .main-content {
+        margin-bottom: 70px;
+        padding: 15px;
+    }
+    
+    .content-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .page-header h2 {
+        font-size: 1.8rem;
+    }
+}
