@@ -58,16 +58,16 @@
                 <i class="bi bi-image" style="font-size: 1.5rem;"></i><br>{{ store.t('add_media_placeholder') }}
               </div>
               
-              <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;">
+              <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.userId)">
                  <template v-if="store.state.myProfile.audio.isUploading">
-                   <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center;">
-                     <div class="progress-bar-bg" style="border-radius: 0;">
-                       <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
-                     </div>
+                   <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--border-subtle); border-radius: var(--radius-sm);">
+                     <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%'}"></div>
                    </div>
                  </template>
-                 
-                 <audio v-show="!store.state.myProfile.audio.isUploading" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl || store.state.myProfile.audio.url" @error="handleMediaError(store.state.myProfile, store.state.myProfile.audio)" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.userId)" controls style="flex-grow:1;"></audio>
+                 <template v-else>
+                   <audio v-if="store.state.myProfile.audio.blobUrl" class="audio-minimal" :src="store.state.myProfile.audio.blobUrl" @error="handleMediaError(store.state.myProfile, store.state.myProfile.audio)" controls style="flex-grow:1;"></audio>
+                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
+                 </template>
                  
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
@@ -86,8 +86,9 @@
                      @click="!m.isUploading && openLightbox(m)"
                      v-intersect="() => store.loadDecryptedMedia(m, store.state.userId)">
                   
-                  <img v-if="m.media_type === 'image'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
-                  <video v-else-if="m.media_type === 'video'" :src="m.blobUrl || m.url" @error="handleMediaError(store.state.myProfile, m)" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
+                  <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+                  <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(store.state.myProfile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
+                  <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(store.state.myProfile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
                   
                   <div v-if="m.isUploading" class="media-loader">
                     <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
@@ -314,7 +315,8 @@ function updateMediaList(resMedia, remainingTemps) {
             isUpdatingBlur: old?.isUpdatingBlur || false,
             isLoaded: old?.isLoaded || true,
             isUploading: false,
-            blobUrl: newM.blobUrl || (old ? old.blobUrl : null)
+            blobUrl: newM.blobUrl || (old ? old.blobUrl : null),
+            isLegacy: old ? old.isLegacy : false
         };
     });
     store.state.myProfile.media = [...updated, ...remainingTemps];
@@ -361,7 +363,7 @@ async function processFiles(files) {
       updateMediaList(res.data.media, remainingTemps)
       if (res.data.audio) {
           const oldAudio = store.state.myProfile.audio;
-          store.state.myProfile.audio = { ...res.data.audio, blobUrl: tempAudio.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+          store.state.myProfile.audio = { ...res.data.audio, blobUrl: null, isDeleting: oldAudio?.isDeleting, isLoaded: false };
       } else {
           store.state.myProfile.audio = null;
       }
@@ -392,7 +394,13 @@ async function processFiles(files) {
 
       if (newItem) {
         newItem.blur = desiredBlur;
-        newItem.blobUrl = temp.blobUrl; 
+        // Nullify blobUrl if backend changed file format (e.g. GIF converted to MP4)
+        if (newItem.media_type === temp.media_type) {
+          newItem.blobUrl = temp.blobUrl; 
+        } else {
+          newItem.blobUrl = null;
+          newItem.isLoaded = false;
+        }
       }
 
       const remainingTemps = store.state.myProfile.media.filter(m => m.isUploading && m.blobUrl !== temp.blobUrl)
@@ -402,7 +410,9 @@ async function processFiles(files) {
           try {
               const newIdx = res.data.media.findIndex(m => m.url === newItem.url);
               const resBlur = await api.patch(`/profile/me/media/blur?url=${encodeURIComponent(newItem.url)}&blur=${desiredBlur}&index=${newIdx}`);
-              resBlur.data.media.find(m => m.url === newItem.url).blobUrl = temp.blobUrl;
+              if (newItem.blobUrl) {
+                resBlur.data.media.find(m => m.url === newItem.url).blobUrl = temp.blobUrl;
+              }
               updateMediaList(resBlur.data.media, remainingTemps);
           } catch (e) {}
       }
@@ -410,7 +420,7 @@ async function processFiles(files) {
       if (!store.state.myProfile.audio?.isUploading) {
         if (res.data.audio) {
             const oldAudio = store.state.myProfile.audio;
-            store.state.myProfile.audio = { ...res.data.audio, blobUrl: oldAudio?.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: true };
+            store.state.myProfile.audio = { ...res.data.audio, blobUrl: oldAudio?.blobUrl, isDeleting: oldAudio?.isDeleting, isLoaded: !!oldAudio?.blobUrl };
         } else {
             store.state.myProfile.audio = null;
         }

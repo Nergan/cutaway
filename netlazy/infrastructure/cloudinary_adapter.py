@@ -14,6 +14,7 @@ cloudinary.config(
     urllib3_kwargs={'maxsize': 10}
 )
 
+# Force "raw" to ensure Cloudinary doesn't strip our custom payload bytes trying to optimize it natively.
 _RESOURCE_TYPE_MAP = {"image": "raw", "video": "raw", "audio": "raw"}
 
 class CloudinaryMediaStorage(MediaStorage):

@@ -68,7 +68,10 @@ async def process_image(data: bytes, max_dimension: int, user_id: str) -> bytes:
     async with _temp_workspace(data, "output.webp") as (in_path, out_path):
         out_cover = in_path + "_cover.webp"
         
-        await _run_ffmpeg(["-y", "-i", in_path, "-vf", "scale='min(320,iw)':-1,gblur=sigma=20", "-vframes", "1", "-quality", "50", out_cover])
+        # Heavy uniform pixelation + blur ensures absolute visual destruction of content.
+        cover_vf = "scale=32:32,scale=320:320:flags=neighbor,gblur=sigma=5"
+        await _run_ffmpeg(["-y", "-i", in_path, "-vf", cover_vf, "-vframes", "1", "-quality", "50", out_cover])
+        
         await _run_ffmpeg(["-y", "-i", in_path, "-vf", f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease", "-quality", "82", out_path])
         
         with open(out_cover, "rb") as f: cover_bytes = f.read()
@@ -80,20 +83,22 @@ async def process_video(data: bytes, max_dimension: int, user_id: str) -> bytes:
     async with _temp_workspace(data, "output.mp4") as (in_path, out_path):
         out_cover = in_path + "_cover.mp4"
         
-        cover_vf = "scale='min(320,iw)':'min(320,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2,gblur=sigma=20"
+        cover_vf = "scale=32:32,scale=320:320:flags=neighbor,gblur=sigma=5"
         await _run_ffmpeg([
-            "-y", "-i", in_path, "-t", "1",
+            "-y", "-i", in_path, "-vframes", "1",
             "-vf", cover_vf,
             "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "35",
             out_cover
         ])
         
         payload_vf = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2"
+        
+        # Letting FFMPEG automatically handle audio tracking avoids mapping errors on audio-less files (like GIFs).
         await _run_ffmpeg([
             "-y", "-i", in_path, 
             "-vf", payload_vf, 
             "-c:v", "libx264", "-preset", "fast", "-crf", "28", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "128k", 
+            "-b:a", "128k", 
             "-movflags", "+faststart", 
             out_path
         ])

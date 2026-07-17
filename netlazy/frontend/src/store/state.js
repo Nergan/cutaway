@@ -324,14 +324,14 @@ export function useStore() {
             const currentMedia = state.myProfile.media || [];
             data.media = data.media.map(m => { 
                 const old = currentMedia.find(om => om.url === m.url);
-                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null, isLegacy: old ? old.isLegacy : false };
             });
             const uploadingMedia = currentMedia.filter(m => m.isUploading);
             data.media.push(...uploadingMedia);
 
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
-                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null, isLegacy: oldA ? oldA.isLegacy : false };
             } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
                 data.audio = state.myProfile.audio;
             }
@@ -358,14 +358,14 @@ export function useStore() {
             const currentMedia = state.myProfile.media || [];
             data.media = data.media.map(m => { 
                 const old = currentMedia.find(om => om.url === m.url);
-                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null, isLegacy: old ? old.isLegacy : false };
             });
             const uploadingMedia = currentMedia.filter(m => m.isUploading);
             data.media.push(...uploadingMedia);
 
             if (data.audio) { 
                 const oldA = state.myProfile.audio;
-                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null, isLegacy: oldA ? oldA.isLegacy : false };
             } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
                 data.audio = state.myProfile.audio;
             }
@@ -405,12 +405,14 @@ export function useStore() {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);
                         m.isLoaded = oldM ? oldM.isLoaded : false;
                         if (oldM && oldM.blobUrl) m.blobUrl = oldM.blobUrl;
+                        if (oldM && oldM.isLegacy !== undefined) m.isLegacy = oldM.isLegacy;
                     });
                 }
                 if (r.profile && r.profile.audio) {
                     const oldA = oldR?.profile?.audio;
                     r.profile.audio.isLoaded = oldA ? oldA.isLoaded : false;
                     if (oldA && oldA.blobUrl) r.profile.audio.blobUrl = oldA.blobUrl;
+                    if (oldA && oldA.isLegacy !== undefined) r.profile.audio.isLegacy = oldA.isLegacy;
                 }
                 return {
                     ...r, 

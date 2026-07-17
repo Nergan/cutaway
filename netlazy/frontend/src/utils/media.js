@@ -102,20 +102,20 @@ function audioBufferToWav(buffer) {
         offset = 0,
         pos = 0;
 
-    setUint32(0x46464952);                         // "RIFF"
-    setUint32(length - 8);                         // file length - 8
-    setUint32(0x45564157);                         // "WAVE"
-    setUint32(0x20746d66);                         // "fmt " chunk
-    setUint32(16);                                 // length = 16
-    setUint16(1);                                  // PCM (uncompressed)
+    setUint32(0x46464952);                         
+    setUint32(length - 8);                         
+    setUint32(0x45564157);                         
+    setUint32(0x20746d66);                         
+    setUint32(16);                                 
+    setUint16(1);                                  
     setUint16(numOfChan);
     setUint32(buffer.sampleRate);
-    setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
-    setUint16(numOfChan * 2);                      // block-align
-    setUint16(16);                                 // 16-bit
+    setUint32(buffer.sampleRate * 2 * numOfChan); 
+    setUint16(numOfChan * 2);                      
+    setUint16(16);                                 
 
-    setUint32(0x61746164);                         // "data" - chunk
-    setUint32(length - pos - 4);                   // chunk length
+    setUint32(0x61746164);                         
+    setUint32(length - pos - 4);                   
 
     for(i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
 

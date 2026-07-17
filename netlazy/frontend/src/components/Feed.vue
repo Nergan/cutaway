@@ -41,15 +41,16 @@
     <div class="grid" @click="closeAllMenus" v-else>
       <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
         
-        <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;">
-          <audio class="audio-minimal" :src="profile.audio.blobUrl || profile.audio.url" @error="handleMediaError(profile, profile.audio)" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)" controls style="flex-grow:1;"></audio>
+        <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)">
+          <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
+          <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
         </div>
 
         <div class="telegram-grid" v-if="profile.media && profile.media.length > 0">
           <div class="media-thumb" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
-             <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
-             <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
-             <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
+             <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
+             <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
+             <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
           </div>
         </div>
         
@@ -131,6 +132,7 @@ const isLoading = ref(false)
 const hasMore = ref(true)
 let currentCursor = null
 let observer = null
+let feedAbortController = null
 
 const isMobile = ref(window.innerWidth <= 768)
 
@@ -139,6 +141,10 @@ const highlightIndex = ref(-1)
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
 )
+
+const activeFiltersString = computed(() => {
+    return store.state.availableSearchTags.map(t => t.name + ':' + t.state).join(',');
+})
 
 const hasActiveFilters = computed(() => {
   return filterText.value.trim() !== '' || store.state.availableSearchTags.some(t => t.state !== 'neutral')
@@ -221,15 +227,18 @@ async function handleMediaError(profile, m) {
 }
 
 async function fetchFeed(reset = false) {
-  if (isLoading.value || (!hasMore.value && !reset)) return
   if (reset) {
-    store.state.feed = []
-    currentCursor = null
-    hasMore.value = true
+    if (feedAbortController) feedAbortController.abort();
+    feedAbortController = new AbortController();
+    store.state.feed = [];
+    currentCursor = null;
+    hasMore.value = true;
+  } else if (isLoading.value || !hasMore.value) {
+    return;
   }
   
   if (!currentCursor) store.state.isFeedLoading = true;
-  isLoading.value = true
+  isLoading.value = true;
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
     const excludes = store.state.availableSearchTags.filter(t => t.state === 'exclude').map(t => t.name)
@@ -239,7 +248,7 @@ async function fetchFeed(reset = false) {
     requires.forEach(r => params.append('requires', r))
     excludes.forEach(e => params.append('excludes', e))
 
-    const res = await api.get(`/feed?${params.toString()}`)
+    const res = await api.get(`/feed?${params.toString()}`, { signal: feedAbortController.signal })
     const batch = res.data
     
     if (batch.length < 20) hasMore.value = false
@@ -253,16 +262,22 @@ async function fetchFeed(reset = false) {
       store.state.feed.push(...batch)
     }
   } catch (e) {
-    store.addToast("Failed to fetch feed", "bi-x-circle")
+    if (e.name !== 'CanceledError') {
+      store.addToast("Failed to fetch feed", "bi-x-circle")
+    }
   } finally {
     isLoading.value = false
     store.state.isFeedLoading = false
   }
 }
 
-watch(() => store.state.availableSearchTags, () => {
-  fetchFeed(true)
-}, { deep: true })
+let lastFilterString = null;
+watch(activeFiltersString, (newVal) => {
+  if (lastFilterString !== null && newVal !== lastFilterString) {
+    fetchFeed(true)
+  }
+  lastFilterString = newVal;
+})
 
 function setupObserver() {
   const options = { root: null, rootMargin: '100px', threshold: 0.1 }
@@ -275,7 +290,10 @@ function setupObserver() {
 }
 
 onMounted(() => {
-  fetchFeed(true)
+  lastFilterString = activeFiltersString.value;
+  if (store.state.feed.length === 0) {
+    fetchFeed(true)
+  }
   setTimeout(setupObserver, 500)
   document.addEventListener('click', closeAllMenus)
   window.addEventListener('resize', handleResize)
@@ -283,6 +301,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (observer) observer.disconnect()
+  if (feedAbortController) feedAbortController.abort()
   document.removeEventListener('click', closeAllMenus)
   window.removeEventListener('resize', handleResize)
 })
