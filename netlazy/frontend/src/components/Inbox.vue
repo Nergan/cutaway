@@ -24,7 +24,7 @@
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
+                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                      <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
                      <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
                      <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
@@ -122,7 +122,7 @@
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
+                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                      <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
                      <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
                      <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
@@ -198,7 +198,7 @@
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
+                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                      <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
                      <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
                      <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>
@@ -253,7 +253,7 @@
                 </div>
 
                 <div class="telegram-grid" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
+                  <div class="media-thumb" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))">
                      <div v-if="!m.isLoaded && !m.blobUrl" class="media-loader skeleton" style="border-radius: 0;"></div>
                      <img v-if="m.media_type === 'image'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}">
                      <video v-else-if="m.media_type === 'video'" v-show="m.isLoaded || m.blobUrl" :src="m.blobUrl || m.url" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': !m.blobUrl}"></video>

@@ -77,7 +77,11 @@ export function useStore() {
         pollInterval = setInterval(() => {
             if (state.isRegistered && !state.isBanned) {
                 fetchInbox(true);
-                fetchMyProfile(true);
+                // Completely skip background profile sync if the user is looking at the Editor 
+                // to absolutely guarantee we never interrupt or queue their local edits.
+                if (state.currentView !== 'editor') {
+                    fetchMyProfile(true);
+                }
             }
         }, 10000);
     }
@@ -303,57 +307,41 @@ export function useStore() {
         try {
             const res = await api.get('/profile/me');
             const data = res.data;
-            
-            // If the user is actively viewing the editor, NEVER overwrite their text inputs 
-            // from a background poll. This absolutely protects the UX and prevents data loss/cursor jumping.
-            const isEditing = state.currentView === 'editor';
             const currentContacts = state.myProfile.contacts || [];
             
-            if (isEditing) {
-                // Let user keep their transient edits un-disturbed, only sync media logic.
-                state.myProfile.media = data.media.map(m => {
-                    const old = state.myProfile.media.find(om => om.url === m.url);
-                    return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
-                });
-                
-                if (data.audio) {
-                    const oldA = state.myProfile.audio;
-                    state.myProfile.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
-                }
-            } else {
-                // Smart contact reconciliation locking _id to content so FLIP array swaps aren't triggered
-                data.contacts.forEach(c => {
-                    const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
-                    c._id = existing ? existing._id : (c.type + ':' + c.value);
-                });
-                
-                const currentMedia = state.myProfile.media || [];
-                data.media = data.media.map(m => { 
-                    const old = currentMedia.find(om => om.url === m.url);
-                    return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
-                });
-                const uploadingMedia = currentMedia.filter(m => m.isUploading);
-                data.media.push(...uploadingMedia);
+            // Smart contact reconciliation locking _id to content so FLIP array swaps aren't triggered
+            data.contacts.forEach(c => {
+                const existing = currentContacts.find(oc => oc.type === c.type && oc.value === c.value);
+                c._id = existing ? existing._id : (c.type + ':' + c.value);
+            });
+            
+            const currentMedia = state.myProfile.media || [];
+            data.media = data.media.map(m => { 
+                const old = currentMedia.find(om => om.url === m.url);
+                return old && (old.isUploading || old.isDeleting) ? old : { ...m, isLoaded: old ? old.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: old ? old.blobUrl : null };
+            });
+            const uploadingMedia = currentMedia.filter(m => m.isUploading);
+            data.media.push(...uploadingMedia);
 
-                if (data.audio) { 
-                    const oldA = state.myProfile.audio;
-                    data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
-                    
-                    if (!data.audio.isLoaded && !data.audio.blobUrl) {
-                        getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
-                            if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
-                            else if (bUrl && state.myProfile.audio) {
-                                state.myProfile.audio.blobUrl = bUrl;
-                                state.myProfile.audio.isLoaded = true;
-                            }
-                        });
-                    }
-                } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
-                    data.audio = state.myProfile.audio;
+            if (data.audio) { 
+                const oldA = state.myProfile.audio;
+                data.audio = (oldA && (oldA.isUploading || oldA.isDeleting)) ? oldA : { ...data.audio, isLoaded: oldA ? oldA.isLoaded : false, isUploading: false, uploadProgress: 0, blobUrl: oldA ? oldA.blobUrl : null };
+                
+                if (!data.audio.isLoaded && !data.audio.blobUrl) {
+                    getRestoredAudioBlobUrl(data.audio.url).then(bUrl => {
+                        if (bUrl === null) api.delete('/profile/me/audio').catch(()=>{}); 
+                        else if (bUrl && state.myProfile.audio) {
+                            state.myProfile.audio.blobUrl = bUrl;
+                            state.myProfile.audio.isLoaded = true;
+                        }
+                    });
                 }
-
-                state.myProfile = data;
+            } else if (state.myProfile.audio && state.myProfile.audio.isUploading) {
+                data.audio = state.myProfile.audio;
             }
+
+            state.myProfile = data;
+            
         } catch (e) {
             console.error("Profile sync failed");
         } finally {

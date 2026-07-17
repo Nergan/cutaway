@@ -75,7 +75,7 @@
               <transition-group name="media-list" tag="div" class="media-preview-grid telegram-grid" v-if="validMedia.length > 0">
                 <div class="media-thumb" 
                      v-for="(m, idx) in validMedia" 
-                     :key="m.url || m.blobUrl" 
+                     :key="m.blobUrl || m.url" 
                      :class="{'drag-over': dragOverIdx === idx}" 
                      draggable="true" 
                      @dragstart="!m.isUploading && dragStart(idx)" 
@@ -122,9 +122,11 @@
             </div>
           </transition>
 
-          <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin-top: 1.5rem;">
-            <span style="font-size: 0.75rem;">active tags</span>
-            <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          <div style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
+            <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
+              <span style="font-size: 0.75rem;">active tags</span>
+              <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
           </div>
           <transition name="collapse">
             <div v-show="showActiveTags" class="mobile-collapse-content">
@@ -256,7 +258,7 @@ function handleContactInput(c) {
 }
 
 function cleanExistingContact(c, idx) {
-    if (c.type === 'unknown' || c.value.trim() === '') {
+    if (c.value.trim() === '') {
         removeContact(idx);
     } else {
         triggerAutosave();
@@ -272,8 +274,6 @@ function commitNewContact() {
   if (val !== '') {
     const inferred = inferContactType(val);
     if (inferred === 'unknown') {
-      newContact.value.value = '';
-      newContact.value.type = 'unknown';
       return; 
     }
     store.state.myProfile.contacts.push({ ...newContact.value, type: inferred });
