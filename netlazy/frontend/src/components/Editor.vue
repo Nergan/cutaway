@@ -92,10 +92,10 @@
                     <div class="progress-bar-fill-horizontal" :style="{width: (m.uploadProgress || 0) + '%'}"></div>
                   </div>
                   
-                  <div v-if="!m.isUploading" class="media-remove" @click.stop="!m.isDeleting && removeMedia(m)">
+                  <div class="media-remove" @click.stop="!m.isDeleting && removeMedia(m)">
                     <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
                   </div>
-                  <div v-if="!m.isUploading" class="media-blur-toggle" @click.stop="toggleBlur(m)" :title="m.blur ? store.t('accept') : store.t('decline')">
+                  <div class="media-blur-toggle" @click.stop="toggleBlur(m)" :title="m.blur ? store.t('accept') : store.t('decline')">
                     <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
                   </div>
                 </div>
@@ -448,14 +448,10 @@ async function removeMedia(m) {
       const completedIdx = store.state.myProfile.media.filter(x => !x.isUploading).findIndex(x => x.url === m.url);
       const idxParam = completedIdx !== -1 ? `&index=${completedIdx}` : '';
       
-      // Optimistically remove from UI
-      store.state.myProfile.media.splice(realIdx, 1);
-      
       const res = await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}${idxParam}`)
       const remainingTemps = store.state.myProfile.media.filter(x => x.isUploading)
       updateMediaList(res.data.media, remainingTemps)
     } catch (e) {
-      // Revert optimistic removal on fail
       if (m) m.isDeleting = false
       store.fetchMyProfile(true) 
     }

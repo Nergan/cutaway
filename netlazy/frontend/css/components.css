@@ -36,7 +36,7 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 }
 .contact-action.bi-lock:hover, .contact-action.bi-globe:hover {
   color: var(--text-main);
-  transform: scale(1.15);
+  transform: scale(1.15) rotate(10deg);
 }
 
 .search-clear-btn:active, .contact-action.danger:active, .media-remove:active, .lightbox-close:active { 
@@ -79,10 +79,12 @@ body.light-theme .audio-minimal { filter: none; }
 .media-thumb:hover { transform: scale(1.02); box-shadow: var(--shadow-sm); }
 .media-thumb img, .media-thumb video {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  object-fit: cover; pointer-events: none; transition: filter 0.3s ease;
+  object-fit: cover; pointer-events: none; 
+  /* Intentionally removed transition: filter 0.3s ease; to prevent SVG filter hardware decoding glitches */
 }
 
-/* Reverses the intense hardware decoding layer and applies blur if needed */
+/* Advanced Visual Distortion Reversal via CSS & SVG */
+.is-blurred { filter: blur(20px); }
 .cdn-obfuscated { transform: scale(-1, -1); filter: hue-rotate(-180deg) invert(1) url(#channel-restore); }
 .cdn-obfuscated.is-blurred { transform: scale(-1, -1); filter: hue-rotate(-180deg) invert(1) url(#channel-restore) blur(20px); }
 
@@ -203,7 +205,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
-  transform: scale(0.8) rotate(-90deg); /* specific rotation scaling target for X buttons */
+  transform: scale(0.8) rotate(-90deg);
 }
 
 /* Minimalist Blurred Bottom Sheet for Contacts */
@@ -265,7 +267,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   color: var(--text-main);
 }
 .light-theme .sheet-contact-row {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.65);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -274,7 +276,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   background: rgba(255, 255, 255, 0.25);
 }
 .light-theme .sheet-contact-row:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .sheet-contact-row.is-selected {
@@ -294,9 +296,10 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 .bottom-sheet-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
   margin-top: 0.5rem;
+  padding: 0 1rem;
 }
 
 /* Slide Up and Fade Sheet Transitions */

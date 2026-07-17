@@ -22,7 +22,6 @@ def sniff_mime_type(data: bytes) -> str:
     return magic.from_buffer(data, mime=True)
 
 def classify_media_type(mime_type: str) -> str:
-    # Explicitly route GIFs to the video processor so they convert to MP4
     if mime_type == "image/gif":
         return "video"
         
@@ -75,7 +74,7 @@ async def process_video(data: bytes, max_dimension: int) -> bytes:
 
 async def process_audio(data: bytes, bitrate: str) -> bytes:
     async with _temp_workspace(data, "output.mp3") as (in_path, out_path):
-        # areverse physically plays the audio backwards (unintelligible noise to CDN admins)
+        # areverse physically plays the audio backwards (unintelligible noise to CDN admins & speech-to-text)
         await _run_ffmpeg(["-y", "-i", in_path, "-af", "areverse", "-ac", "1", "-c:a", "libmp3lame", "-b:a", bitrate, out_path])
         with open(out_path, "rb") as f:
             return f.read()

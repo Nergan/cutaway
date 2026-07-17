@@ -206,7 +206,7 @@
                     :disabled="store.state.contactSelect.selectedContacts.length === 0 || store.state.contactSelect.isSending" 
                     @click="submitGlobalHandshake" 
                     style="font-size: 1.5rem;"
-                    :style="{ color: store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0 ? 'var(--border-focus)' : 'var(--accent-moss)' }">
+                    :style="{ color: store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0 ? 'var(--border-focus)' : (store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)') }">
               <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
             </button>
           </div>
