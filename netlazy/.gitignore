@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 
 ### Netlazy Frontend & Web Builds ###
+netlazy/assets/
 node_modules/
 npm-debug.log*
 dist/
@@ -16,7 +17,6 @@ android/
 ios/
 
 ### Mobile Build Output, IDE Caches & Signing Keys ###
-netlazy/assets/
 *.apk
 *.aab
 *.ipa
