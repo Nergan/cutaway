@@ -52,7 +52,17 @@ api.interceptors.request.use(async (config) => {
             queryStr = queryStr ? `${queryStr}&${paramsStr}` : paramsStr;
         }
 
-        const path = `${config.baseURL || ''}${urlPath}`;
+        // Normalize URL to path only (removes scheme/domain to align signature checks with FastAPI)
+        let path = `${config.baseURL || ''}${urlPath}`;
+        if (path.includes('://')) {
+            try {
+                const parsedUrl = new URL(path);
+                path = parsedUrl.pathname;
+            } catch (e) {
+                // Fallback to standard raw path
+            }
+        }
+
         const canonicalPayload = `${method}\n${path}\n${queryStr}\n${timestamp}\n${nonce}\n${bodyHash}`;
         const signatureBase64 = await signPayload(store.state.keyPair.privateKey, canonicalPayload);
 
