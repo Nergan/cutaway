@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>netlazy — just dating.</title>
+  
+  <!-- Font and Icon Dependencies -->
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+    /* CUSTOM NETLAZY DESIGN SYSTEM */
+    :root {
+      --bg-base: #000000;
+      --bg-surface: #0a0a0a;
+      --bg-elevated: #141414;
+      --border-subtle: #222222;
+      --border-focus: #555555;
+      
+      --text-main: #ffffff;
+      --text-muted: #a3a3a3;
+      
+      --accent-moss: #8da970;
+      --accent-danger: #bd6a5e;
+      --accent-info: #6e9dae;
+      --accent-earth: #c7b38a;
+      
+      --font-main: 'Comfortaa', sans-serif;
+      
+      --radius-sm: 8px;
+      --radius-md: 16px;
+      --radius-pill: 50px;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --glow-accent: 0 0 15px rgba(141, 169, 112, 0.15);
+    }
+
+    body.light-theme {
+      --bg-base: #fefcf5;
+      --bg-surface: #f9f6ef;
+      --bg-elevated: #f0ebe1;
+      --border-subtle: #e5dfd3;
+      --border-focus: #b8aa92;
+      --text-main: #232323;
+      --text-muted: #666666;
+      --accent-moss: #68854c;
+      --accent-danger: #a3483b;
+      --accent-info: #4a7787;
+      --accent-earth: #9c855a;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 8px 24px rgba(156, 133, 90, 0.08);
+      --glow-accent: 0 0 15px rgba(104, 133, 76, 0.1);
+    }
+
+    /* CUSTOM SCROLLBAR & SELECTION */
+    ::-webkit-scrollbar { 
+      width: 5px; 
+      height: 5px; 
+    }
+    ::-webkit-scrollbar-track { 
+      background: transparent; 
+    }
+    ::-webkit-scrollbar-thumb { 
+      background: var(--border-focus); 
+      border-radius: 4px; 
+    }
+    ::-webkit-scrollbar-thumb:hover { 
+      background: var(--text-muted); 
+    }
+
+    ::selection { 
+      background: var(--border-focus); 
+      color: #fff; 
+    }
+
+    /* STRUCTURE */
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+      font-family: var(--font-main); 
+    }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    body.is-translating {
+      opacity: 0;
+      filter: blur(4px);
+      transition: opacity 0.15s ease-in-out, filter 0.15s ease-in-out;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* ATMOSPHERIC BACKGROUND DRIFTS */
+    .bg-glow-container {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    .bg-glow {
+      position: absolute;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(141,169,112,0.06) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+      filter: blur(40px);
+      animation: floatGlow 14s infinite alternate ease-in-out;
+    }
+
+    .bg-glow-2 {
+      position: absolute;
+      right: 10%;
+      top: 40%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(110,157,174,0.04) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+      filter: blur(45px);
+      animation: floatGlow 18s infinite alternate-reverse ease-in-out;
+    }
+
+    @keyframes floatGlow {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(80px, 60px) scale(1.1); }
+    }
+
+    /* MINIATURIZED TOP HEADER */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 0.5rem 1.2rem;
+      background: transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .top-nav::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-subtle);
+      pointer-events: none;
+    }
+
+    body.light-theme .top-nav::before {
+      background: rgba(254, 252, 245, 0.35);
+    }
+
+    .brand {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      cursor: pointer;
+      text-shadow: var(--glow-accent);
+      transition: color 0.2s;
+    }
+
+    .brand:hover {
+      color: var(--accent-moss);
+    }
+
+    .nav-buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    /* REBALANCED BUTTONS (EQUAL VISUAL WEIGHT) */
+    .btn {
+      font-size: 0.75rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
+                  border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover {
+      transform: scale(1.02);
+      border-color: var(--border-focus);
+      background: var(--bg-elevated);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn[disabled] {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+      border-color: var(--border-subtle);
+    }
+
+    .theme-toggle, .lang-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      transition: color 0.2s, transform 0.15s;
+    }
+
+    .theme-toggle:hover, .lang-toggle:hover {
+      color: var(--text-main);
+      transform: scale(1.1);
+    }
+
+    .lang-toggle {
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: lowercase;
+    }
+
+    /* HERO STAGE */
+    .hero {
+      min-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 7rem 1.5rem 2rem 1.5rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-title {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 1rem;
+      text-shadow: var(--glow-accent);
+      text-transform: lowercase;
+    }
+
+    .hero-title .green-highlight {
+      color: var(--accent-moss);
+    }
+
+    .hero-desc {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin-bottom: 2rem;
+    }
+
+    /* EQUALLY PROMINENT HERO ACTION GRID */
+    .cta-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      width: 100%;
+      max-width: 650px;
+    }
+
+    .cta-container .btn {
+      padding: 0.8rem 1.6rem;
+      font-size: 0.85rem;
+      flex: 1;
+      min-width: 180px;
+      justify-content: center;
+    }
+
+    /* UNUSUAL 3D PARALLAX SCROLL-REVEAL EFFECTS */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem 1.5rem;
+      perspective: 1200px;
+    }
+
+    .reveal-section {
+      opacity: 0;
+      transform: perspective(1200px) rotateX(20deg) rotateY(-8deg) translateY(70px) scale(0.92);
+      filter: blur(8px);
+      transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: center top;
+      will-change: transform, opacity, filter;
+      margin-bottom: 6rem;
+    }
+
+    .reveal-section.revealed {
+      opacity: 1;
+      transform: perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1);
+      filter: blur(0);
+    }
+
+    /* SECTION DESIGNS */
+    .section-title {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 2rem;
+      color: var(--text-main);
+      text-transform: lowercase;
+    }
+
+    .app-demo-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Card interface matching core parameters */
+    .card { 
+      display: flex; 
+      flex-direction: column; 
+      width: 100%; 
+      max-width: 320px;
+      box-sizing: border-box;
+      background: var(--bg-surface); 
+      border: 1px solid var(--border-subtle); 
+      border-radius: var(--radius-md); 
+      padding: 1rem; 
+      gap: 0.8rem; 
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease; 
+      box-shadow: var(--shadow-sm); 
+      position: relative;
+    }
+
+    .card:hover { 
+      transform: translateY(-4px) scale(1.01); 
+      box-shadow: var(--shadow-md); 
+    }
+
+    .telegram-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      grid-auto-rows: 100px; 
+      gap: 4px; 
+      margin-bottom: 0.5rem; 
+    }
+
+    .media-thumb { 
+      border-radius: var(--radius-sm); 
+      background-size: cover; 
+      background-position: center; 
+      background-color: var(--bg-elevated); 
+      position: relative; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      overflow: hidden; 
+      border: 2px solid transparent; 
+    }
+
+    .media-thumb img {
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      object-fit: cover; 
+      pointer-events: none;
+      transition: filter 0.5s ease, transform 0.5s ease;
+    }
+
+    .is-blurred { 
+      filter: blur(20px); 
+    }
+
+    .cdn-obfuscated { 
+      transform: scale(-1, -1); 
+      filter: hue-rotate(-180deg) invert(1) url(#channel-restore); 
+    }
+
+    .cdn-obfuscated.is-blurred { 
+      transform: scale(-1, -1); 
+      filter: hue-rotate(-180deg) invert(1) url(#channel-restore) blur(20px); 
+    }
+
+    /* Decryption Overlays */
+    .decryption-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.65rem;
+      color: #fff;
+      gap: 0.3rem;
+    }
+
+    .decryption-progress {
+      width: 70%;
+      height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .decryption-progress-bar {
+      height: 100%;
+      background: var(--accent-moss);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* Tag layout styles */
+    .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; position: relative; }
+    .chip { 
+      font-size: 0.75rem; 
+      padding: 0.25rem 0.7rem; 
+      border-radius: var(--radius-pill); 
+      cursor: pointer; 
+      user-select: none; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 0.3rem; 
+      border: 1px solid var(--border-subtle); 
+      background: var(--bg-elevated); 
+      color: var(--text-muted); 
+      transition: background-color 0.15s, transform 0.15s, color 0.15s;
+    }
+    .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
+    .chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
+    .chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
+
+    /* Contacts UI layout - now with a globe icon */
+    .contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; font-size: 0.85rem; border-top: 1px solid var(--border-subtle); margin-top: auto; transition: opacity 0.3s, color 0.3s; }
+    .contact-icon { color: var(--text-muted); width: 16px; text-align: center; }
+    .contact-val { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); transition: color 0.3s; }
+
+    /* Action buttons footer inside card */
+    .card-footer {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      align-items: center;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.5rem;
+    }
+
+    .footer-action {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .footer-action:hover {
+      color: var(--text-main);
+      transform: scale(1.15);
+    }
+
+    /* MOCK TELEGRAM PREVIEW DROPDOWN */
+    .mock-dropdown {
+      position: absolute;
+      bottom: 2.8rem;
+      right: 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius-sm);
+      z-index: 99;
+      width: 250px;
+      padding: 0.5rem 0;
+      box-shadow: var(--shadow-md);
+      display: none;
+    }
+
+    .mock-option {
+      padding: 0.4rem 1rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .mock-option:hover {
+      background: var(--bg-elevated);
+      color: var(--accent-moss);
+    }
+
+    /* OPTIMIZED DESCRIPTION BLOCK */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .pillar-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      transition: border-color 0.2s;
+    }
+
+    .pillar-card:hover {
+      border-color: var(--border-focus);
+    }
+
+    .pillar-icon {
+      font-size: 2rem;
+      color: var(--accent-moss);
+      margin-bottom: 1rem;
+    }
+
+    .pillar-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .pillar-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* REITERATIVE BOTTOM INTERFACES */
+    .bottom-cta-section {
+      text-align: center;
+    }
+
+    .bottom-cta-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .bottom-nav-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .bottom-nav-buttons .btn {
+      padding: 0.8rem 1.6rem;
+      font-size: 0.85rem;
+      min-width: 180px;
+      justify-content: center;
+    }
+
+    .footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 2rem 0;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+
+    /* RESPONSIVE SCALING */
+    @media (max-width: 768px) {
+      .top-nav {
+        padding: 0.4rem 0.8rem;
+      }
+      .nav-buttons {
+        gap: 0.4rem;
+      }
+      .top-nav .btn span {
+        display: none; /* Icon-only top bar navigation on mobile */
+      }
+      .top-nav .btn {
+        padding: 0.5rem;
+      }
+      .hero-title {
+        font-size: 2rem;
+      }
+      .hero-desc {
+        font-size: 0.9rem;
+      }
+      .cta-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      .cta-container .btn {
+        width: 100%;
+        max-width: 280px;
+      }
+      .pillars-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LAYER DRIFTS BACKGROUND -->
+  <div class="bg-glow-container">
+    <div class="bg-glow" style="left: -100px; top: -50px;"></div>
+    <div class="bg-glow-2"></div>
+  </div>
+
+  <!-- NAVIGATION HEADER -->
+  <header class="top-nav">
+    <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">netlazy</div>
+    <div class="nav-buttons">
+      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/netlazy-0.0.1.apk" class="btn" title="Download Android App">
+        <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
+      </a>
+      <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer" title="Continue in Telegram">
+        <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
+      </a>
+      <a href="./netlazy" class="btn" title="Try Web Version">
+        <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
+      </a>
+      <button class="lang-toggle" onclick="cycleLanguage()" title="Cycle Language">
+        <span id="lang-indicator">en</span>
+      </button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+        <i class="bi bi-sun" id="theme-icon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO VIEWPORT -->
+  <section class="hero">
+    <h1 class="hero-title">welcome to <span class="green-highlight">netlazy</span></h1>
+    <p class="hero-desc" data-t="welcome_desc">A bulletin board for dating and light online chatting. Free and without aggressive monetization. :^</p>
+    
+    <!-- EQUALLY PROMINENT HERO ACTION SELECTIONS -->
+    <div class="cta-container">
+      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/netlazy-0.0.1.apk" class="btn">
+        <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
+      </a>
+      <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
+        <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
+      </a>
+      <a href="./netlazy" class="btn">
+        <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- SCROLLABLE STAGE CONTAINER -->
+  <main class="container">
+
+    <!-- INTERACTIVE PROFILE CARD -->
+    <section class="reveal-section">
+      <h2 class="section-title" data-t="demo_title">and this is what a profile looks like</h2>
+      <div class="app-demo-container">
+        <div class="card" id="interactive-card">
+          
+          <!-- Mock Obfuscation / Media grid decrypter -->
+          <div class="telegram-grid">
+            <div class="media-thumb" onclick="triggerDecryption(this, 'https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-1.webp?w=300')">
+              <img class="is-blurred cdn-obfuscated" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-1.webp?w=10&blur=5" alt="Decryption demo">
+              <div class="decryption-overlay">
+                <i class="bi bi-lock-fill"></i>
+                <span data-t="demo_decrypt">decrypt</span>
+              </div>
+            </div>
+            <div class="media-thumb" onclick="triggerDecryption(this, 'https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-2.webp?w=300')">
+              <img class="is-blurred cdn-obfuscated" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-2.webp?w=10&blur=5" alt="Decryption demo">
+              <div class="decryption-overlay">
+                <i class="bi bi-lock-fill"></i>
+                <span data-t="demo_decrypt">decrypt</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tag chips system -->
+          <div class="chip-group">
+            <span class="chip require" onclick="cycleTag(this)">
+              online <i class="bi bi-plus-lg"></i>
+            </span>
+            <span class="chip" onclick="cycleTag(this)">
+              music
+            </span>
+            <span class="chip exclude" onclick="cycleTag(this)">
+              smoker <i class="bi bi-dash-lg"></i>
+            </span>
+          </div>
+
+          <!-- Mock Bio -->
+          <div style="font-size: 0.85rem;" data-t="demo_bio">python boy, NOT dirty!</div>
+
+          <!-- Globe icon contact row -->
+          <div class="contact-row" id="contact-view">
+            <i class="bi contact-icon bi-globe" id="contact-icon"></i>
+            <span class="contact-val" id="contact-text" data-t="demo_contact_locked">Only public details shown</span>
+          </div>
+
+          <!-- Action buttons inside mock card -->
+          <div class="card-footer">
+            <button class="footer-action" style="color: var(--accent-info);" onclick="openMockDropdown('share', event)" title="Share">
+              <i class="bi bi-box-arrow-up"></i>
+            </button>
+            <button class="footer-action" style="color: var(--accent-moss);" onclick="openMockDropdown('exchange', event)" title="Exchange">
+              <i class="bi bi-arrow-left-right"></i>
+            </button>
+            <button class="footer-action" style="color: var(--accent-danger);" onclick="executeHandshake('demand')" title="Demand">
+              <i class="bi bi-box-arrow-in-down"></i>
+            </button>
+          </div>
+
+          <!-- Contact validation dropdown overlay -->
+          <div class="mock-dropdown" id="mock-dropdown" onclick="event.stopPropagation()">
+            <div class="mock-option" onclick="selectContactShare()">
+              <span data-t="demo_select_contact">select a contact to share...</span>
+              <i class="bi bi-square" id="check-icon"></i>
+            </div>
+            <div style="padding: 0.5rem 1rem; text-align: right;">
+              <button class="btn" id="mock-send-btn" onclick="confirmExchange()" style="padding: 0.3rem 0.8rem; font-size: 0.75rem;" disabled data-t="demo_send">
+                send
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- CORE RE-STYLED BENEFIT CARD GRID -->
+    <section class="reveal-section">
+      <h2 class="section-title" data-t="features_title">what we have</h2>
+      <div class="pillars-grid">
+        
+        <div class="pillar-card">
+          <i class="bi bi-card-list pillar-icon"></i>
+          <h3 class="pillar-title" data-t="feature_auth_title">profiles feed instead of swipes</h3>
+          <p class="pillar-desc" data-t="feature_auth_desc">You get a feed of profiles so you can find partners more effectively.</p>
+        </div>
+
+        <div class="pillar-card">
+          <i class="bi bi-tags-fill pillar-icon"></i>
+          <h3 class="pillar-title" data-t="feature_media_title">lots and lots of tags</h3>
+          <p class="pillar-desc" data-t="feature_media_desc">We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.</p>
+        </div>
+
+        <div class="pillar-card">
+          <i class="bi bi-envelope-heart pillar-icon"></i>
+          <h3 class="pillar-title" data-t="feature_pow_title">three ways to like a profile</h3>
+          <p class="pillar-desc" data-t="feature_pow_desc">Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)</p>
+        </div>
+
+        <div class="pillar-card">
+          <i class="bi bi-fingerprint pillar-icon"></i>
+          <h3 class="pillar-title" data-t="feature_handshake_title">and a little bit of cryptography</h3>
+          <p class="pillar-desc" data-t="feature_handshake_desc">Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- FINAL EQUALLY WEIGHTED CTAS -->
+    <section class="reveal-section bottom-cta-section">
+      <h2 class="section-title" data-t="cta_bottom_title">and if you are ready...</h2>
+      <p class="bottom-cta-desc" data-t="cta_bottom_desc">Choose your platform, and be cute :^</p>
+      
+      <div class="bottom-nav-buttons">
+        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/netlazy-0.0.1.apk" class="btn">
+          <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
+        </a>
+        <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
+          <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
+        </a>
+        <a href="./netlazy" class="btn">
+          <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p data-t="copyright">&copy; 2026 netlazy. Attempting socialisation.</p>
+    </footer>
+
+  </main>
+
+  <script>
+    // DYNAMIC TRANSLATION SYSTEM WITH MATCHING STYLE TRANSITIONS
+    const translations = {
+      en: {
+        welcome_desc: "A bulletin board for dating and light online chatting. Free and without aggressive monetization. :^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "what we have",
+        feature_auth_title: "profiles feed instead of swipes",
+        feature_auth_desc: "You get a feed of profiles so you can find partners more effectively.",
+        feature_media_title: "lots and lots of tags",
+        feature_media_desc: "We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.",
+        feature_pow_title: "three ways to like a profile",
+        feature_pow_desc: "Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)",
+        feature_handshake_title: "and a little bit of cryptography",
+        feature_handshake_desc: "Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.",
+        cta_bottom_title: "and if you are ready...",
+        cta_bottom_desc: "Choose your platform, and be cute :^",
+        demo_title: "and this is what a profile looks like",
+        demo_decrypt: "decrypt",
+        demo_restored: "media successfully decrypted",
+        demo_bio: "python boy, NOT dirty!",
+        demo_contact_locked: "Only public details shown",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "solving proof of work...",
+        demo_hs_sent: "request sent",
+        demo_select_contact: "select a contact to share...",
+        demo_send: "send",
+        copyright: "&copy; 2026 netlazy. Attempting socialisation.",
+        demo_demand_rejected: "looks like they don't like demands :^"
+      },
+      ru: {
+        welcome_desc: "Доска объявлений для дэйтинга, и просто лёгкого онлайн общения. Бесплатно, и без агрессивной монетизации. :^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "что у нас есть",
+        feature_auth_title: "вместо сайпов - лента",
+        feature_auth_desc: "У Вас есть лента анкет, чтобы Вы могли эффектвинее искать партёнров.",
+        feature_media_title: "много-много тегов",
+        feature_media_desc: "Мы стараемся добавлять теги практически на всё, чтобы Вы могли эффетивнее искать анкеты, и сами конктроллировать этот поиск.",
+        feature_pow_title: "три способа лайкнуть анкету",
+        feature_pow_desc: "В отличии от обычных лайков, у нас запросы крутятся вокруг управления контактами друг-друга. И Вы можете ими: поделиться, обменяться, или затребовать. (А оставив запрос без ответа, вы реализуете нативный чёрный список.)",
+        feature_handshake_title: "и немножко криптографии",
+        feature_handshake_desc: "Регистрация работает в один клик, и Ваш аккаунт не привязан ни к почте, ни к телефону, а пароль никогда не покидает Ваше устройство.",
+        cta_bottom_title: "и если Вы готовы..",
+        cta_bottom_desc: "Выберите удобную платформу, и будьте хорошими :^",
+        demo_title: "а так выглядит анкета",
+        demo_decrypt: "декодировать",
+        demo_restored: "медиа успешно декодировано",
+        demo_bio: "Мальчик питонист, НЕ пошлый!",
+        demo_contact_locked: "Показано только публичное",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "решение proof of work...",
+        demo_hs_sent: "запрос отправлен",
+        demo_select_contact: "выберите контакт для обмена...",
+        demo_send: "отправить",
+        copyright: "&copy; 2026 netlazy. Пытаемся в социализацию.",
+        demo_demand_rejected: "похоже, им не нравятся требования :^"
+      },
+      pt: {
+        welcome_desc: "Um mural de anúncios para namoro e bate-papo online leve. Gratuito e sem monetização agressiva. :^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "o que nós temos",
+        feature_auth_title: "feed de perfis em vez de swipes",
+        feature_auth_desc: "Você tem um feed de perfis para encontrar parceiros de forma mais eficaz.",
+        feature_media_title: "muitas, muitas tags",
+        feature_media_desc: "Tentamos adicionar tags a praticamente tudo para que você encontre perfis com mais eficiência e controle sua própria busca.",
+        feature_pow_title: "três maneiras de curtir um perfil",
+        feature_pow_desc: "Ao contrário das curtidas normais, nossas solicitações giram em torno do gerenciamento dos contatos um do outro. Você pode: compartilhar, trocar ou exigir. (E deixar uma solicitação sem resposta funciona como uma lista negra nativa.)",
+        feature_handshake_title: "e um pouco de criptografia",
+        feature_handshake_desc: "O registro funciona em um clique, sua conta não está vinculada a e-mail ou telefone, e a senha nunca sai do seu dispositivo.",
+        cta_bottom_title: "e se você estiver pronto...",
+        cta_bottom_desc: "Escolha sua plataforma e seja fofo :^",
+        demo_title: "e é assim que um perfil se parece",
+        demo_decrypt: "descriptografar",
+        demo_restored: "mídia descriptografada com sucesso",
+        demo_bio: "menino python, NÃO sou safado!",
+        demo_contact_locked: "Apenas dados públicos exibidos",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "resolvendo proof of work...",
+        demo_hs_sent: "solicitação enviada",
+        demo_select_contact: "selecione um contato para compartilhar...",
+        demo_send: "enviar",
+        copyright: "&copy; 2026 netlazy. Tentando socializar.",
+        demo_demand_rejected: "parece que eles não gostam de exigências :^"
+      },
+      zh: {
+        welcome_desc: "用於約會和輕鬆線上交流的佈告欄。免費且無侵略性變現。:^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "我們擁有的功能",
+        feature_auth_title: "以個人資料資訊流代替滑動",
+        feature_auth_desc: "您擁有個人資料資訊流，以便更有效地尋找伴侶。",
+        feature_media_title: "非常非常多的標籤",
+        feature_media_desc: "我們嘗試為幾乎所有內容添加標籤，以便您更有效地搜尋個人資料，並自行控制此搜尋。",
+        feature_pow_title: "三種給個人資料點讚的方式",
+        feature_pow_desc: "與一般的點讚不同，我們的請求圍繞著管理彼此的聯絡方式。您可以：分享、交換或要求。（而將請求置之不理則可實現原生的黑名單功能。）",
+        feature_handshake_title: "以及一點點密碼學",
+        feature_handshake_desc: "一鍵註冊，您的帳戶不綁定信箱或電話，密碼永遠不會離開您的裝置。",
+        cta_bottom_title: "如果您準備好了...",
+        cta_bottom_desc: "選擇合適的平台，要可愛一點哦 :^",
+        demo_title: "個人資料的外觀",
+        demo_decrypt: "解密",
+        demo_restored: "媒體成功解密",
+        demo_bio: "寫 Python 的男生，不色色！",
+        demo_contact_locked: "僅顯示公開內容",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "正在求解 proof of work...",
+        demo_hs_sent: "請求已發送",
+        demo_select_contact: "選擇要分享的聯絡方式...",
+        demo_send: "發送",
+        copyright: "&copy; 2026 netlazy。嘗試社交中。",
+        demo_demand_rejected: "看來他們不喜歡強求 :^"
+      },
+      ja: {
+        welcome_desc: "デートや気軽なオンライン交流のための掲示板。無料、かつ強引な収益化なし。:^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "提供している機能",
+        feature_auth_title: "スワイプの代わりにプロフィールフィード",
+        feature_auth_desc: "より効率的にパートナーを探せるよう、プロフィールのフィードを提供しています。",
+        feature_media_title: "たくさんのタグ",
+        feature_media_desc: "ほぼすべてのものにタグを追加するようにしているので、効率的にプロフィールを検索し、自分で検索をコントロールできます。",
+        feature_pow_title: "プロフィールを「いいね」する3つの方法",
+        feature_pow_desc: "通常のいいねとは異なり、私たちのリクエストはお互いの連絡先の管理を中心に回っています。共有、交換、または要求が可能です。（リクエストを放置することで、ネイティブなブラックリスト機能が働きます。）",
+        feature_handshake_title: "그리고 약간의 암호학",
+        feature_handshake_desc: "등록은 원클릭으로 완료되며, 계정은 이메일 주소나 전화번호에 연동되지 않고, 비밀번호가 디바이스 밖으로 나가지 않습니다.",
+        cta_bottom_title: "準備ができたら...",
+        cta_bottom_desc: "お好きなプラットフォームを選んで、可愛くしてね :^",
+        demo_title: "プロフィール画面のイメージ",
+        demo_decrypt: "復号する",
+        demo_restored: "メディアの復号に成功しました",
+        demo_bio: "Python男子です、エッチじゃありません！",
+        demo_contact_locked: "公開情報のみ表示中",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "proof of workを解決中...",
+        demo_hs_sent: "リクエストを送信しました",
+        demo_select_contact: "共有する連絡先を選択してください...",
+        demo_send: "送信する",
+        copyright: "&copy; 2026 netlazy。社会化を試みています。",
+        demo_demand_rejected: "要求されるのはお嫌いなようです :^"
+      },
+      ko: {
+        welcome_desc: "데이팅 및 가벼운 온라인 소통을 위한 게시판. 무료이며 공격적인 수익 창출이 없습니다. :^",
+        download_apk: "android apk",
+        telegram_bot: "telegram miniapp",
+        web_version: "web version",
+        features_title: "제공하는 기능",
+        feature_auth_title: "스와이프 대신 프로필 피드",
+        feature_auth_desc: "더 효율적으로 상대를 찾을 수 있도록 프로필 피드를 제공합니다.",
+        feature_media_title: "엄청나게 많은 태그들",
+        feature_media_desc: "거의 모든 요소에 태그를 추가하여 효율적으로 프로필을 탐색하고, 직접 검색 과정을 제어할 수 있습니다.",
+        feature_pow_title: "프로필을 좋아할 수 있는 세 가지 방법",
+        feature_pow_desc: "일반적인 라이크와 달리, 우리의 요청은 서로의 연락처 관리를 중심으로 작동합니다. 공유, 교환, 또는 요구할 수 있습니다. (요청에 응답하지 않는 것으로 자연스럽게 블랙리스트를 구현할 수 있습니다.)",
+        feature_handshake_title: "그리고 약간의 암호학",
+        feature_handshake_desc: "원클릭으로 가입이 완료되며, 계정은 이메일이나 전화번호와 연동되지 않고 패스워드는 기기를 절대 벗어나지 않습니다.",
+        cta_bottom_title: "시작할 준비가 되셨다면...",
+        cta_bottom_desc: "원하는 플랫폼을 선택하고, 귀여운 행동을 보여주세요 :^",
+        demo_title: "프로필의 실제 모습",
+        demo_decrypt: "복호화",
+        demo_restored: "미디어 복호화 성공",
+        demo_bio: "파이썬 남고생, 음란하지 않음!",
+        demo_contact_locked: "공개 정보만 표시됨",
+        demo_contact_unlocked: "t.me/username",
+        demo_pow_solve: "proof of work 해결 중...",
+        demo_hs_sent: "요청 완료",
+        demo_select_contact: "공유할 연락처를 선택해 주세요...",
+        demo_send: "보내기",
+        copyright: "&copy; 2026 netlazy. 사회화를 시도하는 중.",
+        demo_demand_rejected: "요구하는 건 별로 안 좋아하나 봐요 :^"
+      }
+    };
+
+    let currentLang = 'en';
+    const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
+
+    function cycleLanguage() {
+      document.body.classList.add('is-translating');
+      setTimeout(() => {
+        const currentIdx = langs.indexOf(currentLang);
+        currentLang = langs[(currentIdx + 1) % langs.length];
+        
+        // Update tag indicator
+        document.getElementById('lang-indicator').textContent = currentLang;
+
+        // Perform translation updates via data-t tags
+        document.querySelectorAll('[data-t]').forEach(el => {
+          const key = el.getAttribute('data-t');
+          if (translations[currentLang] && translations[currentLang][key]) {
+            el.innerHTML = translations[currentLang][key];
+          }
+        });
+
+        setTimeout(() => document.body.classList.remove('is-translating'), 50);
+      }, 150);
+    }
+
+    // THEME HANDLING
+    function toggleTheme() {
+      const body = document.body;
+      const themeIcon = document.getElementById('theme-icon');
+      body.classList.toggle('light-theme');
+      
+      if (body.classList.contains('light-theme')) {
+        themeIcon.className = 'bi bi-moon';
+      } else {
+        themeIcon.className = 'bi bi-sun';
+      }
+    }
+
+    // 3D PARALLAX PERSPECTIVE SCROLL MONITOR
+    document.addEventListener("DOMContentLoaded", () => {
+      const revealSections = document.querySelectorAll(".reveal-section");
+
+      const observerOptions = {
+        root: null,
+        threshold: 0.08,
+        rootMargin: "0px 0px -80px 0px"
+      };
+
+      const sectionObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+
+      revealSections.forEach(section => {
+        sectionObserver.observe(section);
+      });
+    });
+
+    // MOCK DECRYPTION SEQUENCES
+    function triggerDecryption(element, originalUrl) {
+      if (element.classList.contains('decrypting') || element.dataset.decrypted === "true") return;
+      
+      element.classList.add('decrypting');
+      
+      const overlay = element.querySelector('.decryption-overlay');
+      overlay.innerHTML = `
+        <div class="decryption-progress">
+          <div class="decryption-progress-bar" id="p-bar"></div>
+        </div>
+        <span data-t="demo_pow_solve">${translations[currentLang].demo_pow_solve}</span>
+      `;
+      
+      const progressBar = overlay.querySelector('#p-bar');
+      let progress = 0;
+      
+      const interval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        
+        if (progress >= 100) {
+          clearInterval(interval);
+          
+          const img = element.querySelector('img');
+          img.src = originalUrl;
+          img.classList.remove('is-blurred', 'cdn-obfuscated');
+          overlay.remove();
+          
+          element.dataset.decrypted = "true";
+          element.classList.remove('decrypting');
+
+          // Highlight local card feedback instead of global toast notification
+          const contactText = document.getElementById('contact-text');
+          contactText.textContent = translations[currentLang].demo_restored;
+          contactText.style.color = 'var(--accent-moss)';
+          setTimeout(() => {
+            contactText.textContent = translations[currentLang].demo_contact_locked;
+            contactText.style.color = '';
+          }, 3000);
+        }
+      }, 100);
+    }
+
+    // DYNAMIC CHIP ROTATIONS
+    function cycleTag(element) {
+      if (element.classList.contains('require')) {
+        element.className = 'chip exclude';
+        element.innerHTML = `${element.textContent.trim()} <i class="bi bi-dash-lg"></i>`;
+      } else if (element.classList.contains('exclude')) {
+        element.className = 'chip';
+        element.innerHTML = `${element.textContent.trim()}`;
+      } else {
+        element.className = 'chip require';
+        element.innerHTML = `${element.textContent.trim()} <i class="bi bi-plus-lg"></i>`;
+      }
+    }
+
+    // CARD INTERACTIONS CONFIGURATION
+    let contactSelected = false;
+    let currentHandshakeType = null;
+
+    function openMockDropdown(type, event) {
+      event.stopPropagation();
+      currentHandshakeType = type;
+      
+      // Reset drop checks
+      contactSelected = false;
+      const icon = document.getElementById('check-icon');
+      icon.className = 'bi bi-square';
+      
+      const sendBtn = document.getElementById('mock-send-btn');
+      sendBtn.setAttribute('disabled', 'true');
+
+      const dropdown = document.getElementById('mock-dropdown');
+      dropdown.style.display = 'block';
+    }
+
+    function selectContactShare() {
+      contactSelected = !contactSelected;
+      const icon = document.getElementById('check-icon');
+      const sendBtn = document.getElementById('mock-send-btn');
+      
+      icon.className = contactSelected ? 'bi bi-check2-square' : 'bi bi-square';
+      if (contactSelected) {
+        sendBtn.removeAttribute('disabled');
+      } else {
+        sendBtn.setAttribute('disabled', 'true');
+      }
+    }
+
+    function confirmExchange() {
+      if (!contactSelected) return;
+      document.getElementById('mock-dropdown').style.display = 'none';
+      executeHandshake(currentHandshakeType);
+    }
+
+    function executeHandshake(type) {
+      const contactText = document.getElementById('contact-text');
+      const contactIcon = document.getElementById('contact-icon');
+      
+      contactIcon.className = "bi contact-icon bi-hourglass-split spin";
+      contactText.textContent = translations[currentLang].demo_pow_solve;
+      
+      setTimeout(() => {
+        if (type === 'share') {
+          // Response details hidden, displays target confirmation message
+          contactIcon.className = "bi contact-icon bi-check2-circle";
+          contactIcon.style.color = "var(--accent-moss)";
+          contactText.style.color = "var(--accent-moss)";
+          contactText.textContent = translations[currentLang].demo_hs_sent;
+        } else if (type === 'exchange') {
+          // Response displays unlocked details
+          contactIcon.className = "bi contact-icon bi-globe";
+          contactIcon.style.color = "var(--accent-moss)";
+          contactText.style.color = "var(--accent-moss)";
+          contactText.textContent = translations[currentLang].demo_contact_unlocked;
+        } else if (type === 'demand') {
+          // Displays rejection parameters
+          contactIcon.className = "bi contact-icon bi-exclamation-circle";
+          contactIcon.style.color = "var(--accent-danger)";
+          contactText.style.color = "var(--accent-danger)";
+          contactText.textContent = translations[currentLang].demo_demand_rejected;
+        }
+
+        setTimeout(() => {
+          contactIcon.className = "bi contact-icon bi-globe";
+          contactIcon.style.color = "";
+          contactText.style.color = "";
+          contactText.textContent = translations[currentLang].demo_contact_locked;
+        }, 4000);
+      }, 1500);
+    }
+
+    // Close Dropdowns on external click
+    document.addEventListener('click', () => {
+      document.getElementById('mock-dropdown').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
