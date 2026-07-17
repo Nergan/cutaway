@@ -87,6 +87,14 @@ async def shutdown_clients():
 def health_check():
     return {"status": "ok", "auth_type": "per-request-signature"}
 
+@router.get("/welcome", response_class=FileResponse)
+@router.get("/welcome/", response_class=FileResponse, include_in_schema=False)
+async def serve_welcome():
+    welcome_file = BASE_DIR / "welcome.html"
+    if welcome_file.exists():
+        return FileResponse(welcome_file)
+    raise HTTPException(status_code=404, detail="Welcome page not found")
+
 # SPA Catch-all handling allowing deep Vue Router links bypassing the internal API bounds
 @router.get("/")
 @router.get("/{full_path:path}", include_in_schema=False)
