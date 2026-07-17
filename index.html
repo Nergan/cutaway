@@ -189,6 +189,7 @@
             height: 100%;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .project-card:hover {
@@ -206,7 +207,7 @@
             justify-content: center;
             background-color: rgba(255, 255, 255, 0.02);
             transition: background-color 0.2s;
-            border-radius: 25%; /* Исправлена точка с запятой */
+            border-radius: 25%;
         }
 
         .project-card:hover .project-icon {
@@ -263,18 +264,56 @@
             color: var(--accent-moss);
         }
 
-        .project-link {
+        /* Кликабельная область всей карточки */
+        .project-link-stretched {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
             text-decoration: none;
             color: inherit;
-            display: block;
-            height: 100%;
+            border-radius: 48px 24px 48px 24px;
         }
 
         /* Стили для фокуса с клавиатуры */
-        .project-link:focus-visible {
+        .project-link-stretched:focus-visible {
             outline: 2px solid var(--accent-moss);
             outline-offset: 4px;
-            border-radius: 48px 24px 48px 24px;
+        }
+
+        /* Контейнер для группировки иконок в углу */
+        .footer-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            pointer-events: none; /* Пропускает клики на stretched-link */
+        }
+
+        /* Иконка "Learn more" на карточке */
+        .learn-more-icon-btn {
+            pointer-events: auto; /* Восстанавливает кликабельность для самой иконки */
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            opacity: 0.4;
+            transition: opacity 0.2s, color 0.2s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            position: relative;
+            z-index: 2; /* Расположена поверх stretched-link */
+        }
+
+        .project-card:hover .learn-more-icon-btn {
+            opacity: 0.7;
+        }
+
+        .learn-more-icon-btn:hover {
+            opacity: 1 !important;
+            color: var(--accent-moss);
+            transform: scale(1.15);
         }
 
         /* OFFLINE PROJECT DIMMING STYLES */
@@ -355,7 +394,8 @@
             .corner-decoration, 
             .badge-category, 
             .project-icon,
-            .visitor-counter {
+            .visitor-counter,
+            .learn-more-icon-btn {
                 transition: none;
             }
             .projects-grid {
@@ -404,7 +444,6 @@
         { i18n: 1, plugin: "evenfest", link: "/evenfest", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/favicon.png" },
         { i18n: 2, plugin: "snake", link: "/snake", icon: "https://psv4.userapi.com/s/v1/d2/AArGNCyJ26rCvrn3VEmn6UZBf2w6S44kTJ8WMu1mTdRB66TIwCw5c6N2Arb6cX6v25ZxfO62p3AMxzPOY2ddNsq1sUHxLNiDanZJg4fBBE1G0R7NhZcwQOG41K1EHW3HvhpYBIwMDtlQ/snack.png" },
         { i18n: 3, plugin: "toadcode", link: "/toadcode", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/toadcode/favicon.png" },
-        { i18n: 4, id: "scriptura", plugin: null, link: "https://t.me/vospricara_bot", icon: "https://psv4.userapi.com/s/v1/d2/e-yj_4w7RQu2LrFqMGJpYp6RFdyKb5rbj8FYW4-y1QCAAetiEA4ajOz7Pwk-cl-B9DODlVQAao_KcYOuhH1qT6zMwC2WL4q-4KcU48AkzQfoHlm_KmSy17_AA3kTsXCOGZ17flvihNvK/rounded-in-photoretrica.png" },
         { i18n: 5, plugin: "formular", link: "/formular", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png" },
         { i18n: 6, plugin: "yellow_mirror", link: "/yellow-mirror", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/yellow-mirror/favicon.png" },
         { i18n: 8, plugin: "dnd", link: "/dnd", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/dnd/menu favicon.png" },
@@ -425,9 +464,6 @@
             project3_title: '<span style="color: lime">toad</span>code',
             project3_desc: 'open workspace',
             project3_category: "dev",
-            project4_title: "vospricara",
-            project4_desc: "dating bot",
-            project4_category: "social",
             project5_title: "formular",
             project5_desc: "any to any",
             project5_category: "doc",
@@ -443,10 +479,10 @@
             project10_title: 'kanban',
             project10_desc: "lite kanban board",
             project10_category: "management",
-            project10_category: "management",
             project11_title: "netlazy",
             project11_desc: "just dating",
-            project11_category: "social"
+            project11_category: "social",
+            learn_more: "Learn more"
         },
         ru: {
             welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
@@ -459,9 +495,6 @@
             project3_title: '<span style="color: lime">toad</span>code',
             project3_desc: 'pastebin на максималках',
             project3_category: "разработка",
-            project4_title: "юйня",
-            project4_desc: "телеграм бот для дэйтинга",
-            project4_category: "social",
             project5_title: "formular",
             project5_desc: "конвертер файлов",
             project5_category: "прикладные задачи",
@@ -479,31 +512,41 @@
             project10_category: "управление",
             project11_title: "netlazy",
             project11_desc: "просто дэйтинг",
-            project11_category: "общение"
+            project11_category: "общение",
+            learn_more: "Подробнее"
         }
     };
 
     function renderProjects() {
         const container = document.getElementById('projects-container');
-        container.innerHTML = projectsConfig.map(p => `
+        container.innerHTML = projectsConfig.map(p => {
+            const hasLearnMore = (p.plugin === "netlazy");
+            return `
             <div class="col" ${p.id ? `data-project="${p.id}"` : ''} ${p.plugin ? `data-plugin="${p.plugin}"` : ''}>
-                <a href="${p.link}" class="project-link">
-                    <div class="project-card">
-                        <div class="project-icon icon-${p.i18n}">
-                            <img src="${p.icon}" alt="icon" class="custom-icon">
-                        </div>
-                        <h5 class="card-title" data-i18n="project${p.i18n}_title"></h5>
-                        <p class="card-text" data-i18n="project${p.i18n}_desc"></p>
-                        <div class="card-footer-links">
-                            <span class="badge-category" data-i18n="project${p.i18n}_category"></span>
+                <div class="project-card">
+                    <a href="${p.link}" class="project-link-stretched"></a>
+                    <div class="project-icon icon-${p.i18n}">
+                        <img src="${p.icon}" alt="icon" class="custom-icon">
+                    </div>
+                    <h5 class="card-title" data-i18n="project${p.i18n}_title"></h5>
+                    <p class="card-text" data-i18n="project${p.i18n}_desc"></p>
+                    <div class="card-footer-links">
+                        <span class="badge-category" data-i18n="project${p.i18n}_category"></span>
+                        <div class="footer-actions">
                             <div class="corner-decoration">
                                 <i class="bi bi-arrow-up-right"></i>
                             </div>
+                            ${hasLearnMore ? `
+                            <a href="/netlazy/welcome" class="learn-more-icon-btn" data-i18n-title="learn_more" title="Learn more">
+                                <i class="bi bi-info-circle"></i>
+                            </a>
+                            ` : ''}
                         </div>
                     </div>
-                </a>
+                </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     async function fetchSystemStatus() {
@@ -532,10 +575,13 @@
             if (translations[lang][key]) el.innerHTML = translations[lang][key];
             else if (translations['en'][key]) el.innerHTML = translations['en'][key];
         });
-        const scripturaCard = document.querySelector('[data-project="scriptura"]');
-        if (scripturaCard) {
-            scripturaCard.style.display = lang === 'ru' ? 'none' : '';
-        }
+
+        // Localize tooltips
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            if (translations[lang][key]) el.setAttribute('title', translations[lang][key]);
+            else if (translations['en'][key]) el.setAttribute('title', translations['en'][key]);
+        });
     }
 
     function detectLanguage() {
