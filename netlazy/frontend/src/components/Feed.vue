@@ -1,10 +1,8 @@
-# 1. netlazy/frontend/src/components/Feed.vue
-
 <template>
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header blurred-header">
       <div style="position: relative; display: flex; align-items: center; width: 100%;">
-        <input type="text" ref="searchInput" class="seamless-input search-header-input" v-model="filterText" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
+        <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
         <transition name="fade">
           <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
         </transition>
@@ -104,8 +102,8 @@
                 <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
               </div>
               <div style="padding: 0.5rem 1rem; text-align: right;">
-                <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.3rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0">
-                  <i class="bi bi-send-fill"></i>
+                <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.3rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="(!profile.selectedContacts || profile.selectedContacts.length === 0) || profile.isSendingReq">
+                  <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
                 </button>
               </div>
             </div>

@@ -11,6 +11,7 @@ const defaultState = {
     isInitialized: false, // Prevents layout pop-in on cold boots
     isRegistered: false,
     isBanned: false,
+    authErrorNotified: false,
     currentView: 'editor',
     theme: 'dark',
     lang: 'en',
@@ -280,6 +281,7 @@ export function useStore() {
     function logout() {
         state.isRegistered = false;
         state.isBanned = false;
+        state.authErrorNotified = false;
         state.userId = null;
         state.privateKeyPem = null;
         state.publicKeyPem = null;

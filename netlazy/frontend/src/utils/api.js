@@ -77,15 +77,24 @@ api.interceptors.request.use(async (config) => {
 
 
 // Global response interceptor to handle auto-logout on cascade ban or key rotation
-api.interceptors.response.use(response => response, error => {
+api.interceptors.response.use(response => {
+    const store = useStore();
+    if (store && store.state.authErrorNotified) {
+        store.state.authErrorNotified = false;
+    }
+    return response;
+}, error => {
     if (error.response && [401, 403].includes(error.response.status)) {
         const store = useStore();
         if (store.state.isRegistered) {
             if (error.response.status === 403) {
                 store.state.isBanned = true;
             } else {
-                store.logout();
-                store.addToast("Session Expired", "bi-exclamation-triangle");
+                if (!store.state.authErrorNotified) {
+                    store.addToast("Authentication Failed. Check your device clock.", "bi-exclamation-triangle");
+                    store.state.authErrorNotified = true;
+                }
+                // Intentionally removed store.logout() to prevent auto-deleting the user's keys on temporary 401s
             }
         }
     }

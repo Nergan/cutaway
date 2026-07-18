@@ -75,7 +75,7 @@
                          {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
                        </span>
                        <transition name="dropdown-fade">
-                         <div class="glass-menu" v-if="req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
+                         <div class="glass-menu" v-if="!isMobile && req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
                            <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
                              <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
                              <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
@@ -334,6 +334,33 @@
         </transition>
       </div>
     </div>
+    
+    <!-- Minimalist Global Sliding Bottom Sheet Overlay for Handshake Contact Selection (Mobile) -->
+    <transition name="sheet-fade">
+      <div class="bottom-sheet-backdrop" v-if="mobileSelectReq" @click="mobileSelectReq = null">
+        <div class="bottom-sheet-box" @click.stop>
+          <div class="bottom-sheet-body">
+            <div class="sheet-contact-row" 
+                 v-for="c in validPrivateContacts" 
+                 :key="c.value" 
+                 :class="{ 'is-selected': mobileSelectReq.selectedContacts && mobileSelectReq.selectedContacts.includes(c.value) }"
+                 @click="toggleReqContact(mobileSelectReq, c.value)">
+              <span class="sheet-contact-val">{{ c.type }}: {{ c.value }}</span>
+            </div>
+            
+            <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
+              {{ store.t('no_valid_private') }}
+            </div>
+          </div>
+          
+          <div class="bottom-sheet-footer">
+            <button class="footer-action icon-btn search-clear-btn" style="position: static; font-size: 1.5rem; text-align: center;" @click="mobileSelectReq = null">
+              <i class="bi bi-check2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -349,6 +376,25 @@ const showReceived = ref(true)
 const showMatches = ref(true)
 const showSent = ref(true)
 const showDeclined = ref(true)
+
+const isMobile = ref(window.innerWidth <= 768)
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 768
+}
+
+const mobileSelectReq = ref(null)
+
+function toggleDropdown(req) {
+  if (isMobile.value) {
+    mobileSelectReq.value = req;
+    closeAllDropdowns();
+  } else {
+    const stateBefore = req.openDropdown
+    closeAllDropdowns()
+    req.openDropdown = !stateBefore
+  }
+}
 
 const validPrivateContacts = computed(() => store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== ''))
 
@@ -404,8 +450,12 @@ onMounted(() => {
     store.fetchInbox()
   }
   document.addEventListener('click', closeAllDropdowns)
+  window.addEventListener('resize', handleResize)
 })
-onUnmounted(() => document.removeEventListener('click', closeAllDropdowns))
+onUnmounted(() => {
+  document.removeEventListener('click', closeAllDropdowns)
+  window.removeEventListener('resize', handleResize)
+})
 
 onActivated(() => {
   if (inboxRoot.value) {
@@ -439,12 +489,6 @@ function handleMediaClick(mediaObj, mediaList) {
   }
 }
 
-function toggleDropdown(req) {
-  const stateBefore = req.openDropdown
-  closeAllDropdowns()
-  req.openDropdown = !stateBefore
-}
-
 function toggleReqContact(req, val) {
   if (!req.selectedContacts) req.selectedContacts = [];
   const idx = req.selectedContacts.indexOf(val);
@@ -459,6 +503,9 @@ function closeAllDropdowns() {
 async function resolveRequest(req, status) {
   req.resolving = true
   req.openDropdown = false
+  if (mobileSelectReq.value === req) {
+      mobileSelectReq.value = null;
+  }
   
   try {
     const payload = {

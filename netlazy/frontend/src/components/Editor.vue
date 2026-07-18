@@ -4,7 +4,7 @@
       <div class="tag-library-header blurred-header" style="position: sticky; top: 0; z-index: 10;">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
-          <input type="text" class="seamless-input search-header-input" v-model="store.state.tagSearchQuery" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
+          <input type="text" class="seamless-input search-header-input" :value="store.state.tagSearchQuery" @input="store.state.tagSearchQuery = $event.target.value" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
           <transition name="fade">
             <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
           </transition>
