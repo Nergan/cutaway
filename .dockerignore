@@ -28,3 +28,31 @@ plan.md
 
 repomix.config.json
 code.md
+
+# Logs
+**/*.log
+
+# Capacitor & Native Mobile Platforms
+**/android
+**/ios
+
+# Mobile Build Outputs & Local Gradle Caches
+**/*.apk
+**/*.aab
+**/*.ipa
+**/.gradle
+**/build
+
+# Security Keys & Local Configurations
+**/*.keystore
+**/*.jks
+**/local.properties
+
+# IDE Caches & Project Files
+**/.idea
+**/*.iml
+
+# Windows build commands & potentially local assets
+**/netlazy/build.cmd
+**/assets
+**/netlazy/assets
