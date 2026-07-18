@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>nwelcome to  netlazy</title>
+  <title>welcome to netlazy</title>
   
   <!-- Font and Icon Dependencies -->
   <link rel="icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/favicon.png">
@@ -12,6 +12,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
+  <script>
+    // Immediate Theme Detection to Prevent Dark/Light Flashing on Load
+    (function() {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme === 'light' || (!storedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.classList.add('light-theme-applied');
+      }
+    })();
+  </script>
+
   <style>
     /* CUSTOM NETLAZY DESIGN SYSTEM */
     :root {
@@ -19,7 +29,7 @@
       --bg-surface: #0a0a0a;
       --bg-elevated: #141414;
       --border-subtle: #222222;
-      --border-focus: #555555;
+      --border-focus: #444444;
       
       --text-main: #ffffff;
       --text-muted: #a3a3a3;
@@ -35,9 +45,10 @@
       --radius-md: 16px;
       --radius-pill: 50px;
 
-      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
-      --glow-accent: 0 0 15px rgba(141, 169, 112, 0.15);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.6);
+      --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.8);
+      --glow-accent: 0 0 20px rgba(141, 169, 112, 0.12);
+      --profile-glow: rgba(141, 169, 112, 0.15);
     }
 
     body.light-theme {
@@ -53,15 +64,16 @@
       --accent-info: #4a7787;
       --accent-earth: #9c855a;
 
-      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 8px 24px rgba(156, 133, 90, 0.08);
-      --glow-accent: 0 0 15px rgba(104, 133, 76, 0.1);
+      --shadow-sm: 0 4px 12px rgba(156, 133, 90, 0.04);
+      --shadow-md: 0 16px 40px rgba(156, 133, 90, 0.12);
+      --glow-accent: 0 0 20px rgba(104, 133, 76, 0.08);
+      --profile-glow: rgba(104, 133, 76, 0.15);
     }
 
     /* CUSTOM SCROLLBAR & SELECTION */
     ::-webkit-scrollbar { 
-      width: 5px; 
-      height: 5px; 
+      width: 6px; 
+      height: 6px; 
     }
     ::-webkit-scrollbar-track { 
       background: transparent; 
@@ -76,7 +88,7 @@
 
     ::selection { 
       background: var(--border-focus); 
-      color: #fff; 
+      color: var(--text-main); 
     }
 
     /* STRUCTURE */
@@ -90,9 +102,9 @@
     body {
       background: var(--bg-base);
       color: var(--text-main);
-      line-height: 1.6;
+      line-height: 1.65;
       overflow-x: hidden;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     body.is-translating {
@@ -117,39 +129,47 @@
 
     .bg-glow {
       position: absolute;
-      width: 450px;
-      height: 450px;
-      background: radial-gradient(circle, rgba(141,169,112,0.06) 0%, rgba(0,0,0,0) 70%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(141,169,112,0.08) 0%, rgba(0,0,0,0) 70%);
       border-radius: 50%;
-      filter: blur(40px);
-      animation: floatGlow 14s infinite alternate ease-in-out;
+      filter: blur(50px);
+      animation: floatGlow 16s infinite alternate ease-in-out;
+    }
+
+    body.light-theme .bg-glow {
+      background: radial-gradient(circle, rgba(104, 133, 76, 0.06) 0%, rgba(0,0,0,0) 70%);
     }
 
     .bg-glow-2 {
       position: absolute;
       right: 10%;
-      top: 40%;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(110,157,174,0.04) 0%, rgba(0,0,0,0) 70%);
+      top: 35%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(110,157,174,0.06) 0%, rgba(0,0,0,0) 70%);
       border-radius: 50%;
-      filter: blur(45px);
-      animation: floatGlow 18s infinite alternate-reverse ease-in-out;
+      filter: blur(60px);
+      animation: floatGlow 22s infinite alternate-reverse ease-in-out;
+    }
+
+    body.light-theme .bg-glow-2 {
+      background: radial-gradient(circle, rgba(74, 119, 135, 0.04) 0%, rgba(0,0,0,0) 70%);
     }
 
     @keyframes floatGlow {
       0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(80px, 60px) scale(1.1); }
+      100% { transform: translate(100px, 80px) scale(1.15); }
     }
 
-    /* MINIATURIZED TOP HEADER */
+    /* NAVIGATION HEADER */
     .top-nav {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       z-index: 1000;
-      padding: 0.5rem 1.2rem;
+      padding: 0.75rem 2rem;
       background: transparent;
       display: flex;
       justify-content: space-between;
@@ -161,24 +181,25 @@
       position: absolute;
       inset: 0;
       z-index: -1;
-      background: rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-subtle);
       pointer-events: none;
+      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     body.light-theme .top-nav::before {
-      background: rgba(254, 252, 245, 0.35);
+      background: rgba(254, 252, 245, 0.5);
     }
 
     .brand {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       font-weight: 700;
       color: var(--text-main);
       cursor: pointer;
       text-shadow: var(--glow-accent);
-      transition: color 0.2s;
+      transition: color 0.3s;
     }
 
     .brand:hover {
@@ -188,37 +209,37 @@
     .nav-buttons {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.75rem;
     }
 
-    /* REBALANCED BUTTONS (EQUAL VISUAL WEIGHT) */
+    /* COMPREHENSIVELY REBALANCED BUTTONS */
     .btn {
-      font-size: 0.75rem;
-      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      padding: 0.6rem 1.2rem;
       border-radius: var(--radius-pill);
       border: 1px solid var(--border-subtle);
       background: var(--bg-surface);
       color: var(--text-main);
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
       cursor: pointer;
       font-weight: 500;
-      transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
-                  transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
-                  border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-                  box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                  border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .btn:hover {
-      transform: scale(1.02);
+      transform: translateY(-2px);
       border-color: var(--border-focus);
       background: var(--bg-elevated);
       box-shadow: var(--shadow-sm);
     }
 
     .btn:active {
-      transform: scale(0.98);
+      transform: translateY(0);
     }
 
     .btn[disabled] {
@@ -228,6 +249,7 @@
       border-color: var(--border-subtle);
     }
 
+    /* RESTORED ORIGINAL STYLES FOR THEME AND LANGUAGE BUTTONS */
     .theme-toggle, .lang-toggle {
       background: none;
       border: none;
@@ -255,23 +277,24 @@
 
     /* HERO STAGE */
     .hero {
-      min-height: 85vh;
+      min-height: 80vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 7rem 1.5rem 2rem 1.5rem;
+      padding: 8rem 1.5rem 3rem 1.5rem;
       text-align: center;
       position: relative;
     }
 
     .hero-title {
-      font-size: 2.8rem;
+      font-size: 3.2rem;
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
       text-shadow: var(--glow-accent);
       text-transform: lowercase;
+      letter-spacing: -0.5px;
     }
 
     .hero-title .green-highlight {
@@ -279,10 +302,10 @@
     }
 
     .hero-desc {
-      font-size: 1rem;
+      font-size: 1.05rem;
       color: var(--text-muted);
-      max-width: 580px;
-      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-bottom: 2.5rem;
     }
 
     /* EQUALLY PROMINENT HERO ACTION GRID */
@@ -292,14 +315,14 @@
       flex-wrap: wrap;
       gap: 1rem;
       width: 100%;
-      max-width: 650px;
+      max-width: 700px;
     }
 
     .cta-container .btn {
-      padding: 0.8rem 1.6rem;
-      font-size: 0.85rem;
+      padding: 0.9rem 1.8rem;
+      font-size: 0.88rem;
       flex: 1;
-      min-width: 180px;
+      min-width: 200px;
       justify-content: center;
     }
 
@@ -313,14 +336,14 @@
 
     .reveal-section {
       opacity: 0;
-      transform: perspective(1200px) rotateX(20deg) rotateY(-8deg) translateY(70px) scale(0.92);
-      filter: blur(8px);
-      transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-                  filter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: perspective(1200px) rotateX(15deg) rotateY(-4deg) translateY(60px) scale(0.95);
+      filter: blur(10px);
+      transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 1s cubic-bezier(0.16, 1, 0.3, 1);
       transform-origin: center top;
       will-change: transform, opacity, filter;
-      margin-bottom: 6rem;
+      margin-bottom: 7rem;
     }
 
     .reveal-section.revealed {
@@ -332,202 +355,170 @@
     /* SECTION DESIGNS */
     .section-title {
       text-align: center;
-      font-size: 1.5rem;
-      margin-bottom: 2rem;
+      font-size: 1.65rem;
+      margin-bottom: 2.5rem;
       color: var(--text-main);
       text-transform: lowercase;
+      letter-spacing: -0.3px;
     }
 
     .app-demo-container {
       display: flex;
       justify-content: center;
-    }
-
-    /* Card interface matching core parameters */
-    .card { 
-      display: flex; 
-      flex-direction: column; 
-      width: 100%; 
-      max-width: 320px;
-      box-sizing: border-box;
-      background: var(--bg-surface); 
-      border: 1px solid var(--border-subtle); 
-      border-radius: var(--radius-md); 
-      padding: 1rem; 
-      gap: 0.8rem; 
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease; 
-      box-shadow: var(--shadow-sm); 
-      position: relative;
-    }
-
-    .card:hover { 
-      transform: translateY(-4px) scale(1.01); 
-      box-shadow: var(--shadow-md); 
-    }
-
-    .telegram-grid { 
-      display: grid; 
-      grid-template-columns: repeat(2, 1fr); 
-      grid-auto-rows: 100px; 
-      gap: 4px; 
-      margin-bottom: 0.5rem; 
-    }
-
-    .media-thumb { 
-      border-radius: var(--radius-sm); 
-      background-size: cover; 
-      background-position: center; 
-      background-color: var(--bg-elevated); 
-      position: relative; 
-      cursor: pointer; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      overflow: hidden; 
-      border: 2px solid transparent; 
-    }
-
-    .media-thumb img {
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%;
-      object-fit: cover; 
-      pointer-events: none;
-      transition: filter 0.5s ease, transform 0.5s ease;
-    }
-
-    .is-blurred { 
-      filter: blur(20px); 
-    }
-
-    .cdn-obfuscated { 
-      transform: scale(-1, -1); 
-      filter: hue-rotate(-180deg) invert(1) url(#channel-restore); 
-    }
-
-    .cdn-obfuscated.is-blurred { 
-      transform: scale(-1, -1); 
-      filter: hue-rotate(-180deg) invert(1) url(#channel-restore) blur(20px); 
-    }
-
-    /* Decryption Overlays */
-    .decryption-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
-      font-size: 0.65rem;
-      color: #fff;
-      gap: 0.3rem;
-    }
-
-    .decryption-progress {
-      width: 70%;
-      height: 4px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 2px;
+      width: 100%;
       overflow: hidden;
     }
 
-    .decryption-progress-bar {
-      height: 100%;
-      background: var(--accent-moss);
-      width: 0%;
-      transition: width 0.1s linear;
-    }
-
-    /* Tag layout styles */
-    .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; position: relative; }
-    .chip { 
-      font-size: 0.75rem; 
-      padding: 0.25rem 0.7rem; 
-      border-radius: var(--radius-pill); 
-      cursor: pointer; 
-      user-select: none; 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 0.3rem; 
-      border: 1px solid var(--border-subtle); 
-      background: var(--bg-elevated); 
-      color: var(--text-muted); 
-      transition: background-color 0.15s, transform 0.15s, color 0.15s;
-    }
-    .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
-    .chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
-    .chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
-
-    /* Contacts UI layout - now with a globe icon */
-    .contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; font-size: 0.85rem; border-top: 1px solid var(--border-subtle); margin-top: auto; transition: opacity 0.3s, color 0.3s; }
-    .contact-icon { color: var(--text-muted); width: 16px; text-align: center; }
-    .contact-val { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); transition: color 0.3s; }
-
-    /* Action buttons footer inside card */
-    .card-footer {
-      display: flex;
-      justify-content: space-around;
+    /* CLEAN CONTAINER WITH NO BACKGROUND OR BORDER WRAPPING THE IMAGE */
+    .profile-preview-outer {
+      position: relative;
       width: 100%;
-      align-items: center;
-      border-top: 1px solid var(--border-subtle);
-      padding-top: 0.5rem;
-    }
-
-    .footer-action {
-      background: none;
+      max-width: 853px;
+      height: 352px; /* Re-locked exactly to 352px */
+      background: transparent;
       border: none;
-      color: var(--text-muted);
-      font-size: 1rem;
-      cursor: pointer;
+      box-shadow: none;
+      overflow: hidden;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      transition: color 0.2s, transform 0.2s;
+      justify-content: center;
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: transform 0.1s ease-out; /* Pure responsive tilt */
     }
 
-    .footer-action:hover {
-      color: var(--text-main);
-      transform: scale(1.15);
+    /* NESTED LAYER TO HANDLE SCROLLING ON PHONE SCREENS */
+    .profile-preview-container {
+      width: 100%;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: block;
+      -webkit-overflow-scrolling: touch;
+
+      /* Hide scrollbars but preserve scrolling functionality */
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
-    /* MOCK TELEGRAM PREVIEW DROPDOWN */
-    .mock-dropdown {
-      position: absolute;
-      bottom: 2.8rem;
-      right: 1rem;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: var(--radius-sm);
-      z-index: 99;
-      width: 250px;
-      padding: 0.5rem 0;
-      box-shadow: var(--shadow-md);
+    .profile-preview-container::-webkit-scrollbar {
       display: none;
     }
 
-    .mock-option {
-      padding: 0.4rem 1rem;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: var(--text-main);
-      display: flex;
-      justify-content: space-between;
+    /* Strict wrapper strictly locked at 853x352 with clean rounding and hover shadow directly on the asset */
+    .profile-scroll-wrapper {
+      position: relative;
+      width: 853px;
+      height: 352px;
+      display: block;
+      flex-shrink: 0;
+      border-radius: var(--radius-md); /* Direct rounded corners on image canvas */
+      overflow: hidden;
+      transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Soft natural ambient shadow directly on the floating canvas */
+    .profile-preview-outer:hover .profile-scroll-wrapper {
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    body.light-theme .profile-preview-outer:hover .profile-scroll-wrapper {
+      box-shadow: 0 16px 40px rgba(156, 133, 90, 0.18);
+    }
+
+    /* Double Layer Profile Image Layout (Crossfading) */
+    .profile-img-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* Assures full horizontal graphic is displayed beautifully */
+      border-radius: inherit; /* Direct nested alignment prevents corner bleed */
+      pointer-events: none;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+    }
+
+    /* Smooth Image Fade & Active Theme Assignment */
+    body.light-theme .profile-img-layer.light-img {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    body.light-theme .profile-img-layer.dark-img {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+
+    body:not(.light-theme) .profile-img-layer.dark-img {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    body:not(.light-theme) .profile-img-layer.light-img {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+
+    /* Faders blend perfectly with page background to handle boundaries cleanly */
+    .scroll-fade-left {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+      background: linear-gradient(to right, var(--bg-base), transparent);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .scroll-fade-right {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 40px;
+      background: linear-gradient(to left, var(--bg-base), transparent);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .swipe-hint {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.72rem;
+      gap: 0.5rem;
       align-items: center;
-      transition: background 0.2s;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      animation: pulseHint 2s infinite ease-in-out;
     }
 
-    .mock-option:hover {
-      background: var(--bg-elevated);
-      color: var(--accent-moss);
+    body.light-theme .swipe-hint {
+      background: rgba(254, 252, 245, 0.95);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
     }
 
-    /* OPTIMIZED DESCRIPTION BLOCK */
+    @keyframes pulseHint {
+      0%, 100% { opacity: 0.8; transform: translate(-50%, 0); }
+      50% { opacity: 1; transform: translate(-50%, -4px); }
+    }
+
+    /* OPTIMIZED PILLARS GRID */
     .pillars-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -538,31 +529,34 @@
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      padding: 2rem;
-      transition: border-color 0.2s;
+      padding: 2.25rem 2rem;
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
     }
 
     .pillar-card:hover {
       border-color: var(--border-focus);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-sm);
     }
 
     .pillar-icon {
-      font-size: 2rem;
+      font-size: 2.2rem;
       color: var(--accent-moss);
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      display: inline-block;
     }
 
     .pillar-title {
-      font-size: 1.15rem;
+      font-size: 1.2rem;
       font-weight: 700;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
       color: var(--text-main);
     }
 
     .pillar-desc {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     /* REITERATIVE BOTTOM INTERFACES */
@@ -572,8 +566,8 @@
 
     .bottom-cta-desc {
       color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-bottom: 2rem;
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
     }
 
     .bottom-nav-buttons {
@@ -584,42 +578,52 @@
     }
 
     .bottom-nav-buttons .btn {
-      padding: 0.8rem 1.6rem;
-      font-size: 0.85rem;
-      min-width: 180px;
+      padding: 0.9rem 1.8rem;
+      font-size: 0.88rem;
+      min-width: 200px;
       justify-content: center;
     }
 
     .footer {
       border-top: 1px solid var(--border-subtle);
-      padding: 2rem 0;
+      padding: 2.5rem 0;
       text-align: center;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
+      transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .spin { animation: spin 1s linear infinite; display: inline-block; }
-
     /* RESPONSIVE SCALING */
+    @media (max-width: 853px) {
+      .scroll-fade-left, .scroll-fade-right {
+        display: block;
+      }
+      .swipe-hint {
+        display: inline-flex;
+      }
+    }
+
     @media (max-width: 768px) {
       .top-nav {
-        padding: 0.4rem 0.8rem;
+        padding: 0.6rem 1rem;
       }
       .nav-buttons {
-        gap: 0.4rem;
+        gap: 0.5rem;
       }
       .top-nav .btn span {
-        display: none; /* Icon-only top bar navigation on mobile */
+        display: none; /* Icon-only navigation on mobile top bar */
       }
       .top-nav .btn {
-        padding: 0.5rem;
+        padding: 0.6rem;
+      }
+      .hero {
+        padding-top: 7rem;
       }
       .hero-title {
-        font-size: 2rem;
+        font-size: 2.2rem;
       }
       .hero-desc {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
       }
       .cta-container {
         flex-direction: column;
@@ -647,7 +651,7 @@
   <header class="top-nav">
     <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">netlazy</div>
     <div class="nav-buttons">
-      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/netlazy-0.0.1.apk" class="btn" title="Download Android App">
+      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.2.apk" class="btn" title="Download Android App">
         <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
       </a>
       <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer" title="Continue in Telegram">
@@ -687,79 +691,42 @@
   <!-- SCROLLABLE STAGE CONTAINER -->
   <main class="container">
 
-    <!-- INTERACTIVE PROFILE CARD -->
+    <!-- INTERACTIVE PROFILE CARD REDESIGN -->
     <section class="reveal-section">
       <h2 class="section-title" data-t="demo_title">and this is what a profile looks like</h2>
       <div class="app-demo-container">
-        <div class="card" id="interactive-card">
+        
+        <!-- Outer Container: Performs static 3D Lift & Subpixel Rounded Corner Masking -->
+        <div class="profile-preview-outer" id="profile-card">
+          <div class="scroll-fade-left"></div>
           
-          <!-- Mock Obfuscation / Media grid decrypter -->
-          <div class="telegram-grid">
-            <div class="media-thumb" onclick="triggerDecryption(this, 'https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-1.webp?w=300')">
-              <img class="is-blurred cdn-obfuscated" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-1.webp?w=10&blur=5" alt="Decryption demo">
-              <div class="decryption-overlay">
-                <i class="bi bi-lock-fill"></i>
-                <span data-t="demo_decrypt">decrypt</span>
-              </div>
-            </div>
-            <div class="media-thumb" onclick="triggerDecryption(this, 'https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-2.webp?w=300')">
-              <img class="is-blurred cdn-obfuscated" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/example-ava-2.webp?w=10&blur=5" alt="Decryption demo">
-              <div class="decryption-overlay">
-                <i class="bi bi-lock-fill"></i>
-                <span data-t="demo_decrypt">decrypt</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tag chips system -->
-          <div class="chip-group">
-            <span class="chip require" onclick="cycleTag(this)">
-              online <i class="bi bi-plus-lg"></i>
-            </span>
-            <span class="chip" onclick="cycleTag(this)">
-              music
-            </span>
-            <span class="chip exclude" onclick="cycleTag(this)">
-              smoker <i class="bi bi-dash-lg"></i>
-            </span>
-          </div>
-
-          <!-- Mock Bio -->
-          <div style="font-size: 0.85rem;" data-t="demo_bio">python boy, NOT dirty!</div>
-
-          <!-- Globe icon contact row -->
-          <div class="contact-row" id="contact-view">
-            <i class="bi contact-icon bi-globe" id="contact-icon"></i>
-            <span class="contact-val" id="contact-text" data-t="demo_contact_locked">Only public details shown</span>
-          </div>
-
-          <!-- Action buttons inside mock card -->
-          <div class="card-footer">
-            <button class="footer-action" style="color: var(--accent-info);" onclick="openMockDropdown('share', event)" title="Share">
-              <i class="bi bi-box-arrow-up"></i>
-            </button>
-            <button class="footer-action" style="color: var(--accent-moss);" onclick="openMockDropdown('exchange', event)" title="Exchange">
-              <i class="bi bi-arrow-left-right"></i>
-            </button>
-            <button class="footer-action" style="color: var(--accent-danger);" onclick="executeHandshake('demand')" title="Demand">
-              <i class="bi bi-box-arrow-in-down"></i>
-            </button>
-          </div>
-
-          <!-- Contact validation dropdown overlay -->
-          <div class="mock-dropdown" id="mock-dropdown" onclick="event.stopPropagation()">
-            <div class="mock-option" onclick="selectContactShare()">
-              <span data-t="demo_select_contact">select a contact to share...</span>
-              <i class="bi bi-square" id="check-icon"></i>
-            </div>
-            <div style="padding: 0.5rem 1rem; text-align: right;">
-              <button class="btn" id="mock-send-btn" onclick="confirmExchange()" style="padding: 0.3rem 0.8rem; font-size: 0.75rem;" disabled data-t="demo_send">
-                send
-              </button>
+          <!-- Inner Container: Controls swiping mechanics on narrow mobile layouts -->
+          <div class="profile-preview-container" id="profile-scroll-container">
+            <div class="profile-scroll-wrapper">
+              <img 
+                class="profile-img-layer dark-img" 
+                src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/dark.png" 
+                alt="netlazy dark theme profile example"
+                loading="lazy"
+              >
+              <img 
+                class="profile-img-layer light-img" 
+                src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/light.png" 
+                alt="netlazy light theme profile example"
+                loading="lazy"
+              >
             </div>
           </div>
-
+          
+          <div class="scroll-fade-right"></div>
+          
+          <!-- UI Swipe Indicator (Only visible on scrollable viewports) -->
+          <div class="swipe-hint" id="swipe-indicator">
+            <i class="bi bi-arrow-left-right"></i>
+            <span data-t="swipe_hint">swipe to view profiles</span>
+          </div>
         </div>
+
       </div>
     </section>
 
@@ -840,17 +807,8 @@
         cta_bottom_title: "and if you are ready...",
         cta_bottom_desc: "Choose your platform, and be cute :^",
         demo_title: "and this is what a profile looks like",
-        demo_decrypt: "decrypt",
-        demo_restored: "media successfully decrypted",
-        demo_bio: "python boy, NOT dirty!",
-        demo_contact_locked: "Only public details shown",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "solving proof of work...",
-        demo_hs_sent: "request sent",
-        demo_select_contact: "select a contact to share...",
-        demo_send: "send",
-        copyright: "&copy; 2026 netlazy. Attempting socialisation.",
-        demo_demand_rejected: "looks like they don't like demands :^"
+        swipe_hint: "swipe to view profiles",
+        copyright: "&copy; 2026 netlazy. Attempting socialisation."
       },
       ru: {
         welcome_desc: "Доска объявлений для дэйтинга, и просто лёгкого онлайн общения. Бесплатно, и без агрессивной монетизации. :^",
@@ -863,23 +821,14 @@
         feature_media_title: "много-много тегов",
         feature_media_desc: "Мы стараемся добавлять теги практически на всё, чтобы Вы могли эффетивнее искать анкеты, и сами конктроллировать этот поиск.",
         feature_pow_title: "три способа лайкнуть анкету",
-        feature_pow_desc: "В отличии от обычных лайков, у нас запросы крутятся вокруг управления контактами друг-друга. И Вы можете ими: поделиться, обменяться, или затребовать. (А оставив запрос без ответа, вы реализуете нативный чёрный список.)",
+        feature_pow_desc: "В отличии от обычных лайков, у нас запросы крутятся вокруг управления контактами друг-другa. И Вы можете ими: поделиться, обменяться, или затребовать. (А оставив запрос без ответа, вы реализуете нативный чёрный список.)",
         feature_handshake_title: "и немножко криптографии",
         feature_handshake_desc: "Регистрация работает в один клик, и Ваш аккаунт не привязан ни к почте, ни к телефону, а пароль никогда не покидает Ваше устройство.",
         cta_bottom_title: "и если Вы готовы..",
         cta_bottom_desc: "Выберите удобную платформу, и будьте хорошими :^",
         demo_title: "а так выглядит анкета",
-        demo_decrypt: "декодировать",
-        demo_restored: "медиа успешно декодировано",
-        demo_bio: "Мальчик питонист, НЕ пошлый!",
-        demo_contact_locked: "Показано только публичное",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "решение proof of work...",
-        demo_hs_sent: "запрос отправлен",
-        demo_select_contact: "выберите контакт для обмена...",
-        demo_send: "отправить",
-        copyright: "&copy; 2026 netlazy. Пытаемся в социализацию.",
-        demo_demand_rejected: "похоже, им не нравятся требования :^"
+        swipe_hint: "пролистайте, чтобы увидеть анкеты",
+        copyright: "&copy; 2026 netlazy. Пытаемся в социализацию."
       },
       pt: {
         welcome_desc: "Um mural de anúncios para namoro e bate-papo online leve. Gratuito e sem monetização agressiva. :^",
@@ -898,17 +847,8 @@
         cta_bottom_title: "e se você estiver pronto...",
         cta_bottom_desc: "Escolha sua plataforma e seja fofo :^",
         demo_title: "e é assim que um perfil se parece",
-        demo_decrypt: "descriptografar",
-        demo_restored: "mídia descriptografada com sucesso",
-        demo_bio: "menino python, NÃO sou safado!",
-        demo_contact_locked: "Apenas dados públicos exibidos",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "resolvendo proof of work...",
-        demo_hs_sent: "solicitação enviada",
-        demo_select_contact: "selecione um contato para compartilhar...",
-        demo_send: "enviar",
-        copyright: "&copy; 2026 netlazy. Tentando socializar.",
-        demo_demand_rejected: "parece que eles não gostam de exigências :^"
+        swipe_hint: "deslize para ver os perfis",
+        copyright: "&copy; 2026 netlazy. Tentando socializar."
       },
       zh: {
         welcome_desc: "用於約會和輕鬆線上交流的佈告欄。免費且無侵略性變現。:^",
@@ -927,17 +867,8 @@
         cta_bottom_title: "如果您準備好了...",
         cta_bottom_desc: "選擇合適的平台，要可愛一點哦 :^",
         demo_title: "個人資料的外觀",
-        demo_decrypt: "解密",
-        demo_restored: "媒體成功解密",
-        demo_bio: "寫 Python 的男生，不色色！",
-        demo_contact_locked: "僅顯示公開內容",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "正在求解 proof of work...",
-        demo_hs_sent: "請求已發送",
-        demo_select_contact: "選擇要分享的聯絡方式...",
-        demo_send: "發送",
-        copyright: "&copy; 2026 netlazy。嘗試社交中。",
-        demo_demand_rejected: "看來他們不喜歡強求 :^"
+        swipe_hint: "左右滑動查看個人資料",
+        copyright: "&copy; 2026 netlazy。嘗試社交中。"
       },
       ja: {
         welcome_desc: "デートや気軽なオンライン交流のための掲示板。無料、かつ強引な収益化なし。:^",
@@ -952,21 +883,12 @@
         feature_pow_title: "プロフィールを「いいね」する3つの方法",
         feature_pow_desc: "通常のいいねとは異なり、私たちのリクエストはお互いの連絡先の管理を中心に回っています。共有、交換、または要求が可能です。（リクエストを放置することで、ネイティブなブラックリスト機能が働きます。）",
         feature_handshake_title: "그리고 약간의 암호학",
-        feature_handshake_desc: "등록은 원클릭으로 완료되며, 계정은 이메일 주소나 전화번호에 연동되지 않고, 비밀번호가 디바이스 밖으로 나가지 않습니다.",
+        feature_handshake_desc: "등록은 원클릭으로 완료되며, 계정은 이메일 주소나 전화번호에 연동되지 않고、비밀번호가 디바이스 외로 나가지 않습니다.",
         cta_bottom_title: "準備ができたら...",
         cta_bottom_desc: "お好きなプラットフォームを選んで、可愛くしてね :^",
-        demo_title: "プロフィール画面のイメージ",
-        demo_decrypt: "復号する",
-        demo_restored: "メディアの復号に成功しました",
-        demo_bio: "Python男子です、エッチじゃありません！",
-        demo_contact_locked: "公開情報のみ表示中",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "proof of workを解決中...",
-        demo_hs_sent: "リクエストを送信しました",
-        demo_select_contact: "共有する連絡先を選択してください...",
-        demo_send: "送信する",
-        copyright: "&copy; 2026 netlazy。社会化を試みています。",
-        demo_demand_rejected: "要求されるのはお嫌いなようです :^"
+        demo_title: "プロフィール画面의 이미지",
+        swipe_hint: "スワイプしてプロフィールを表示",
+        copyright: "&copy; 2026 netlazy。社会化を試みています。"
       },
       ko: {
         welcome_desc: "데이팅 및 가벼운 온라인 소통을 위한 게시판. 무료이며 공격적인 수익 창출이 없습니다. :^",
@@ -985,17 +907,8 @@
         cta_bottom_title: "시작할 준비가 되셨다면...",
         cta_bottom_desc: "원하는 플랫폼을 선택하고, 귀여운 행동을 보여주세요 :^",
         demo_title: "프로필의 실제 모습",
-        demo_decrypt: "복호화",
-        demo_restored: "미디어 복호화 성공",
-        demo_bio: "파이썬 남고생, 음란하지 않음!",
-        demo_contact_locked: "공개 정보만 표시됨",
-        demo_contact_unlocked: "t.me/username",
-        demo_pow_solve: "proof of work 해결 중...",
-        demo_hs_sent: "요청 완료",
-        demo_select_contact: "공유할 연락처를 선택해 주세요...",
-        demo_send: "보내기",
-        copyright: "&copy; 2026 netlazy. 사회화를 시도하는 중.",
-        demo_demand_rejected: "요구하는 건 별로 안 좋아하나 봐요 :^"
+        swipe_hint: "스와이프하여 프로필 보기",
+        copyright: "&copy; 2026 netlazy. 사회화를 시도하는 중."
       }
     };
 
@@ -1020,7 +933,7 @@
         }
         
         // Romance languages mapping to Portuguese fallback (closest relative)
-        const ptGroup = ['pt', 'es', 'it', 'fr', 'gl', 'ca', 'ro'];
+        const ptGroup = ['pt', 'es', 'it', 'fr', 'gl', 'ca', 'row'];
         if (ptGroup.includes(langCode)) {
           return 'pt';
         }
@@ -1034,7 +947,7 @@
       return 'en'; // Global fallback
     }
 
-    // Appling translations globally
+    // Applying translations globally
     function setLanguage(lang) {
       if (!langs.includes(lang)) lang = 'en';
       currentLang = lang;
@@ -1064,17 +977,90 @@
       }, 150);
     }
 
-    // THEME HANDLING
+    // AUTOMATIC DETECT AND SET CURRENT THEME
+    function initializeTheme() {
+      const body = document.body;
+      const themeIcon = document.getElementById('theme-icon');
+      const storedTheme = localStorage.getItem('theme');
+      
+      let useLightTheme = false;
+      
+      if (storedTheme === 'light') {
+        useLightTheme = true;
+      } else if (storedTheme === 'dark') {
+        useLightTheme = false;
+      } else {
+        // Fallback to system preferences. If undetermined, defaults to dark (false).
+        useLightTheme = window.matchMedia('(prefers-color-scheme: light)').matches;
+      }
+
+      // Apply initial styling parameters
+      if (useLightTheme) {
+        body.classList.add('light-theme');
+        if (themeIcon) themeIcon.className = 'bi bi-moon';
+      } else {
+        body.classList.remove('light-theme');
+        if (themeIcon) themeIcon.className = 'bi bi-sun';
+      }
+    }
+
+    // THEME SELECTION TOGGLE OVERRIDE
     function toggleTheme() {
       const body = document.body;
       const themeIcon = document.getElementById('theme-icon');
+      
       body.classList.toggle('light-theme');
       
       if (body.classList.contains('light-theme')) {
         themeIcon.className = 'bi bi-moon';
+        localStorage.setItem('theme', 'light');
       } else {
         themeIcon.className = 'bi bi-sun';
+        localStorage.setItem('theme', 'dark');
       }
+    }
+
+    // INTERACTIVE MOUSE PERSPECTIVE (3D CARD TILT EFFECT)
+    function setupCard3DPerspective() {
+      const card = document.getElementById('profile-card');
+      const scrollContainer = document.getElementById('profile-scroll-container');
+      if (!card || !scrollContainer) return;
+
+      // Handle desktop hover tilt
+      card.addEventListener('mousemove', (e) => {
+        // Disable tilt calculation when swiping on narrow scrollable viewports
+        if (window.innerWidth <= 853) return;
+
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Tilt angles calculated based on alignment ratios
+        const tiltX = ((centerY - y) / centerY) * 10; // Degrees of rotation
+        const tiltY = ((x - centerX) / centerX) * 10;
+
+        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.02, 1.02, 1.02)`;
+      });
+
+      // Clear layout tilt properties when cursor leaves area
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      });
+
+      // Automatically hide swipe indicator overlay once the user scrolls horizontal preview
+      const handleScroll = () => {
+        const indicator = document.getElementById('swipe-indicator');
+        if (indicator) {
+          indicator.style.opacity = '0';
+          indicator.style.pointerEvents = 'none';
+          indicator.style.transition = 'opacity 0.4s ease';
+          scrollContainer.removeEventListener('scroll', handleScroll);
+        }
+      };
+      scrollContainer.addEventListener('scroll', handleScroll);
     }
 
     // 3D PARALLAX PERSPECTIVE SCROLL MONITOR
@@ -1101,152 +1087,22 @@
       });
     });
 
-    // MOCK DECRYPTION SEQUENCES
-    function triggerDecryption(element, originalUrl) {
-      if (element.classList.contains('decrypting') || element.dataset.decrypted === "true") return;
-      
-      element.classList.add('decrypting');
-      
-      const overlay = element.querySelector('.decryption-overlay');
-      overlay.innerHTML = `
-        <div class="decryption-progress">
-          <div class="decryption-progress-bar" id="p-bar"></div>
-        </div>
-        <span data-t="demo_pow_solve">${translations[currentLang].demo_pow_solve}</span>
-      `;
-      
-      const progressBar = overlay.querySelector('#p-bar');
-      let progress = 0;
-      
-      const interval = setInterval(() => {
-        progress += 10;
-        progressBar.style.width = progress + '%';
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-          
-          const img = element.querySelector('img');
-          img.src = originalUrl;
-          img.classList.remove('is-blurred', 'cdn-obfuscated');
-          overlay.remove();
-          
-          element.dataset.decrypted = "true";
-          element.classList.remove('decrypting');
-
-          // Highlight local card feedback instead of global toast notification
-          const contactText = document.getElementById('contact-text');
-          contactText.textContent = translations[currentLang].demo_restored;
-          contactText.style.color = 'var(--accent-moss)';
-          setTimeout(() => {
-            contactText.textContent = translations[currentLang].demo_contact_locked;
-            contactText.style.color = '';
-          }, 3000);
-        }
-      }, 100);
-    }
-
-    // DYNAMIC CHIP ROTATIONS
-    function cycleTag(element) {
-      if (element.classList.contains('require')) {
-        element.className = 'chip exclude';
-        element.innerHTML = `${element.textContent.trim()} <i class="bi bi-dash-lg"></i>`;
-      } else if (element.classList.contains('exclude')) {
-        element.className = 'chip';
-        element.innerHTML = `${element.textContent.trim()}`;
-      } else {
-        element.className = 'chip require';
-        element.innerHTML = `${element.textContent.trim()} <i class="bi bi-plus-lg"></i>`;
-      }
-    }
-
-    // CARD INTERACTIONS CONFIGURATION
-    let contactSelected = false;
-    let currentHandshakeType = null;
-
-    function openMockDropdown(type, event) {
-      event.stopPropagation();
-      currentHandshakeType = type;
-      
-      // Reset drop checks
-      contactSelected = false;
-      const icon = document.getElementById('check-icon');
-      icon.className = 'bi bi-square';
-      
-      const sendBtn = document.getElementById('mock-send-btn');
-      sendBtn.setAttribute('disabled', 'true');
-
-      const dropdown = document.getElementById('mock-dropdown');
-      dropdown.style.display = 'block';
-    }
-
-    function selectContactShare() {
-      contactSelected = !contactSelected;
-      const icon = document.getElementById('check-icon');
-      const sendBtn = document.getElementById('mock-send-btn');
-      
-      icon.className = contactSelected ? 'bi bi-check2-square' : 'bi bi-square';
-      if (contactSelected) {
-        sendBtn.removeAttribute('disabled');
-      } else {
-        sendBtn.setAttribute('disabled', 'true');
-      }
-    }
-
-    function confirmExchange() {
-      if (!contactSelected) return;
-      document.getElementById('mock-dropdown').style.display = 'none';
-      executeHandshake(currentHandshakeType);
-    }
-
-    function executeHandshake(type) {
-      const contactText = document.getElementById('contact-text');
-      const contactIcon = document.getElementById('contact-icon');
-      
-      contactIcon.className = "bi contact-icon bi-hourglass-split spin";
-      contactText.textContent = translations[currentLang].demo_pow_solve;
-      
-      setTimeout(() => {
-        if (type === 'share') {
-          // Response details hidden, displays target confirmation message
-          contactIcon.className = "bi contact-icon bi-check2-circle";
-          contactIcon.style.color = "var(--accent-moss)";
-          contactText.style.color = "var(--accent-moss)";
-          contactText.textContent = translations[currentLang].demo_hs_sent;
-        } else if (type === 'exchange') {
-          // Response displays unlocked details
-          contactIcon.className = "bi contact-icon bi-globe";
-          contactIcon.style.color = "var(--accent-moss)";
-          contactText.style.color = "var(--accent-moss)";
-          contactText.textContent = translations[currentLang].demo_contact_unlocked;
-        } else if (type === 'demand') {
-          // Displays rejection parameters
-          contactIcon.className = "bi contact-icon bi-exclamation-circle";
-          contactIcon.style.color = "var(--accent-danger)";
-          contactText.style.color = "var(--accent-danger)";
-          contactText.textContent = translations[currentLang].demo_demand_rejected;
-        }
-
-        setTimeout(() => {
-          contactIcon.className = "bi contact-icon bi-globe";
-          contactIcon.style.color = "";
-          contactText.style.color = "";
-          contactText.textContent = translations[currentLang].demo_contact_locked;
-        }, 4000);
-      }, 1500);
-    }
-
-    // Close Dropdowns on external click
-    document.addEventListener('click', () => {
-      document.getElementById('mock-dropdown').style.display = 'none';
-    });
-
-    // Dynamic path correction to robustly redirect to /netlazy
+    // INITIALIZATION SEQUENCES
     document.addEventListener("DOMContentLoaded", () => {
-      // 1. Detect closest browser language and apply translations
+      // 1. Remove initial styling class used to block white/dark screen flashes
+      document.documentElement.classList.remove('light-theme-applied');
+
+      // 2. Load system and manual theme preferences
+      initializeTheme();
+
+      // 3. Detect closest browser language and apply translations
       const detectedLang = detectClosestLanguage();
       setLanguage(detectedLang);
 
-      // 2. Perform base path determination for web version links
+      // 4. Initialize horizontal swipe indicator listener and 3D Tilt perspective
+      setupCard3DPerspective();
+
+      // 5. Perform base path determination for web version links
       const path = window.location.pathname;
       const welcomeIndex = path.lastIndexOf('/welcome');
       if (welcomeIndex !== -1) {
