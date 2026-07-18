@@ -214,7 +214,8 @@
                     style="font-size: 1.5rem;"
                     :style="{ 
                       color: store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)',
-                      opacity: (store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0) ? 0.4 : 1
+                      opacity: (store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0) ? 0.4 : 1,
+                      cursor: (store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0) ? 'not-allowed' : 'pointer'
                     }">
               <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
             </button>
@@ -344,9 +345,13 @@ async function submitGlobalHandshake() {
       offered_contact: contactValue
     };
     
+    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
+    if (feedProfile) {
+      feedProfile.isSendingReq = cs.type;
+    }
+    
     await apiWithPoW('post', '/inbox/handshakes', payload);
     
-    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
     if (feedProfile) {
       feedProfile.sent = true;
       feedProfile.sentType = cs.type;
@@ -362,6 +367,10 @@ async function submitGlobalHandshake() {
     }
   } finally {
     cs.isSending = false;
+    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
+    if (feedProfile) {
+      feedProfile.isSendingReq = null;
+    }
   }
 }
 

@@ -72,18 +72,18 @@
             <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
               <span :title="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'share'" style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
-                  :disabled="validPrivateContacts.length === 0"
-                  :style="{ color: 'var(--accent-info)', opacity: validPrivateContacts.length === 0 ? 0.3 : 1, cursor: validPrivateContacts.length === 0 ? 'not-allowed' : 'pointer' }"
+                  :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
+                  :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                   @click.stop="handleContactButtonClick(profile, 'share')">
-                  <i class="bi bi-box-arrow-up"></i>
+                  <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                 </button>
               </span>
               <span :title="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'exchange'" style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
-                  :disabled="validPrivateContacts.length === 0"
-                  :style="{ color: 'var(--accent-moss)', opacity: validPrivateContacts.length === 0 ? 0.3 : 1, cursor: validPrivateContacts.length === 0 ? 'not-allowed' : 'pointer' }"
+                  :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
+                  :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                   @click.stop="handleContactButtonClick(profile, 'exchange')">
-                  <i class="bi bi-arrow-left-right"></i>
+                  <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                 </button>
               </span>
               <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="sendRequest(profile, 'demand')" title="demand">
@@ -102,7 +102,15 @@
                 <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
               </div>
               <div style="padding: 0.5rem 1rem; text-align: right;">
-                <button class="icon-btn" style="background: none; border: none; cursor: pointer; font-size: 1.3rem;" :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)' }" @click.stop="sendRequest(profile, profile.pendingReqType)" :disabled="(!profile.selectedContacts || profile.selectedContacts.length === 0) || profile.isSendingReq">
+                <button class="icon-btn" 
+                  style="background: none; border: none;" 
+                  :style="{ 
+                    color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)',
+                    opacity: (!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq) ? 0.35 : 1,
+                    cursor: (!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer'
+                  }" 
+                  @click.stop="sendRequest(profile, profile.pendingReqType)" 
+                  :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq">
                   <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
                 </button>
               </div>
