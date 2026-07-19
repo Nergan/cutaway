@@ -1,5 +1,6 @@
 import importlib
 import logging
+import re
 from datetime import datetime
 from os import environ
 from pathlib import Path
@@ -7,7 +8,7 @@ from collections import OrderedDict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
 from fastapi.templating import Jinja2Templates
@@ -33,6 +34,15 @@ class ReverseProxySchemeMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] in ("http", "websocket"):
+            # Normalize double/multiple slashes in path to prevent routing mismatches
+            if "path" in scope:
+                path = scope["path"]
+                if "//" in path:
+                    cleaned = re.sub(r'/+', '/', path)
+                    scope["path"] = cleaned
+                    if "raw_path" in scope:
+                        scope["raw_path"] = cleaned.encode("utf-8")
+
             headers = scope.get("headers", [])
             for key, value in headers:
                 if key == b"x-forwarded-proto":
@@ -232,17 +242,42 @@ async def track_visitor(request: Request, payload: TrackRequest):
 async def not_found_handler(request: Request, exc: HTTPException):
     path = request.url.path
     
-    # Explicitly prevent redirecting static assets or API endpoints.
-    # This prevents infinite 307 redirect loops on broken or missing static resources.
-    if any(path.endswith(ext) for ext in [".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".json", ".xml", ".woff", ".woff2", ".ttf"]):
-        raise exc
-    if "/static/" in path or "/api/" in path:
-        raise exc
+    # 1. Block requests for common bot scanning targets instantly to save CPU/logs
+    suspicious_patterns = [
+        ".env", ".git", ".yml", ".yaml", ".ini", ".conf", 
+        "wp-admin", "wp-login", "xmlrpc", "wp-content",
+        "actuator", "cgi-bin", "etc/passwd", "bin/sh",
+        "phpinfo", "setup.php", "install.php", "config.php",
+        "mysql", "phpmyadmin", "pma", "jenkins", "confluence"
+    ]
+    if any(pattern in path.lower() for pattern in suspicious_patterns):
+        return Response(status_code=404, content="Not Found", media_type="text/plain")
+
+    # 2. Extract path segments to check if the destination is an API endpoint
+    path_segments = [seg.lower() for seg in path.split("/") if seg]
+    is_api = "api" in path_segments or path.startswith("/api") or path.endswith(".json")
+    
+    if is_api:
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+    # 3. Prevent redirecting static assets or client scripts
+    static_extensions = {
+        ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", 
+        ".ico", ".xml", ".woff", ".woff2", ".ttf", ".mp4", ".webm"
+    }
+    is_static_ext = any(path.endswith(ext) for ext in static_extensions)
+    is_static_path = "static" in path_segments or "scripts" in path_segments
+
+    if is_static_ext or is_static_path:
+        return Response(status_code=404, content="Not Found", media_type="text/plain")
         
+    # 4. Clean redirect for HTML-requesting browsers
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         return RedirectResponse(url='/')
-    raise exc
+        
+    # 5. Clean, lightweight fallback for other request types (e.g. text plain clients)
+    return Response(status_code=404, content="Not Found", media_type="text/plain")
 
 @app.get('/api/mainpage-backgrounds')
 async def get_mainpage_backgrounds():
