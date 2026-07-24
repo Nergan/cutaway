@@ -34,10 +34,11 @@ DIRECT_EDGES = {
     'png': ['jpg', 'webp', 'pdf'],
     'webp': ['jpg', 'png', 'pdf'],
     'gif': ['png', 'mp4'],
-    'mp4': ['webm', 'gif', 'mp3'],
-    'webm': ['mp4', 'gif', 'mp3'],
-    'mp3': ['wav'],
-    'wav': ['mp3'],
+    'mp4': ['webm', 'gif', 'mp3', 'ogg'],
+    'webm': ['mp4', 'gif', 'mp3', 'ogg'],
+    'mp3': ['wav', 'ogg'],
+    'wav': ['mp3', 'ogg'],
+    'ogg': ['mp3', 'wav'],
     'zip': ['7z', 'tar', 'gz'],
     'rar': ['zip', '7z', 'tar', 'gz'],
     '7z': ['zip', 'tar', 'gz'],
@@ -90,7 +91,7 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     
     cmd.extend(["-i", input_path])
     
-    if video_opts and from_fmt not in ['mp3', 'wav']:
+    if video_opts and from_fmt not in ['mp3', 'wav', 'ogg']:
         try:
             v_opts = json.loads(video_opts)
             if v_opts.get('resize'): vf.append(f"scale={v_opts['resize']}")
@@ -272,11 +273,11 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
 
     # 5. FFmpeg (Audio/Video/Image Hijack for Custom Options & Same-Format Modifications)
     has_ffmpeg_opts = bool(audio_opts or video_opts or custom_ffmpeg)
-    FFMPEG_MEDIA = ['mp4', 'webm', 'mp3', 'wav', 'gif']
+    FFMPEG_MEDIA = ['mp4', 'webm', 'mp3', 'wav', 'ogg', 'gif']
     IMAGE_MEDIA = ['jpg', 'png', 'webp']
     
     if (has_ffmpeg_opts or from_fmt == to_fmt) and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
-        if to_fmt == 'mp3' and from_fmt in ['mp4', 'webm']:
+        if to_fmt in ['mp3', 'ogg'] and from_fmt in ['mp4', 'webm']:
             proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             stdout, _ = await proc.communicate()
             if not stdout.strip(): raise Exception("No audio track found in the video file.")
@@ -285,7 +286,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
 
     # 5. FFmpeg (Standard Fallback)
     if from_fmt in FFMPEG_MEDIA and to_fmt in FFMPEG_MEDIA:
-        if to_fmt == 'mp3' and from_fmt in ['mp4', 'webm']:
+        if to_fmt in ['mp3', 'ogg'] and from_fmt in ['mp4', 'webm']:
             proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             stdout, _ = await proc.communicate()
             if not stdout.strip(): raise Exception("No audio track found in the video file.")

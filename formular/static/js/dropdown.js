@@ -31,7 +31,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     optionsContainer.addEventListener('click', e => e.stopPropagation());
     optionsContainer.addEventListener('mousedown', e => e.stopPropagation());
 
-    // HTML Structure avoids active classes on start to prevent ghost tabs for images
+    // Removed the "None" buttons in favor of clicking active styles to toggle them off
     optionsContainer.innerHTML = `
         <div class="formats-grid"></div>
         <div class="media-settings" style="display: none;">
@@ -54,7 +54,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             
             <div class="tab-content audio-tab" style="display:none;">
                 <div class="preset-btns">
-                    <button class="btn-preset active" data-preset="none">None</button>
                     <button class="btn-preset" data-preset="slowed">Slow+Reverb</button>
                     <button class="btn-preset" data-preset="nightcore">Nightcore</button>
                 </div>
@@ -103,7 +102,6 @@ window.Formular.initCustomSelect = function(selectEl) {
                 
                 <label>Style Filter:</label>
                 <div class="filter-chips">
-                    <div class="f-chip active" data-val="">None</div>
                     <div class="f-chip" data-val="grayscale">Grayscale</div>
                     <div class="f-chip" data-val="sepia">Sepia</div>
                     <div class="f-chip" data-val="invert">Invert</div>
@@ -119,8 +117,8 @@ window.Formular.initCustomSelect = function(selectEl) {
     `;
 
     const grid = optionsContainer.querySelector('.formats-grid');
-    const mediaFormats = ['mp4','webm','gif','mp3','wav','jpg','png','webp'];
-    const audioOnly = ['mp3','wav'];
+    const mediaFormats = ['mp4','webm','gif','mp3','wav','ogg','jpg','png','webp'];
+    const audioOnly = ['mp3','wav','ogg'];
     const imageOnly = ['jpg','png','webp','svg'];
     let currentSelectedFormat = selectEl.value;
 
@@ -173,7 +171,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     let currentTrimStart = 0;
     let currentTrimEnd = 0;
 
-    // Timeline Setup logic
     const vtWrapper = optionsContainer.querySelector('.vt-wrapper');
     const vtTrack = optionsContainer.querySelector('.vt-track');
     const vtRange = optionsContainer.querySelector('.vt-range');
@@ -215,7 +212,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             };
         }
 
-        // Initialize Cropper elements
         if (localFile.type.startsWith('video/') || localFile.type.startsWith('image/')) {
             const vcWrapper = optionsContainer.querySelector('.vc-wrapper');
             const vcContainer = optionsContainer.querySelector('.vc-container');
@@ -325,7 +321,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         }
     }
 
-    // Global drag listener for trim handle
     document.addEventListener('mousemove', (e) => {
         if (!isTrimming || mediaDuration === 0) return;
         const rect = vtTrack.getBoundingClientRect();
@@ -354,33 +349,44 @@ window.Formular.initCustomSelect = function(selectEl) {
         });
     });
 
+    // Modified Preset Buttons to act as toggles
     optionsContainer.querySelectorAll('.btn-preset').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            optionsContainer.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const preset = btn.dataset.preset;
             const tempo = optionsContainer.querySelector('.s-tempo');
             const reverb = optionsContainer.querySelector('.s-reverb');
             const bass = optionsContainer.querySelector('.s-bass');
-            if (preset === 'slowed') {
-                tempo.value = 0.8; reverb.value = 60; bass.value = 5;
-            } else if (preset === 'nightcore') {
-                tempo.value = 1.25; reverb.value = 0; bass.value = 0;
-            } else {
+            
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active');
                 tempo.value = 1.0; reverb.value = 0; bass.value = 0;
+            } else {
+                optionsContainer.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const preset = btn.dataset.preset;
+                if (preset === 'slowed') {
+                    tempo.value = 0.8; reverb.value = 60; bass.value = 5;
+                } else if (preset === 'nightcore') {
+                    tempo.value = 1.25; reverb.value = 0; bass.value = 0;
+                }
             }
             [tempo, reverb, bass].forEach(el => el.dispatchEvent(new Event('input')));
         });
     });
 
     let currentFilter = "";
+    // Modified Style Filters to act as toggles
     optionsContainer.querySelectorAll('.f-chip').forEach(chip => {
         chip.addEventListener('click', (e) => {
             e.stopPropagation();
-            optionsContainer.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            currentFilter = chip.dataset.val;
+            if (chip.classList.contains('active')) {
+                chip.classList.remove('active');
+                currentFilter = "";
+            } else {
+                optionsContainer.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = chip.dataset.val;
+            }
         });
     });
 

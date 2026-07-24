@@ -40,7 +40,7 @@ body.bulk-active #toast-container { bottom: 100px; }
 
 .gothic-select { display: none !important; } 
 .custom-select-wrapper { position: relative; user-select: none; min-width: 140px; }
-.custom-select-trigger { background: var(--dark-gray); border: 1px solid var(--orange); color: var(--text-light); padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-family: 'MedievalSharp', cursive; font-weight: bold; transition: box-shadow 0.3s, border-color 0.3s; }
+.custom-select-trigger { background: var(--dark-gray); border: 1px solid var(--orange); color: var(--text-light); padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; transition: box-shadow 0.3s, border-color 0.3s; }
 .custom-select-trigger:hover, .custom-select-trigger.open { border-color: var(--orange-light); box-shadow: 0 0 8px rgba(255, 107, 53, 0.4); }
 .custom-select-trigger i { color: var(--orange); font-size: 0.9rem; transition: transform 0.3s; }
 .custom-select-trigger.open i { transform: rotate(180deg); }
@@ -62,10 +62,12 @@ body.bulk-active #toast-container { bottom: 100px; }
 .media-settings label { display: block; font-size: 0.9rem; color: var(--text-light); margin-bottom: 5px; margin-top: 10px; }
 .media-settings label:first-child { margin-top: 0; }
 
-.preset-btns, .filter-chips { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
-.btn-preset, .f-chip { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 0.85rem; padding: 6px 4px; border-radius: 3px; cursor: pointer; transition: 0.2s; text-align: center; min-width: 60px; }
+.preset-btns, .filter-chips { display: flex; gap: 5px; margin-bottom: 10px; }
+
+/* Fixed overlapping text issues, expanded button spaces, word wrap safely handled */
+.btn-preset, .f-chip { flex: 1; min-width: 0; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 0.85rem; padding: 8px 4px; border-radius: 3px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; line-height: 1.1; word-wrap: break-word; text-align: center; }
 .btn-preset:hover, .f-chip:hover { border-color: var(--orange-light); color: var(--orange-light); }
-.btn-preset.active, .f-chip.active { border-color: var(--orange); color: var(--black); background: var(--orange); font-weight: bold; }
+.btn-preset.active, .f-chip.active { border-color: var(--orange); color: var(--black); background: var(--orange); font-weight: bold; box-shadow: 0 0 5px rgba(255,107,53,0.4); }
 
 .slider-group { margin-bottom: 12px; }
 .slider-group label { display: flex; justify-content: space-between; margin-top:0; }
@@ -75,16 +77,18 @@ body.bulk-active #toast-container { bottom: 100px; }
 textarea.custom-input { resize: vertical; min-height: 60px; }
 .flex-row { display: flex; gap: 10px; }
 
-/* Visual Trim Styles */
-.vt-wrapper { margin-bottom: 15px; border-bottom: 1px dashed var(--orange); padding-bottom: 15px; }
-.vt-track { position: relative; height: 14px; background: rgba(255,107,53,0.2); border-radius: 7px; margin: 15px 8px 5px 8px; }
-.vt-range { position: absolute; height: 100%; background: var(--orange); border-radius: 7px; pointer-events: none; }
-.vt-handle { position: absolute; top: -5px; width: 16px; height: 24px; background: var(--text-light); border-radius: 4px; cursor: ew-resize; box-shadow: 0 0 6px rgba(0,0,0,0.8); z-index: 2; border: 1px solid var(--black); }
+/* Trim Timeline Minimalist Overhaul */
+.vt-wrapper { margin-bottom: 15px; border-bottom: 1px dashed rgba(255, 107, 53, 0.3); padding-bottom: 15px; }
+.vt-track { position: relative; height: 6px; background: rgba(255,107,53,0.15); border-radius: 3px; margin: 15px 8px 5px 8px; border: 1px solid rgba(255,107,53,0.3); }
+.vt-range { position: absolute; height: 100%; background: var(--orange); border-radius: 3px; pointer-events: none; box-shadow: 0 0 8px rgba(255,107,53,0.6); }
+.vt-handle { position: absolute; top: -6px; width: 16px; height: 18px; cursor: ew-resize; z-index: 2; background: transparent; }
+.vt-handle::after { content: ''; position: absolute; left: 7px; top: 0; width: 2px; height: 100%; background: var(--text-light); border-radius: 2px; box-shadow: 0 0 4px var(--orange); transition: 0.2s background; }
+.vt-handle:hover::after, .vt-handle:active::after { background: #fff; box-shadow: 0 0 6px #fff; }
 .vt-left { left: 0; transform: translateX(-50%); }
 .vt-right { left: 100%; transform: translateX(-50%); }
 .vt-time-display { font-size: 0.85rem; color: var(--orange-light); text-align: center; margin-top: 8px; font-weight: bold; }
 
-/* Visual Cropper Styles (Added side handles) */
+/* Visual Cropper Styles */
 .vc-wrapper { margin-bottom: 15px; }
 .vc-container { position: relative; width: 100%; height: 140px; background: #000; border: 1px solid var(--light-gray); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .vc-media { max-width: 100%; max-height: 100%; pointer-events: none; }

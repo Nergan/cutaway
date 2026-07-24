@@ -24,6 +24,9 @@ MIME_MAP = {
     'audio/mpeg': 'mp3',
     'audio/x-wav': 'wav',
     'audio/wav': 'wav',
+    'audio/ogg': 'ogg',
+    'video/ogg': 'ogg',
+    'application/ogg': 'ogg',
     'video/mp4': 'mp4',
     'video/webm': 'webm',
     'text/csv': 'csv',
@@ -67,10 +70,11 @@ ALLOWED_CONVERSIONS = {
     'webp': ['webp', 'jpg', 'png', 'pdf'],
     'svg': ['png', 'jpg', 'pdf'],
     'gif': ['gif', 'mp4', 'png'],
-    'mp3': ['mp3', 'wav'],
-    'wav': ['wav', 'mp3'],
-    'mp4': ['mp4', 'webm', 'gif', 'mp3'],
-    'webm': ['webm', 'mp4', 'gif', 'mp3'],
+    'mp3': ['mp3', 'wav', 'ogg'],
+    'wav': ['wav', 'mp3', 'ogg'],
+    'ogg': ['ogg', 'mp3', 'wav'],
+    'mp4': ['mp4', 'webm', 'gif', 'mp3', 'ogg'],
+    'webm': ['webm', 'mp4', 'gif', 'mp3', 'ogg'],
     'csv': ['pdf'],
     'xlsx': ['csv', 'pdf'],
     'zip': ['7z', 'tar', 'gz'],
@@ -93,7 +97,6 @@ def detect_file_format(file_path: str, filename: str) -> str:
 
     if mime in ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'] or ext == 'zip' or header_bytes.startswith(b'PK\x03\x04'):
         if header_bytes.startswith(b'PK\x03\x04'):
-            # zipfile correctly utilizes the file_path since it needs the central directory at the EOF.
             try:
                 with zipfile.ZipFile(file_path) as zf:
                     namelist = zf.namelist()
@@ -132,7 +135,7 @@ def detect_file_format(file_path: str, filename: str) -> str:
         'rar': 'rar', '7z': '7z', 'tar': 'tar', 'gz': 'gz',
         'pdf': 'pdf', 'rtf': 'rtf', 'odt': 'odt', 'epub': 'epub', 'djvu': 'djvu',
         'jpg': 'jpg', 'jpeg': 'jpg', 'png': 'png', 'webp': 'webp', 'svg': 'svg', 'gif': 'gif',
-        'mp3': 'mp3', 'wav': 'wav', 'mp4': 'mp4', 'webm': 'webm', 'xlsx': 'xlsx', 'docx': 'docx', 'doc': 'doc', 'pptx': 'pptx',
+        'mp3': 'mp3', 'wav': 'wav', 'ogg': 'ogg', 'mp4': 'mp4', 'webm': 'webm', 'xlsx': 'xlsx', 'docx': 'docx', 'doc': 'doc', 'pptx': 'pptx',
         'json': 'json', 'yaml': 'yaml', 'yml': 'yaml', 'toml': 'toml', 'xml': 'xml'
     }
     if ext in fallback_map: return fallback_map[ext]
