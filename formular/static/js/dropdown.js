@@ -30,8 +30,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     
     const trigger = document.createElement('div');
     trigger.className = 'custom-select-trigger';
-    const selectedOpt = selectEl.options[selectEl.selectedIndex];
-    trigger.innerHTML = `<span>${selectedOpt && selectedOpt.value ? selectedOpt.text : 'Target format...'}</span><i class="bi bi-chevron-down"></i>`;
+    trigger.innerHTML = `<span>Target format...</span><i class="bi bi-chevron-down"></i>`;
     
     const optionsContainer = document.createElement('div');
     optionsContainer.className = 'custom-select-options advanced-dropdown';
@@ -219,7 +218,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     Array.from(selectEl.options).forEach(opt => {
         if (opt.disabled || opt.value === "") return;
         const optDiv = document.createElement('div');
-        optDiv.className = 'format-chip' + (currentSelectedFormat === opt.value ? ' active' : '');
+        optDiv.className = 'format-chip';
         
         const isOriginal = (opt.value === origFmt);
         optDiv.innerHTML = isOriginal ? `${opt.text} <i class="bi bi-stars" style="color:var(--orange);"></i>` : opt.text;
@@ -231,16 +230,26 @@ window.Formular.initCustomSelect = function(selectEl) {
             optDiv.classList.add('active');
             currentSelectedFormat = opt.value;
             updateTabVisibility(opt.value);
+            validateForm();
         });
         grid.appendChild(optDiv);
     });
+
+    // Automatically click original format default enhanced
+    if (!currentSelectedFormat) {
+        const origChip = Array.from(grid.querySelectorAll('.format-chip')).find(c => c.dataset.value === origFmt);
+        if (origChip) origChip.click();
+        else if (grid.firstElementChild) grid.firstElementChild.click();
+    } else {
+        const selChip = Array.from(grid.querySelectorAll('.format-chip')).find(c => c.dataset.value === currentSelectedFormat);
+        if (selChip) selChip.click();
+    }
 
     const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[fileId] : null;
     let visualCropperActive = false;
     let mediaDuration = 0;
     let currentTrimStart = 0;
     let currentTrimEnd = 0;
-    
     const state = { audioPlayer: null, videoPlayer: null };
 
     const vtWrapper = optionsContainer.querySelector('.vt-wrapper');
@@ -278,6 +287,62 @@ window.Formular.initCustomSelect = function(selectEl) {
         else vcMedia.style.filter = 'none';
     }
 
+    function createWebAudioGraph(mediaEl) {
+        if (mediaEl._audioNodes) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        
+        const ctx = new AudioContext();
+        const source = ctx.createMediaElementSource(mediaEl);
+        
+        const bassFilter = ctx.createBiquadFilter();
+        bassFilter.type = "lowshelf";
+        bassFilter.frequency.value = 200;
+        
+        const convolver = ctx.createConvolver();
+        const rate = ctx.sampleRate;
+        const len = rate * 2.5; 
+        const impulse = ctx.createBuffer(2, len, rate);
+        for (let i = 0; i < len; i++) {
+            const d = Math.exp(-i / (rate * 0.5));
+            impulse.getChannelData(0)[i] = (Math.random() * 2 - 1) * d;
+            impulse.getChannelData(1)[i] = (Math.random() * 2 - 1) * d;
+        }
+        convolver.buffer = impulse;
+        
+        const dry = ctx.createGain();
+        const wet = ctx.createGain();
+        dry.gain.value = 1;
+        wet.gain.value = 0;
+        
+        source.connect(bassFilter);
+        bassFilter.connect(dry);
+        dry.connect(ctx.destination);
+        
+        bassFilter.connect(convolver);
+        convolver.connect(wet);
+        wet.connect(ctx.destination);
+        
+        mediaEl._audioNodes = { ctx, bassFilter, dry, wet };
+    }
+
+    function syncLiveAudioFX() {
+        const tempo = parseFloat(optionsContainer.querySelector('.s-tempo').value) || 1.0;
+        const reverb = parseFloat(optionsContainer.querySelector('.s-reverb').value) || 0;
+        const bass = parseFloat(optionsContainer.querySelector('.s-bass').value) || 0;
+        
+        [state.audioPlayer, state.videoPlayer].forEach(el => {
+            if (!el) return;
+            el.playbackRate = tempo;
+            if (el._audioNodes) {
+                el._audioNodes.bassFilter.gain.value = bass;
+                const wetVal = reverb / 100;
+                el._audioNodes.wet.gain.value = wetVal;
+                el._audioNodes.dry.gain.value = 1 - (wetVal * 0.5);
+            }
+        });
+    }
+
     function initCustomPlayer(uiContainer, mediaEl) {
         uiContainer.style.display = 'flex';
         const playBtn = uiContainer.querySelector('.cmp-play');
@@ -288,14 +353,34 @@ window.Formular.initCustomSelect = function(selectEl) {
         playBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (mediaEl.paused) {
-                if (state.audioPlayer && state.audioPlayer !== mediaEl) state.audioPlayer.pause();
-                if (state.videoPlayer && state.videoPlayer !== mediaEl) state.videoPlayer.pause();
+                if (state.audioPlayer && state.audioPlayer !== mediaEl) { state.audioPlayer.pause(); }
+                if (state.videoPlayer && state.videoPlayer !== mediaEl) { state.videoPlayer.pause(); }
                 mediaEl.play();
-                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
             } else {
                 mediaEl.pause();
-                playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
             }
+        });
+        
+        const card = wrapper.closest('.file-card');
+
+        mediaEl.addEventListener('play', () => {
+            playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+            if (card) card.classList.add('is-playing');
+            createWebAudioGraph(mediaEl);
+            if (mediaEl._audioNodes && mediaEl._audioNodes.ctx.state === 'suspended') {
+                mediaEl._audioNodes.ctx.resume();
+            }
+            syncLiveAudioFX();
+        });
+
+        mediaEl.addEventListener('pause', () => {
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+            if (card) card.classList.remove('is-playing');
+        });
+
+        mediaEl.addEventListener('ended', () => {
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+            if (card) card.classList.remove('is-playing');
         });
         
         mediaEl.addEventListener('timeupdate', () => {
@@ -309,11 +394,26 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
         });
         
-        track.addEventListener('click', (e) => {
-            e.stopPropagation();
+        let isScrubbing = false;
+        const updatePlayhead = (e) => {
             const rect = track.getBoundingClientRect();
             let pct = (e.clientX - rect.left) / rect.width;
+            pct = Math.max(0, Math.min(1, pct));
             mediaEl.currentTime = pct * mediaEl.duration;
+        };
+
+        track.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            isScrubbing = true;
+            updatePlayhead(e);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isScrubbing) updatePlayhead(e);
+        });
+
+        document.addEventListener('mouseup', () => {
+            isScrubbing = false;
         });
     }
 
@@ -323,6 +423,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (localFile.type.startsWith('audio/') || audioOnly.includes(origFmt)) {
             const audioEl = document.createElement('audio');
             audioEl.src = localFileUrl;
+            audioEl.crossOrigin = "anonymous";
             state.audioPlayer = audioEl;
             
             audioEl.onloadedmetadata = () => {
@@ -350,6 +451,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                 mediaEl.className = 'vc-media';
                 mediaEl.src = localFileUrl;
                 mediaEl.playsInline = true;
+                mediaEl.crossOrigin = "anonymous";
                 state.videoPlayer = mediaEl;
                 
                 mediaEl.onloadedmetadata = () => {
@@ -389,6 +491,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                 const crop_y = Math.max(0, Math.round((boxTop / 100) * originalMediaHeight));
                 
                 cropInput.value = `${crop_w}:${crop_h}:${crop_x}:${crop_y}`;
+                validateForm();
             }
 
             vcCropBox.addEventListener('mousedown', (e) => {
@@ -498,13 +601,45 @@ window.Formular.initCustomSelect = function(selectEl) {
             e.stopPropagation();
             span.textContent = input.value;
             optionsContainer.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+            syncLiveAudioFX();
         });
     });
 
     const applyBtn = optionsContainer.querySelector('.btn-apply');
+    const convertBtnMain = wrapper.closest('.file-card').querySelector('.btn-custom:not(.btn-remove)');
+
+    function validateForm() {
+        let valid = true;
+        const flags = optionsContainer.querySelector('.c-flags').value;
+        if (/(\s|^)-(i|f|d|y|n)(\s|$)|(\.\.)|(\/)|(\\)/.test(flags)) valid = false;
+
+        const crop = optionsContainer.querySelector('.v-crop').value.trim();
+        if (crop && !/^\d+:\d+:\d+:\d+$/.test(crop)) valid = false;
+
+        const resize = optionsContainer.querySelector('.v-resize').value.trim();
+        if (resize && !/^\d+x\d+$/i.test(resize)) valid = false;
+
+        if (!currentSelectedFormat) valid = false;
+
+        applyBtn.disabled = !valid;
+        if (convertBtnMain) convertBtnMain.disabled = !valid;
+
+        if (!valid) {
+            applyBtn.innerText = "INVALID PARAMS";
+            applyBtn.style.background = "var(--danger)";
+        } else {
+            applyBtn.innerText = "APPLY";
+            applyBtn.style.background = "var(--orange)";
+        }
+    }
+
+    ['input', 'change'].forEach(evt => {
+        optionsContainer.addEventListener(evt, validateForm);
+    });
+
     applyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!currentSelectedFormat) return;
+        if (!currentSelectedFormat || applyBtn.disabled) return;
         
         selectEl.value = currentSelectedFormat;
         const hasMediaMods = optionsContainer.querySelector('.media-settings').style.display !== 'none';
@@ -581,6 +716,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         } else {
             optionsContainer.classList.add('open');
             trigger.classList.add('open');
+            validateForm();
         }
         
         const card = wrapper.closest('.file-card');
@@ -593,7 +729,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
 };
 
-// Fortified click handler ensuring clicking outside custom select elements reliably closes open menus
 document.addEventListener('click', (e) => {
     document.querySelectorAll('.custom-select-options.open').forEach(el => {
         const wrapper = el.closest('.custom-select-wrapper');
@@ -602,6 +737,11 @@ document.addEventListener('click', (e) => {
             if (el.previousElementSibling) el.previousElementSibling.classList.remove('open');
             const card = el.closest('.file-card');
             if (card) card.classList.remove('dropdown-open');
+            
+            const p = wrapper.querySelector('.audio-player-ui');
+            const pv = wrapper.querySelector('.video-player-ui');
+            if (p && p._audioRef) p._audioRef.pause();
+            if (pv && pv._videoRef) pv._videoRef.pause();
         }
     });
 });

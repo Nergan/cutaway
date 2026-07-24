@@ -12,27 +12,37 @@
     border: 1px solid var(--light-gray); border-left: 4px solid var(--orange);
     border-radius: 4px; padding: 15px; margin-bottom: 15px;
     display: flex; align-items: center; gap: 15px; z-index: 1;
-    transition: box-shadow 0.2s, border-color 0.2s, background-color 0.2s;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, transform 0.2s ease;
 }
+.file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 .file-card.dropdown-open { z-index: 10; }
 .file-card.selected {
     border-color: var(--orange-light); box-shadow: 0 0 12px rgba(255, 107, 53, 0.4);
-    background-color: rgba(255, 107, 53, 0.05);
+    background-color: rgba(255, 107, 53, 0.05); transform: translateY(-2px);
 }
 .file-card::before {
     content: ''; position: absolute; top: 0; left: 0; height: 100%;
     width: var(--progress, 0%); background: rgba(255, 107, 53, 0.2);
     z-index: -1; transition: width 0.3s ease-out; border-radius: inherit;
 }
-.drag-handle { cursor: grab; color: var(--text-muted); font-size: 1.5rem; padding: 0 10px; }
+.drag-handle { cursor: grab; color: var(--text-muted); font-size: 1.5rem; padding: 0 10px; transition: color 0.2s; }
+.drag-handle:hover { color: var(--orange); }
 .drag-handle:active { cursor: grabbing; }
 
-/* File Preview & Placeholder Styles */
-.file-preview-wrapper { width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--orange); display: flex; align-items: center; justify-content: center; background: var(--black); user-select: none; }
+/* File Preview & Visualizer Styles */
+.file-preview-wrapper { position: relative; width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--orange); display: flex; align-items: center; justify-content: center; background: var(--black); user-select: none; }
 .file-preview-wrapper * { pointer-events: none !important; user-select: none !important; }
-.file-preview { width: 100%; height: 100%; object-fit: cover; }
+.file-preview { width: 100%; height: 100%; object-fit: cover; transition: filter 0.3s; }
 .pdf-preview { width: 100%; height: 100%; border: none; overflow: hidden; pointer-events: none; }
 .file-preview-fallback { font-size: 1.3rem; color: var(--orange); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: rgba(255, 107, 53, 0.05); }
+
+.card-visualizer { position: absolute; bottom: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity 0.3s ease; z-index: 5; background: rgba(0,0,0,0.6); padding: 2px; border-radius: 3px; }
+.file-card.is-playing .card-visualizer { opacity: 1; }
+.file-card.is-playing .file-preview { filter: brightness(0.6); }
+.card-visualizer .bar { width: 3px; height: 10px; background: var(--orange); animation: eq 0.5s infinite ease-in-out alternate; border-radius: 1px; }
+.card-visualizer .bar:nth-child(2) { animation-delay: 0.15s; }
+.card-visualizer .bar:nth-child(3) { animation-delay: 0.3s; }
+@keyframes eq { 0% { height: 3px; } 100% { height: 14px; background: var(--orange-light); } }
 
 .file-info { flex: 1; overflow: hidden; pointer-events: none; }
 .file-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -32,7 +32,10 @@ window.Formular.createCard = function(file) {
     
     cardElement.innerHTML = `
         <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>
-        <div class="file-preview-wrapper" id="preview-wrap-${file.id}">${initialFallback}</div>
+        <div class="file-preview-wrapper" id="preview-wrap-${file.id}">
+            ${initialFallback}
+            <div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+        </div>
         <div class="file-info">
             <div class="file-name" title="${file.filename}">${file.filename}</div>
             <div class="file-meta">${sizeMB} MB • Detected: <strong>${file.format.toUpperCase()}</strong></div>
@@ -50,7 +53,7 @@ window.Formular.createCard = function(file) {
         const previewWrap = cardElement.querySelector(`#preview-wrap-${file.id}`);
         const url = URL.createObjectURL(localFile);
         if (localFile.type.startsWith('image/')) {
-            previewWrap.innerHTML = `<img src="${url}" class="file-preview">`;
+            previewWrap.innerHTML = `<img src="${url}" class="file-preview"><div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
         } else if (localFile.type.startsWith('video/')) {
             const tempVid = document.createElement('video');
             tempVid.src = url;
@@ -61,7 +64,7 @@ window.Formular.createCard = function(file) {
                 canvas.width = tempVid.videoWidth;
                 canvas.height = tempVid.videoHeight;
                 canvas.getContext('2d').drawImage(tempVid, 0, 0, canvas.width, canvas.height);
-                previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview">`;
+                previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview"><div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
             };
         } else if (localFile.type === 'application/pdf' || ext === 'pdf') {
             if (window.pdfjsLib) {
@@ -77,12 +80,12 @@ window.Formular.createCard = function(file) {
                     canvas.width = viewport.width;
                     return page.render({ canvasContext: context, viewport: viewport }).promise.then(() => canvas);
                 }).then(canvas => {
-                    previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview">`;
+                    previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview"><div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
                 }).catch(() => {
-                    previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div>`;
+                    previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div><div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
                 });
             } else {
-                previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div>`;
+                previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div><div class="card-visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
             }
         }
     }
@@ -99,8 +102,7 @@ window.Formular.createCard = function(file) {
     let isConverting = false;
 
     selectBox.addEventListener('change', () => {
-        convertBtn.disabled = false;
-        if (activeController || dlBtn.style.display === 'inline-block') cardElement.doConvert(selectBox.value);
+        // Validation sync handled globally in dropdown.js now, but convertBtn is auto enabled if valid
     });
 
     cardElement.doRemove = () => {
@@ -134,6 +136,7 @@ window.Formular.createCard = function(file) {
         
         convertBtn.disabled = true;
         convertBtn.innerText = 'PROCESSING...';
+        convertBtn.style.background = 'var(--orange)';
         dlBtn.style.display = 'none';
         cardElement.style.setProperty('--progress', '0%');
         clearInterval(progressInterval);
