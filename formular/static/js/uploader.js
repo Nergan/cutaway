@@ -134,6 +134,8 @@ window.Formular.initUploader = function() {
                         p.remove();
                     } else {
                         window.Formular.LocalFiles[fileData.id] = file; // Cache the frontend file representation for thumbnails
+                        window.dispatchEvent(new CustomEvent('formular:filesUpdated')); // Sync UI drops
+                        
                         p.style.setProperty('--progress', '100%');
                         setTimeout(() => {
                             p.style.setProperty('--progress', '0%');

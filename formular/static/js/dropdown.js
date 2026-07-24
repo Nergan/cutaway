@@ -156,6 +156,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     const audioOnly = ['mp3','wav','ogg'];
     const imageOnly = ['jpg','png','webp','svg'];
     let currentSelectedFormat = selectEl.value;
+    const card = selectEl.closest('.file-card');
 
     // 2. Define validator before event handlers call it
     function validateForm() {
@@ -163,7 +164,9 @@ window.Formular.initCustomSelect = function(selectEl) {
         let valid = true;
         const cFlagsEl = optionsContainer.querySelector('.c-flags');
         const flags = cFlagsEl ? cFlagsEl.value : '';
-        if (/(\s|^)-(i|f|d|y|n)(\s|$)|(\.\.)|(\/)|(\\)/.test(flags)) valid = false;
+        
+        // Strict frontend check for command injection + unallowed backend overwrite flags
+        if (/(\s|^)-(i|f|d|y|n|vcodec|acodec|c:v|c:a|map)(\s|$)|(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(flags)) valid = false;
 
         const vCropEl = optionsContainer.querySelector('.v-crop');
         const crop = vCropEl ? vCropEl.value.trim() : '';
@@ -180,9 +183,13 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (!valid) {
             applyBtn.innerText = "INVALID PARAMS";
             applyBtn.style.background = "var(--danger)";
+            applyBtn.style.cursor = "not-allowed";
+            applyBtn.style.opacity = "0.7";
         } else {
             applyBtn.innerText = "APPLY";
             applyBtn.style.background = "var(--orange)";
+            applyBtn.style.cursor = "pointer";
+            applyBtn.style.opacity = "1";
         }
     }
 
@@ -222,6 +229,16 @@ window.Formular.initCustomSelect = function(selectEl) {
 
         return candidateCount;
     }
+    
+    // Dynamic Dropdown synchronization (Handles file drops and drops in queue cleanly)
+    const onFilesUpdated = () => {
+        if (selectedMergeId && !window.Formular.LocalFiles[selectedMergeId]) {
+            selectedMergeId = '';
+        }
+        populateMergeDropdown();
+        validateForm();
+    };
+    window.addEventListener('formular:filesUpdated', onFilesUpdated);
 
     function updateTabVisibility(format) {
         const isMedia = mediaFormats.includes(format);
@@ -286,6 +303,19 @@ window.Formular.initCustomSelect = function(selectEl) {
     let currentTrimStart = 0;
     let currentTrimEnd = 0;
     const state = { audioPlayer: null, videoPlayer: null };
+    
+    // Garbage cleanup on destroy
+    if (card) {
+        card.addEventListener('card:removed', () => {
+            window.removeEventListener('formular:filesUpdated', onFilesUpdated);
+            if (state.audioPlayer) { state.audioPlayer.pause(); state.audioPlayer.removeAttribute('src'); state.audioPlayer.load(); }
+            if (state.videoPlayer) { state.videoPlayer.pause(); state.videoPlayer.removeAttribute('src'); state.videoPlayer.load(); }
+        });
+        card.addEventListener('card:converting', () => {
+            if (state.audioPlayer) state.audioPlayer.pause();
+            if (state.videoPlayer) state.videoPlayer.pause();
+        });
+    }
 
     const vtWrapper = optionsContainer.querySelector('.vt-wrapper');
     const vtTrack = optionsContainer.querySelector('.vt-track');
@@ -396,8 +426,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
         });
         
-        const card = selectEl.closest('.file-card');
-
         mediaEl.addEventListener('play', () => {
             playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
             if (card) card.classList.add('is-playing');
@@ -424,7 +452,9 @@ window.Formular.initCustomSelect = function(selectEl) {
             progress.style.width = `${pct}%`;
             timeDisp.textContent = `${formatMediaTime(mediaEl.currentTime)} / ${formatMediaTime(mediaEl.duration)}`;
             
-            if (mediaDuration > 0 && (mediaEl.currentTime < currentTrimStart || mediaEl.currentTime > currentTrimEnd)) {
+            if (mediaDuration > 0 && mediaEl.currentTime >= currentTrimEnd) {
+                mediaEl.currentTime = currentTrimStart;
+            } else if (mediaDuration > 0 && mediaEl.currentTime < currentTrimStart) {
                 mediaEl.currentTime = currentTrimStart;
             }
         });
@@ -697,7 +727,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (state.audioPlayer) state.audioPlayer.pause();
         if (state.videoPlayer) state.videoPlayer.pause();
         
-        const card = selectEl.closest('.file-card');
         if (card) card.classList.remove('dropdown-open');
         
         selectEl.dispatchEvent(new Event('change'));
@@ -726,7 +755,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             validateForm();
         }
         
-        const card = selectEl.closest('.file-card');
         if (card) card.classList.toggle('dropdown-open');
     });
 

@@ -151,12 +151,17 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     if custom_ffmpeg:
         try:
             custom_args = shlex.split(custom_ffmpeg)
-            bad_flags = {'-i', '-f', '-d', '-y', '-n'}
+            bad_flags = {'-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map'}
             for arg in custom_args:
-                if '/' in arg or '\\' in arg or '..' in arg: continue
-                if arg in bad_flags: continue
+                if any(c in arg for c in ['/', '\\', '..', '&', '|', ';', '$', '`', '<', '>']):
+                    raise ValueError("Invalid characters detected in custom FFmpeg flags.")
+                if arg in bad_flags:
+                    raise ValueError(f"Restricted FFmpeg flag provided: {arg}")
                 cmd.append(arg)
-        except: pass
+        except ValueError as ve:
+            raise Exception(str(ve))
+        except: 
+            pass
 
     cmd.append(output_path)
     

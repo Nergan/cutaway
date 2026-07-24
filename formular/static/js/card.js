@@ -109,6 +109,14 @@ window.Formular.createCard = function(file) {
         if (activeController) activeController.abort();
         clearInterval(progressInterval);
         if (dlBtn.href) URL.revokeObjectURL(dlBtn.href);
+        
+        cardElement.dispatchEvent(new CustomEvent('card:removed'));
+        
+        if (window.Formular.LocalFiles) {
+            delete window.Formular.LocalFiles[file.id];
+        }
+        window.dispatchEvent(new CustomEvent('formular:filesUpdated'));
+        
         cardElement.remove();
         window.Formular.toggleUIState();
     };
@@ -124,6 +132,8 @@ window.Formular.createCard = function(file) {
         if (isConverting) return;
         isConverting = true;
         
+        cardElement.dispatchEvent(new CustomEvent('card:converting'));
+
         if (activeController) activeController.abort();
         activeController = new AbortController();
 

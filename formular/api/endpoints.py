@@ -99,6 +99,7 @@ async def convert_file(
     try:
         await convert_document(str(working_input), str(output_path), detected_format, to_format, audio_opts, video_opts, custom_ffmpeg, merge_path, is_merge_loop)
     except Exception as e:
+        shutil.rmtree(task_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(e))
         
     encoded_filename = quote(output_filename)
