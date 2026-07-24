@@ -31,7 +31,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     optionsContainer.addEventListener('click', e => e.stopPropagation());
     optionsContainer.addEventListener('mousedown', e => e.stopPropagation());
 
-    // Removed the "None" buttons in favor of clicking active styles to toggle them off
     optionsContainer.innerHTML = `
         <div class="formats-grid"></div>
         <div class="media-settings" style="display: none;">
@@ -53,6 +52,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             </div>
             
             <div class="tab-content audio-tab" style="display:none;">
+                <audio controls class="dropdown-media-player audio-player-el" style="display:none;"></audio>
                 <div class="preset-btns">
                     <button class="btn-preset" data-preset="slowed">Slow+Reverb</button>
                     <button class="btn-preset" data-preset="nightcore">Nightcore</button>
@@ -72,6 +72,8 @@ window.Formular.initCustomSelect = function(selectEl) {
             </div>
             
             <div class="tab-content video-tab" style="display:none;">
+                <video controls class="dropdown-media-player video-player-el" style="display:none; max-height:120px; width:100%; object-fit:contain; margin-bottom:10px;"></video>
+                
                 <div class="vc-wrapper" style="display:none;">
                     <label>Visual Crop Tool:</label>
                     <div class="vc-container">
@@ -198,8 +200,31 @@ window.Formular.initCustomSelect = function(selectEl) {
     vtLeft.addEventListener('mousedown', () => { isTrimming = true; activeTrimHandle = 'left'; });
     vtRight.addEventListener('mousedown', () => { isTrimming = true; activeTrimHandle = 'right'; });
 
+    function applyFilterPreview(filterVal) {
+        const vcMedia = optionsContainer.querySelector('.vc-media');
+        if (!vcMedia) return;
+        if (filterVal === 'grayscale') vcMedia.style.filter = 'grayscale(100%)';
+        else if (filterVal === 'sepia') vcMedia.style.filter = 'sepia(100%)';
+        else if (filterVal === 'invert') vcMedia.style.filter = 'invert(100%)';
+        else vcMedia.style.filter = 'none';
+    }
+
     if (localFile) {
         const localFileUrl = URL.createObjectURL(localFile);
+        
+        // Setup Live Audio & Video Player in Dropdown Tabs
+        const audioPlayer = optionsContainer.querySelector('.audio-player-el');
+        const videoPlayer = optionsContainer.querySelector('.video-player-el');
+
+        if (localFile.type.startsWith('audio/') || audioOnly.includes(origFmt)) {
+            audioPlayer.src = localFileUrl;
+            audioPlayer.style.display = 'block';
+        } else if (localFile.type.startsWith('video/')) {
+            videoPlayer.src = localFileUrl;
+            videoPlayer.style.display = 'block';
+            audioPlayer.src = localFileUrl;
+            audioPlayer.style.display = 'block';
+        }
         
         if (localFile.type.startsWith('video/') || localFile.type.startsWith('audio/')) {
             vtWrapper.style.display = 'block';
@@ -349,7 +374,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         });
     });
 
-    // Modified Preset Buttons to act as toggles
     optionsContainer.querySelectorAll('.btn-preset').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -375,7 +399,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     });
 
     let currentFilter = "";
-    // Modified Style Filters to act as toggles
     optionsContainer.querySelectorAll('.f-chip').forEach(chip => {
         chip.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -387,6 +410,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                 chip.classList.add('active');
                 currentFilter = chip.dataset.val;
             }
+            applyFilterPreview(currentFilter);
         });
     });
 

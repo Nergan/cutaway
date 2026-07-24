@@ -7,14 +7,37 @@ window.Formular.createCard = function(file) {
     file.allowed_targets.forEach(t => { optionsHTML += `<option value="${t}">${t.toUpperCase()}</option>`; });
 
     const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[file.id] : null;
-    let previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark"></i></div>`;
+    const ext = (file.format || '').toLowerCase();
     
+    const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
+    const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz'];
+    const codeExts = ['js', 'py', 'json', 'xml', 'yaml', 'yml', 'toml', 'html', 'css', 'sh', 'bat', 'cpp', 'c', 'cs', 'java', 'php', 'rb', 'go', 'rs'];
+    const sheetExts = ['csv', 'xlsx', 'xls'];
+
+    let previewHTML = '';
     if (localFile) {
         const url = URL.createObjectURL(localFile);
         if (localFile.type.startsWith('image/')) {
             previewHTML = `<img src="${url}" class="file-preview">`;
         } else if (localFile.type.startsWith('video/')) {
-            previewHTML = `<video src="${url}" class="file-preview" preload="metadata" muted></video>`;
+            // #t=0.1 ensures a static video poster frame renders without auto-playing during drag
+            previewHTML = `<video src="${url}#t=0.1" class="file-preview" preload="metadata" muted playsinline></video>`;
+        } else if (localFile.type === 'application/pdf' || ext === 'pdf') {
+            previewHTML = `<embed src="${url}#page=1&toolbar=0&navpanes=0&scrollbar=0" type="application/pdf" class="file-preview pdf-preview">`;
+        }
+    }
+
+    if (!previewHTML) {
+        if (audioExts.includes(ext)) {
+            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-music"></i></div>`;
+        } else if (archiveExts.includes(ext)) {
+            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-zip"></i></div>`;
+        } else if (codeExts.includes(ext)) {
+            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-code"></i></div>`;
+        } else if (sheetExts.includes(ext)) {
+            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-excel"></i></div>`;
+        } else {
+            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-text"></i></div>`;
         }
     }
 
