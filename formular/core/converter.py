@@ -11,6 +11,7 @@ import cairosvg
 import json
 import yaml
 import toml
+import shlex
 from playwright.async_api import async_playwright
 
 # The atomic engine pathways. Dijkstra will string these together instantly.
@@ -70,7 +71,65 @@ async def _run_process(*cmd, timeout=300):
     if proc.returncode != 0 and cmd[0] not in ['libreoffice']:
         raise Exception(f"Engine failure with code {proc.returncode}.")
 
-async def convert_document(input_path: str, output_path: str, from_fmt: str, to_fmt: str):
+async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str, video_opts: str, custom_ffmpeg: str):
+    cmd = ["ffmpeg", "-y", "-i", input_path]
+    vf = []
+    af = []
+    
+    if video_opts and from_fmt not in ['mp3', 'wav']:
+        try:
+            v_opts = json.loads(video_opts)
+            if v_opts.get('resize'): vf.append(f"scale={v_opts['resize']}")
+            if v_opts.get('crop'): vf.append(f"crop={v_opts['crop']}")
+            if v_opts.get('filter') == 'grayscale': vf.append("format=gray")
+            elif v_opts.get('filter') == 'sepia': vf.append("colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131")
+            elif v_opts.get('filter') == 'invert': vf.append("negate")
+        except: pass
+        
+    if audio_opts and from_fmt not in ['jpg', 'png', 'webp']:
+        try:
+            a_opts = json.loads(audio_opts)
+            tempo = float(a_opts.get('tempo', 1.0))
+            if tempo != 1.0: af.append(f"atempo={tempo}")
+            
+            reverb = float(a_opts.get('reverb', 0))
+            if reverb > 0:
+                decay = reverb / 100.0
+                af.append(f"aecho=0.8:0.9:1000:{decay}")
+                
+            bass = float(a_opts.get('bass', 0))
+            if bass != 0: af.append(f"bass=g={bass}")
+        except: pass
+        
+    if vf: cmd.extend(["-vf", ",".join(vf)])
+    if af: cmd.extend(["-af", ",".join(af)])
+        
+    if to_fmt in ['jpg', 'png', 'webp'] and from_fmt in ['gif', 'mp4', 'webm']:
+        cmd.extend(["-vframes", "1"])
+        
+    if custom_ffmpeg:
+        try:
+            custom_args = shlex.split(custom_ffmpeg)
+            bad_flags = {'-i', '-f', '-d', '-y', '-n'}
+            for arg in custom_args:
+                # Basic injection filter blocking paths
+                if '/' in arg or '\\' in arg or '..' in arg: continue
+                if arg in bad_flags: continue
+                cmd.append(arg)
+        except: pass
+
+    cmd.append(output_path)
+    
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+    try: await asyncio.wait_for(proc.communicate(), timeout=600)
+    except asyncio.TimeoutError:
+        try: proc.kill()
+        except: pass
+        raise Exception("FFmpeg processing timed out.")
+    if proc.returncode != 0:
+        raise Exception("FFmpeg engine failure. Verify your custom FFmpeg flags and media constraints.")
+
+async def convert_document(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None):
     path = find_shortest_path(from_fmt, to_fmt)
     if not path: raise Exception(f"No conversion path found from {from_fmt} to {to_fmt}")
 
@@ -88,8 +147,12 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
                 os.close(fd)
                 temp_files.append(temp_path)
                 current_output = temp_path
-
-            await _direct_convert(current_input, current_output, curr_fmt, next_fmt)
+                
+            if i == len(path) - 2:
+                await _direct_convert(current_input, current_output, curr_fmt, next_fmt, audio_opts, video_opts, custom_ffmpeg)
+            else:
+                await _direct_convert(current_input, current_output, curr_fmt, next_fmt)
+                
             current_input = current_output
             
             if not os.path.exists(current_output) or os.path.getsize(current_output) == 0:
@@ -98,7 +161,7 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
         for f in temp_files:
             if os.path.exists(f): os.remove(f)
 
-async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str):
+async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None):
     # 0. Data Formats (JSON, YAML, TOML, XML) & The TXT Bridge
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
     if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
@@ -107,7 +170,6 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             shutil.copy(input_path, output_path)
             return
             
-        # Parse Input
         if from_fmt == 'txt':
             with open(input_path, 'r', encoding='utf-8') as f:
                 data = {"root": {"text_content": f.read()}}
@@ -121,7 +183,6 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
                     import xmltodict
                     data = xmltodict.parse(content)
             
-        # Write Output
         with open(output_path, 'w', encoding='utf-8') as f:
             if to_fmt == 'json': json.dump(data, f, indent=4)
             elif to_fmt == 'yaml': yaml.dump(data, f, default_flow_style=False)
@@ -141,21 +202,16 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             file_uri = pathlib.Path(input_path).resolve().as_uri()
             await page.goto(file_uri, wait_until="load")
             
-            # Neutralize Pandoc's default HTML constraints so Playwright 
-            # can apply uniform PDF margins across all pages.
             await page.add_style_tag(content="""
                 body {
                     max-width: none !important;
                     padding: 0 !important;
                     margin: 0 !important;
                 }
-                /* Prevent top-margin collapse on the very first element */
                 body > *:first-child {
                     margin-top: 0 !important;
                 }
             """)
-            
-            # Now apply standard 1-inch document margins natively
             await page.pdf(
                 path=output_path, 
                 format="A4", 
@@ -197,8 +253,21 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         await _run_process("ddjvu", "-format=pdf", input_path, output_path, timeout=400)
         return
 
-    # 5. FFmpeg
-    if from_fmt in ['mp4', 'webm', 'mp3', 'wav', 'gif'] and to_fmt in ['mp4', 'webm', 'mp3', 'wav', 'gif']:
+    # 5. FFmpeg (Audio/Video/Image Hijack for Custom Options)
+    has_ffmpeg_opts = bool(audio_opts or video_opts or custom_ffmpeg)
+    FFMPEG_MEDIA = ['mp4', 'webm', 'mp3', 'wav', 'gif']
+    IMAGE_MEDIA = ['jpg', 'png', 'webp']
+    
+    if has_ffmpeg_opts and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
+        if to_fmt == 'mp3' and from_fmt in ['mp4', 'webm']:
+            proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+            stdout, _ = await proc.communicate()
+            if not stdout.strip(): raise Exception("No audio track found in the video file.")
+        await _run_ffmpeg(input_path, output_path, from_fmt, to_fmt, audio_opts, video_opts, custom_ffmpeg)
+        return
+
+    # 5. FFmpeg (Standard Fallback)
+    if from_fmt in FFMPEG_MEDIA and to_fmt in FFMPEG_MEDIA:
         if to_fmt == 'mp3' and from_fmt in ['mp4', 'webm']:
             proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             stdout, _ = await proc.communicate()
@@ -213,7 +282,6 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         if from_fmt == 'txt' and to_fmt == 'md':
             shutil.copy(input_path, output_path)
             return
-        # FIX: Changed 'title=Document' to 'pagetitle=Document'
         extra_args = ['--standalone', '--metadata', 'pagetitle=Document'] if to_fmt == 'html' else []
         pypandoc.convert_file(input_path, PANDOC_OUT[to_fmt], format=PANDOC_IN[from_fmt], outputfile=output_path, extra_args=extra_args)
         return
@@ -226,7 +294,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         pd.read_excel(input_path).to_csv(output_path, index=False)
         return
 
-    # 8. Images (Pillow / CairoSVG)
+    # 8. Images (Pillow / CairoSVG) (Bypassed if FFmpeg Options are active)
     if from_fmt == 'svg':
         if to_fmt == 'png': cairosvg.svg2png(url=input_path, write_to=output_path)
         elif to_fmt == 'pdf': cairosvg.svg2pdf(url=input_path, write_to=output_path)

@@ -57,7 +57,7 @@ window.Formular.createCard = function(file) {
         return null;
     };
 
-    cardElement.doConvert = async (targetFormat) => {
+    cardElement.doConvert = async (targetFormat, aOpts = null, vOpts = null, cOpts = null) => {
         if (isConverting) return;
         isConverting = true;
         
@@ -66,7 +66,11 @@ window.Formular.createCard = function(file) {
 
         selectBox.value = targetFormat;
         const customTriggerSpan = cardElement.querySelector('.custom-select-trigger span');
-        if (customTriggerSpan) customTriggerSpan.textContent = targetFormat.toUpperCase();
+        if (customTriggerSpan && targetFormat) {
+            // Keep any sparkling icons if they exist in the current text
+            const isSparkling = customTriggerSpan.textContent.includes('✨');
+            customTriggerSpan.textContent = targetFormat.toUpperCase() + (isSparkling ? ' ✨' : '');
+        }
         
         convertBtn.disabled = true;
         convertBtn.innerText = 'PROCESSING...';
@@ -81,9 +85,16 @@ window.Formular.createCard = function(file) {
             cardElement.style.setProperty('--progress', `${progressValue}%`);
         }, 500);
 
+        if (aOpts === null) aOpts = selectBox.dataset.audioOpts;
+        if (vOpts === null) vOpts = selectBox.dataset.videoOpts;
+        if (cOpts === null) cOpts = selectBox.dataset.customFfmpeg;
+
         const fd = new FormData();
         fd.append('file_id', file.id);
         fd.append('to_format', targetFormat);
+        if (aOpts) fd.append('audio_opts', aOpts);
+        if (vOpts) fd.append('video_opts', vOpts);
+        if (cOpts) fd.append('custom_ffmpeg', cOpts);
 
         try {
             const response = await fetch('./api/convert', { method: 'POST', body: fd, signal: activeController.signal });

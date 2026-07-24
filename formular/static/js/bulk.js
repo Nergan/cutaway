@@ -62,8 +62,13 @@ window.Formular.initBulkActions = function() {
     bulkConvertBtn.addEventListener('click', () => {
         const format = bulkTarget.value;
         if (!format) return;
+        
+        const aOpts = bulkTarget.dataset.audioOpts || '';
+        const vOpts = bulkTarget.dataset.videoOpts || '';
+        const cOpts = bulkTarget.dataset.customFfmpeg || '';
+
         document.querySelectorAll('.file-card.selected').forEach(card => {
-            if (card.doConvert) card.doConvert(format);
+            if (card.doConvert) card.doConvert(format, aOpts, vOpts, cOpts);
         });
         window.Formular.updateBulkPanel();
     });

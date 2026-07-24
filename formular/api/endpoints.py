@@ -49,7 +49,13 @@ async def upload_files(files: list[UploadFile] = File(...)):
     return {"files": results}
 
 @router.post('/convert')
-async def convert_file(file_id: str = Form(...), to_format: str = Form(...)):
+async def convert_file(
+    file_id: str = Form(...), 
+    to_format: str = Form(...),
+    audio_opts: str = Form(None),
+    video_opts: str = Form(None),
+    custom_ffmpeg: str = Form(None)
+):
     safe_dir = TEMP_DIR / file_id
     input_dir = safe_dir / "input"
     
@@ -76,7 +82,7 @@ async def convert_file(file_id: str = Form(...), to_format: str = Form(...)):
     shutil.copy(input_file, working_input)
     
     try:
-        await convert_document(str(working_input), str(output_path), detected_format, to_format)
+        await convert_document(str(working_input), str(output_path), detected_format, to_format, audio_opts, video_opts, custom_ffmpeg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         

@@ -1,9 +1,7 @@
 // --- AUTO CACHE REFRESHER ---
-// Bumps this version number internally whenever significant changes are made
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 if (localStorage.getItem('formular_version') !== APP_VERSION) {
     localStorage.setItem('formular_version', APP_VERSION);
-    // Hard reloads the page directly from the server, skipping browser cache
     window.location.reload(true);
 }
 
