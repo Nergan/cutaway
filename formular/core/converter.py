@@ -152,16 +152,21 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
         try:
             custom_args = shlex.split(custom_ffmpeg)
             bad_flags = {'-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map'}
-            for arg in custom_args:
+            for i, arg in enumerate(custom_args):
                 if any(c in arg for c in ['/', '\\', '..', '&', '|', ';', '$', '`', '<', '>']):
                     raise ValueError("Invalid characters detected in custom FFmpeg flags.")
-                if arg in bad_flags:
-                    raise ValueError(f"Restricted FFmpeg flag provided: {arg}")
+                is_flag = arg.startswith('-') and len(arg) > 1
+                if is_flag:
+                    if arg.lower() in bad_flags:
+                        raise ValueError(f"Restricted FFmpeg flag provided: {arg}")
+                else:
+                    if i == 0 or not custom_args[i - 1].startswith('-'):
+                        raise ValueError(f"Invalid option syntax: '{arg}' must be preceded by a flag starting with '-'.")
                 cmd.append(arg)
         except ValueError as ve:
             raise Exception(str(ve))
-        except: 
-            pass
+        except Exception: 
+            raise Exception("Invalid custom FFmpeg arguments syntax.")
 
     cmd.append(output_path)
     

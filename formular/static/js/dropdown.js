@@ -158,6 +158,46 @@ window.Formular.initCustomSelect = function(selectEl) {
     let currentSelectedFormat = selectEl.value;
     const card = selectEl.closest('.file-card');
 
+    function parseFFmpegArgs(str) {
+        const args = [];
+        const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+        let match;
+        while ((match = regex.exec(str)) !== null) {
+            args.push(match[0]);
+        }
+        return args;
+    }
+
+    function isValidFFmpegFlags(flagsStr) {
+        const trimmed = flagsStr.trim();
+        if (!trimmed) return true;
+
+        if (/(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(trimmed)) return false;
+
+        const tokens = parseFFmpegArgs(trimmed);
+        if (tokens.length === 0) return true;
+
+        const badFlags = new Set(['-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map']);
+
+        for (let i = 0; i < tokens.length; i++) {
+            const rawToken = tokens[i];
+            const token = rawToken.replace(/^['"]|['"]$/g, '');
+            const isFlag = /^-+[a-zA-Z0-9_:]+/.test(token);
+
+            if (isFlag) {
+                if (badFlags.has(token.toLowerCase())) {
+                    return false;
+                }
+            } else {
+                if (i === 0) return false;
+                const prevToken = tokens[i - 1].replace(/^['"]|['"]$/g, '');
+                const prevIsFlag = /^-+[a-zA-Z0-9_:]+/.test(prevToken);
+                if (!prevIsFlag) return false;
+            }
+        }
+        return true;
+    }
+
     // 2. Define validator before event handlers call it
     function validateForm() {
         if (!applyBtn) return;
@@ -165,8 +205,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         const cFlagsEl = optionsContainer.querySelector('.c-flags');
         const flags = cFlagsEl ? cFlagsEl.value : '';
         
-        // Strict frontend check for command injection + unallowed backend overwrite flags
-        if (/(\s|^)-(i|f|d|y|n|vcodec|acodec|c:v|c:a|map)(\s|$)|(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(flags)) valid = false;
+        if (!isValidFFmpegFlags(flags)) valid = false;
 
         const vCropEl = optionsContainer.querySelector('.v-crop');
         const crop = vCropEl ? vCropEl.value.trim() : '';
