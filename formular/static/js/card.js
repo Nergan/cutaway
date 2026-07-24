@@ -14,31 +14,15 @@ window.Formular.createCard = function(file) {
     const codeExts = ['js', 'py', 'json', 'xml', 'yaml', 'yml', 'toml', 'html', 'css', 'sh', 'bat', 'cpp', 'c', 'cs', 'java', 'php', 'rb', 'go', 'rs'];
     const sheetExts = ['csv', 'xlsx', 'xls'];
 
-    let previewHTML = '';
-    if (localFile) {
-        const url = URL.createObjectURL(localFile);
-        if (localFile.type.startsWith('image/')) {
-            previewHTML = `<img src="${url}" class="file-preview">`;
-        } else if (localFile.type.startsWith('video/')) {
-            // #t=0.1 ensures a static video poster frame renders without auto-playing during drag
-            previewHTML = `<video src="${url}#t=0.1" class="file-preview" preload="metadata" muted playsinline></video>`;
-        } else if (localFile.type === 'application/pdf' || ext === 'pdf') {
-            previewHTML = `<embed src="${url}#page=1&toolbar=0&navpanes=0&scrollbar=0" type="application/pdf" class="file-preview pdf-preview">`;
-        }
-    }
-
-    if (!previewHTML) {
-        if (audioExts.includes(ext)) {
-            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-music"></i></div>`;
-        } else if (archiveExts.includes(ext)) {
-            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-zip"></i></div>`;
-        } else if (codeExts.includes(ext)) {
-            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-code"></i></div>`;
-        } else if (sheetExts.includes(ext)) {
-            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-excel"></i></div>`;
-        } else {
-            previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-text"></i></div>`;
-        }
+    let initialFallback = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-text"></i></div>`;
+    if (audioExts.includes(ext)) {
+        initialFallback = `<div class="file-preview-fallback"><i class="bi bi-music-note-beamed"></i></div>`;
+    } else if (archiveExts.includes(ext)) {
+        initialFallback = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-zip"></i></div>`;
+    } else if (codeExts.includes(ext)) {
+        initialFallback = `<div class="file-preview-fallback"><i class="bi bi-code-slash"></i></div>`;
+    } else if (sheetExts.includes(ext)) {
+        initialFallback = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-excel"></i></div>`;
     }
 
     const cardElement = document.createElement('div');
@@ -48,7 +32,7 @@ window.Formular.createCard = function(file) {
     
     cardElement.innerHTML = `
         <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>
-        <div class="file-preview-wrapper">${previewHTML}</div>
+        <div class="file-preview-wrapper" id="preview-wrap-${file.id}">${initialFallback}</div>
         <div class="file-info">
             <div class="file-name" title="${file.filename}">${file.filename}</div>
             <div class="file-meta">${sizeMB} MB • Detected: <strong>${file.format.toUpperCase()}</strong></div>
@@ -61,6 +45,29 @@ window.Formular.createCard = function(file) {
         </div>
     `;
     sortableContainer.appendChild(cardElement);
+
+    // Canvas extraction logic to eliminate the video-drag autoplay bug forever.
+    if (localFile) {
+        const previewWrap = cardElement.querySelector(`#preview-wrap-${file.id}`);
+        const url = URL.createObjectURL(localFile);
+        if (localFile.type.startsWith('image/')) {
+            previewWrap.innerHTML = `<img src="${url}" class="file-preview">`;
+        } else if (localFile.type.startsWith('video/')) {
+            const tempVid = document.createElement('video');
+            tempVid.src = url;
+            tempVid.muted = true;
+            tempVid.currentTime = 1.0; 
+            tempVid.onloadeddata = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = tempVid.videoWidth;
+                canvas.height = tempVid.videoHeight;
+                canvas.getContext('2d').drawImage(tempVid, 0, 0, canvas.width, canvas.height);
+                previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview">`;
+            };
+        } else if (localFile.type === 'application/pdf' || ext === 'pdf') {
+            previewWrap.innerHTML = `<embed src="${url}#page=1&toolbar=0&navpanes=0&scrollbar=0" type="application/pdf" class="file-preview pdf-preview">`;
+        }
+    }
 
     const selectBox = cardElement.querySelector(`#target-${file.id}`);
     window.Formular.initCustomSelect(selectBox);
@@ -93,7 +100,7 @@ window.Formular.createCard = function(file) {
         return null;
     };
 
-    cardElement.doConvert = async (targetFormat, aOpts = null, vOpts = null, cOpts = null) => {
+    cardElement.doConvert = async (targetFormat, aOpts = null, vOpts = null, cOpts = null, mergeId = null, mergeLoop = false) => {
         if (isConverting) return;
         isConverting = true;
         
@@ -123,6 +130,8 @@ window.Formular.createCard = function(file) {
         if (aOpts === null) aOpts = selectBox.dataset.audioOpts;
         if (vOpts === null) vOpts = selectBox.dataset.videoOpts;
         if (cOpts === null) cOpts = selectBox.dataset.customFfmpeg;
+        if (mergeId === null) mergeId = selectBox.dataset.mergeId;
+        if (mergeLoop === false) mergeLoop = selectBox.dataset.mergeLoop;
 
         const fd = new FormData();
         fd.append('file_id', file.id);
@@ -130,6 +139,8 @@ window.Formular.createCard = function(file) {
         if (aOpts) fd.append('audio_opts', aOpts);
         if (vOpts) fd.append('video_opts', vOpts);
         if (cOpts) fd.append('custom_ffmpeg', cOpts);
+        if (mergeId) fd.append('merge_id', mergeId);
+        if (mergeLoop) fd.append('merge_loop', mergeLoop);
 
         try {
             const response = await fetch('./api/convert', { method: 'POST', body: fd, signal: activeController.signal });

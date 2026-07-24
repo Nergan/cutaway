@@ -13,7 +13,6 @@ from formular.core.converter import convert_document
 
 router = APIRouter()
 
-# Secure temporary storage for uploaded files prior to conversion
 TEMP_DIR = Path(tempfile.gettempdir()) / "formular_sessions"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -29,14 +28,12 @@ async def upload_files(files: list[UploadFile] = File(...)):
         
         file_path = input_dir / file.filename
         
-        # Stream file to disk to prevent Out-Of-Memory (OOM) exceptions on massive files
         size = 0
         with open(file_path, "wb") as f:
             while chunk := await file.read(8192 * 1024):
                 size += len(chunk)
                 f.write(chunk)
         
-        # Format detection passes path for robust zip verification
         detected_format = detect_file_format(str(file_path), file.filename)
         allowed_targets = get_allowed_targets(detected_format)
         
@@ -60,7 +57,9 @@ async def convert_file(
     to_format: str = Form(...),
     audio_opts: str = Form(None),
     video_opts: str = Form(None),
-    custom_ffmpeg: str = Form(None)
+    custom_ffmpeg: str = Form(None),
+    merge_id: str = Form(None),
+    merge_loop: str = Form(None)
 ):
     safe_dir = TEMP_DIR / file_id
     input_dir = safe_dir / "input"
@@ -71,6 +70,14 @@ async def convert_file(
     input_file = next(input_dir.iterdir())
     original_name = input_file.name
     
+    merge_path = None
+    if merge_id:
+        m_dir = TEMP_DIR / merge_id / "input"
+        if m_dir.exists():
+            merge_path = str(next(m_dir.iterdir()))
+            
+    is_merge_loop = merge_loop == 'true'
+    
     if '.' in original_name:
         name_without_ext = original_name.rsplit('.', 1)[0]
     else:
@@ -79,7 +86,6 @@ async def convert_file(
     out_ext = 'tar.gz' if to_format == 'gz' else to_format
     output_filename = f"{name_without_ext}.{out_ext}"
     
-    # ISOLATE THIS CONVERSION TASK TO PREVENT CORRUPTION UNDER HEAVY LOAD
     task_id = uuid.uuid4().hex
     task_dir = safe_dir / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
@@ -91,13 +97,12 @@ async def convert_file(
     shutil.copy(input_file, working_input)
     
     try:
-        await convert_document(str(working_input), str(output_path), detected_format, to_format, audio_opts, video_opts, custom_ffmpeg)
+        await convert_document(str(working_input), str(output_path), detected_format, to_format, audio_opts, video_opts, custom_ffmpeg, merge_path, is_merge_loop)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
     encoded_filename = quote(output_filename)
     
-    # Use BackgroundTask to immediately purge the heavy task_dir after successful client handoff
     return FileResponse(
         path=output_path,
         filename=output_filename,
