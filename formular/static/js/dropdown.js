@@ -145,16 +145,52 @@ window.Formular.initCustomSelect = function(selectEl) {
         <button class="btn-custom btn-apply" style="width: 100%; margin-top: 10px;">APPLY</button>
     `;
 
+    // 1. Attach wrapper to DOM immediately so card references resolve
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(optionsContainer);
+    selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
+
+    const applyBtn = optionsContainer.querySelector('.btn-apply');
     const grid = optionsContainer.querySelector('.formats-grid');
     const mediaFormats = ['mp4','webm','gif','mp3','wav','ogg','jpg','png','webp'];
     const audioOnly = ['mp3','wav','ogg'];
     const imageOnly = ['jpg','png','webp','svg'];
     let currentSelectedFormat = selectEl.value;
 
+    // 2. Define validator before event handlers call it
+    function validateForm() {
+        if (!applyBtn) return;
+        let valid = true;
+        const cFlagsEl = optionsContainer.querySelector('.c-flags');
+        const flags = cFlagsEl ? cFlagsEl.value : '';
+        if (/(\s|^)-(i|f|d|y|n)(\s|$)|(\.\.)|(\/)|(\\)/.test(flags)) valid = false;
+
+        const vCropEl = optionsContainer.querySelector('.v-crop');
+        const crop = vCropEl ? vCropEl.value.trim() : '';
+        if (crop && !/^\d+:\d+:\d+:\d+$/.test(crop)) valid = false;
+
+        const vResizeEl = optionsContainer.querySelector('.v-resize');
+        const resize = vResizeEl ? vResizeEl.value.trim() : '';
+        if (resize && !/^\d+x\d+$/i.test(resize)) valid = false;
+
+        if (!currentSelectedFormat) valid = false;
+
+        applyBtn.disabled = !valid;
+
+        if (!valid) {
+            applyBtn.innerText = "INVALID PARAMS";
+            applyBtn.style.background = "var(--danger)";
+        } else {
+            applyBtn.innerText = "APPLY";
+            applyBtn.style.background = "var(--orange)";
+        }
+    }
+
     function populateMergeDropdown() {
         const mergeList = optionsContainer.querySelector('.merge-files-list');
+        if (!mergeList) return 0;
         mergeList.innerHTML = `<div class="merge-chip ${!selectedMergeId ? 'active' : ''}" data-id="">-- No secondary media selected --</div>`;
-        if (!window.Formular.LocalFiles) return;
+        if (!window.Formular.LocalFiles) return 0;
         
         let candidateCount = 0;
         Object.keys(window.Formular.LocalFiles).forEach(id => {
@@ -197,20 +233,20 @@ window.Formular.initCustomSelect = function(selectEl) {
             const tabMerge = optionsContainer.querySelector('.tab-merge');
             
             const candidates = populateMergeDropdown();
-            tabMerge.style.display = candidates > 0 ? 'block' : 'none';
+            if (tabMerge) tabMerge.style.display = candidates > 0 ? 'block' : 'none';
 
             if (audioOnly.includes(format)) {
-                tabAudio.style.display = 'block';
-                tabVideo.style.display = 'none';
-                tabAudio.click();
+                if (tabAudio) tabAudio.style.display = 'block';
+                if (tabVideo) tabVideo.style.display = 'none';
+                if (tabAudio) tabAudio.click();
             } else if (imageOnly.includes(format)) {
-                tabAudio.style.display = 'none';
-                tabVideo.style.display = 'block';
-                tabVideo.click();
+                if (tabAudio) tabAudio.style.display = 'none';
+                if (tabVideo) tabVideo.style.display = 'block';
+                if (tabVideo) tabVideo.click();
             } else {
-                tabAudio.style.display = 'block';
-                tabVideo.style.display = 'block';
-                tabVideo.click();
+                if (tabAudio) tabAudio.style.display = 'block';
+                if (tabVideo) tabVideo.style.display = 'block';
+                if (tabVideo) tabVideo.click();
             }
         }
     }
@@ -235,7 +271,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         grid.appendChild(optDiv);
     });
 
-    // Automatically click original format default enhanced
     if (!currentSelectedFormat) {
         const origChip = Array.from(grid.querySelectorAll('.format-chip')).find(c => c.dataset.value === origFmt);
         if (origChip) origChip.click();
@@ -361,7 +396,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
         });
         
-        const card = wrapper.closest('.file-card');
+        const card = selectEl.closest('.file-card');
 
         mediaEl.addEventListener('play', () => {
             playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
@@ -605,34 +640,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         });
     });
 
-    const applyBtn = optionsContainer.querySelector('.btn-apply');
-    const convertBtnMain = wrapper.closest('.file-card').querySelector('.btn-custom:not(.btn-remove)');
-
-    function validateForm() {
-        let valid = true;
-        const flags = optionsContainer.querySelector('.c-flags').value;
-        if (/(\s|^)-(i|f|d|y|n)(\s|$)|(\.\.)|(\/)|(\\)/.test(flags)) valid = false;
-
-        const crop = optionsContainer.querySelector('.v-crop').value.trim();
-        if (crop && !/^\d+:\d+:\d+:\d+$/.test(crop)) valid = false;
-
-        const resize = optionsContainer.querySelector('.v-resize').value.trim();
-        if (resize && !/^\d+x\d+$/i.test(resize)) valid = false;
-
-        if (!currentSelectedFormat) valid = false;
-
-        applyBtn.disabled = !valid;
-        if (convertBtnMain) convertBtnMain.disabled = !valid;
-
-        if (!valid) {
-            applyBtn.innerText = "INVALID PARAMS";
-            applyBtn.style.background = "var(--danger)";
-        } else {
-            applyBtn.innerText = "APPLY";
-            applyBtn.style.background = "var(--orange)";
-        }
-    }
-
     ['input', 'change'].forEach(evt => {
         optionsContainer.addEventListener(evt, validateForm);
     });
@@ -690,7 +697,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (state.audioPlayer) state.audioPlayer.pause();
         if (state.videoPlayer) state.videoPlayer.pause();
         
-        const card = wrapper.closest('.file-card');
+        const card = selectEl.closest('.file-card');
         if (card) card.classList.remove('dropdown-open');
         
         selectEl.dispatchEvent(new Event('change'));
@@ -719,14 +726,12 @@ window.Formular.initCustomSelect = function(selectEl) {
             validateForm();
         }
         
-        const card = wrapper.closest('.file-card');
+        const card = selectEl.closest('.file-card');
         if (card) card.classList.toggle('dropdown-open');
     });
 
     updateTabVisibility(currentSelectedFormat || origFmt);
-    wrapper.appendChild(trigger);
-    wrapper.appendChild(optionsContainer);
-    selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
+    validateForm();
 };
 
 document.addEventListener('click', (e) => {
@@ -737,11 +742,6 @@ document.addEventListener('click', (e) => {
             if (el.previousElementSibling) el.previousElementSibling.classList.remove('open');
             const card = el.closest('.file-card');
             if (card) card.classList.remove('dropdown-open');
-            
-            const p = wrapper.querySelector('.audio-player-ui');
-            const pv = wrapper.querySelector('.video-player-ui');
-            if (p && p._audioRef) p._audioRef.pause();
-            if (pv && pv._videoRef) pv._videoRef.pause();
         }
     });
 });
