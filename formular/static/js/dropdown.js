@@ -1,5 +1,13 @@
 window.Formular = window.Formular || {};
 
+function formatTrimTime(seconds) {
+    if (isNaN(seconds)) return "00:00:00";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 window.Formular.initCustomSelect = function(selectEl) {
     if (selectEl.nextElementSibling && selectEl.nextElementSibling.classList.contains('custom-select-wrapper')) {
         selectEl.nextElementSibling.remove();
@@ -20,19 +28,31 @@ window.Formular.initCustomSelect = function(selectEl) {
     const optionsContainer = document.createElement('div');
     optionsContainer.className = 'custom-select-options advanced-dropdown';
     
-    // Stop propagation safely so clicking in empty bounds inside menu does not shut it
     optionsContainer.addEventListener('click', e => e.stopPropagation());
     optionsContainer.addEventListener('mousedown', e => e.stopPropagation());
 
+    // HTML Structure avoids active classes on start to prevent ghost tabs for images
     optionsContainer.innerHTML = `
         <div class="formats-grid"></div>
         <div class="media-settings" style="display: none;">
+            
+            <div class="vt-wrapper" style="display:none;">
+                <label>Trim Timeline:</label>
+                <div class="vt-track">
+                    <div class="vt-range"></div>
+                    <div class="vt-handle vt-left" data-dir="left"></div>
+                    <div class="vt-handle vt-right" data-dir="right"></div>
+                </div>
+                <div class="vt-time-display">00:00:00 - 00:00:00</div>
+            </div>
+
             <div class="settings-tabs">
-                <div class="tab tab-audio active" data-tab="audio">Audio</div>
+                <div class="tab tab-audio" data-tab="audio">Audio</div>
                 <div class="tab tab-video" data-tab="video">Video/Img</div>
                 <div class="tab tab-custom" data-tab="custom">Custom</div>
             </div>
-            <div class="tab-content audio-tab active">
+            
+            <div class="tab-content audio-tab" style="display:none;">
                 <div class="preset-btns">
                     <button class="btn-preset active" data-preset="none">None</button>
                     <button class="btn-preset" data-preset="slowed">Slow+Reverb</button>
@@ -51,13 +71,17 @@ window.Formular.initCustomSelect = function(selectEl) {
                     <input type="range" class="s-bass" min="-20" max="20" step="1" value="0">
                 </div>
             </div>
+            
             <div class="tab-content video-tab" style="display:none;">
-                
                 <div class="vc-wrapper" style="display:none;">
                     <label>Visual Crop Tool:</label>
                     <div class="vc-container">
                         <div class="vc-media-container" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
                         <div class="vc-crop-box">
+                            <div class="vc-handle vc-n" data-dir="n"></div>
+                            <div class="vc-handle vc-s" data-dir="s"></div>
+                            <div class="vc-handle vc-e" data-dir="e"></div>
+                            <div class="vc-handle vc-w" data-dir="w"></div>
                             <div class="vc-handle vc-nw" data-dir="nw"></div>
                             <div class="vc-handle vc-ne" data-dir="ne"></div>
                             <div class="vc-handle vc-sw" data-dir="sw"></div>
@@ -77,14 +101,6 @@ window.Formular.initCustomSelect = function(selectEl) {
                     </div>
                 </div>
                 
-                <div class="trim-group">
-                    <label>Trim (Start - End):</label>
-                    <div class="flex-row">
-                        <input type="text" class="v-trim-start custom-input" placeholder="00:00:00">
-                        <input type="text" class="v-trim-end custom-input" placeholder="00:00:15">
-                    </div>
-                </div>
-
                 <label>Style Filter:</label>
                 <div class="filter-chips">
                     <div class="f-chip active" data-val="">None</div>
@@ -93,6 +109,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                     <div class="f-chip" data-val="invert">Invert</div>
                 </div>
             </div>
+            
             <div class="tab-content custom-tab" style="display:none;">
                 <label>Custom FFmpeg Flags:</label>
                 <textarea class="c-flags custom-input" placeholder="-vf scale=320:-1"></textarea>
@@ -114,7 +131,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (isMedia) {
             const tabAudio = optionsContainer.querySelector('.tab-audio');
             const tabVideo = optionsContainer.querySelector('.tab-video');
-            const trimGroup = optionsContainer.querySelector('.trim-group');
             
             if (audioOnly.includes(format)) {
                 tabAudio.style.display = 'block';
@@ -123,12 +139,10 @@ window.Formular.initCustomSelect = function(selectEl) {
             } else if (imageOnly.includes(format)) {
                 tabAudio.style.display = 'none';
                 tabVideo.style.display = 'block';
-                trimGroup.style.display = 'none';
                 tabVideo.click();
             } else {
                 tabAudio.style.display = 'block';
                 tabVideo.style.display = 'block';
-                trimGroup.style.display = 'block';
                 tabVideo.click();
             }
         }
@@ -139,7 +153,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         const optDiv = document.createElement('div');
         optDiv.className = 'format-chip' + (currentSelectedFormat === opt.value ? ' active' : '');
         
-        // Dynamic flair for Same-Format conversion indicating filtering/adjustments
         const isOriginal = (opt.value === origFmt);
         optDiv.innerHTML = isOriginal ? `${opt.text} <i class="bi bi-stars" style="color:var(--orange);"></i>` : opt.text;
         
@@ -154,130 +167,182 @@ window.Formular.initCustomSelect = function(selectEl) {
         grid.appendChild(optDiv);
     });
 
-    updateTabVisibility(currentSelectedFormat || origFmt);
-
-    // Setup Visual Cropper if local file exists
-    let visualCropperActive = false;
-    let localFileUrl = null;
-    let originalMediaWidth = 0;
-    let originalMediaHeight = 0;
     const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[fileId] : null;
+    let visualCropperActive = false;
+    let mediaDuration = 0;
+    let currentTrimStart = 0;
+    let currentTrimEnd = 0;
 
-    if (localFile && (localFile.type.startsWith('video/') || localFile.type.startsWith('image/'))) {
-        const vcWrapper = optionsContainer.querySelector('.vc-wrapper');
-        const vcContainer = optionsContainer.querySelector('.vc-container');
-        const vcMediaContainer = optionsContainer.querySelector('.vc-media-container');
-        const vcCropBox = optionsContainer.querySelector('.vc-crop-box');
-        const cropInput = optionsContainer.querySelector('.v-crop');
+    // Timeline Setup logic
+    const vtWrapper = optionsContainer.querySelector('.vt-wrapper');
+    const vtTrack = optionsContainer.querySelector('.vt-track');
+    const vtRange = optionsContainer.querySelector('.vt-range');
+    const vtLeft = optionsContainer.querySelector('.vt-left');
+    const vtRight = optionsContainer.querySelector('.vt-right');
+    const vtTimeDisplay = optionsContainer.querySelector('.vt-time-display');
+
+    function updateTrimUI() {
+        if (mediaDuration === 0) return;
+        const leftPercent = (currentTrimStart / mediaDuration) * 100;
+        const rightPercent = (currentTrimEnd / mediaDuration) * 100;
         
-        vcWrapper.style.display = 'block';
-        localFileUrl = URL.createObjectURL(localFile);
+        vtLeft.style.left = `${leftPercent}%`;
+        vtRight.style.left = `${rightPercent}%`;
         
-        let mediaEl;
-        if (localFile.type.startsWith('video/')) {
-            mediaEl = document.createElement('video');
-            mediaEl.autoplay = true; mediaEl.muted = true; mediaEl.loop = true;
-            mediaEl.className = 'vc-media';
-            mediaEl.src = localFileUrl;
-            mediaEl.onloadedmetadata = () => {
-                originalMediaWidth = mediaEl.videoWidth;
-                originalMediaHeight = mediaEl.videoHeight;
-                visualCropperActive = true;
-            };
-        } else {
-            mediaEl = document.createElement('img');
-            mediaEl.className = 'vc-media';
-            mediaEl.src = localFileUrl;
-            mediaEl.onload = () => {
-                originalMediaWidth = mediaEl.naturalWidth;
-                originalMediaHeight = mediaEl.naturalHeight;
-                visualCropperActive = true;
-            };
-        }
-        vcMediaContainer.appendChild(mediaEl);
-
-        // Visual Drag & Drop bounds logic
-        let isDragging = false;
-        let isResizing = false;
-        let currentHandle = null;
-        let startX, startY;
-        let startBoxLeft, startBoxTop, startBoxWidth, startBoxHeight;
+        vtRange.style.left = `${leftPercent}%`;
+        vtRange.style.width = `${rightPercent - leftPercent}%`;
         
-        function updateCropInput() {
-            if (!visualCropperActive || originalMediaWidth === 0) return;
-            const containerRect = vcContainer.getBoundingClientRect();
-            const mediaRect = mediaEl.getBoundingClientRect();
-            
-            // Map percentages relative to the actual media bounding box inside the container
-            const boxLeft = parseFloat(vcCropBox.style.left || 0);
-            const boxTop = parseFloat(vcCropBox.style.top || 0);
-            const boxWidth = parseFloat(vcCropBox.style.width || 100);
-            const boxHeight = parseFloat(vcCropBox.style.height || 100);
-            
-            // Clamp mapping values seamlessly to standard FFmpeg `w:h:x:y`
-            const crop_w = Math.max(2, Math.round((boxWidth / 100) * originalMediaWidth));
-            const crop_h = Math.max(2, Math.round((boxHeight / 100) * originalMediaHeight));
-            const crop_x = Math.max(0, Math.round((boxLeft / 100) * originalMediaWidth));
-            const crop_y = Math.max(0, Math.round((boxTop / 100) * originalMediaHeight));
-            
-            cropInput.value = `${crop_w}:${crop_h}:${crop_x}:${crop_y}`;
-        }
-
-        vcCropBox.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('vc-handle')) {
-                isResizing = true;
-                currentHandle = e.target.dataset.dir;
-            } else {
-                isDragging = true;
-            }
-            startX = e.clientX;
-            startY = e.clientY;
-            startBoxLeft = parseFloat(vcCropBox.style.left || 0);
-            startBoxTop = parseFloat(vcCropBox.style.top || 0);
-            startBoxWidth = parseFloat(vcCropBox.style.width || 100);
-            startBoxHeight = parseFloat(vcCropBox.style.height || 100);
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging && !isResizing) return;
-            const dx = ((e.clientX - startX) / vcContainer.clientWidth) * 100;
-            const dy = ((e.clientY - startY) / vcContainer.clientHeight) * 100;
-
-            if (isDragging) {
-                let newLeft = Math.max(0, Math.min(100 - startBoxWidth, startBoxLeft + dx));
-                let newTop = Math.max(0, Math.min(100 - startBoxHeight, startBoxTop + dy));
-                vcCropBox.style.left = newLeft + '%';
-                vcCropBox.style.top = newTop + '%';
-            } else if (isResizing) {
-                if (currentHandle.includes('e')) {
-                    let newW = Math.max(5, Math.min(100 - startBoxLeft, startBoxWidth + dx));
-                    vcCropBox.style.width = newW + '%';
-                }
-                if (currentHandle.includes('s')) {
-                    let newH = Math.max(5, Math.min(100 - startBoxTop, startBoxHeight + dy));
-                    vcCropBox.style.height = newH + '%';
-                }
-                if (currentHandle.includes('w')) {
-                    let maxDx = startBoxWidth - 5;
-                    let safeDx = Math.min(maxDx, Math.max(-startBoxLeft, dx));
-                    vcCropBox.style.left = (startBoxLeft + safeDx) + '%';
-                    vcCropBox.style.width = (startBoxWidth - safeDx) + '%';
-                }
-                if (currentHandle.includes('n')) {
-                    let maxDy = startBoxHeight - 5;
-                    let safeDy = Math.min(maxDy, Math.max(-startBoxTop, dy));
-                    vcCropBox.style.top = (startBoxTop + safeDy) + '%';
-                    vcCropBox.style.height = (startBoxHeight - safeDy) + '%';
-                }
-            }
-            updateCropInput();
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            isResizing = false;
-        });
+        vtTimeDisplay.textContent = `${formatTrimTime(currentTrimStart)} - ${formatTrimTime(currentTrimEnd)}`;
     }
+
+    let isTrimming = false;
+    let activeTrimHandle = null;
+
+    vtLeft.addEventListener('mousedown', () => { isTrimming = true; activeTrimHandle = 'left'; });
+    vtRight.addEventListener('mousedown', () => { isTrimming = true; activeTrimHandle = 'right'; });
+
+    if (localFile) {
+        const localFileUrl = URL.createObjectURL(localFile);
+        
+        if (localFile.type.startsWith('video/') || localFile.type.startsWith('audio/')) {
+            vtWrapper.style.display = 'block';
+            const testMedia = document.createElement(localFile.type.startsWith('video/') ? 'video' : 'audio');
+            testMedia.src = localFileUrl;
+            testMedia.onloadedmetadata = () => {
+                mediaDuration = testMedia.duration;
+                currentTrimEnd = mediaDuration;
+                updateTrimUI();
+            };
+        }
+
+        // Initialize Cropper elements
+        if (localFile.type.startsWith('video/') || localFile.type.startsWith('image/')) {
+            const vcWrapper = optionsContainer.querySelector('.vc-wrapper');
+            const vcContainer = optionsContainer.querySelector('.vc-container');
+            const vcMediaContainer = optionsContainer.querySelector('.vc-media-container');
+            const vcCropBox = optionsContainer.querySelector('.vc-crop-box');
+            const cropInput = optionsContainer.querySelector('.v-crop');
+            
+            vcWrapper.style.display = 'block';
+            let originalMediaWidth = 0;
+            let originalMediaHeight = 0;
+            let mediaEl = document.createElement(localFile.type.startsWith('video/') ? 'video' : 'img');
+            
+            if (localFile.type.startsWith('video/')) {
+                mediaEl.autoplay = true; mediaEl.muted = true; mediaEl.loop = true;
+                mediaEl.className = 'vc-media';
+                mediaEl.src = localFileUrl;
+                mediaEl.onloadedmetadata = () => {
+                    originalMediaWidth = mediaEl.videoWidth;
+                    originalMediaHeight = mediaEl.videoHeight;
+                    visualCropperActive = true;
+                };
+            } else {
+                mediaEl.className = 'vc-media';
+                mediaEl.src = localFileUrl;
+                mediaEl.onload = () => {
+                    originalMediaWidth = mediaEl.naturalWidth;
+                    originalMediaHeight = mediaEl.naturalHeight;
+                    visualCropperActive = true;
+                };
+            }
+            vcMediaContainer.appendChild(mediaEl);
+
+            let isDragging = false;
+            let isResizing = false;
+            let currentHandle = null;
+            let startX, startY, startBoxLeft, startBoxTop, startBoxWidth, startBoxHeight;
+            
+            function updateCropInput() {
+                if (!visualCropperActive || originalMediaWidth === 0) return;
+                const boxLeft = parseFloat(vcCropBox.style.left || 0);
+                const boxTop = parseFloat(vcCropBox.style.top || 0);
+                const boxWidth = parseFloat(vcCropBox.style.width || 100);
+                const boxHeight = parseFloat(vcCropBox.style.height || 100);
+                
+                const crop_w = Math.max(2, Math.round((boxWidth / 100) * originalMediaWidth));
+                const crop_h = Math.max(2, Math.round((boxHeight / 100) * originalMediaHeight));
+                const crop_x = Math.max(0, Math.round((boxLeft / 100) * originalMediaWidth));
+                const crop_y = Math.max(0, Math.round((boxTop / 100) * originalMediaHeight));
+                
+                cropInput.value = `${crop_w}:${crop_h}:${crop_x}:${crop_y}`;
+            }
+
+            vcCropBox.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('vc-handle')) {
+                    isResizing = true;
+                    currentHandle = e.target.dataset.dir;
+                } else {
+                    isDragging = true;
+                }
+                startX = e.clientX;
+                startY = e.clientY;
+                startBoxLeft = parseFloat(vcCropBox.style.left || 0);
+                startBoxTop = parseFloat(vcCropBox.style.top || 0);
+                startBoxWidth = parseFloat(vcCropBox.style.width || 100);
+                startBoxHeight = parseFloat(vcCropBox.style.height || 100);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging && !isResizing) return;
+                const dx = ((e.clientX - startX) / vcContainer.clientWidth) * 100;
+                const dy = ((e.clientY - startY) / vcContainer.clientHeight) * 100;
+
+                if (isDragging) {
+                    let newLeft = Math.max(0, Math.min(100 - startBoxWidth, startBoxLeft + dx));
+                    let newTop = Math.max(0, Math.min(100 - startBoxHeight, startBoxTop + dy));
+                    vcCropBox.style.left = newLeft + '%';
+                    vcCropBox.style.top = newTop + '%';
+                } else if (isResizing) {
+                    if (currentHandle.includes('e')) {
+                        let newW = Math.max(5, Math.min(100 - startBoxLeft, startBoxWidth + dx));
+                        vcCropBox.style.width = newW + '%';
+                    }
+                    if (currentHandle.includes('s')) {
+                        let newH = Math.max(5, Math.min(100 - startBoxTop, startBoxHeight + dy));
+                        vcCropBox.style.height = newH + '%';
+                    }
+                    if (currentHandle.includes('w')) {
+                        let maxDx = startBoxWidth - 5;
+                        let safeDx = Math.min(maxDx, Math.max(-startBoxLeft, dx));
+                        vcCropBox.style.left = (startBoxLeft + safeDx) + '%';
+                        vcCropBox.style.width = (startBoxWidth - safeDx) + '%';
+                    }
+                    if (currentHandle.includes('n')) {
+                        let maxDy = startBoxHeight - 5;
+                        let safeDy = Math.min(maxDy, Math.max(-startBoxTop, dy));
+                        vcCropBox.style.top = (startBoxTop + safeDy) + '%';
+                        vcCropBox.style.height = (startBoxHeight - safeDy) + '%';
+                    }
+                }
+                updateCropInput();
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                isResizing = false;
+            });
+        }
+    }
+
+    // Global drag listener for trim handle
+    document.addEventListener('mousemove', (e) => {
+        if (!isTrimming || mediaDuration === 0) return;
+        const rect = vtTrack.getBoundingClientRect();
+        let percent = ((e.clientX - rect.left) / rect.width);
+        percent = Math.max(0, Math.min(1, percent));
+        
+        let targetTime = percent * mediaDuration;
+        
+        if (activeTrimHandle === 'left') {
+            currentTrimStart = Math.min(targetTime, currentTrimEnd - 0.5); 
+        } else {
+            currentTrimEnd = Math.max(targetTime, currentTrimStart + 0.5);
+        }
+        updateTrimUI();
+    });
+
+    document.addEventListener('mouseup', () => { isTrimming = false; });
 
     optionsContainer.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -309,7 +374,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         });
     });
 
-    // Style Filter custom chip logic
     let currentFilter = "";
     optionsContainer.querySelectorAll('.f-chip').forEach(chip => {
         chip.addEventListener('click', (e) => {
@@ -342,14 +406,16 @@ window.Formular.initCustomSelect = function(selectEl) {
             const audioOpts = {
                 tempo: parseFloat(optionsContainer.querySelector('.s-tempo').value),
                 reverb: parseFloat(optionsContainer.querySelector('.s-reverb').value),
-                bass: parseFloat(optionsContainer.querySelector('.s-bass').value)
+                bass: parseFloat(optionsContainer.querySelector('.s-bass').value),
+                trim_start: currentTrimStart > 0 ? formatTrimTime(currentTrimStart) : "",
+                trim_end: (currentTrimEnd > 0 && currentTrimEnd < mediaDuration) ? formatTrimTime(currentTrimEnd) : ""
             };
             const videoOpts = {
                 resize: optionsContainer.querySelector('.v-resize').value.trim(),
                 crop: optionsContainer.querySelector('.v-crop').value.trim(),
-                trim_start: optionsContainer.querySelector('.v-trim-start').value.trim(),
-                trim_end: optionsContainer.querySelector('.v-trim-end').value.trim(),
-                filter: currentFilter
+                filter: currentFilter,
+                trim_start: currentTrimStart > 0 ? formatTrimTime(currentTrimStart) : "",
+                trim_end: (currentTrimEnd > 0 && currentTrimEnd < mediaDuration) ? formatTrimTime(currentTrimEnd) : ""
             };
             const custom = optionsContainer.querySelector('.c-flags').value.trim();
             
@@ -398,6 +464,8 @@ window.Formular.initCustomSelect = function(selectEl) {
         const card = wrapper.closest('.file-card');
         if (card) card.classList.toggle('dropdown-open');
     });
+
+    updateTabVisibility(currentSelectedFormat || origFmt);
     
     wrapper.appendChild(trigger);
     wrapper.appendChild(optionsContainer);

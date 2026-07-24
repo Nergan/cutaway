@@ -6,6 +6,18 @@ window.Formular.createCard = function(file) {
     let optionsHTML = '<option value="" disabled selected>Target format...</option>';
     file.allowed_targets.forEach(t => { optionsHTML += `<option value="${t}">${t.toUpperCase()}</option>`; });
 
+    const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[file.id] : null;
+    let previewHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark"></i></div>`;
+    
+    if (localFile) {
+        const url = URL.createObjectURL(localFile);
+        if (localFile.type.startsWith('image/')) {
+            previewHTML = `<img src="${url}" class="file-preview">`;
+        } else if (localFile.type.startsWith('video/')) {
+            previewHTML = `<video src="${url}" class="file-preview" preload="metadata" muted></video>`;
+        }
+    }
+
     const cardElement = document.createElement('div');
     cardElement.className = 'file-card';
     cardElement.id = `file-${file.id}`;
@@ -13,6 +25,7 @@ window.Formular.createCard = function(file) {
     
     cardElement.innerHTML = `
         <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>
+        <div class="file-preview-wrapper">${previewHTML}</div>
         <div class="file-info">
             <div class="file-name" title="${file.filename}">${file.filename}</div>
             <div class="file-meta">${sizeMB} MB • Detected: <strong>${file.format.toUpperCase()}</strong></div>

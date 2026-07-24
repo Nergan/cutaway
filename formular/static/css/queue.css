@@ -26,6 +26,12 @@
 }
 .drag-handle { cursor: grab; color: var(--text-muted); font-size: 1.5rem; padding: 0 10px; }
 .drag-handle:active { cursor: grabbing; }
+
+/* File Preview Styles */
+.file-preview-wrapper { width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--orange); display: flex; align-items: center; justify-content: center; background: var(--black); }
+.file-preview { width: 100%; height: 100%; object-fit: cover; }
+.file-preview-fallback { font-size: 1.5rem; color: var(--orange); }
+
 .file-info { flex: 1; overflow: hidden; pointer-events: none; }
 .file-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
@@ -33,29 +39,12 @@
 
 /* Mobile Optimization: Stack buttons vertically */
 @media (max-width: 768px) {
-    .file-card { 
-        flex-direction: column; 
-        align-items: stretch; 
-        gap: 12px; 
-    }
-    .drag-handle { 
-        align-self: center; 
-        transform: rotate(90deg); /* Makes the grip horizontal for vertical cards */
-        padding: 0;
-        margin-bottom: -5px;
-    }
-    .file-actions { 
-        width: 100%; 
-        flex-direction: column; 
-        align-items: stretch; 
-        gap: 10px; 
-    }
+    .file-card { flex-direction: column; align-items: stretch; gap: 12px; }
+    .file-preview-wrapper { align-self: center; width: 80px; height: 80px; margin-bottom: 10px; }
+    .drag-handle { align-self: center; transform: rotate(90deg); padding: 0; margin-bottom: -5px; }
+    .file-actions { width: 100%; flex-direction: column; align-items: stretch; gap: 10px; }
     .file-actions .custom-select-wrapper,
     .file-actions .btn-custom,
     .file-actions .btn-remove,
-    .file-actions .btn-download { 
-        width: 100%; 
-        display: flex; 
-        justify-content: center; 
-    }
+    .file-actions .btn-download { width: 100%; display: flex; justify-content: center; }
 }
