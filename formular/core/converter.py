@@ -112,7 +112,6 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
             custom_args = shlex.split(custom_ffmpeg)
             bad_flags = {'-i', '-f', '-d', '-y', '-n'}
             for arg in custom_args:
-                # Basic injection filter blocking paths
                 if '/' in arg or '\\' in arg or '..' in arg: continue
                 if arg in bad_flags: continue
                 cmd.append(arg)
@@ -130,7 +129,11 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
         raise Exception("FFmpeg engine failure. Verify your custom FFmpeg flags and media constraints.")
 
 async def convert_document(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None):
-    path = find_shortest_path(from_fmt, to_fmt)
+    if from_fmt == to_fmt:
+        path = [from_fmt, to_fmt]
+    else:
+        path = find_shortest_path(from_fmt, to_fmt)
+
     if not path: raise Exception(f"No conversion path found from {from_fmt} to {to_fmt}")
 
     current_input = input_path
@@ -253,12 +256,12 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         await _run_process("ddjvu", "-format=pdf", input_path, output_path, timeout=400)
         return
 
-    # 5. FFmpeg (Audio/Video/Image Hijack for Custom Options)
+    # 5. FFmpeg (Audio/Video/Image Hijack for Custom Options & Same-Format Modifications)
     has_ffmpeg_opts = bool(audio_opts or video_opts or custom_ffmpeg)
     FFMPEG_MEDIA = ['mp4', 'webm', 'mp3', 'wav', 'gif']
     IMAGE_MEDIA = ['jpg', 'png', 'webp']
     
-    if has_ffmpeg_opts and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
+    if (has_ffmpeg_opts or from_fmt == to_fmt) and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
         if to_fmt == 'mp3' and from_fmt in ['mp4', 'webm']:
             proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             stdout, _ = await proc.communicate()
@@ -294,7 +297,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         pd.read_excel(input_path).to_csv(output_path, index=False)
         return
 
-    # 8. Images (Pillow / CairoSVG) (Bypassed if FFmpeg Options are active)
+    # 8. Images (Pillow / CairoSVG)
     if from_fmt == 'svg':
         if to_fmt == 'png': cairosvg.svg2png(url=input_path, write_to=output_path)
         elif to_fmt == 'pdf': cairosvg.svg2pdf(url=input_path, write_to=output_path)
@@ -320,6 +323,10 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             elif to_fmt == 'tar': shutil.make_archive(base_out, 'tar', tmpdir)
             elif to_fmt == 'gz': shutil.make_archive(base_out, 'gztar', tmpdir)
             elif to_fmt == '7z': await _run_process("7z", "a", output_path, f"{tmpdir}/*", timeout=300)
+        return
+
+    if from_fmt == to_fmt:
+        shutil.copy(input_path, output_path)
         return
 
     raise Exception(f"Backend routing error: Direct execution missing for atomic hop {from_fmt}->{to_fmt}")
