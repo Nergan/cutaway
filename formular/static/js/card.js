@@ -108,7 +108,11 @@ window.Formular.createCard = function(file) {
 
             const blob = await response.blob();
             let outExt = targetFormat === 'gz' ? 'tar.gz' : targetFormat;
-            let outName = file.filename.split('.').slice(0, -1).join('.') + '.' + outExt;
+            
+            // Fortified to prevent extension stripping on dot-less filenames
+            let lastDotIndex = file.filename.lastIndexOf('.');
+            let baseName = lastDotIndex === -1 ? file.filename : file.filename.substring(0, lastDotIndex);
+            let outName = baseName + '.' + outExt;
             
             clearInterval(progressInterval);
             cardElement.style.setProperty('--progress', '100%');

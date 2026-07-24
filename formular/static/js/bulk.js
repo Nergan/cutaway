@@ -84,6 +84,7 @@ window.Formular.initBulkActions = function() {
     bulkZipBtn.addEventListener('click', async () => {
         const selectedCards = document.querySelectorAll('.file-card.selected');
         const zip = new JSZip();
+        const nameSet = new Set();
         let hasFiles = false;
 
         const ogText = bulkZipBtn.innerHTML;
@@ -96,7 +97,22 @@ window.Formular.initBulkActions = function() {
                 if (info && info.url) {
                     try {
                         const blob = await fetch(info.url).then(r => r.blob());
-                        zip.file(info.name, blob);
+                        let finalName = info.name;
+                        let counter = 1;
+                        
+                        // Overwrite prevention engine ensures identically named files append sequentially
+                        while (nameSet.has(finalName)) {
+                            const lastDot = info.name.lastIndexOf('.');
+                            if (lastDot === -1) {
+                                finalName = `${info.name} (${counter})`;
+                            } else {
+                                finalName = `${info.name.substring(0, lastDot)} (${counter})${info.name.substring(lastDot)}`;
+                            }
+                            counter++;
+                        }
+                        
+                        nameSet.add(finalName);
+                        zip.file(finalName, blob);
                         hasFiles = true;
                     } catch (err) { console.error("Zip blob fetch failed", err); }
                 }

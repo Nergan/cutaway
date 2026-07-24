@@ -1,7 +1,6 @@
 import magic
 import re
 import zipfile
-from io import BytesIO
 
 MIME_MAP = {
     'application/pdf': 'pdf',
@@ -81,17 +80,22 @@ ALLOWED_CONVERSIONS = {
     'gz': ['zip', '7z', 'tar']
 }
 
-def detect_file_format(file_bytes: bytes, filename: str) -> str:
+def detect_file_format(file_path: str, filename: str) -> str:
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    mime = magic.from_buffer(file_bytes[:4096], mime=True)
+    
+    with open(file_path, 'rb') as f:
+        header_bytes = f.read(8192)
+        
+    mime = magic.from_buffer(header_bytes, mime=True)
 
-    if file_bytes.startswith(b'AT&T') and b'DJVU' in file_bytes[:100]:
+    if header_bytes.startswith(b'AT&T') and b'DJVU' in header_bytes[:100]:
         return 'djvu'
 
-    if mime in ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'] or ext == 'zip' or file_bytes.startswith(b'PK\x03\x04'):
-        if file_bytes.startswith(b'PK\x03\x04'):
+    if mime in ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'] or ext == 'zip' or header_bytes.startswith(b'PK\x03\x04'):
+        if header_bytes.startswith(b'PK\x03\x04'):
+            # zipfile correctly utilizes the file_path since it needs the central directory at the EOF.
             try:
-                with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+                with zipfile.ZipFile(file_path) as zf:
                     namelist = zf.namelist()
                     if 'word/document.xml' in namelist: return 'docx'
                     if 'xl/workbook.xml' in namelist: return 'xlsx'
@@ -103,7 +107,7 @@ def detect_file_format(file_bytes: bytes, filename: str) -> str:
             except Exception:
                 pass
         
-        if file_bytes.startswith(b'PK\x03\x04') or ext == 'zip':
+        if header_bytes.startswith(b'PK\x03\x04') or ext == 'zip':
             return 'zip'
 
     text_extensions = {'txt', 'py', 'js', 'json', 'yaml', 'yml', 'toml', 'xml', 'csv', 'md', 'html', 'css', 'log', 'sh', 'bat', 'ini', 'cfg'}
@@ -112,7 +116,7 @@ def detect_file_format(file_bytes: bytes, filename: str) -> str:
             return 'yaml' if ext == 'yml' else ext
         if ext in text_extensions: return 'txt'
         
-        text_content = file_bytes[:2048].decode('utf-8', errors='ignore')
+        text_content = header_bytes[:2048].decode('utf-8', errors='ignore')
         if not ext:
             if re.search(r'(^#{1,6}\s.+|^>\s.+|\*\*.+\*\*|\[.+\]\(.+\))', text_content, re.MULTILINE): return 'md'
             if ',' in text_content.split('\n')[0] and '\n' in text_content: return 'csv'

@@ -32,9 +32,28 @@ if __name__ == '__main__':
     else:
         try:
             import eel
+            import threading
+            import uvicorn
+            import time
+            import socket
+
+            # Dynamically hook a free port to avoid conflicts
+            def find_free_port():
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', 0))
+                    return s.getsockname()[1]
+                    
+            port = find_free_port()
+            
+            def run_uvicorn():
+                uvicorn.run("main:app", host="127.0.0.1", port=port, log_level="error")
+                
+            # Run the heavy FastAPI logic securely in the background
+            threading.Thread(target=run_uvicorn, daemon=True).start()
+            time.sleep(1) # Provide binding margin
+            
             eel.init(str(BASE_DIR))
-            # Finds the HTML file natively
-            html_file = 'templates/index.html' if (BASE_DIR / 'templates' / 'index.html').exists() else 'formular.html'
-            eel.start(html_file, size=(1000, 850))
+            # Eel launches effectively as a seamless WebView bridging back to Uvicorn routing
+            eel.start(f"http://127.0.0.1:{port}/formular", size=(1000, 850))
         except ImportError:
             print("Eel is not installed. To run the web server, use: python main.py --web")

@@ -174,10 +174,10 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             return
             
         if from_fmt == 'txt':
-            with open(input_path, 'r', encoding='utf-8') as f:
+            with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
                 data = {"root": {"text_content": f.read()}}
         else:
-            with open(input_path, 'r', encoding='utf-8') as f:
+            with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
                 if from_fmt == 'json': data = json.loads(content)
                 elif from_fmt == 'yaml': data = yaml.safe_load(content)
@@ -318,11 +318,17 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
     if from_fmt in ['zip', 'rar', '7z', 'tar', 'gz'] and to_fmt in ['zip', '7z', 'tar', 'gz']:
         with tempfile.TemporaryDirectory() as tmpdir:
             await _run_process("7z", "x", input_path, f"-o{tmpdir}", "-y", timeout=300)
-            base_out = output_path.replace('.zip', '').replace('.tar', '').replace('.gz', '').replace('.7z', '')
-            if to_fmt == 'zip': shutil.make_archive(base_out, 'zip', tmpdir)
-            elif to_fmt == 'tar': shutil.make_archive(base_out, 'tar', tmpdir)
-            elif to_fmt == 'gz': shutil.make_archive(base_out, 'gztar', tmpdir)
-            elif to_fmt == '7z': await _run_process("7z", "a", output_path, f"{tmpdir}/*", timeout=300)
+            
+            if to_fmt == '7z': 
+                await _run_process("7z", "a", output_path, f"{tmpdir}/*", timeout=300)
+            else:
+                # Isolate make_archive logic since it forcefully appends extensions
+                with tempfile.TemporaryDirectory() as out_tmp:
+                    fmt_map = {'zip': 'zip', 'tar': 'tar', 'gz': 'gztar'}
+                    archive_format = fmt_map[to_fmt]
+                    base_name = os.path.join(out_tmp, "archive")
+                    created_path = shutil.make_archive(base_name, archive_format, tmpdir)
+                    shutil.move(created_path, output_path)
         return
 
     if from_fmt == to_fmt:
