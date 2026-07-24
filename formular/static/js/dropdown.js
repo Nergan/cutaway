@@ -218,6 +218,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         if (!currentSelectedFormat) valid = false;
 
         applyBtn.disabled = !valid;
+        selectEl.dataset.invalid = valid ? 'false' : 'true';
 
         if (!valid) {
             applyBtn.innerText = "INVALID PARAMS";
@@ -230,6 +231,8 @@ window.Formular.initCustomSelect = function(selectEl) {
             applyBtn.style.cursor = "pointer";
             applyBtn.style.opacity = "1";
         }
+
+        selectEl.dispatchEvent(new Event('change'));
     }
 
     function populateMergeDropdown() {
@@ -321,6 +324,11 @@ window.Formular.initCustomSelect = function(selectEl) {
             grid.querySelectorAll('.format-chip').forEach(c => c.classList.remove('active'));
             optDiv.classList.add('active');
             currentSelectedFormat = opt.value;
+            selectEl.value = opt.value;
+            
+            const isModified = trigger.querySelector('span').textContent.includes('✨');
+            trigger.querySelector('span').textContent = opt.text + (isModified ? ' ✨' : '');
+
             updateTabVisibility(opt.value);
             validateForm();
         });
@@ -811,4 +819,4 @@ document.addEventListener('click', (e) => {
             if (card) card.classList.remove('dropdown-open');
         }
     });
-});
+}); 

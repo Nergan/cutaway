@@ -91,19 +91,20 @@ window.Formular.createCard = function(file) {
     }
 
     const selectBox = cardElement.querySelector(`#target-${file.id}`);
-    window.Formular.initCustomSelect(selectBox);
-
     const convertBtn = cardElement.querySelector(`#btn-convert-${file.id}`);
     const dlBtn = cardElement.querySelector(`#btn-dl-${file.id}`);
     const removeBtn = cardElement.querySelector(`#btn-remove-${file.id}`);
 
+    selectBox.addEventListener('change', () => {
+        const isValid = Boolean(selectBox.value) && selectBox.dataset.invalid !== 'true';
+        convertBtn.disabled = !isValid;
+    });
+
+    window.Formular.initCustomSelect(selectBox);
+
     let activeController = null;
     let progressInterval = null;
     let isConverting = false;
-
-    selectBox.addEventListener('change', () => {
-        // Validation sync handled globally in dropdown.js now, but convertBtn is auto enabled if valid
-    });
 
     cardElement.doRemove = () => {
         if (activeController) activeController.abort();
