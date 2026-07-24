@@ -60,7 +60,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             <div class="tab-content custom-tab" style="display:none;">
                 <label>Custom FFmpeg Flags:</label>
                 <textarea class="c-flags custom-input" placeholder="-vf scale=320:-1"></textarea>
-                <small style="color:var(--danger); display:block; margin-top:5px; line-height:1.2;">No external paths. Flags applied securely before output.</small>
             </div>
         </div>
         <button class="btn-custom btn-apply" style="width: 100%; margin-top: 10px;">APPLY</button>
