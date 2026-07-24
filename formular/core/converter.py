@@ -21,7 +21,7 @@ DIRECT_EDGES = {
     'pptx': ['pdf'],
     'rtf': ['pdf', 'docx', 'html', 'txt', 'md'],
     'odt': ['pdf', 'docx'],
-    'txt': ['pdf', 'html', 'md', 'docx', 'json'],  # txt->json bridge connects Documents to Data!
+    'txt': ['pdf', 'html', 'md', 'docx', 'json'],  
     'html': ['pdf', 'md', 'txt', 'docx'],
     'md': ['html', 'txt', 'docx'],
     'epub': ['html', 'txt', 'md'],
@@ -72,9 +72,23 @@ async def _run_process(*cmd, timeout=300):
         raise Exception(f"Engine failure with code {proc.returncode}.")
 
 async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str, video_opts: str, custom_ffmpeg: str):
-    cmd = ["ffmpeg", "-y", "-i", input_path]
+    cmd = ["ffmpeg", "-y"]
     vf = []
     af = []
+    
+    # Process Trims first for fast seeking
+    trim_start, trim_end = None, None
+    for opts_str in filter(None, [audio_opts, video_opts]):
+        try:
+            opts = json.loads(opts_str)
+            if opts.get('trim_start'): trim_start = opts['trim_start']
+            if opts.get('trim_end'): trim_end = opts['trim_end']
+        except: pass
+
+    if trim_start: cmd.extend(["-ss", str(trim_start)])
+    if trim_end: cmd.extend(["-to", str(trim_end)])
+    
+    cmd.extend(["-i", input_path])
     
     if video_opts and from_fmt not in ['mp3', 'wav']:
         try:
@@ -322,7 +336,6 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             if to_fmt == '7z': 
                 await _run_process("7z", "a", output_path, f"{tmpdir}/*", timeout=300)
             else:
-                # Isolate make_archive logic since it forcefully appends extensions
                 with tempfile.TemporaryDirectory() as out_tmp:
                     fmt_map = {'zip': 'zip', 'tar': 'tar', 'gz': 'gztar'}
                     archive_format = fmt_map[to_fmt]

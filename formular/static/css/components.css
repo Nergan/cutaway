@@ -89,35 +89,48 @@ body.bulk-active #toast-container { bottom: 100px; }
 
 /* Bulk Panel Dropdown flip */
 .bulk-panel .custom-select-options {
-    top: auto; 
-    bottom: 100%; 
-    border-top: 1px solid var(--orange); 
-    border-bottom: none;
-    border-radius: 4px 4px 0 0; 
-    box-shadow: 0 -8px 16px rgba(0,0,0,0.5);
+    top: auto; bottom: 100%; border-top: 1px solid var(--orange); border-bottom: none;
+    border-radius: 4px 4px 0 0; box-shadow: 0 -8px 16px rgba(0,0,0,0.5);
 }
 
 .custom-select-options.open { display: block; }
-.custom-option { padding: 8px 12px; cursor: pointer; font-family: 'Segoe UI', system-ui; color: var(--text-light); transition: background 0.2s, color 0.2s; }
-.custom-option:hover { background-color: var(--orange); color: var(--black); }
 
 /* Advanced Dropdown Sub-styles */
-.advanced-dropdown { width: 280px; max-width: 90vw; padding: 10px; max-height: 420px; }
+.advanced-dropdown { width: 300px; max-width: 90vw; padding: 10px; max-height: 460px; }
 .formats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .format-chip { background: rgba(255, 107, 53, 0.1); border: 1px solid var(--orange); color: var(--text-light); border-radius: 4px; text-align: center; padding: 5px 0; cursor: pointer; font-size: 0.85rem; transition: 0.2s; user-select: none; }
 .format-chip:hover { background: var(--orange); color: var(--black); }
 .format-chip.active { background: var(--orange); color: var(--black); font-weight: bold; box-shadow: 0 0 8px rgba(255,107,53,0.5); }
 .media-settings { background: rgba(10,10,10, 0.5); border: 1px solid var(--orange-light); border-radius: 4px; padding: 10px; margin-bottom: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
 .settings-tabs { display: flex; border-bottom: 1px solid var(--orange); margin-bottom: 10px; }
-.settings-tabs .tab { flex: 1; text-align: center; padding: 5px; cursor: pointer; font-size: 0.8rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; }
+.settings-tabs .tab { flex: 1; text-align: center; padding: 5px; cursor: pointer; font-size: 0.8rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; font-family: 'Segoe UI', system-ui; }
 .settings-tabs .tab.active { color: var(--orange); border-bottom: 2px solid var(--orange); }
-.preset-btns { display: flex; gap: 5px; margin-bottom: 15px; }
-.btn-preset { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 0.75rem; padding: 6px 4px; border-radius: 3px; cursor: pointer; transition: 0.2s; }
-.btn-preset:hover { border-color: var(--orange-light); color: var(--orange-light); }
-.btn-preset.active { border-color: var(--orange); color: var(--orange); background: rgba(255,107,53,0.1); font-weight: bold; }
+
+/* Force standard system font inside the media form to fix inaccuracy issues */
+.media-settings label, .media-settings input, .media-settings select, .media-settings textarea { font-family: 'Segoe UI', system-ui; }
+.media-settings label { display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px; margin-top: 10px; }
+.media-settings label:first-child { margin-top: 0; }
+
+.preset-btns, .filter-chips { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+.btn-preset, .f-chip { flex: 1; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 0.75rem; padding: 6px 4px; border-radius: 3px; cursor: pointer; transition: 0.2s; font-family: 'Segoe UI', system-ui; text-align: center; min-width: 60px; }
+.btn-preset:hover, .f-chip:hover { border-color: var(--orange-light); color: var(--orange-light); }
+.btn-preset.active, .f-chip.active { border-color: var(--orange); color: var(--orange); background: rgba(255,107,53,0.1); font-weight: bold; }
+
 .slider-group { margin-bottom: 12px; }
-.slider-group label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px; }
+.slider-group label { display: flex; justify-content: space-between; margin-top:0; }
 .slider-group input[type="range"] { width: 100%; accent-color: var(--orange); cursor: pointer; }
-.custom-input { width: 100%; background: var(--dark-gray); border: 1px solid var(--orange); color: var(--text-light); padding: 8px; border-radius: 3px; font-size: 0.85rem; margin-bottom: 10px; transition: 0.2s; }
+.custom-input { width: 100%; background: var(--dark-gray); border: 1px solid var(--orange); color: var(--text-light); padding: 6px 8px; border-radius: 3px; font-size: 0.85rem; margin-bottom: 5px; transition: 0.2s; }
 .custom-input:focus { border-color: var(--orange-light); outline: none; box-shadow: 0 0 5px rgba(255,107,53,0.3); }
 textarea.custom-input { resize: vertical; min-height: 60px; font-family: monospace; }
+.flex-row { display: flex; gap: 10px; }
+
+/* Visual Cropper Styles */
+.vc-wrapper { margin-bottom: 15px; }
+.vc-container { position: relative; width: 100%; height: 140px; background: #000; border: 1px solid var(--light-gray); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.vc-media { max-width: 100%; max-height: 100%; pointer-events: none; }
+.vc-crop-box { position: absolute; border: 2px dashed var(--orange); top: 0; left: 0; width: 100%; height: 100%; cursor: move; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
+.vc-handle { position: absolute; width: 12px; height: 12px; background: var(--orange); border-radius: 50%; }
+.vc-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.vc-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.vc-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.vc-se { bottom: -6px; right: -6px; cursor: nwse-resize; }

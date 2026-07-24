@@ -1,11 +1,11 @@
 window.Formular = window.Formular || {};
+window.Formular.LocalFiles = {}; // Cache to power local frontend previews
 
 window.Formular.initUploader = function() {
     const fileInput = document.getElementById('fileInput');
     const sortableContainer = document.getElementById('sortableContainer');
     const dragOverlay = document.getElementById('dragOverlay');
 
-    // Force Mobile OS to open File Explorer instead of Photo Library
     fileInput.setAttribute('multiple', 'multiple');
     fileInput.setAttribute('accept', '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.rtf,.odt,.epub,.djvu,.csv,.json,.yaml,.toml,.xml,.zip,.rar,.7z,.tar,.gz,text/*,application/*,image/*,audio/*,video/*');
 
@@ -133,6 +133,7 @@ window.Formular.initUploader = function() {
                         window.Formular.Toast.show(`${fileData.filename}: ${fileData.error}`, 'error');
                         p.remove();
                     } else {
+                        window.Formular.LocalFiles[fileData.id] = file; // Cache the frontend file representation for thumbnails
                         p.style.setProperty('--progress', '100%');
                         setTimeout(() => {
                             p.style.setProperty('--progress', '0%');

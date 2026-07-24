@@ -18,7 +18,7 @@ window.Formular.createCard = function(file) {
             <div class="file-meta">${sizeMB} MB • Detected: <strong>${file.format.toUpperCase()}</strong></div>
         </div>
         <div class="file-actions">
-            <select class="gothic-select" id="target-${file.id}">${optionsHTML}</select>
+            <select class="gothic-select" id="target-${file.id}" data-original-format="${file.format}" data-file-id="${file.id}">${optionsHTML}</select>
             <button class="btn-custom" id="btn-convert-${file.id}" disabled>CONVERT</button>
             <a class="btn-custom btn-download" style="display:none;" id="btn-dl-${file.id}">DOWNLOAD</a>
             <button class="btn-custom btn-remove" id="btn-remove-${file.id}" title="Remove"><i class="bi bi-trash"></i></button>
@@ -67,7 +67,6 @@ window.Formular.createCard = function(file) {
         selectBox.value = targetFormat;
         const customTriggerSpan = cardElement.querySelector('.custom-select-trigger span');
         if (customTriggerSpan && targetFormat) {
-            // Keep any sparkling icons if they exist in the current text
             const isSparkling = customTriggerSpan.textContent.includes('✨');
             customTriggerSpan.textContent = targetFormat.toUpperCase() + (isSparkling ? ' ✨' : '');
         }
@@ -108,8 +107,6 @@ window.Formular.createCard = function(file) {
 
             const blob = await response.blob();
             let outExt = targetFormat === 'gz' ? 'tar.gz' : targetFormat;
-            
-            // Fortified to prevent extension stripping on dot-less filenames
             let lastDotIndex = file.filename.lastIndexOf('.');
             let baseName = lastDotIndex === -1 ? file.filename : file.filename.substring(0, lastDotIndex);
             let outName = baseName + '.' + outExt;
