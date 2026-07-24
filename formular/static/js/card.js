@@ -46,7 +46,6 @@ window.Formular.createCard = function(file) {
     `;
     sortableContainer.appendChild(cardElement);
 
-    // Canvas extraction logic to eliminate the video-drag autoplay bug forever.
     if (localFile) {
         const previewWrap = cardElement.querySelector(`#preview-wrap-${file.id}`);
         const url = URL.createObjectURL(localFile);
@@ -65,7 +64,26 @@ window.Formular.createCard = function(file) {
                 previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview">`;
             };
         } else if (localFile.type === 'application/pdf' || ext === 'pdf') {
-            previewWrap.innerHTML = `<embed src="${url}#page=1&toolbar=0&navpanes=0&scrollbar=0" type="application/pdf" class="file-preview pdf-preview">`;
+            if (window.pdfjsLib) {
+                localFile.arrayBuffer().then(arrayBuffer => {
+                    return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                }).then(pdf => {
+                    return pdf.getPage(1);
+                }).then(page => {
+                    const viewport = page.getViewport({ scale: 0.4 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    return page.render({ canvasContext: context, viewport: viewport }).promise.then(() => canvas);
+                }).then(canvas => {
+                    previewWrap.innerHTML = `<img src="${canvas.toDataURL()}" class="file-preview">`;
+                }).catch(() => {
+                    previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div>`;
+                });
+            } else {
+                previewWrap.innerHTML = `<div class="file-preview-fallback"><i class="bi bi-file-earmark-pdf"></i></div>`;
+            }
         }
     }
 

@@ -23,6 +23,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     
     const origFmt = selectEl.dataset.originalFormat || '';
     const fileId = selectEl.dataset.fileId;
+    let selectedMergeId = '';
     
     const wrapper = document.createElement('div');
     wrapper.className = 'custom-select-wrapper';
@@ -127,9 +128,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             
             <div class="tab-content merge-tab" style="display:none;">
                 <label>Target Overwrite / Background Media:</label>
-                <select class="merge-file-select custom-input">
-                    <option value="">-- No secondary media selected --</option>
-                </select>
+                <div class="merge-files-list"></div>
                 <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;">
                     <input type="checkbox" class="merge-loop" checked style="accent-color: var(--orange); width: 16px; height: 16px;">
                     Loop shorter track to match duration
@@ -154,10 +153,11 @@ window.Formular.initCustomSelect = function(selectEl) {
     let currentSelectedFormat = selectEl.value;
 
     function populateMergeDropdown() {
-        const mergeSelect = optionsContainer.querySelector('.merge-file-select');
-        mergeSelect.innerHTML = '<option value="">-- No secondary media selected --</option>';
+        const mergeList = optionsContainer.querySelector('.merge-files-list');
+        mergeList.innerHTML = `<div class="merge-chip ${!selectedMergeId ? 'active' : ''}" data-id="">-- No secondary media selected --</div>`;
         if (!window.Formular.LocalFiles) return;
         
+        let candidateCount = 0;
         Object.keys(window.Formular.LocalFiles).forEach(id => {
             if (id === fileId) return; 
             const f = window.Formular.LocalFiles[id];
@@ -170,9 +170,22 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
             
             if (isValid) {
-                mergeSelect.innerHTML += `<option value="${id}">${f.name}</option>`;
+                candidateCount++;
+                const isActive = selectedMergeId === id ? 'active' : '';
+                mergeList.innerHTML += `<div class="merge-chip ${isActive}" data-id="${id}" title="${f.name}">${f.name}</div>`;
             }
         });
+
+        mergeList.querySelectorAll('.merge-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                mergeList.querySelectorAll('.merge-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                selectedMergeId = chip.dataset.id;
+            });
+        });
+
+        return candidateCount;
     }
 
     function updateTabVisibility(format) {
@@ -184,9 +197,8 @@ window.Formular.initCustomSelect = function(selectEl) {
             const tabVideo = optionsContainer.querySelector('.tab-video');
             const tabMerge = optionsContainer.querySelector('.tab-merge');
             
-            populateMergeDropdown();
-            const hasMergeCandidates = optionsContainer.querySelector('.merge-file-select').options.length > 1;
-            tabMerge.style.display = hasMergeCandidates ? 'block' : 'none';
+            const candidates = populateMergeDropdown();
+            tabMerge.style.display = candidates > 0 ? 'block' : 'none';
 
             if (audioOnly.includes(format)) {
                 tabAudio.style.display = 'block';
@@ -516,7 +528,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             selectEl.dataset.audioOpts = JSON.stringify(audioOpts);
             selectEl.dataset.videoOpts = JSON.stringify(videoOpts);
             selectEl.dataset.customFfmpeg = optionsContainer.querySelector('.c-flags').value.trim();
-            selectEl.dataset.mergeId = optionsContainer.querySelector('.merge-file-select').value;
+            selectEl.dataset.mergeId = selectedMergeId;
             selectEl.dataset.mergeLoop = optionsContainer.querySelector('.merge-loop').checked;
         } else {
             selectEl.dataset.audioOpts = '';
@@ -580,3 +592,16 @@ window.Formular.initCustomSelect = function(selectEl) {
     wrapper.appendChild(optionsContainer);
     selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
 };
+
+// Fortified click handler ensuring clicking outside custom select elements reliably closes open menus
+document.addEventListener('click', (e) => {
+    document.querySelectorAll('.custom-select-options.open').forEach(el => {
+        const wrapper = el.closest('.custom-select-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            el.classList.remove('open');
+            if (el.previousElementSibling) el.previousElementSibling.classList.remove('open');
+            const card = el.closest('.file-card');
+            if (card) card.classList.remove('dropdown-open');
+        }
+    });
+});
