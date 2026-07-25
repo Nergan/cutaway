@@ -209,13 +209,13 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   justify-content: space-between; 
   align-items: center; 
   gap: 0.6rem; 
-  transition: color 0.15s; 
+  transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
   width: 100%; 
   position: relative; 
   background: transparent !important;
 }
 .glass-option:hover { 
-  color: var(--text-main) !important; 
+  color: var(--accent-moss) !important; 
 }
 .glass-option.clicked { transform: scale(0.98); }
 .glass-option.highlighted-option { color: var(--accent-moss) !important; }
@@ -250,7 +250,7 @@ body.light-theme .floating-tooltip {
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
 .animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
-/* Target ONLY the specific hovered item to expand its underline */
+/* Target ONLY the specific hovered item to expand its green underline */
 .glass-option:hover > .animated-underline::after,
 .glass-option.highlighted-option > .animated-underline::after,
 .footer-action:hover > .animated-underline::after,
