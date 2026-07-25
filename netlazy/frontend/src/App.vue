@@ -290,19 +290,18 @@ const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
 let touchStartPos = { x: 0, y: 0 };
-let touchCurrentPos = { x: 0, y: 0 };
 let canPullToRefresh = false;
 
 // Walks up the DOM tree from the touched element and verifies 
-// that ALL scrollable parent containers are at scrollTop <= 1.
-function isAtVeryTop(target) {
+// that ALL scrollable parent containers above target are at scrollTop <= 2.
+function isViewAtVeryTop(target) {
   let el = target;
   while (el && el !== document.body && el !== document.documentElement) {
     const style = window.getComputedStyle(el);
     const overflowY = style.overflowY;
-    const isScrollable = (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && (el.scrollHeight > el.clientHeight);
+    const isScrollable = (overflowY === 'auto' || overflowY === 'scroll') && (el.scrollHeight > el.clientHeight + 5);
     
-    if (isScrollable && el.scrollTop > 1) {
+    if (isScrollable && el.scrollTop > 2) {
       return false;
     }
     el = el.parentElement;
@@ -317,22 +316,20 @@ function handleGlobalTouchStart(e) {
   }
   const touch = e.touches[0];
   touchStartPos = { x: touch.clientX, y: touch.clientY };
-  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
 
-  // Only allow pull-to-refresh if every scrollable parent is at the top
-  canPullToRefresh = isAtVeryTop(e.target);
+  // Only allow pull-to-refresh if every scrollable parent container is at the top
+  canPullToRefresh = isViewAtVeryTop(e.target);
 }
 
 function handleGlobalTouchMove(e) {
   if (!canPullToRefresh || e.touches.length !== 1) return;
 
   const touch = e.touches[0];
-  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
-
-  const deltaY = touchCurrentPos.y - touchStartPos.y;
+  const deltaY = touch.clientY - touchStartPos.y;
 
   // Immediately cancel if finger moves UP (user is scrolling down the page)
-  if (deltaY < 0 || !isAtVeryTop(e.target)) {
+  // or if any scroll container moves away from scrollTop = 0
+  if (deltaY < 0 || !isViewAtVeryTop(e.target)) {
     canPullToRefresh = false;
   }
 }
@@ -340,14 +337,20 @@ function handleGlobalTouchMove(e) {
 function handleGlobalTouchEnd(e) {
   if (!canPullToRefresh || window.innerWidth > 768) return;
 
-  const deltaY = touchCurrentPos.y - touchStartPos.y;
-  const deltaX = Math.abs(touchCurrentPos.x - touchStartPos.x);
+  if (!e.changedTouches || e.changedTouches.length === 0) {
+    canPullToRefresh = false;
+    return;
+  }
 
-  // Reload only if:
+  const touch = e.changedTouches[0];
+  const deltaY = touch.clientY - touchStartPos.y;
+  const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+
+  // Reload ONLY if:
   // 1. Finger was pulled DOWN > 140px
   // 2. Movement was predominantly vertical (deltaY > deltaX * 1.5)
   // 3. User was at the absolute top during the entire gesture
-  if (deltaY > 140 && deltaY > deltaX * 1.5) {
+  if (deltaY > 140 && deltaY > deltaX * 1.5 && isViewAtVeryTop(e.target)) {
     window.location.reload();
   }
 

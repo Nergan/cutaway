@@ -66,7 +66,7 @@
     border-bottom: 1px solid var(--border-subtle);
   }
   .profile-workspace-pane { width: 100% !important; border-left: none; flex-grow: 1; }
-  .workspace-scroll-area { height: auto; overflow-y: visible; padding: 1.5rem; min-width: unset; padding-bottom: 120px !important; }
+  .workspace-scroll-area { height: auto !important; overflow-y: visible !important; overflow-x: visible !important; padding: 1.5rem; min-width: unset; padding-bottom: 120px !important; }
   .workspace-toggle-btn { display: none !important; }
   .editor-layout .resizer-v { display: none !important; }
 
