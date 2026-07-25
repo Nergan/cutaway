@@ -62,13 +62,17 @@ mongo_handler.setLevel(logging.INFO)
 mongo_handler.setFormatter(logging.Formatter('%(message)s'))
 
 
+def _get_base_path(request: Request) -> str:
+    """Helper to detect if netlazy is hosted under a URL prefix like /netlazy."""
+    return "/netlazy" if request.url.path.startswith("/netlazy") else ""
+
+
 # We add a dependency that prevents browsers from accessing raw API data, redirecting them to the SPA instead.
 async def block_browser_api(request: Request):
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
-        root_path = request.scope.get("root_path", "")
-        location = f"{root_path}/profile" if root_path else "/profile"
-        raise HTTPException(status_code=303, headers={"Location": location})
+        base = _get_base_path(request)
+        raise HTTPException(status_code=303, headers={"Location": f"{base}/profile"})
 
 
 # Standard API routing interface with the browser-block dependency applied
@@ -110,20 +114,20 @@ async def serve_welcome():
 # Root routing and Client-Side Routing illusion for the SPA
 @router.get("/")
 async def root_redirect(request: Request):
-    root_path = request.scope.get('root_path', '')
-    return RedirectResponse(url=f"{root_path}/profile", status_code=303)
+    base = _get_base_path(request)
+    return RedirectResponse(url=f"{base}/profile", status_code=303)
 
 @router.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(request: Request, full_path: str = ""):
-    # Double check API routes that missed the router prefix mapping somehow
+    # Catch direct API browser requests that missed router prefix matching
     if full_path.startswith("api/") or full_path == "api":
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
-            root_path = request.scope.get("root_path", "")
-            return RedirectResponse(url=f"{root_path}/profile", status_code=303)
+            base = _get_base_path(request)
+            return RedirectResponse(url=f"{base}/profile", status_code=303)
         raise HTTPException(status_code=404)
     
-    # Serve index.html for known frontend routes, letting Vue Router (or custom history logic) take over.
+    # Serve index.html for known frontend routes, letting the client-side router take over.
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
