@@ -6,7 +6,7 @@
 
 /* TACTILE MICRO-INTERACTIONS & CUSTOM SELECT BUTTONS */
 .chip, .create-btn, .footer-action, .icon-btn, .custom-select {
-  transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .custom-select {
@@ -14,18 +14,30 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.4rem 0.2rem;
-  border-bottom: 1px dashed var(--border-subtle);
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.85rem;
   user-select: none;
   position: relative;
+  border: none;
 }
-.custom-select:hover {
+
+.custom-select:hover, .custom-select.is-open {
+  background: rgba(128, 128, 128, 0.08);
   color: var(--text-main);
-  border-color: var(--border-focus);
+}
+
+.custom-select.is-open {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: rgba(20, 20, 20, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.light-theme .custom-select.is-open {
+  background: rgba(249, 246, 239, 0.85);
 }
 
 .chip:hover, .create-btn:hover, .icon-btn:hover {
@@ -169,17 +181,18 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* MINIMALIST GLASS DROPDOWNS & POPOVERS */
 .glass-menu { 
   position: absolute; 
-  background: rgba(10, 10, 10, 0.75) !important; 
+  background: rgba(20, 20, 20, 0.75) !important; 
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
-  border-radius: var(--radius-sm); z-index: 999; 
-  box-shadow: var(--shadow-sm) !important; 
-  border: 1px solid var(--border-subtle) !important; 
-  padding: 0.4rem 0; 
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important; z-index: 999; 
+  box-shadow: var(--shadow-md) !important; 
+  border: none !important; 
+  padding: 0.3rem 0; 
   max-width: 90vw;
 }
 .light-theme .glass-menu {
-  background: rgba(249, 246, 239, 0.8) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: rgba(249, 246, 239, 0.85) !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
 .glass-contacts-list {
@@ -237,11 +250,11 @@ body.light-theme .floating-tooltip {
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
 .animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
-.custom-select:hover .animated-underline::after,
-.glass-option:hover .animated-underline::after,
-.glass-option.highlighted-option .animated-underline::after,
-.footer-action:hover .animated-underline::after,
-.nav-item:hover .animated-underline::after {
+/* Target ONLY the specific hovered item to expand its underline */
+.glass-option:hover > .animated-underline::after,
+.glass-option.highlighted-option > .animated-underline::after,
+.footer-action:hover > .animated-underline::after,
+.nav-item:hover > .animated-underline::after {
   width: 100%;
 }
 
