@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional, Any
 from pymongo.errors import DuplicateKeyError
+from pymongo import UpdateOne
 from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, Tag, User, UserAlreadyExistsError
@@ -129,23 +130,58 @@ class MongoSecurityRepository(SecurityRepository):
             await db_instance.bans_collection.delete_many({"$or": ops})
 
 class MongoTagRepository(TagRepository):
-    async def sync(self, tags: List[Tag]) -> None:
+    async def sync(self, tags: List[Tag], file_hash: Optional[str] = None) -> bool:
+        # Check against cached file hash to prevent redundant syncing
+        if file_hash:
+            meta = await db_instance.tags_collection.find_one({"name": "__sync_hash__"})
+            if meta and meta.get("hash") == file_hash:
+                return False
+
         valid_names = [t.name for t in tags]
-        for tag in tags:
-            await db_instance.tags_collection.update_one(
+        operations = [
+            UpdateOne(
                 {"name": tag.name},
                 {"$set": {"aliases": tag.aliases, "hidden": tag.hidden, "i18n": tag.i18n}},
                 upsert=True,
             )
-        await db_instance.tags_collection.delete_many({"name": {"$nin": valid_names}})
-        await db_instance.profiles_collection.update_many({}, {"$pull": {"tags": {"$nin": valid_names}}})
+            for tag in tags
+        ]
+
+        # Register the new hash signature alongside the data
+        if file_hash:
+            operations.append(
+                UpdateOne(
+                    {"name": "__sync_hash__"},
+                    {"$set": {"hash": file_hash}},
+                    upsert=True
+                )
+            )
+            valid_names.append("__sync_hash__")
+
+        if operations:
+            await db_instance.tags_collection.bulk_write(operations)
+
+        # Cleanup ghosted tags
+        if valid_names:
+            await db_instance.tags_collection.delete_many({"name": {"$nin": valid_names}})
+        else:
+            await db_instance.tags_collection.delete_many({})
+
+        # Cascading removal from user profiles
+        profile_valid_names = [t.name for t in tags]
+        if profile_valid_names:
+            await db_instance.profiles_collection.update_many({}, {"$pull": {"tags": {"$nin": profile_valid_names}}})
+        else:
+            await db_instance.profiles_collection.update_many({}, {"$pull": {"tags": {"$nin": []}}})
+
+        return True
 
     async def get_all_tags(self) -> List[Tag]:
-        cursor = db_instance.tags_collection.find({})
+        cursor = db_instance.tags_collection.find({"name": {"$ne": "__sync_hash__"}})
         return [self._to_domain(doc) async for doc in cursor]
 
     async def list_visible(self) -> List[Tag]:
-        cursor = db_instance.tags_collection.find({"hidden": False})
+        cursor = db_instance.tags_collection.find({"hidden": False, "name": {"$ne": "__sync_hash__"}})
         return [self._to_domain(doc) async for doc in cursor]
 
     async def search(self, query: str) -> List[Tag]:
@@ -153,7 +189,8 @@ class MongoTagRepository(TagRepository):
         if not tokens: return await self.list_visible()
         positive = [t.lower() for t in tokens if not t.startswith("-")]
         negative = [t[1:].lower() for t in tokens if t.startswith("-") and len(t) > 1]
-        cursor = db_instance.tags_collection.find({})
+        
+        cursor = db_instance.tags_collection.find({"name": {"$ne": "__sync_hash__"}})
         all_tags = [self._to_domain(doc) async for doc in cursor]
         
         def matches(tag: Tag, term: str) -> bool:
@@ -171,7 +208,7 @@ class MongoTagRepository(TagRepository):
         return results
 
     async def get_all_names(self) -> List[str]:
-        cursor = db_instance.tags_collection.find({}, {"name": 1})
+        cursor = db_instance.tags_collection.find({"name": {"$ne": "__sync_hash__"}}, {"name": 1})
         return [doc["name"] async for doc in cursor]
 
     def _to_domain(self, doc: dict) -> Tag:

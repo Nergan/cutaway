@@ -6,17 +6,27 @@ pip install --no-cache-dir -r requirements.txt
 
 echo "Scanning for Tier 2 (Plugin) dependencies..."
 # Iterate over all directories in the base path
+declare -a build_pids=()
+
 for dir in */; do
     if [ -f "${dir}package.json" ]; then
-        echo "Found package.json in ${dir}. Attempting npm build..."
+        echo "Found package.json in ${dir}. Attempting npm build in background..."
         set +e
-        # Fall back to standard npm install if npm ci fails due to an out-of-sync lockfile
-        (cd "${dir}" && (npm ci || npm install --no-audit --no-fund) && npm run build)
-        if [ $? -eq 0 ]; then
-            echo "Successfully built frontend for ${dir}"
-        else
-            echo "WARNING: Failed to build frontend for ${dir}. Skipping."
-        fi
+        # Run npm build concurrently in a background subshell
+        (
+            cd "${dir}"
+            # Fall back to standard npm install if npm ci fails due to an out-of-sync lockfile
+            if npm ci || npm install --no-audit --no-fund; then
+                if npm run build; then
+                    echo "Successfully built frontend for ${dir}"
+                else
+                    echo "WARNING: Failed to build frontend for ${dir}. Skipping."
+                fi
+            else
+                echo "WARNING: Failed to install frontend dependencies for ${dir}. Skipping."
+            fi
+        ) &
+        build_pids+=($!)
         set -e
     fi
 
@@ -36,6 +46,11 @@ for dir in */; do
         # Re-enable exit-on-error for the core script
         set -e
     fi
+done
+
+echo "Waiting for all frontend builds to finish..."
+for pid in "${build_pids[@]}"; do
+    wait $pid || echo "WARNING: A background build process (PID $pid) failed."
 done
 
 echo "Checking for Playwright requirements..."
