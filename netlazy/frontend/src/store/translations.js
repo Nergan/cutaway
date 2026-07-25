@@ -498,7 +498,7 @@ export default {
     no_valid_private: "유효한 비공개 연락처가 없습니다.",
     sent: "전송됨 ({type})",
     copy: "복사",
-    toggle 대_privacy: "프라이버시 전환",
+    toggle_privacy: "프라이버시 전환",
     copied: "클립보드에 복사되었습니다",
     vault_synced: "보관소가 동기화되었습니다",
     max_media: "최대 10개의 미디어 항목",
