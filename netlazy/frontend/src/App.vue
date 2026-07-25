@@ -290,25 +290,26 @@ const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
 let touchStartY = 0;
+let initialScrollTop = 0;
+let activeScrollEl = null;
+
 function handleGlobalTouchStart(e) {
   if (e.touches.length > 0) {
     touchStartY = e.touches[0].clientY;
+    activeScrollEl = e.target.closest('.scrollable-content, .workspace-scroll-area, .tag-library-pane, .inbox-col');
+    initialScrollTop = activeScrollEl ? activeScrollEl.scrollTop : 0;
   }
 }
+
 function handleGlobalTouchEnd(e) {
   if (e.changedTouches.length > 0 && window.innerWidth <= 768) {
     const touchEndY = e.changedTouches[0].clientY;
-    const scrollEl = e.target.closest('.scrollable-content, .workspace-scroll-area, .tag-library-pane, .inbox-col');
     
-    // Swipe Up at bottom
-    if (touchStartY - touchEndY > 120) {
-      if (!scrollEl || (scrollEl.scrollHeight - scrollEl.scrollTop <= scrollEl.clientHeight + 10)) {
-        window.location.reload();
-      }
-    }
-    // Swipe Down at top
+    // Pull-to-refresh (Swipe Down): 
+    // We ensure the finger moves down (touchEndY - touchStartY > 120)
+    // AND that we were already at the very top when the touch STARTED.
     if (touchEndY - touchStartY > 120) {
-      if (!scrollEl || scrollEl.scrollTop <= 0) {
+      if (!activeScrollEl || initialScrollTop <= 0) {
         window.location.reload();
       }
     }
