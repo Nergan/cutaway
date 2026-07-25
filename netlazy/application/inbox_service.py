@@ -16,7 +16,7 @@ class InboxService:
         self._profile_repo = profile_repo
         self._user_repo = user_repo
 
-    async def send_handshake(self, sender_id: str, receiver_id: str, handshake_type: str, offered_contact: str = None) -> Handshake:
+    async def send_handshake(self, sender_id: str, receiver_id: str, handshake_type: str, offered_contact: str = None, message: str = None) -> Handshake:
         if handshake_type in ("share", "exchange", "mutual") and not offered_contact:
             raise ValueError(f"offered_contact is required for handshake type '{handshake_type}'")
         if handshake_type == "demand" and offered_contact:
@@ -33,6 +33,7 @@ class InboxService:
             existing.status = "pending"
             existing.offered_contact = offered_contact
             existing.returned_contact = None
+            existing.message = message
             existing.sender_deleted = False
             existing.receiver_deleted = False
             existing.updated_at = datetime.now(timezone.utc)
@@ -46,6 +47,7 @@ class InboxService:
                 handshake_type=handshake_type,
                 status="pending",
                 offered_contact=offered_contact,
+                message=message,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc)
             )

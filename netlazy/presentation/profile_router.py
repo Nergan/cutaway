@@ -45,6 +45,7 @@ class ProfileResponse(BaseModel):
     audio: Optional[MediaItemResponse]
     contacts: List[ContactResponse]
     created_at: str
+    score: int = 0
 
 def _to_response(profile: Profile) -> ProfileResponse:
     return ProfileResponse(
@@ -58,6 +59,7 @@ def _to_response(profile: Profile) -> ProfileResponse:
         ),
         contacts=[ContactResponse(type=c.type, value=c.value, is_private=c.is_private) for c in profile.contacts],
         created_at=profile.created_at.isoformat(),
+        score=profile.score
     )
 
 @router.get("/me", response_model=ProfileResponse)

@@ -82,7 +82,12 @@ export default {
     reset_tags: "reset tags",
     end_of_feed: "end of feed",
     check_status: "check status",
-    send: "send"
+    send: "send",
+    message_placeholder: "optional message (max 100 chars)...",
+    tooltip_require: "Must have this tag",
+    tooltip_exclude: "Must NOT have this tag",
+    tooltip_bonus: "Adds points to score",
+    tooltip_abonus: "Subtracts points from score"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -167,7 +172,12 @@ export default {
     reset_tags: "сбросить теги",
     end_of_feed: "конец ленты",
     check_status: "проверить статус",
-    send: "отправить"
+    send: "отправить",
+    message_placeholder: "сообщение (необязательно, до 100 символов)...",
+    tooltip_require: "Обязательно должен быть этот тег",
+    tooltip_exclude: "Не должно быть этого тега",
+    tooltip_bonus: "Добавляет баллы к рейтингу",
+    tooltip_abonus: "Отнимает баллы от рейтинга"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -252,7 +262,12 @@ export default {
     reset_tags: "redefinir tags",
     end_of_feed: "fim do feed",
     check_status: "verificar status",
-    send: "enviar"
+    send: "enviar",
+    message_placeholder: "mensagem opcional (máx. 100 caracteres)...",
+    tooltip_require: "Deve ter esta tag",
+    tooltip_exclude: "NÃO deve ter esta tag",
+    tooltip_bonus: "Adiciona pontos à pontuação",
+    tooltip_abonus: "Subtrai pontos da pontuação"
   },
   zh: {
     welcome_desc: "編譯器會在用戶端生成金鑰，保證通訊極致隱私安全。請負責地使用。 :^",
@@ -337,7 +352,12 @@ export default {
     reset_tags: "重置標籤",
     end_of_feed: "到底了",
     check_status: "檢查狀態",
-    send: "發送"
+    send: "發送",
+    message_placeholder: "可選訊息（最多100個字元）...",
+    tooltip_require: "必須包含此標籤",
+    tooltip_exclude: "不得包含此標籤",
+    tooltip_bonus: "為評分增加分數",
+    tooltip_abonus: "從評分中扣除分數"
   },
   ja: {
     welcome_desc: "ただのデートです。操作的な仕組みや、積極的な収益化はありません。責任を持って行動してください :^",
@@ -422,7 +442,12 @@ export default {
     reset_tags: "タグをリセット",
     end_of_feed: "フィードの最後です",
     check_status: "ステータスを確認",
-    send: "送信"
+    send: "送信",
+    message_placeholder: "任意のメッセージ（最大100文字）...",
+    tooltip_require: "このタグを含める必要があります",
+    tooltip_exclude: "このタグを含めてはいけません",
+    tooltip_bonus: "スコアにポイントを追加します",
+    tooltip_abonus: "スコアからポイントを減算します"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -473,7 +498,7 @@ export default {
     no_valid_private: "유효한 비공개 연락처가 없습니다.",
     sent: "전송됨 ({type})",
     copy: "복사",
-    toggle_privacy: "프라이버시 전환",
+    toggle 대_privacy: "프라이버시 전환",
     copied: "클립보드에 복사되었습니다",
     vault_synced: "보관소가 동기화되었습니다",
     max_media: "최대 10개의 미디어 항목",
@@ -503,10 +528,15 @@ export default {
     delete_match: "매치 삭제",
     no_matches: "매치 없음",
     declined: "거절됨",
-    lang: "연락처",
+    lang: "언어",
     reset_tags: "태그 초기화",
     end_of_feed: "피드의 끝입니다",
     check_status: "상태 확인",
-    send: "보내기"
+    send: "보내기",
+    message_placeholder: "선택 메시지(최대 100자)...",
+    tooltip_require: "이 태그가 반드시 포함되어야 합니다",
+    tooltip_exclude: "이 태그가 포함되어서는 안 됩니다",
+    tooltip_bonus: "점수에 포인트를 더합니다",
+    tooltip_abonus: "점수에서 포인트를 뺍니다"
   }
 };

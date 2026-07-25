@@ -5,8 +5,8 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from netlazy.config import settings
@@ -61,15 +61,26 @@ mongo_handler = MongoLogHandler()
 mongo_handler.setLevel(logging.INFO)
 mongo_handler.setFormatter(logging.Formatter('%(message)s'))
 
-# Standard API routing interface
-router = APIRouter()
 
-router.include_router(auth_router.router, prefix="/api")
-router.include_router(tag_router.router, prefix="/api")
-router.include_router(profile_router.router, prefix="/api")
-router.include_router(feed_router.router, prefix="/api")
-router.include_router(inbox_router.router, prefix="/api")
-router.include_router(security_router.router, prefix="/api")
+# We add a dependency that prevents browsers from accessing raw API data, redirecting them to the SPA instead.
+async def block_browser_api(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        root_path = request.scope.get("root_path", "")
+        location = f"{root_path}/profile" if root_path else "/profile"
+        raise HTTPException(status_code=303, headers={"Location": location})
+
+
+# Standard API routing interface with the browser-block dependency applied
+router = APIRouter()
+api_deps = [Depends(block_browser_api)]
+
+router.include_router(auth_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(tag_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(profile_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(feed_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(inbox_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(security_router.router, prefix="/api", dependencies=api_deps)
 
 @router.on_event("startup")
 async def startup_event():
@@ -95,13 +106,24 @@ async def serve_welcome():
         return FileResponse(welcome_file)
     raise HTTPException(status_code=404, detail="Welcome page not found")
 
-# SPA Catch-all handling allowing deep Vue Router links bypassing the internal API bounds
+
+# Root routing and Client-Side Routing illusion for the SPA
 @router.get("/")
+async def root_redirect(request: Request):
+    root_path = request.scope.get('root_path', '')
+    return RedirectResponse(url=f"{root_path}/profile", status_code=303)
+
 @router.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(request: Request, full_path: str = ""):
+    # Double check API routes that missed the router prefix mapping somehow
     if full_path.startswith("api/") or full_path == "api":
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            root_path = request.scope.get("root_path", "")
+            return RedirectResponse(url=f"{root_path}/profile", status_code=303)
         raise HTTPException(status_code=404)
     
+    # Serve index.html for known frontend routes, letting Vue Router (or custom history logic) take over.
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
         return FileResponse(index_file)

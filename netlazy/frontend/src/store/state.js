@@ -4,6 +4,7 @@ import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
 const STORAGE_KEY = 'netlazy_state';
 
@@ -29,6 +30,7 @@ const defaultState = {
     toasts: [],
     tagSearchQuery: '',
     lastProfileEditTimestamp: 0,
+    pendingUrlTags: null, // Holds tag search params on initial load
     
     confirmModal: {
         open: false,
@@ -45,6 +47,7 @@ const defaultState = {
         profile: null,
         type: 'share',
         selectedContacts: [],
+        message: '',
         isSending: false
     },
     
@@ -87,6 +90,77 @@ export function useStore() {
         }, 10000);
     }
 
+    function syncUrlToView() {
+        if (Capacitor.isNativePlatform()) return;
+        
+        const path = window.location.pathname;
+        if (path.match(/\/search\/?$/)) state.currentView = 'feed';
+        else if (path.match(/\/inbox\/?$/)) state.currentView = 'inbox';
+        else if (path.match(/\/privacy\/?$/)) state.currentView = 'vault';
+        else if (path.match(/\/profile\/?$/)) state.currentView = 'editor';
+        
+        if (state.currentView === 'feed') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('tags')) {
+                state.pendingUrlTags = params.get('tags');
+                applyPendingUrlTags();
+            }
+        }
+    }
+
+    function syncViewToUrl(replace = false) {
+        if (Capacitor.isNativePlatform()) return;
+        
+        const viewMap = { feed: 'search', editor: 'profile', inbox: 'inbox', vault: 'privacy' };
+        
+        const segments = window.location.pathname.split('/');
+        if (segments[segments.length - 1] === '') segments.pop();
+        
+        const lastSegment = segments[segments.length - 1];
+        if (['search', 'profile', 'inbox', 'privacy'].includes(lastSegment)) {
+            segments.pop();
+        }
+        
+        let newUrl = segments.join('/') + '/' + (viewMap[state.currentView] || 'profile');
+        
+        if (state.currentView === 'feed') {
+            const activeTags = state.availableSearchTags
+                .filter(t => t.state !== 'neutral')
+                .map(t => `${encodeURIComponent(t.name)}:${t.state}`)
+                .join(',');
+            if (activeTags) {
+                newUrl += `?tags=${activeTags}`;
+            }
+        }
+        
+        if (window.location.pathname + window.location.search !== newUrl) {
+            if (replace) window.history.replaceState({ view: state.currentView }, '', newUrl);
+            else window.history.pushState({ view: state.currentView }, '', newUrl);
+        }
+    }
+
+    function applyPendingUrlTags() {
+        if (!state.pendingUrlTags || state.availableSearchTags.length === 0) return;
+        
+        const tagPairs = state.pendingUrlTags.split(',');
+        const validStates = ['require', 'exclude', 'bonus', 'abonus'];
+        
+        state.availableSearchTags.forEach(t => t.state = 'neutral');
+        
+        tagPairs.forEach(pair => {
+            const [rawName, tState] = pair.split(':');
+            if (rawName && tState && validStates.includes(tState)) {
+                const decodedName = decodeURIComponent(rawName);
+                const tagObj = state.availableSearchTags.find(t => t.name === decodedName);
+                if (tagObj) {
+                    tagObj.state = tState;
+                }
+            }
+        });
+        
+        state.pendingUrlTags = null;
+    }
+
     async function loadSavedState() {
         try {
             const { value: raw } = await Preferences.get({ key: STORAGE_KEY });
@@ -106,6 +180,8 @@ export function useStore() {
                             if (parsed[k] !== undefined) state[k] = parsed[k];
                         });
                         
+                        syncUrlToView();
+
                         if (!state.isBanned) {
                             fetchTags(); 
                             fetchMyProfile();
@@ -124,12 +200,14 @@ export function useStore() {
                     ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
                         if (parsed[k] !== undefined) state[k] = parsed[k];
                     });
+                    syncUrlToView();
                 }
+            } else {
+                syncUrlToView();
             }
         } catch (e) {
             console.warn("could not read preferences state:", e);
         } finally {
-            // Apply loaded theme classes correctly once evaluation finishes
             if (state.theme === 'light') {
                 document.body.classList.add('light-theme');
             } else {
@@ -139,7 +217,6 @@ export function useStore() {
         }
     }
 
-    // Safety Gate: Ensure we don't save empty states back to memory during startup evaluation
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang,
         state.sidebarWidth, state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
@@ -184,7 +261,6 @@ export function useStore() {
         }, 150);
     }
 
-    // Dynamic templating function
     function t(key, replacements = {}) {
         const lang = state.lang || 'en';
         let txt = (translations[lang] && translations[lang][key]) || (translations['en'] && translations['en'][key]) || key;
@@ -317,7 +393,6 @@ export function useStore() {
         if (res) {
             mediaItem.blobUrl = res.blobUrl;
             mediaItem.isLegacy = res.isLegacy;
-            // Removed: mediaItem.isLoaded = true; // Let native DOM events handle this so nothing blinks!
         }
     }
 
@@ -401,6 +476,7 @@ export function useStore() {
                 state: 'neutral',
                 i18n: t.i18n || {}
             }));
+            applyPendingUrlTags();
         } catch (e) {}
     }
 
@@ -444,7 +520,7 @@ export function useStore() {
     if (state.theme === 'light') document.body.classList.add('light-theme');
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags
     };
     return instance;
 }

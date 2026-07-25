@@ -12,6 +12,7 @@ class HandshakeCreateRequest(BaseModel):
     receiver_id: str
     type: str = Field(..., pattern="^(mutual|demand|share|exchange)$")
     offered_contact: Optional[str] = None
+    message: Optional[str] = Field(None, max_length=100)
 
 class HandshakeResolveRequest(BaseModel):
     status: str = Field(..., pattern="^(accepted|declined)$")
@@ -24,6 +25,7 @@ class InboxItemResponse(BaseModel):
     is_sender: bool
     offered_contact: Optional[str]
     returned_contact: Optional[str]
+    message: Optional[str]
     created_at: str
     updated_at: str
     profile: ProfileResponse
@@ -35,7 +37,8 @@ async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(veri
             sender_id=user.user_id,
             receiver_id=body.receiver_id,
             handshake_type=body.type,
-            offered_contact=body.offered_contact
+            offered_contact=body.offered_contact,
+            message=body.message
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -46,6 +49,7 @@ async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(veri
     return InboxItemResponse(
         id=h.id, type=h.handshake_type, status=h.status,
         is_sender=True, offered_contact=h.offered_contact, returned_contact=h.returned_contact,
+        message=h.message,
         created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
         profile=profile_to_response(receiver_profile)
     )
@@ -76,6 +80,7 @@ async def resolve_handshake(handshake_id: str, body: HandshakeResolveRequest, us
     return InboxItemResponse(
         id=h.id, type=h.handshake_type, status=h.status,
         is_sender=False, offered_contact=h.offered_contact, returned_contact=h.returned_contact,
+        message=h.message,
         created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
         profile=profile_to_response(sender_profile)
     )
@@ -106,6 +111,7 @@ async def get_inbox(user: User = Depends(verify_request_signature)):
             id=h.id, type=h.handshake_type, status=h.status,
             is_sender=(h.sender_id == user.user_id),
             offered_contact=h.offered_contact, returned_contact=h.returned_contact,
+            message=h.message,
             created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
             profile=profile_to_response(p)
         ) for h, p in items

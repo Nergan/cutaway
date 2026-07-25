@@ -52,6 +52,7 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
 .chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
 .chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
 .chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
+.chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); border-color: rgba(199, 179, 138, 0.3); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 #active-tags-zone .chip:hover, #lib-tags-zone .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
 
@@ -61,7 +62,7 @@ button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
   50% { transform: scale(1.03); }
   100% { transform: scale(1); filter: none; }
 }
-.chip.require, .chip.exclude, .chip.bonus {
+.chip.require, .chip.exclude, .chip.bonus, .chip.abonus {
   animation: tagSelectPulse 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
@@ -160,6 +161,47 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .glass-option:hover { background: transparent !important; color: var(--accent-moss) !important; }
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
 .glass-option.highlighted-option { color: var(--accent-moss) !important; }
+
+/* GLOBAL CSS TOOLTIPS */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-focus);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-md);
+  z-index: 100000;
+}
+[data-tooltip]:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+[data-tooltip=""]::before {
+  display: none !important;
+}
+/* Positioning modifier for tooltips that should appear below (e.g. inside overflow containers) */
+[data-tooltip-pos="bottom"]::before {
+  bottom: auto;
+  top: calc(100% + 6px);
+  transform: translateX(-50%) translateY(-4px);
+}
+[data-tooltip-pos="bottom"]:hover::before {
+  transform: translateX(-50%) translateY(0);
+}
 
 /* Smooth animated underline for Tags & Contacts */
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }

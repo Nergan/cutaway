@@ -200,23 +200,58 @@ class MongoProfileRepository(ProfileRepository):
             session=session
         )
 
-    async def get_feed(self, viewer_id: str, exclude_ids: List[str], cursor_dt: datetime, requires: List[str], excludes: List[str], limit: int) -> List[Profile]:
+    async def get_feed(self, viewer_id: str, exclude_ids: List[str], cursor_dt: datetime, cursor_score: Optional[int], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
         banned_users_cursor = db_instance.users_collection.find({"is_banned": True}, {"user_id": 1})
         banned_ids = [u["user_id"] async for u in banned_users_cursor]
 
         ignored = exclude_ids + [viewer_id] + banned_ids
-        query = {"user_id": {"$nin": ignored}, "created_at": {"$lt": cursor_dt}}
-        if requires: query["tags"] = {"$all": requires}
-        if excludes: query.setdefault("tags", {})["$nin"] = excludes
+        match = {"user_id": {"$nin": ignored}}
 
-        query["$or"] = [
+        if requires: match["tags"] = {"$all": requires}
+        if excludes: match.setdefault("tags", {})["$nin"] = excludes
+
+        match["$or"] = [
             {"bio": {"$nin": ["", None]}},
             {"media.0": {"$exists": True}},
             {"audio": {"$type": "object"}},
             {"contacts": {"$elemMatch": {"is_private": False, "type": {"$ne": "unknown"}, "value": {"$nin": ["", None]}}}}
         ]
 
-        db_cursor = db_instance.profiles_collection.find(query).sort("created_at", -1).limit(limit)
+        pipeline = [{"$match": match}]
+
+        if bonus or abonus:
+            pipeline.append({"$addFields": {"safe_tags": {"$ifNull": ["$tags", []]}}})
+            add_scores = {}
+            if bonus:
+                add_scores["bonus_score"] = {"$size": {"$setIntersection": ["$safe_tags", bonus]}}
+            else:
+                add_scores["bonus_score"] = 0
+            if abonus:
+                add_scores["abonus_score"] = {"$size": {"$setIntersection": ["$safe_tags", abonus]}}
+            else:
+                add_scores["abonus_score"] = 0
+
+            pipeline.append({"$addFields": add_scores})
+            pipeline.append({"$addFields": {"score": {"$subtract": ["$bonus_score", "$abonus_score"]}}})
+        else:
+            pipeline.append({"$addFields": {"score": 0}})
+
+        if cursor_score is not None and cursor_dt is not None:
+            pipeline.append({
+                "$match": {
+                    "$or": [
+                        {"score": {"$lt": cursor_score}},
+                        {"score": cursor_score, "created_at": {"$lt": cursor_dt}}
+                    ]
+                }
+            })
+        elif cursor_dt is not None:
+            pipeline.append({"$match": {"created_at": {"$lt": cursor_dt}}})
+
+        pipeline.append({"$sort": {"score": -1, "created_at": -1}})
+        pipeline.append({"$limit": limit})
+
+        db_cursor = db_instance.profiles_collection.aggregate(pipeline)
         return [self._to_domain(doc) async for doc in db_cursor]
 
     async def delete(self, user_id: str, session: Any = None) -> None:
@@ -265,6 +300,7 @@ class MongoProfileRepository(ProfileRepository):
             contacts=[self._contact_from_doc(c) for c in doc.get("contacts", [])],
             created_at=_force_utc(doc.get("created_at")) or datetime.now(timezone.utc),
             updated_at=_force_utc(doc.get("updated_at")),
+            score=doc.get("score", 0)
         )
 
     def _media_to_doc(self, m: MediaItem) -> dict: 
@@ -332,6 +368,7 @@ class MongoHandshakeRepository(HandshakeRepository):
             "id": h.id, "sender_id": h.sender_id, "receiver_id": h.receiver_id,
             "handshake_type": h.handshake_type, "status": h.status,
             "offered_contact": h.offered_contact, "returned_contact": h.returned_contact,
+            "message": h.message,
             "sender_deleted": h.sender_deleted, "receiver_deleted": h.receiver_deleted,
             "created_at": h.created_at, "updated_at": h.updated_at
         }
@@ -341,6 +378,7 @@ class MongoHandshakeRepository(HandshakeRepository):
             id=doc["id"], sender_id=doc["sender_id"], receiver_id=doc["receiver_id"],
             handshake_type=doc["handshake_type"], status=doc["status"],
             offered_contact=doc.get("offered_contact"), returned_contact=doc.get("returned_contact"),
+            message=doc.get("message"),
             sender_deleted=doc.get("sender_deleted", False), receiver_deleted=doc.get("receiver_deleted", False),
             created_at=_force_utc(doc["created_at"]), updated_at=_force_utc(doc.get("updated_at"))
         )

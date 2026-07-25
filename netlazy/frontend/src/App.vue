@@ -202,6 +202,15 @@
             <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
               {{ store.t('no_valid_private') }}
             </div>
+
+            <div style="margin-top: 0.5rem;" v-if="store.state.contactSelect.profile">
+                <input type="text" 
+                       class="seamless-input" 
+                       v-model="store.state.contactSelect.message" 
+                       :placeholder="store.t('message_placeholder')" 
+                       maxlength="100" 
+                       style="background: rgba(128, 128, 128, 0.08); padding: 0.8rem 1.2rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); width: 100%; font-size: 0.9rem;">
+            </div>
           </div>
           
           <div class="bottom-sheet-footer">
@@ -297,6 +306,11 @@ onMounted(() => {
         }
       }
     });
+  } else {
+    // Web browser popstate sync for client-side routing illusion
+    window.addEventListener('popstate', (e) => {
+        store.syncUrlToView();
+    });
   }
 });
 
@@ -342,7 +356,8 @@ async function submitGlobalHandshake() {
     const payload = {
       receiver_id: cs.profile.user_id,
       type: cs.type,
-      offered_contact: contactValue
+      offered_contact: contactValue,
+      message: cs.message ? cs.message.trim() : null
     };
     
     const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
@@ -359,6 +374,7 @@ async function submitGlobalHandshake() {
     
     store.addToast(store.t('sent', { type: cs.type }), 'bi-send-check');
     cs.open = false;
+    cs.message = ''; // Reset message field after successful send
   } catch (e) {
     if (e.response && e.response.data && e.response.data.detail) {
       store.addToast(e.response.data.detail, "bi-x-circle");
@@ -445,7 +461,10 @@ function stopResize() {
   document.body.style.userSelect = '';
 }
 
-watch(() => store.state.currentView, () => {
+watch(() => store.state.currentView, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+      store.syncViewToUrl();
+  }
   if (window.innerWidth <= 768) {
     store.state.isSidebarCollapsed = true;
   }

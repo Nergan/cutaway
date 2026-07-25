@@ -46,6 +46,7 @@ class Profile:
     contacts: List[Contact] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
+    score: int = 0
 
 @dataclass
 class Handshake:
@@ -56,6 +57,7 @@ class Handshake:
     status: str
     offered_contact: Optional[str] = None
     returned_contact: Optional[str] = None
+    message: Optional[str] = None
     sender_deleted: bool = False
     receiver_deleted: bool = False
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

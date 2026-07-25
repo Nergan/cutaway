@@ -32,7 +32,7 @@
     <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste">
       <div class="resizer-v left" @mousedown="startResize" v-show="!store.state.isWorkspaceCollapsed"></div>
       
-      <button class="workspace-toggle-btn" @click="store.state.isWorkspaceCollapsed = !store.state.isWorkspaceCollapsed" :title="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
+      <button class="workspace-toggle-btn" @click="store.state.isWorkspaceCollapsed = !store.state.isWorkspaceCollapsed" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
         <i class="bi" :class="store.state.isWorkspaceCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
       </button>
       
@@ -97,12 +97,12 @@
                   <div class="media-remove" @click.stop="!m.isDeleting && removeMedia(m)">
                     <i class="bi" :class="m.isDeleting ? 'bi-hourglass-split spin' : 'bi-x'"></i>
                   </div>
-                  <div class="media-blur-toggle" @click.stop="toggleBlur(m)" :title="m.blur ? store.t('accept') : store.t('decline')">
+                  <div class="media-blur-toggle" @click.stop="toggleBlur(m)" :data-tooltip="m.blur ? store.t('accept') : store.t('decline')">
                     <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
                   </div>
                 </div>
                 
-                <div class="media-thumb mini-add" key="mini-add" @click="$refs.fileInput.click()" title="add media" v-if="validMedia.length < 10">
+                <div class="media-thumb mini-add" key="mini-add" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length < 10">
                   <i class="bi bi-plus-lg"></i>
                 </div>
               </transition-group>
@@ -154,8 +154,8 @@
                          :style="{ color: c.type === 'unknown' && c.value ? 'var(--accent-danger)' : '' }"
                          v-model="c.value" :placeholder="store.t('contact_placeholder')" 
                          @input="handleContactInput(c)" @blur="cleanExistingContact(c, idx)" @keyup.enter="$event.target.blur()">
-                  <i class="bi bi-copy contact-action" @click="copyText(c.value)" :title="store.t('copy')"></i>
-                  <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :title="store.t('toggle_privacy')"></i>
+                  <i class="bi bi-copy contact-action" @click="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+                  <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :data-tooltip="store.t('toggle_privacy')"></i>
                   <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
                 </div>
               </transition-group>
@@ -165,7 +165,7 @@
                        :style="{ color: newContact.type === 'unknown' && newContact.value ? 'var(--accent-danger)' : '' }"
                        v-model="newContact.value" :placeholder="store.t('contact_placeholder')" 
                        @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
-                <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :title="store.t('toggle_privacy')"></i>
+                <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :data-tooltip="store.t('toggle_privacy')"></i>
               </div>
             </div>
           </transition>

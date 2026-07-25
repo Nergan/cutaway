@@ -17,8 +17,8 @@
           </div>
         </transition>
       </div>
-      <div class="tag-scroll-area" @wheel="handleWheel">
-        <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)">
+      <div class="tag-scroll-area" @wheel="handleWheel" style="padding-top: 2.5rem; margin-top: -2rem;">
+        <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)" :data-tooltip="getTagTooltip(tag.state)" data-tooltip-pos="bottom">
           {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
         </span>
       </div>
@@ -62,15 +62,15 @@
         <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
           <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
              <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-             <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :title="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-             <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :title="store.t('copy')"></i>
+             <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
+             <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
           </div>
         </div>
         
         <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
           <template v-if="!profile.sent">
             <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
-              <span :title="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'share'" style="display: inline-flex;">
+              <span :data-tooltip="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'share'" style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
@@ -78,7 +78,7 @@
                   <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                 </button>
               </span>
-              <span :title="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'exchange'" style="display: inline-flex;">
+              <span :data-tooltip="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'exchange'" style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
@@ -86,7 +86,7 @@
                   <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                 </button>
               </span>
-              <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="sendRequest(profile, 'demand')" title="demand">
+              <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="sendRequest(profile, 'demand')" data-tooltip="demand">
                 <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
               </button>
             </div>
@@ -96,11 +96,16 @@
           </button>
 
           <transition name="dropdown-fade">
-            <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
+            <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; min-width: 250px; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
               <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
                 <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
                 <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
               </div>
+              
+              <div style="padding: 0.5rem 1rem; border-top: 1px dashed rgba(128,128,128,0.2); margin-top: 0.5rem;">
+                <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem; width: 100%;">
+              </div>
+
               <div style="padding: 0.5rem 1rem; text-align: right;">
                 <button class="icon-btn" 
                   style="background: none; border: none;" 
@@ -139,6 +144,7 @@ const filterText = ref('')
 const isLoading = ref(false)
 const hasMore = ref(true)
 let currentCursor = null
+let currentCursorScore = null
 let observer = null
 let feedAbortController = null
 
@@ -175,7 +181,7 @@ const visibleSearchTags = computed(() => {
 })
 
 const sortedSearchTags = computed(() => {
-  const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'neutral': 4 };
+  const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'abonus': 4, 'neutral': 5 };
   const activeTags = store.state.availableSearchTags.filter(t => t.state !== 'neutral');
   activeTags.sort((a, b) => order[a.state] - order[b.state]);
   
@@ -240,6 +246,7 @@ async function fetchFeed(reset = false) {
     feedAbortController = new AbortController();
     store.state.feed = [];
     currentCursor = null;
+    currentCursorScore = null;
     hasMore.value = true;
   } else if (isLoading.value || !hasMore.value) {
     return;
@@ -250,11 +257,16 @@ async function fetchFeed(reset = false) {
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
     const excludes = store.state.availableSearchTags.filter(t => t.state === 'exclude').map(t => t.name)
+    const bonus = store.state.availableSearchTags.filter(t => t.state === 'bonus').map(t => t.name)
+    const abonus = store.state.availableSearchTags.filter(t => t.state === 'abonus').map(t => t.name)
     
     const params = new URLSearchParams()
     if (currentCursor) params.append('cursor', currentCursor)
+    if (currentCursorScore !== null) params.append('cursor_score', currentCursorScore)
     requires.forEach(r => params.append('requires', r))
     excludes.forEach(e => params.append('excludes', e))
+    bonus.forEach(b => params.append('bonus', b))
+    abonus.forEach(a => params.append('abonus', a))
 
     const res = await api.get(`/feed?${params.toString()}`, { signal: feedAbortController.signal })
     const batch = res.data
@@ -262,10 +274,12 @@ async function fetchFeed(reset = false) {
     if (batch.length < 20) hasMore.value = false
     if (batch.length > 0) {
       currentCursor = batch[batch.length - 1].created_at
+      currentCursorScore = batch[batch.length - 1].score
       batch.forEach(p => {
           if (p.media) p.media.forEach(m => m.isLoaded = false)
           p.selectedContacts = []
           p.showContactSelect = false
+          p.pendingMessage = ""
       })
       store.state.feed.push(...batch)
     }
@@ -282,7 +296,8 @@ async function fetchFeed(reset = false) {
 let lastFilterString = null;
 watch(activeFiltersString, (newVal) => {
   if (lastFilterString !== null && newVal !== lastFilterString) {
-    fetchFeed(true)
+    store.syncViewToUrl(true);
+    fetchFeed(true);
   }
   lastFilterString = newVal;
 })
@@ -324,12 +339,16 @@ onActivated(() => {
 })
 
 function cycleTagState(tagObj) {
-  const states = ['neutral', 'require', 'exclude', 'bonus']
+  const states = ['neutral', 'require', 'exclude', 'bonus', 'abonus']
   tagObj.state = states[(states.indexOf(tagObj.state) + 1) % states.length]
 }
 
 function getTagStateIcon(state) {
-  return { 'require': 'bi-plus-lg', 'exclude': 'bi-dash-lg', 'bonus': 'bi-star', 'neutral': '' }[state]
+  return { 'require': 'bi-plus-lg', 'exclude': 'bi-dash-lg', 'bonus': 'bi-chevron-up', 'abonus': 'bi-chevron-down', 'neutral': '' }[state]
+}
+
+function getTagTooltip(state) {
+  return { 'require': store.t('tooltip_require'), 'exclude': store.t('tooltip_exclude'), 'bonus': store.t('tooltip_bonus'), 'abonus': store.t('tooltip_abonus'), 'neutral': '' }[state] || '';
 }
 
 function handleWheel(e) {
@@ -354,6 +373,7 @@ function handleContactButtonClick(profile, type) {
   } else {
     profile.selectedContacts = []
     profile.pendingReqType = type
+    profile.pendingMessage = ""
     profile.showContactSelect = !profile.showContactSelect
   }
 }
@@ -365,6 +385,7 @@ function openContactSelect(profile, type) {
     profile: profile,
     type: type,
     selectedContacts: [],
+    message: '',
     isSending: false
   }
 }
@@ -388,7 +409,8 @@ async function sendRequest(profile, type, contactValue = null) {
     const payload = {
       receiver_id: profile.user_id,
       type: type,
-      offered_contact: contactValue
+      offered_contact: contactValue,
+      message: profile.pendingMessage ? profile.pendingMessage.trim() : null
     }
     
     await apiWithPoW('post', '/inbox/handshakes', payload)
@@ -406,6 +428,7 @@ async function sendRequest(profile, type, contactValue = null) {
   } finally {
     profile.isSendingReq = null
     profile.showContactSelect = false
+    profile.pendingMessage = ""
   }
 }
 
