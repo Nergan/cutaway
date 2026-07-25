@@ -17,7 +17,8 @@
           </div>
         </transition>
       </div>
-      <div class="tag-scroll-area" @wheel="handleWheel" style="padding-top: 2.5rem; margin-top: -2rem;">
+      
+      <div class="tag-scroll-area" @wheel="handleWheel" style="padding-top: 1.6rem;">
         <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)" :data-tooltip="getTagTooltip(tag.state)" data-tooltip-pos="bottom">
           {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
         </span>

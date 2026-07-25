@@ -30,7 +30,7 @@ const defaultState = {
     toasts: [],
     tagSearchQuery: '',
     lastProfileEditTimestamp: 0,
-    pendingUrlTags: null, // Holds tag search params on initial load
+    pendingUrlTags: null,
     
     confirmModal: {
         open: false,
@@ -94,10 +94,14 @@ export function useStore() {
         if (Capacitor.isNativePlatform()) return;
         
         const path = window.location.pathname;
-        if (path.match(/\/search\/?$/)) state.currentView = 'feed';
-        else if (path.match(/\/inbox\/?$/)) state.currentView = 'inbox';
-        else if (path.match(/\/privacy\/?$/)) state.currentView = 'vault';
-        else if (path.match(/\/profile\/?$/)) state.currentView = 'editor';
+        let view = 'editor';
+        
+        if (path.match(/\/search(\/.*)?$/)) view = 'feed';
+        else if (path.match(/\/inbox(\/.*)?$/)) view = 'inbox';
+        else if (path.match(/\/privacy(\/.*)?$/)) view = 'vault';
+        else if (path.match(/\/profile(\/.*)?$/)) view = 'editor';
+        
+        state.currentView = view;
         
         if (state.currentView === 'feed') {
             const params = new URLSearchParams(window.location.search);
@@ -106,6 +110,9 @@ export function useStore() {
                 applyPendingUrlTags();
             }
         }
+
+        // Clean up direct visits to nested/invalid URLs like /profile/config back to canonical /profile
+        syncViewToUrl(true);
     }
 
     function syncViewToUrl(replace = false) {
@@ -116,8 +123,8 @@ export function useStore() {
         const segments = window.location.pathname.split('/');
         if (segments[segments.length - 1] === '') segments.pop();
         
-        const lastSegment = segments[segments.length - 1];
-        if (['search', 'profile', 'inbox', 'privacy'].includes(lastSegment)) {
+        // Remove trailing view path segments if present
+        while (segments.length > 0 && ['search', 'profile', 'inbox', 'privacy', 'config'].includes(segments[segments.length - 1])) {
             segments.pop();
         }
         

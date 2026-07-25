@@ -212,6 +212,7 @@ class MongoProfileRepository(ProfileRepository):
 
         match["$or"] = [
             {"bio": {"$nin": ["", None]}},
+            {"tags.0": {"$exists": True}},
             {"media.0": {"$exists": True}},
             {"audio": {"$type": "object"}},
             {"contacts": {"$elemMatch": {"is_private": False, "type": {"$ne": "unknown"}, "value": {"$nin": ["", None]}}}}

@@ -3,7 +3,7 @@
     <div class="inbox-layout">
       
       <div class="inbox-col" :style="{width: store.state.inboxSplit + '%'}">
-        <div class="section-header desktop-uncollapsible" @click="showReceived = !showReceived">
+        <div class="section-header desktop-uncollapsible" @click="showReceived = !showReceived" style="margin-top: 1rem;">
           <span>
             {{ store.t('received') }}
             <span class="badge" v-if="pendingRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ pendingRequests.length }}</span>
@@ -70,7 +70,7 @@
                   </div>
                   
                   <div v-if="req.message" style="margin-bottom: 0.8rem; padding: 0.6rem 0.8rem; background: rgba(128,128,128,0.05); border-left: 2px solid var(--accent-info); font-size: 0.85rem; font-style: italic; color: var(--text-main); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; word-break: break-word;">
-                      "{{ req.message }}"
+                      {{ req.message }}
                   </div>
 
                   <div v-if="['mutual', 'demand', 'exchange'].includes(req.type)" style="margin-bottom:0.5rem; position: relative;">
@@ -110,7 +110,7 @@
 
               </div>
             </transition-group>
-            <div v-if="!store.state.isInboxLoading && pendingRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
+            <div v-if="!store.state.isInboxLoading && pendingRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; font-style: italic; margin-bottom: 1.5rem;">
               {{ store.t('no_pending') }}
             </div>
           </div>
@@ -188,7 +188,7 @@
                   </div>
 
                   <div v-if="req.message" style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(128,128,128,0.05); border-left: 2px solid var(--accent-moss); font-size: 0.85rem; font-style: italic; color: var(--text-main); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; word-break: break-word;">
-                      "{{ req.message }}"
+                      {{ req.message }}
                   </div>
 
                   <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
@@ -200,6 +200,9 @@
 
               </div>
             </transition-group>
+            <div v-if="!store.state.isInboxLoading && acceptedRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; font-style: italic; margin-bottom: 1.5rem;">
+              {{ store.t('no_matches_empty') }}
+            </div>
           </div>
         </transition>
       </div>
@@ -207,7 +210,7 @@
       <div class="resizer-v left" style="position:relative; left:0; width:4px; height:100%; cursor:col-resize; background:var(--border-subtle);" @mousedown="startResize"></div>
       
       <div class="inbox-col" :style="{width: (100 - store.state.inboxSplit) + '%'}">
-        <div class="section-header desktop-uncollapsible" @click="showSent = !showSent">
+        <div class="section-header desktop-uncollapsible" @click="showSent = !showSent" style="margin-top: 1rem;">
           <span>
             {{ store.t('sent_resolved') }}
             <span class="badge" v-if="sentRequests.length > 0" style="margin-left: 0.5rem; display: inline-block;">{{ sentRequests.length }}</span>
@@ -265,13 +268,13 @@
                   </div>
                   
                   <div v-if="req.message" style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(128,128,128,0.05); border-left: 2px solid var(--text-muted); font-size: 0.85rem; font-style: italic; color: var(--text-muted); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; word-break: break-word;">
-                      "{{ req.message }}"
+                      {{ req.message }}
                   </div>
                 </div>
 
               </div>
             </transition-group>
-            <div v-if="!store.state.isInboxLoading && sentRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">
+            <div v-if="!store.state.isInboxLoading && sentRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; font-style: italic; margin-bottom: 1.5rem;">
               {{ store.t('no_pending') }}
             </div>
           </div>
@@ -335,7 +338,7 @@
                   </div>
 
                   <div v-if="req.message" style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(189,106,94,0.05); border-left: 2px solid var(--accent-danger); font-size: 0.85rem; font-style: italic; color: var(--text-muted); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; word-break: break-word;">
-                      "{{ req.message }}"
+                      {{ req.message }}
                   </div>
 
                   <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
@@ -347,6 +350,9 @@
 
               </div>
             </transition-group>
+            <div v-if="!store.state.isInboxLoading && declinedRequests.length === 0" style="color:var(--text-muted); font-size:0.85rem; font-style: italic; margin-bottom: 1.5rem;">
+              {{ store.t('no_declined_empty') }}
+            </div>
           </div>
         </transition>
       </div>
