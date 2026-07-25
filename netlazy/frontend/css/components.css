@@ -4,14 +4,40 @@
 .editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 0.5rem; transition: border-color 0.3s; text-transform: none; }
 .seamless-input:focus-visible, .editor-bio:focus-visible { outline: none !important; border-color: var(--border-focus); }
 
-/* TACTILE MICRO-INTERACTIONS */
+/* TACTILE MICRO-INTERACTIONS & CUSTOM SELECT BUTTONS */
 .chip, .create-btn, .footer-action, .icon-btn, .custom-select {
   transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.chip:hover, .create-btn:hover, .icon-btn:hover, .custom-select:hover {
+
+.custom-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  user-select: none;
+  box-shadow: var(--shadow-sm);
+}
+.custom-select:hover {
+  border-color: var(--border-focus);
+  color: var(--text-main);
+  background: var(--bg-surface);
+  transform: scale(1.01);
+}
+.custom-select:active {
+  transform: scale(0.98);
+}
+
+.chip:hover, .create-btn:hover, .icon-btn:hover {
   transform: scale(1.02);
 }
-.chip:active, .create-btn:active, .icon-btn:active, .custom-select:active {
+.chip:active, .create-btn:active, .icon-btn:active {
   transform: scale(0.98);
 }
 .footer-action:active {
@@ -171,24 +197,30 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
 .glass-option.highlighted-option { color: var(--accent-moss) !important; }
 
-/* UNCLIPPED FLOATING TOOLTIP */
+/* UNCLIPPED TRANSPARENT BLURRED FLOATING TOOLTIP (NO BORDER) */
 .floating-tooltip {
   position: fixed;
   z-index: 999999;
-  background: var(--bg-surface);
+  background: rgba(20, 20, 20, 0.72) !important;
   color: var(--text-main);
-  padding: 0.4rem 0.8rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-focus);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: none !important;
   font-size: 0.75rem;
   font-family: var(--font-main);
+  font-weight: 500;
   box-shadow: var(--shadow-md);
   pointer-events: none;
-  transform: translate(-50%, -100%) translateY(-8px);
-  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.light-theme .floating-tooltip {
+  background: rgba(250, 246, 238, 0.78) !important;
+  color: var(--text-main);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* Smooth animated underline for Tags & Contacts */

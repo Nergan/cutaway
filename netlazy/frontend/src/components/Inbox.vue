@@ -50,8 +50,8 @@
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
                   <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                      <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
                   </div>
                 </div>
                 
@@ -75,14 +75,19 @@
 
                   <div v-if="['mutual', 'demand', 'exchange'].includes(req.type)" style="margin-bottom:0.5rem; position: relative;">
                      <div class="custom-select" @click.stop="toggleDropdown(req)">
-                       <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                       <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-grow: 1;">
                          {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
                        </span>
+                       <i class="bi bi-chevron-down" style="font-size: 0.75rem; opacity: 0.7; flex-shrink: 0;"></i>
+                       
                        <transition name="dropdown-fade">
                          <div class="glass-menu" v-if="!isMobile && req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
                            <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
                              <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
                              <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+                           </div>
+                           <div v-if="validPrivateContacts.length === 0" style="padding: 0.8rem 1rem; text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.85rem;">
+                             {{ store.t('no_valid_private') }}
                            </div>
                          </div>
                        </transition>
@@ -163,8 +168,8 @@
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
                   <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                      <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
                   </div>
                 </div>
 
@@ -192,7 +197,7 @@
                   </div>
 
                   <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
-                    <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)" data-tooltip="Delete Match">
+                    <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)">
                       <i class="bi" :class="req.isDeletingMatch ? 'bi-hourglass-split spin' : 'bi-trash3'"></i>
                     </button>
                   </div>
@@ -257,8 +262,8 @@
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
                   <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                      <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
                   </div>
                 </div>
 
@@ -327,8 +332,8 @@
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
                   <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                      <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
                   </div>
                 </div>
 
@@ -342,7 +347,7 @@
                   </div>
 
                   <div style="display:flex; justify-content:flex-end; margin-top: 0.5rem;">
-                    <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)" data-tooltip="Remove">
+                    <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click.stop="deleteMatch(req)">
                       <i class="bi" :class="req.isDeletingMatch ? 'bi-hourglass-split spin' : 'bi-trash3'"></i>
                     </button>
                   </div>

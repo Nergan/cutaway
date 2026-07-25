@@ -23,7 +23,7 @@
               v-for="tag in sortedSearchTags" 
               :key="tag.name" 
               :class="tag.state" 
-              @click="cycleTagState(tag)"
+              @click="cycleTagState(tag, $event)"
               @mouseenter="showTooltip($event, tag.state)"
               @mouseleave="hideTooltip">
           {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
@@ -31,9 +31,15 @@
       </div>
     </div>
 
-    <!-- Viewport Floating Tooltip -->
+    <!-- Viewport Unclipped Floating Tooltip -->
     <Teleport to="body">
-      <div v-if="tooltip.visible" class="floating-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+      <div v-if="tooltip.visible" 
+           class="floating-tooltip" 
+           :style="{ 
+             left: tooltip.x + 'px', 
+             top: tooltip.y + 'px',
+             transform: tooltip.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
+           }">
         {{ tooltip.text }}
       </div>
     </Teleport>
@@ -123,9 +129,12 @@
                   <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
                   <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
                 </div>
+                <div v-if="validPrivateContacts.length === 0" style="padding: 0.8rem 1rem; text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.85rem;">
+                  {{ store.t('no_valid_private') }}
+                </div>
               </div>
               
-              <div style="padding: 0.5rem 1rem;" :style="{ borderTop: profile.pendingReqType !== 'demand' ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
+              <div style="padding: 0.5rem 1rem;" :style="{ borderTop: (profile.pendingReqType !== 'demand' && validPrivateContacts.length > 0) ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
                 <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem; width: 100%;">
               </div>
 
@@ -157,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, onActivated } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
 import { useStore } from '../store/state.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
@@ -174,22 +183,42 @@ let feedAbortController = null
 const isMobile = ref(window.innerWidth <= 768)
 const highlightIndex = ref(-1)
 
-// Floating Tooltip State
-const tooltip = ref({ visible: false, text: '', x: 0, y: 0 })
+// Viewport Floating Tooltip State
+const tooltip = ref({ visible: false, text: '', x: 0, y: 0, isBelow: false })
 
-function showTooltip(e, state) {
+async function showTooltip(e, state) {
   const text = getTagTooltip(state);
   if (!text) {
     tooltip.value.visible = false;
     return;
   }
   const rect = e.currentTarget.getBoundingClientRect();
+  const isBelow = !isMobile.value; // Desktop = downwards (below), Mobile = upwards (above)
+  
+  let x = rect.left + rect.width / 2;
+  let y = isBelow ? rect.bottom : rect.top;
+
   tooltip.value = {
     visible: true,
     text: text,
-    x: rect.left + rect.width / 2,
-    y: rect.top
+    x: x,
+    y: y,
+    isBelow: isBelow
   };
+
+  await nextTick();
+  const ttEl = document.querySelector('.floating-tooltip');
+  if (ttEl) {
+    const ttWidth = ttEl.offsetWidth;
+    const padding = 12;
+    let clampedX = x;
+    if (clampedX - ttWidth / 2 < padding) {
+      clampedX = padding + ttWidth / 2;
+    } else if (clampedX + ttWidth / 2 > window.innerWidth - padding) {
+      clampedX = window.innerWidth - padding - ttWidth / 2;
+    }
+    tooltip.value.x = clampedX;
+  }
 }
 
 function hideTooltip() {
@@ -387,11 +416,12 @@ onActivated(() => {
   }
 })
 
-function cycleTagState(tagObj) {
+function cycleTagState(tagObj, event) {
   const states = ['neutral', 'require', 'exclude', 'bonus', 'abonus']
   tagObj.state = states[(states.indexOf(tagObj.state) + 1) % states.length]
-  // Update tooltip instantly when state changes
-  showTooltip({ currentTarget: event.currentTarget }, tagObj.state)
+  if (event) {
+    showTooltip(event, tagObj.state)
+  }
 }
 
 function getTagStateIcon(state) {
@@ -422,12 +452,14 @@ function handleContactButtonClick(profile, type, event) {
   if (isMobile.value) {
     openContactSelect(profile, type)
   } else {
-    // Smart Placement Calculation: Top vs Bottom
     if (event && event.currentTarget) {
-      const cardRect = event.currentTarget.closest('.card').getBoundingClientRect();
-      const spaceBelow = window.innerHeight - cardRect.bottom;
-      const spaceAbove = cardRect.top;
-      profile.popoverPosition = spaceAbove > spaceBelow && spaceBelow < 280 ? 'top' : 'bottom';
+      const cardEl = event.currentTarget.closest('.card');
+      if (cardEl) {
+        const cardRect = cardEl.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - cardRect.bottom;
+        const spaceAbove = cardRect.top;
+        profile.popoverPosition = spaceAbove > spaceBelow && spaceBelow < 280 ? 'top' : 'bottom';
+      }
     } else {
       profile.popoverPosition = 'bottom';
     }
