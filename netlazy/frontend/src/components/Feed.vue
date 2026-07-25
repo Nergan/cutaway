@@ -135,7 +135,7 @@
               </div>
               
               <div style="padding: 0.5rem 1rem;" :style="{ borderTop: (profile.pendingReqType !== 'demand' && validPrivateContacts.length > 0) ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
-                <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem; width: 100%;">
+                <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-pill); font-size: 0.85rem; width: 100%;">
               </div>
 
               <div style="padding: 0.5rem 1rem; text-align: right;">

@@ -61,7 +61,7 @@
     width: 100% !important;
     flex-shrink: 0;
     min-height: auto;
-    height: 300px;
+    height: 66vh;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
   }

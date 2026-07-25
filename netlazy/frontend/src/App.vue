@@ -81,13 +81,13 @@
           
           <div class="nav-section">
             <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'" :title="store.t('search_profiles')">
-              <i class="bi bi-compass"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
+              <i class="bi bi-search"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'" :title="store.t('my_profile')">
               <i class="bi bi-person-lines-fill"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('my_profile') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" :title="store.t('inbox')">
-              <i v-if="!store.state.isSidebarCollapsed || pendingInboxCount === 0" class="bi bi-inbox"></i> 
+              <i v-if="!store.state.isSidebarCollapsed || pendingInboxCount === 0" class="bi bi-envelope"></i> 
               <span v-else class="badge" style="margin: 0;">{{ pendingInboxCount }}</span>
               <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('inbox') }}</span>
               <span class="badge" v-if="pendingInboxCount > 0 && !store.state.isSidebarCollapsed">{{ pendingInboxCount }}</span>
@@ -118,13 +118,13 @@
       <!-- Native Mobile App Bottom Navigation -->
       <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
         <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
-          <i class="bi bi-compass"></i>
+          <i class="bi bi-search"></i>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
           <i class="bi bi-person-lines-fill"></i>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'">
-          <i v-if="pendingInboxCount === 0" class="bi bi-inbox"></i>
+          <i v-if="pendingInboxCount === 0" class="bi bi-envelope"></i>
           <span v-else class="badge" style="margin: 0; font-size: 0.8rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">{{ pendingInboxCount }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'">
@@ -211,7 +211,7 @@
                        v-model="store.state.contactSelect.message" 
                        :placeholder="store.t('message_placeholder')" 
                        maxlength="100" 
-                       style="background: rgba(128, 128, 128, 0.08); padding: 0.8rem 1.2rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); width: 100%; font-size: 0.9rem;">
+                       style="background: rgba(128, 128, 128, 0.08); padding: 0.8rem 1.2rem; border-radius: var(--radius-pill); border: 1px solid var(--border-subtle); width: 100%; font-size: 0.9rem;">
             </div>
           </div>
           
@@ -273,7 +273,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useStore } from './store/state.js'
 import api, { apiWithPoW } from './utils/api.js'
 import Lightbox from './components/Lightbox.vue'
@@ -289,7 +289,36 @@ const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
+let touchStartY = 0;
+function handleGlobalTouchStart(e) {
+  if (e.touches.length > 0) {
+    touchStartY = e.touches[0].clientY;
+  }
+}
+function handleGlobalTouchEnd(e) {
+  if (e.changedTouches.length > 0 && window.innerWidth <= 768) {
+    const touchEndY = e.changedTouches[0].clientY;
+    const scrollEl = e.target.closest('.scrollable-content, .workspace-scroll-area, .tag-library-pane, .inbox-col');
+    
+    // Swipe Up at bottom
+    if (touchStartY - touchEndY > 120) {
+      if (!scrollEl || (scrollEl.scrollHeight - scrollEl.scrollTop <= scrollEl.clientHeight + 10)) {
+        window.location.reload();
+      }
+    }
+    // Swipe Down at top
+    if (touchEndY - touchStartY > 120) {
+      if (!scrollEl || scrollEl.scrollTop <= 0) {
+        window.location.reload();
+      }
+    }
+  }
+}
+
 onMounted(() => {
+  document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
+  document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
+
   if (Capacitor.isNativePlatform()) {
     CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       if (store.state.lightbox.open) {
@@ -314,6 +343,11 @@ onMounted(() => {
         store.syncUrlToView();
     });
   }
+});
+
+onUnmounted(() => {
+  document.removeEventListener('touchstart', handleGlobalTouchStart);
+  document.removeEventListener('touchend', handleGlobalTouchEnd);
 });
 
 function reloadPage() {
