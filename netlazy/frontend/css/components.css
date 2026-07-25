@@ -14,24 +14,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-elevated);
+  padding: 0.4rem 0.2rem;
+  border-bottom: 1px dashed var(--border-subtle);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.85rem;
   user-select: none;
-  box-shadow: var(--shadow-sm);
+  position: relative;
 }
 .custom-select:hover {
-  border-color: var(--border-focus);
   color: var(--text-main);
-  background: var(--bg-surface);
-  transform: scale(1.01);
-}
-.custom-select:active {
-  transform: scale(0.98);
+  border-color: var(--border-focus);
 }
 
 .chip:hover, .create-btn:hover, .icon-btn:hover {
@@ -175,16 +169,17 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* MINIMALIST GLASS DROPDOWNS & POPOVERS */
 .glass-menu { 
   position: absolute; 
-  background: rgba(20, 20, 20, 0.85) !important; 
+  background: rgba(10, 10, 10, 0.75) !important; 
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
-  border-radius: var(--radius-md); z-index: 999; 
-  box-shadow: var(--shadow-md) !important; 
+  border-radius: var(--radius-sm); z-index: 999; 
+  box-shadow: var(--shadow-sm) !important; 
   border: 1px solid var(--border-subtle) !important; 
-  padding: 0.5rem 0; 
+  padding: 0.4rem 0; 
   max-width: 90vw;
 }
 .light-theme .glass-menu {
-  background: rgba(240, 235, 225, 0.85) !important;
+  background: rgba(249, 246, 239, 0.8) !important;
+  border: 1px solid var(--border-subtle) !important;
 }
 
 .glass-contacts-list {
@@ -192,9 +187,24 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   overflow-y: auto;
 }
 
-.glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s, color 0.15s; width: 100%; position: relative; overflow: hidden; }
-.glass-option:hover { background: transparent !important; color: var(--accent-moss) !important; }
-.glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
+.glass-option { 
+  padding: 0.4rem 0.8rem; 
+  cursor: pointer; 
+  font-size: 0.85rem; 
+  color: var(--text-muted); 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 0.6rem; 
+  transition: color 0.15s; 
+  width: 100%; 
+  position: relative; 
+  background: transparent !important;
+}
+.glass-option:hover { 
+  color: var(--text-main) !important; 
+}
+.glass-option.clicked { transform: scale(0.98); }
 .glass-option.highlighted-option { color: var(--accent-moss) !important; }
 
 /* UNCLIPPED TRANSPARENT BLURRED FLOATING TOOLTIP (NO BORDER) */
@@ -227,14 +237,15 @@ body.light-theme .floating-tooltip {
 .animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
 .animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
-.glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-bottom: 2px; margin-bottom: -2px; }
-
+.custom-select:hover .animated-underline::after,
 .glass-option:hover .animated-underline::after,
 .glass-option.highlighted-option .animated-underline::after,
 .footer-action:hover .animated-underline::after,
 .nav-item:hover .animated-underline::after {
   width: 100%;
 }
+
+.glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-bottom: 2px; margin-bottom: -2px; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
