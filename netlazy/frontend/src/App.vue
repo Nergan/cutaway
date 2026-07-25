@@ -289,27 +289,32 @@ const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
-let touchStartY = 0;
-let initialScrollTop = 0;
+let pStart = { x: 0, y: 0 };
 let activeScrollEl = null;
+let initialScrollTop = 0;
 
 function handleGlobalTouchStart(e) {
-  if (e.touches.length > 0) {
-    touchStartY = e.touches[0].clientY;
+  if (e.touches.length === 1 && window.innerWidth <= 768) {
+    pStart.x = e.touches[0].clientX;
+    pStart.y = e.touches[0].clientY;
     activeScrollEl = e.target.closest('.scrollable-content, .workspace-scroll-area, .tag-library-pane, .inbox-col');
     initialScrollTop = activeScrollEl ? activeScrollEl.scrollTop : 0;
   }
 }
 
 function handleGlobalTouchEnd(e) {
-  if (e.changedTouches.length > 0 && window.innerWidth <= 768) {
-    const touchEndY = e.changedTouches[0].clientY;
+  if (e.changedTouches.length === 1 && window.innerWidth <= 768) {
+    const pEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    const yDiff = pEnd.y - pStart.y;
+    const xDiff = Math.abs(pEnd.x - pStart.x);
     
-    // Pull-to-refresh (Swipe Down): 
-    // We ensure the finger moves down (touchEndY - touchStartY > 120)
-    // AND that we were already at the very top when the touch STARTED.
-    if (touchEndY - touchStartY > 120) {
-      if (!activeScrollEl || initialScrollTop <= 0) {
+    // Pull-to-refresh logic
+    // 1. Must be a downward swipe (yDiff > 120)
+    // 2. Must be mostly vertical (yDiff > xDiff)
+    // 3. Target element must have been perfectly at the top initially
+    if (yDiff > 120 && yDiff > xDiff && activeScrollEl && initialScrollTop <= 0) {
+      // Ensure we are still at the top, confirming it wasn't a complex drag
+      if (activeScrollEl.scrollTop <= 0) {
         window.location.reload();
       }
     }
