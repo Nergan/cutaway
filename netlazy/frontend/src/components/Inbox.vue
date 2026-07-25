@@ -76,12 +76,12 @@
                   <div v-if="['mutual', 'demand', 'exchange'].includes(req.type)" style="margin-bottom:0.5rem; position: relative;">
                      <div class="custom-select" :class="{ 'is-open': req.openDropdown }" @click.stop="toggleDropdown(req)">
                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex-grow: 1;">
-                         {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(', ') : store.t('select_contact_share') }}
+                         {{ req.selectedContacts && req.selectedContacts.length ? req.selectedContacts.join(' · ') : store.t('select_contact_share') }}
                        </span>
                        <i class="bi" :class="req.openDropdown ? 'bi-chevron-up' : 'bi-chevron-down'" style="font-size: 0.75rem; opacity: 0.7; flex-shrink: 0; transition: transform 0.2s;"></i>
                        
                        <transition name="dropdown-fade">
-                         <div class="glass-menu" v-if="!isMobile && req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px;">
+                         <div class="glass-menu" v-if="!isMobile && req.openDropdown" @click.stop style="top: 100%; bottom: auto; left: 0; right: 0; width: 100%; min-width: 250px; margin-top: 0.4rem;">
                            <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleReqContact(req, c.value)">
                              <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
                              <i class="bi" :class="req.selectedContacts && req.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
