@@ -289,40 +289,74 @@ const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
-let pStart = { x: 0, y: 0 };
-let activeScrollEl = null;
-let initialScrollTop = 0;
+let touchStartPos = { x: 0, y: 0 };
+let touchCurrentPos = { x: 0, y: 0 };
+let canPullToRefresh = false;
+
+// Walks up the DOM tree from the touched element and verifies 
+// that ALL scrollable parent containers are at scrollTop <= 1.
+function isAtVeryTop(target) {
+  let el = target;
+  while (el && el !== document.body && el !== document.documentElement) {
+    const style = window.getComputedStyle(el);
+    const overflowY = style.overflowY;
+    const isScrollable = (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && (el.scrollHeight > el.clientHeight);
+    
+    if (isScrollable && el.scrollTop > 1) {
+      return false;
+    }
+    el = el.parentElement;
+  }
+  return true;
+}
 
 function handleGlobalTouchStart(e) {
-  if (e.touches.length === 1 && window.innerWidth <= 768) {
-    pStart.x = e.touches[0].clientX;
-    pStart.y = e.touches[0].clientY;
-    activeScrollEl = e.target.closest('.scrollable-content, .workspace-scroll-area, .tag-library-pane, .inbox-col');
-    initialScrollTop = activeScrollEl ? activeScrollEl.scrollTop : 0;
+  if (e.touches.length !== 1 || window.innerWidth > 768) {
+    canPullToRefresh = false;
+    return;
+  }
+  const touch = e.touches[0];
+  touchStartPos = { x: touch.clientX, y: touch.clientY };
+  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+
+  // Only allow pull-to-refresh if every scrollable parent is at the top
+  canPullToRefresh = isAtVeryTop(e.target);
+}
+
+function handleGlobalTouchMove(e) {
+  if (!canPullToRefresh || e.touches.length !== 1) return;
+
+  const touch = e.touches[0];
+  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+
+  const deltaY = touchCurrentPos.y - touchStartPos.y;
+
+  // Immediately cancel if finger moves UP (user is scrolling down the page)
+  if (deltaY < 0 || !isAtVeryTop(e.target)) {
+    canPullToRefresh = false;
   }
 }
 
 function handleGlobalTouchEnd(e) {
-  if (e.changedTouches.length === 1 && window.innerWidth <= 768) {
-    const pEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    const yDiff = pEnd.y - pStart.y;
-    const xDiff = Math.abs(pEnd.x - pStart.x);
-    
-    // Pull-to-refresh logic
-    // 1. Must be a downward swipe (yDiff > 120)
-    // 2. Must be mostly vertical (yDiff > xDiff)
-    // 3. Target element must have been perfectly at the top initially
-    if (yDiff > 120 && yDiff > xDiff && activeScrollEl && initialScrollTop <= 0) {
-      // Ensure we are still at the top, confirming it wasn't a complex drag
-      if (activeScrollEl.scrollTop <= 0) {
-        window.location.reload();
-      }
-    }
+  if (!canPullToRefresh || window.innerWidth > 768) return;
+
+  const deltaY = touchCurrentPos.y - touchStartPos.y;
+  const deltaX = Math.abs(touchCurrentPos.x - touchStartPos.x);
+
+  // Reload only if:
+  // 1. Finger was pulled DOWN > 140px
+  // 2. Movement was predominantly vertical (deltaY > deltaX * 1.5)
+  // 3. User was at the absolute top during the entire gesture
+  if (deltaY > 140 && deltaY > deltaX * 1.5) {
+    window.location.reload();
   }
+
+  canPullToRefresh = false;
 }
 
 onMounted(() => {
   document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
+  document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
 
   if (Capacitor.isNativePlatform()) {
@@ -353,6 +387,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('touchstart', handleGlobalTouchStart);
+  document.removeEventListener('touchmove', handleGlobalTouchMove);
   document.removeEventListener('touchend', handleGlobalTouchEnd);
 });
 
