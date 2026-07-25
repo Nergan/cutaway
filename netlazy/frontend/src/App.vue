@@ -290,6 +290,7 @@ const importKeyVisible = ref(false)
 const isResizingSidebar = ref(false)
 
 let touchStartPos = { x: 0, y: 0 };
+let touchCurrentPos = { x: 0, y: 0 };
 let canPullToRefresh = false;
 
 // Walks up the DOM tree from the touched element and verifies 
@@ -316,6 +317,7 @@ function handleGlobalTouchStart(e) {
   }
   const touch = e.touches[0];
   touchStartPos = { x: touch.clientX, y: touch.clientY };
+  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
 
   // Only allow pull-to-refresh if every scrollable parent container is at the top
   canPullToRefresh = isViewAtVeryTop(e.target);
@@ -325,9 +327,11 @@ function handleGlobalTouchMove(e) {
   if (!canPullToRefresh || e.touches.length !== 1) return;
 
   const touch = e.touches[0];
-  const deltaY = touch.clientY - touchStartPos.y;
+  touchCurrentPos = { x: touch.clientX, y: touch.clientY };
 
-  // Immediately cancel if finger moves UP (user is scrolling down the page)
+  const deltaY = touchCurrentPos.y - touchStartPos.y;
+
+  // Immediately cancel if finger moves UP (scrolling down the page)
   // or if any scroll container moves away from scrollTop = 0
   if (deltaY < 0 || !isViewAtVeryTop(e.target)) {
     canPullToRefresh = false;
@@ -337,14 +341,13 @@ function handleGlobalTouchMove(e) {
 function handleGlobalTouchEnd(e) {
   if (!canPullToRefresh || window.innerWidth > 768) return;
 
-  if (!e.changedTouches || e.changedTouches.length === 0) {
-    canPullToRefresh = false;
-    return;
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    const touch = e.changedTouches[0];
+    touchCurrentPos = { x: touch.clientX, y: touch.clientY };
   }
 
-  const touch = e.changedTouches[0];
-  const deltaY = touch.clientY - touchStartPos.y;
-  const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+  const deltaY = touchCurrentPos.y - touchStartPos.y;
+  const deltaX = Math.abs(touchCurrentPos.x - touchStartPos.x);
 
   // Reload ONLY if:
   // 1. Finger was pulled DOWN > 140px
@@ -357,10 +360,16 @@ function handleGlobalTouchEnd(e) {
   canPullToRefresh = false;
 }
 
+function handleGlobalTouchCancel() {
+  // Disarm pull-to-refresh immediately when Android WebView initiates native scrolling
+  canPullToRefresh = false;
+}
+
 onMounted(() => {
   document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
   document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
+  document.addEventListener('touchcancel', handleGlobalTouchCancel, { passive: true });
 
   if (Capacitor.isNativePlatform()) {
     CapacitorApp.addListener('backButton', ({ canGoBack }) => {
@@ -392,6 +401,7 @@ onUnmounted(() => {
   document.removeEventListener('touchstart', handleGlobalTouchStart);
   document.removeEventListener('touchmove', handleGlobalTouchMove);
   document.removeEventListener('touchend', handleGlobalTouchEnd);
+  document.removeEventListener('touchcancel', handleGlobalTouchCancel);
 });
 
 function reloadPage() {
