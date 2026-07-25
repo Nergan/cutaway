@@ -9,11 +9,14 @@
   <link rel="icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
+  <!-- Lenis Smooth Scroll CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.css">
+
   <script>
-    // Immediate Theme Detection to Prevent Dark/Light Flashing on Load
+    // Immediate Theme Detection (Anti-FOUC)
     (function() {
       const storedTheme = localStorage.getItem('theme');
       if (storedTheme === 'light' || (!storedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
@@ -23,13 +26,20 @@
   </script>
 
   <style>
-    /* CUSTOM NETLAZY DESIGN SYSTEM */
+    /* DESIGN SYSTEM */
     :root {
       --bg-base: #000000;
       --bg-surface: #0a0a0a;
       --bg-elevated: #141414;
+      
+      /* GLASSMORPHISM DESIGN TOKENS */
+      --bg-glass: rgba(18, 18, 18, 0.65);
+      --bg-glass-card: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+      --bg-glass-elevated: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
       --border-subtle: #222222;
       --border-focus: #444444;
+      --border-glass: rgba(255, 255, 255, 0.1);
+      --glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
       
       --text-main: #ffffff;
       --text-muted: #a3a3a3;
@@ -39,15 +49,17 @@
       --accent-info: #6e9dae;
       --accent-earth: #c7b38a;
       
-      --font-main: 'Comfortaa', sans-serif;
+      --font-heading: 'Comfortaa', cursive, sans-serif;
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       
-      --radius-sm: 8px;
-      --radius-md: 16px;
+      --radius-sm: 10px;
+      --radius-md: 18px;
+      --radius-lg: 26px;
       --radius-pill: 50px;
 
       --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.6);
-      --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.8);
-      --glow-accent: 0 0 20px rgba(141, 169, 112, 0.12);
+      --shadow-md: 0 20px 45px -10px rgba(0, 0, 0, 0.8);
+      --glow-accent: 0 0 24px rgba(141, 169, 112, 0.25);
       --profile-glow: rgba(141, 169, 112, 0.15);
     }
 
@@ -55,142 +67,161 @@
       --bg-base: #fefcf5;
       --bg-surface: #f9f6ef;
       --bg-elevated: #f0ebe1;
+      
+      /* LIGHT GLASSMORPHISM DESIGN TOKENS */
+      --bg-glass: rgba(249, 246, 239, 0.72);
+      --bg-glass-card: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 240, 228, 0.5) 100%);
+      --bg-glass-elevated: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 235, 220, 0.6) 100%);
       --border-subtle: #e5dfd3;
       --border-focus: #b8aa92;
+      --border-glass: rgba(0, 0, 0, 0.08);
+      --glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.85);
+      
       --text-main: #232323;
-      --text-muted: #666666;
+      --text-muted: #525252;
+      
       --accent-moss: #68854c;
       --accent-danger: #a3483b;
       --accent-info: #4a7787;
       --accent-earth: #9c855a;
 
       --shadow-sm: 0 4px 12px rgba(156, 133, 90, 0.04);
-      --shadow-md: 0 16px 40px rgba(156, 133, 90, 0.12);
-      --glow-accent: 0 0 20px rgba(104, 133, 76, 0.08);
+      --shadow-md: 0 20px 45px -10px rgba(156, 133, 90, 0.14);
+      --glow-accent: 0 0 24px rgba(104, 133, 76, 0.15);
       --profile-glow: rgba(104, 133, 76, 0.15);
     }
 
+    /* LENIS SMOOTH SCROLL INTEGRATION */
+    html.lenis, html.lenis body {
+      height: auto;
+    }
+    .lenis.lenis-smooth {
+      scroll-behavior: auto !important;
+    }
+    .lenis.lenis-smooth [data-lenis-prevent] {
+      overscroll-behavior: contain;
+    }
+    .lenis.lenis-stopped {
+      overflow: hidden;
+    }
+
     /* CUSTOM SCROLLBAR & SELECTION */
-    ::-webkit-scrollbar { 
-      width: 6px; 
-      height: 6px; 
-    }
-    ::-webkit-scrollbar-track { 
-      background: transparent; 
-    }
-    ::-webkit-scrollbar-thumb { 
-      background: var(--border-focus); 
-      border-radius: 4px; 
-    }
-    ::-webkit-scrollbar-thumb:hover { 
-      background: var(--text-muted); 
-    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-moss); }
+    ::selection { background: var(--border-focus); color: var(--text-main); }
 
-    ::selection { 
-      background: var(--border-focus); 
-      color: var(--text-main); 
-    }
-
-    /* STRUCTURE */
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-      font-family: var(--font-main); 
-    }
+    /* BASE */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: var(--bg-base);
       color: var(--text-main);
+      font-family: var(--font-body);
       line-height: 1.65;
       overflow-x: hidden;
       transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
     }
+
+    /* TYPOGRAPHY ASSIGNMENTS */
+    h1, h2, h3, h4, .brand, .btn, .demo-toggle-btn, .section-tag, .hero-brand, .footer-col-title {
+      font-family: var(--font-heading);
+    }
+
+    /* LOOPING BOTANICAL BACKGROUND VIDEO */
+    .bg-video-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: -2;
+      overflow: hidden;
+    }
+
+    .bg-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 65%; /* Optimized for desktop widescreen focus on water droplets */
+      transition: opacity 0.5s ease, filter 0.5s ease;
+      will-change: transform;
+    }
+
+    /* Dark Mode Video Effects: Deep Moody Forest Greens & Specular Highlights */
+    body:not(.light-theme) .bg-video {
+      opacity: 0.55;
+      filter: brightness(0.65) contrast(1.25) saturate(1.15);
+      mask-image: radial-gradient(ellipse at 50% 50%, #000 35%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 35%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
+    }
+
+    /* Light Mode Video Effects: Soft Botanical Watercolors on Cream Canvas */
+    body.light-theme .bg-video {
+      opacity: 0.38;
+      mix-blend-mode: multiply;
+      filter: brightness(1.7) contrast(0.85) saturate(0.85);
+      mask-image: radial-gradient(ellipse at 50% 50%, #000 50%, rgba(0, 0, 0, 0.5) 80%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 50%, rgba(0, 0, 0, 0.5) 80%, transparent 100%);
+    }
+
+    /* FILM GRAIN TEXTURE OVERLAY */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      opacity: 0.035;
+      pointer-events: none;
+      z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+    body.light-theme::before { opacity: 0.025; }
 
     body.is-translating {
       opacity: 0;
-      filter: blur(4px);
-      transition: opacity 0.15s ease-in-out, filter 0.15s ease-in-out;
+      filter: blur(8px);
+      transition: opacity 0.2s ease-in-out, filter 0.2s ease-in-out;
     }
 
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
+    a { text-decoration: none; color: inherit; }
 
-    /* ATMOSPHERIC BACKGROUND DRIFTS */
-    .bg-glow-container {
-      position: absolute;
+    /* MOUSE-RESPONSIVE AMBIENT MESH GRADIENT */
+    .interactive-glow {
+      position: fixed;
       inset: 0;
-      overflow: hidden;
-      z-index: -2;
       pointer-events: none;
+      z-index: -1;
+      background: 
+        radial-gradient(650px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh), rgba(141, 169, 112, 0.14), transparent 80%),
+        radial-gradient(850px circle at calc(var(--mouse-x, 50vw) * 0.8) calc(var(--mouse-y, 50vh) * 0.8), rgba(110, 157, 174, 0.07), transparent 75%);
+      transition: opacity 0.4s;
     }
 
-    .bg-glow {
-      position: absolute;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(141,169,112,0.08) 0%, rgba(0,0,0,0) 70%);
-      border-radius: 50%;
-      filter: blur(50px);
-      animation: floatGlow 16s infinite alternate ease-in-out;
+    body.light-theme .interactive-glow {
+      background: 
+        radial-gradient(650px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh), rgba(104, 133, 76, 0.09), transparent 80%),
+        radial-gradient(850px circle at calc(var(--mouse-x, 50vw) * 0.8) calc(var(--mouse-y, 50vh) * 0.8), rgba(74, 119, 135, 0.06), transparent 75%);
     }
 
-    body.light-theme .bg-glow {
-      background: radial-gradient(circle, rgba(104, 133, 76, 0.06) 0%, rgba(0,0,0,0) 70%);
-    }
-
-    .bg-glow-2 {
-      position: absolute;
-      right: 10%;
-      top: 35%;
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(110,157,174,0.06) 0%, rgba(0,0,0,0) 70%);
-      border-radius: 50%;
-      filter: blur(60px);
-      animation: floatGlow 22s infinite alternate-reverse ease-in-out;
-    }
-
-    body.light-theme .bg-glow-2 {
-      background: radial-gradient(circle, rgba(74, 119, 135, 0.04) 0%, rgba(0,0,0,0) 70%);
-    }
-
-    @keyframes floatGlow {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(100px, 80px) scale(1.15); }
-    }
-
-    /* NAVIGATION HEADER */
+    /* GLASS NAVIGATION */
     .top-nav {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 1000;
-      padding: 0.75rem 2rem;
-      background: transparent;
+      padding: 1rem 4vw;
+      background: var(--bg-glass);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight);
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-
-    .top-nav::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      background: rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border-subtle);
-      pointer-events: none;
-      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    body.light-theme .top-nav::before {
-      background: rgba(254, 252, 245, 0.5);
+      transition: background-color 0.4s, border-color 0.4s;
     }
 
     .brand {
@@ -198,12 +229,12 @@
       font-weight: 700;
       color: var(--text-main);
       cursor: pointer;
-      text-shadow: var(--glow-accent);
-      transition: color 0.3s;
+      transition: color 0.4s, text-shadow 0.4s;
     }
 
     .brand:hover {
       color: var(--accent-moss);
+      text-shadow: var(--glow-accent);
     }
 
     .nav-buttons {
@@ -212,183 +243,338 @@
       gap: 0.75rem;
     }
 
-    /* COMPREHENSIVELY REBALANCED BUTTONS */
     .btn {
       font-size: 0.8rem;
-      padding: 0.6rem 1.2rem;
+      padding: 0.7rem 1.4rem;
       border-radius: var(--radius-pill);
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: var(--glass-highlight);
       color: var(--text-main);
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
       cursor: pointer;
-      font-weight: 500;
-      transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                  transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                  border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                  box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .btn:hover {
       transform: translateY(-2px);
-      border-color: var(--border-focus);
-      background: var(--bg-elevated);
-      box-shadow: var(--shadow-sm);
+      border-color: var(--accent-moss);
+      background: var(--bg-glass-elevated);
+      box-shadow: var(--glass-highlight), var(--shadow-sm);
     }
 
-    .btn:active {
-      transform: translateY(0);
+    .btn-primary {
+      background: var(--accent-moss);
+      color: #000000;
+      border-color: var(--accent-moss);
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(141, 169, 112, 0.3);
     }
 
-    .btn[disabled] {
-      opacity: 0.35;
-      cursor: not-allowed;
-      pointer-events: none;
-      border-color: var(--border-subtle);
+    body.light-theme .btn-primary {
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(104, 133, 76, 0.3);
     }
 
-    /* RESTORED ORIGINAL STYLES FOR THEME AND LANGUAGE BUTTONS */
+    .btn-primary:hover {
+      background: var(--accent-moss);
+      filter: brightness(1.1);
+      border-color: var(--accent-moss);
+      color: #000000;
+      box-shadow: var(--glow-accent);
+    }
+
+    body.light-theme .btn-primary:hover {
+      color: #ffffff;
+    }
+
     .theme-toggle, .lang-toggle {
-      background: none;
-      border: none;
+      background: var(--bg-glass-card);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--text-muted);
       cursor: pointer;
       font-size: 1.1rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
-      transition: color 0.2s, transform 0.15s;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
     }
 
     .theme-toggle:hover, .lang-toggle:hover {
       color: var(--text-main);
-      transform: scale(1.1);
+      border-color: var(--accent-moss);
+      transform: scale(1.05);
     }
 
-    .lang-toggle {
-      font-weight: 700;
-      font-size: 0.75rem;
-      text-transform: lowercase;
+    .lang-toggle { font-weight: 700; font-size: 0.75rem; font-family: var(--font-heading); }
+
+    /* LAYOUT CONTAINERS */
+    .layout-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 4vw;
     }
 
-    /* HERO STAGE */
+    /* HERO SECTION WITH ARTWORK */
     .hero {
-      min-height: 80vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      min-height: 92vh;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
       align-items: center;
-      padding: 8rem 1.5rem 3rem 1.5rem;
-      text-align: center;
+      gap: 2rem;
+      padding-top: 6rem;
       position: relative;
     }
 
-    .hero-title {
-      font-size: 3.2rem;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 1.25rem;
-      text-shadow: var(--glow-accent);
-      text-transform: lowercase;
-      letter-spacing: -0.5px;
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
-    .hero-title .green-highlight {
+    .hero-title {
+      font-size: clamp(3rem, 5.5vw, 5.5rem);
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.08;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-brand {
+      display: inline-block;
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+    }
+    
+    .hero-title:hover .hero-brand {
       color: var(--accent-moss);
+      text-shadow: var(--glow-accent);
     }
 
     .hero-desc {
-      font-size: 1.05rem;
+      font-size: clamp(0.98rem, 1.3vw, 1.1rem);
       color: var(--text-muted);
-      max-width: 600px;
+      max-width: 520px;
       margin-bottom: 2.5rem;
+      line-height: 1.7;
     }
 
-    /* EQUALLY PROMINENT HERO ACTION GRID */
-    .cta-container {
+    .hero-actions {
       display: flex;
-      justify-content: center;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 0.85rem;
+    }
+
+    /* HERO ABSTRACT ARTWORK ORB */
+    .hero-art-container {
+      position: relative;
       width: 100%;
-      max-width: 700px;
-    }
-
-    .cta-container .btn {
-      padding: 0.9rem 1.8rem;
-      font-size: 0.88rem;
-      flex: 1;
-      min-width: 200px;
+      height: 380px;
+      display: flex;
+      align-items: center;
       justify-content: center;
+      pointer-events: none;
     }
 
-    /* UNUSUAL 3D PARALLAX SCROLL-REVEAL EFFECTS */
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 0 1.5rem 4rem 1.5rem;
-      perspective: 1200px;
+    .hero-art-orb {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, var(--accent-moss) 0%, rgba(110, 157, 174, 0.4) 50%, transparent 80%);
+      filter: blur(30px);
+      opacity: 0.5;
+      animation: floatOrb 12s ease-in-out infinite alternate;
     }
 
+    .hero-art-glass-card {
+      position: absolute;
+      width: 280px;
+      height: 320px;
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight), var(--shadow-md);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.8rem;
+      transform: rotate(4deg) perspective(1000px) rotateY(-10deg);
+      animation: floatCard 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatOrb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, 40px) scale(1.15); }
+    }
+
+    @keyframes floatCard {
+      0% { transform: rotate(4deg) translateY(0); }
+      100% { transform: rotate(2deg) translateY(-15px); }
+    }
+
+    .art-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .art-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-glass-elevated);
+      border: 1px solid var(--border-glass);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-moss);
+      font-weight: 700;
+      font-size: 0.85rem;
+      font-family: var(--font-heading);
+    }
+
+    .art-user-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .art-username { font-size: 0.85rem; font-weight: 700; font-family: var(--font-heading); }
+    .art-status { font-size: 0.7rem; color: var(--text-muted); }
+
+    .art-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .art-chip {
+      font-size: 0.68rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-pill);
+      background: var(--bg-glass-card);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+    }
+
+    .art-chip.highlight {
+      border-color: var(--accent-moss);
+      color: var(--accent-moss);
+    }
+
+    /* 3D PARALLAX SCROLL REVEAL */
     .reveal-section {
       opacity: 0;
-      transform: perspective(1200px) rotateX(15deg) rotateY(-4deg) translateY(60px) scale(0.95);
-      filter: blur(10px);
-      transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 1s cubic-bezier(0.16, 1, 0.3, 1),
-                  filter 1s cubic-bezier(0.16, 1, 0.3, 1);
-      transform-origin: center top;
+      transform: perspective(1200px) rotateX(12deg) translateY(50px) scale(0.97);
+      filter: blur(8px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
       will-change: transform, opacity, filter;
       margin-bottom: 7rem;
     }
 
     .reveal-section.revealed {
       opacity: 1;
-      transform: perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1);
+      transform: perspective(1200px) rotateX(0deg) translateY(0) scale(1);
       filter: blur(0);
     }
 
-    /* SECTION DESIGNS */
-    .section-title {
+    /* SECTION INDEX ANCHORS */
+    .section-header-block {
       text-align: center;
-      font-size: 1.65rem;
-      margin-bottom: 2.5rem;
-      color: var(--text-main);
-      text-transform: lowercase;
-      letter-spacing: -0.3px;
+      margin-bottom: 3.5rem;
     }
 
+    .section-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-moss);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.03em;
+    }
+
+    /* PROFILE PREVIEW & CONTROLS */
     .app-demo-container {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       width: 100%;
       overflow: hidden;
     }
 
-    /* CLEAN CONTAINER WITH NO BACKGROUND OR BORDER WRAPPING THE IMAGE */
+    .demo-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: var(--bg-glass-card);
+      padding: 0.35rem 0.5rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      box-shadow: var(--glass-highlight);
+    }
+
+    .demo-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+    }
+
+    .demo-toggle-btn.active {
+      background: var(--accent-moss);
+      color: #000000;
+      font-weight: 700;
+      box-shadow: var(--glow-accent);
+    }
+
+    body.light-theme .demo-toggle-btn.active {
+      color: #ffffff;
+    }
+
     .profile-preview-outer {
       position: relative;
       width: 100%;
       max-width: 853px;
-      height: 352px; /* Re-locked exactly to 352px */
+      height: 352px;
       background: transparent;
-      border: none;
-      box-shadow: none;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       transform-style: preserve-3d;
       will-change: transform;
-      transition: transform 0.1s ease-out; /* Pure responsive tilt */
+      transition: transform 0.1s ease-out;
     }
 
-    /* NESTED LAYER TO HANDLE SCROLLING ON PHONE SCREENS */
     .profile-preview-container {
       width: 100%;
       height: 100%;
@@ -396,177 +582,256 @@
       overflow-y: hidden;
       display: block;
       -webkit-overflow-scrolling: touch;
-
-      /* Hide scrollbars but preserve scrolling functionality */
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    .profile-preview-container::-webkit-scrollbar { display: none; }
 
-    .profile-preview-container::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* Strict wrapper strictly locked at 853x352 with clean rounding and hover shadow directly on the asset */
     .profile-scroll-wrapper {
       position: relative;
       width: 853px;
       height: 352px;
       display: block;
       flex-shrink: 0;
-      border-radius: var(--radius-md); /* Direct rounded corners on image canvas */
+      border-radius: var(--radius-md);
       overflow: hidden;
-      transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight), var(--shadow-md);
+      transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Soft natural ambient shadow directly on the floating canvas */
     .profile-preview-outer:hover .profile-scroll-wrapper {
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--glass-highlight), 0 25px 60px rgba(0, 0, 0, 0.7);
     }
-
     body.light-theme .profile-preview-outer:hover .profile-scroll-wrapper {
-      box-shadow: 0 16px 40px rgba(156, 133, 90, 0.18);
+      box-shadow: var(--glass-highlight), 0 25px 60px rgba(156, 133, 90, 0.25);
     }
 
-    /* Double Layer Profile Image Layout (Crossfading) */
     .profile-img-layer {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain; /* Assures full horizontal graphic is displayed beautifully */
-      border-radius: inherit; /* Direct nested alignment prevents corner bleed */
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
       pointer-events: none;
       transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
       opacity: 0;
     }
 
-    /* Smooth Image Fade & Active Theme Assignment */
-    body.light-theme .profile-img-layer.light-img {
-      opacity: 1;
-      transform: scale(1);
-    }
+    body.light-theme .profile-img-layer.light-img { opacity: 1; transform: scale(1); }
+    body.light-theme .profile-img-layer.dark-img { opacity: 0; transform: scale(0.98); }
+    body:not(.light-theme) .profile-img-layer.dark-img { opacity: 1; transform: scale(1); }
+    body:not(.light-theme) .profile-img-layer.light-img { opacity: 0; transform: scale(0.98); }
 
-    body.light-theme .profile-img-layer.dark-img {
-      opacity: 0;
-      transform: scale(0.98);
-    }
-
-    body:not(.light-theme) .profile-img-layer.dark-img {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    body:not(.light-theme) .profile-img-layer.light-img {
-      opacity: 0;
-      transform: scale(0.98);
-    }
-
-    /* Faders blend perfectly with page background to handle boundaries cleanly */
-    .scroll-fade-left {
+    .scroll-fade-left, .scroll-fade-right {
       display: none;
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 40px;
-      background: linear-gradient(to right, var(--bg-base), transparent);
-      pointer-events: none;
-      z-index: 5;
+      position: absolute; top: 0; bottom: 0; width: 40px;
+      pointer-events: none; z-index: 5;
     }
-
-    .scroll-fade-right {
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 40px;
-      background: linear-gradient(to left, var(--bg-base), transparent);
-      pointer-events: none;
-      z-index: 5;
-    }
+    .scroll-fade-left { left: 0; background: linear-gradient(to right, var(--bg-base), transparent); }
+    .scroll-fade-right { right: 0; background: linear-gradient(to left, var(--bg-base), transparent); }
 
     .swipe-hint {
       display: none;
       position: absolute;
-      bottom: 20px;
+      bottom: -60px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: #fff;
-      padding: 0.5rem 1rem;
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: var(--text-main);
+      padding: 0.6rem 1.2rem;
       border-radius: var(--radius-pill);
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       gap: 0.5rem;
       align-items: center;
       pointer-events: none;
       z-index: 10;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      animation: pulseHint 2s infinite ease-in-out;
+      box-shadow: var(--glass-highlight), var(--shadow-sm);
+      border: 1px solid var(--border-glass);
+      transition: opacity 0.3s, bottom 0.4s;
+    }
+    .profile-preview-outer:hover .swipe-hint { bottom: 20px; }
+
+    /* ZIGZAG TIMELINE & GLASS CARDS */
+    .features-timeline {
+      position: relative;
+      padding: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4rem;
     }
 
-    body.light-theme .swipe-hint {
-      background: rgba(254, 252, 245, 0.95);
-      color: var(--text-main);
-      border: 1px solid var(--border-subtle);
+    .features-timeline::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, var(--border-focus) 15%, var(--accent-moss) 50%, var(--border-focus) 85%, transparent);
+      transform: translateX(-50%);
+      z-index: -1;
+      opacity: 0.5;
     }
 
-    @keyframes pulseHint {
-      0%, 100% { opacity: 0.8; transform: translate(-50%, 0); }
-      50% { opacity: 1; transform: translate(-50%, -4px); }
+    .feature-node {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      position: relative;
     }
 
-    /* OPTIMIZED PILLARS GRID */
-    .pillars-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
+    .feature-node:nth-child(even) {
+      flex-direction: row-reverse;
     }
 
-    .pillar-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+    .feature-card {
+      width: 45%;
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight), var(--shadow-md);
       border-radius: var(--radius-md);
-      padding: 2.25rem 2rem;
-      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+      padding: 2.2rem;
+      position: relative;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                  border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                  box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .pillar-card:hover {
-      border-color: var(--border-focus);
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-sm);
+    .feature-card:hover {
+      border-color: var(--accent-moss);
+      transform: translateY(-4px);
+      box-shadow: var(--glass-highlight), 0 20px 45px -10px var(--profile-glow);
     }
 
-    .pillar-icon {
-      font-size: 2.2rem;
+    .feature-spacer {
+      width: 45%;
+    }
+
+    .feature-icon-wrapper {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--bg-glass-elevated);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid var(--accent-moss);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
       color: var(--accent-moss);
-      margin-bottom: 1.25rem;
-      display: inline-block;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: var(--glass-highlight), var(--glow-accent);
+      z-index: 2;
     }
 
-    .pillar-title {
-      font-size: 1.2rem;
+    .feature-title {
+      font-size: 1.3rem;
       font-weight: 700;
       margin-bottom: 0.75rem;
       color: var(--text-main);
     }
 
-    .pillar-desc {
-      font-size: 0.9rem;
+    .feature-desc {
+      font-size: 0.92rem;
       color: var(--text-muted);
-      line-height: 1.6;
+      line-height: 1.65;
+      margin-bottom: 1.25rem;
     }
 
-    /* REITERATIVE BOTTOM INTERFACES */
+    /* MICRO-UI EMBEDDED GLASS COMPONENTS */
+    .micro-ui-box {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tag-cloud-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag-pill {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-pill);
+      background: var(--bg-glass-elevated);
+      color: var(--text-muted);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.2s ease;
+    }
+
+    .tag-pill:hover {
+      color: var(--accent-moss);
+      border-color: var(--accent-moss);
+    }
+
+    .like-ways-group {
+      display: flex;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .like-way-btn {
+      flex: 1;
+      font-size: 0.72rem;
+      padding: 0.45rem 0.2rem;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      background: var(--bg-glass-elevated);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight);
+      color: var(--text-main);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .like-way-btn:hover {
+      border-color: var(--accent-moss);
+      color: var(--accent-moss);
+    }
+
+    .crypto-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--accent-moss);
+    }
+
+    /* BOTTOM CTA SECTION */
     .bottom-cta-section {
       text-align: center;
+      padding: 3rem 0;
     }
 
     .bottom-cta-desc {
       color: var(--text-muted);
-      font-size: 1rem;
+      font-size: 1.05rem;
       margin-bottom: 2.5rem;
     }
 
@@ -578,217 +843,376 @@
     }
 
     .bottom-nav-buttons .btn {
-      padding: 0.9rem 1.8rem;
-      font-size: 0.88rem;
       min-width: 200px;
       justify-content: center;
+      padding: 0.85rem 1.8rem;
     }
 
+    /* MULTI-COLUMN EDITORIAL FOOTER */
     .footer {
-      border-top: 1px solid var(--border-subtle);
-      padding: 2.5rem 0;
-      text-align: center;
+      border-top: 1px solid var(--border-glass);
+      padding: 3.5rem 0 2.5rem 0;
+      transition: border-color 0.4s;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand-col .brand {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+
+    .footer-quote {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 350px;
+      line-height: 1.6;
+    }
+
+    .footer-col-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+      color: var(--text-main);
+    }
+
+    .footer-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links a:hover { color: var(--accent-moss); }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border-glass);
+      padding-top: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 0.8rem;
       color: var(--text-muted);
-      transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* RESPONSIVE SCALING */
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 960px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 6rem;
+        min-height: auto;
+      }
+      .hero-art-container { display: none; }
+      .feature-card { width: 42%; }
+      .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+    }
+
     @media (max-width: 853px) {
-      .scroll-fade-left, .scroll-fade-right {
-        display: block;
-      }
-      .swipe-hint {
-        display: inline-flex;
-      }
+      .scroll-fade-left, .scroll-fade-right { display: block; }
+      .swipe-hint { display: inline-flex; bottom: 20px; }
     }
 
     @media (max-width: 768px) {
-      .top-nav {
-        padding: 0.6rem 1rem;
-      }
-      .nav-buttons {
-        gap: 0.5rem;
-      }
-      .top-nav .btn span {
-        display: none; /* Icon-only navigation on mobile top bar */
-      }
-      .top-nav .btn {
-        padding: 0.6rem;
-      }
-      .hero {
-        padding-top: 7rem;
-      }
-      .hero-title {
-        font-size: 2.2rem;
-      }
-      .hero-desc {
-        font-size: 0.95rem;
-      }
-      .cta-container {
+      .top-nav { padding: 0.75rem 1.25rem; }
+      .hero-actions { flex-direction: column; width: 100%; max-width: 280px; }
+      .hero-actions .btn { justify-content: center; padding: 0.85rem; }
+      
+      .features-timeline::before { left: 24px; transform: none; }
+      .feature-node, .feature-node:nth-child(even) {
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
+        gap: 1rem;
       }
-      .cta-container .btn {
+      .feature-card {
         width: 100%;
-        max-width: 280px;
+        padding: 1.5rem 1.5rem 1.5rem 4rem;
       }
-      .pillars-grid {
-        grid-template-columns: 1fr;
+      .feature-spacer {
+        display: none;
       }
+      .feature-icon-wrapper { left: 24px; width: 42px; height: 42px; font-size: 1.1rem; }
+      .footer-bottom { flex-direction: column; gap: 0.75rem; text-align: center; }
     }
   </style>
 </head>
 <body>
 
-  <!-- LAYER DRIFTS BACKGROUND -->
-  <div class="bg-glow-container">
-    <div class="bg-glow" style="left: -100px; top: -50px;"></div>
-    <div class="bg-glow-2"></div>
+  <!-- LOOPING BOTANICAL BACKGROUND VIDEO -->
+  <div class="bg-video-container">
+    <video class="bg-video" autoplay loop muted playsinline preload="auto">
+      <source src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/background.mp4" type="video/mp4">
+    </video>
   </div>
+
+  <!-- MOUSE-TRACKING MESH GRADIENT -->
+  <div class="interactive-glow"></div>
 
   <!-- NAVIGATION HEADER -->
   <header class="top-nav">
-    <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">netlazy</div>
+    <div class="brand" onclick="scrollToTop()">netlazy</div>
     <div class="nav-buttons">
-      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk" class="btn" title="Download Android App">
-        <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
-      </a>
-      <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer" title="Continue in Telegram">
-        <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
-      </a>
-      <a href="./netlazy" class="btn" title="Try Web Version">
+      <a href="./netlazy" class="btn btn-primary" title="Try Web Version">
         <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
       </a>
-      <button class="lang-toggle" onclick="cycleLanguage()" title="Cycle Language">
+      <button class="lang-toggle" onclick="cycleLanguage()" title="Cycle Language" aria-label="Cycle Language">
         <span id="lang-indicator">en</span>
       </button>
-      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle Theme">
         <i class="bi bi-sun" id="theme-icon"></i>
       </button>
     </div>
   </header>
 
-  <!-- HERO VIEWPORT -->
-  <section class="hero">
-    <h1 class="hero-title">welcome to <span class="green-highlight">netlazy</span></h1>
-    <p class="hero-desc" data-t="welcome_desc">A bulletin board for dating and light online chatting. Free and without aggressive monetization. :^</p>
+  <main class="layout-wrapper">
     
-    <!-- EQUALLY PROMINENT HERO ACTION SELECTIONS -->
-    <div class="cta-container">
-      <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk" class="btn">
-        <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
-      </a>
-      <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
-      </a>
-      <a href="./netlazy" class="btn">
-        <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
-      </a>
-    </div>
-  </section>
-
-  <!-- SCROLLABLE STAGE CONTAINER -->
-  <main class="container">
-
-    <!-- INTERACTIVE PROFILE CARD REDESIGN -->
-    <section class="reveal-section">
-      <h2 class="section-title" data-t="demo_title">and this is what a profile looks like</h2>
-      <div class="app-demo-container">
+    <!-- ASYMMETRICAL HERO WITH ARTWORK -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">
+          welcome to<br>
+          <span class="hero-brand">netlazy</span>
+        </h1>
+        <p class="hero-desc" data-t="welcome_desc">A bulletin board for dating and light online chatting. Free and without aggressive monetization. :^</p>
         
-        <!-- Outer Container: Performs static 3D Lift & Subpixel Rounded Corner Masking -->
+        <div class="hero-actions">
+          <a href="./netlazy" class="btn btn-primary">
+            <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
+          </a>
+          <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
+          </a>
+          <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk" class="btn">
+            <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- ABSTRACT DECORATIVE ARTWORK CONTAINER -->
+      <div class="hero-art-container">
+        <div class="hero-art-orb"></div>
+        <div class="hero-art-glass-card">
+          <div class="art-card-header">
+            <div class="art-avatar">NL</div>
+            <div class="art-user-info">
+              <span class="art-username">sample profile</span>
+              <span class="art-status">online now</span>
+            </div>
+          </div>
+          <div class="art-chips-row">
+            <span class="art-chip highlight">#lofi</span>
+            <span class="art-chip">#cozy</span>
+            <span class="art-chip">#gaming</span>
+            <span class="art-chip highlight">#coffee</span>
+            <span class="art-chip">#cats</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+            "looking for someone to exchange music playlists and talk about late night thoughts..."
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHYSICAL CARD PREVIEW -->
+    <section class="reveal-section">
+      <div class="section-header-block">
+        <span class="section-tag">01 // INTERFACE PREVIEW</span>
+        <h2 class="section-title" data-t="demo_title">and this is what a profile looks like</h2>
+      </div>
+
+      <div class="app-demo-container">
+        <!-- THEME QUICK TOGGLE BUTTONS -->
+        <div class="demo-controls">
+          <button class="demo-toggle-btn" id="toggle-dark-btn" onclick="setDemoTheme('dark')" aria-label="Switch preview to dark theme">dark</button>
+          <button class="demo-toggle-btn" id="toggle-light-btn" onclick="setDemoTheme('light')" aria-label="Switch preview to light theme">light</button>
+        </div>
+
         <div class="profile-preview-outer" id="profile-card">
           <div class="scroll-fade-left"></div>
           
-          <!-- Inner Container: Controls swiping mechanics on narrow mobile layouts -->
-          <div class="profile-preview-container" id="profile-scroll-container">
+          <div class="profile-preview-container" id="profile-scroll-container" data-lenis-prevent>
             <div class="profile-scroll-wrapper">
-              <img 
-                class="profile-img-layer dark-img" 
-                src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/dark.png" 
-                alt="netlazy dark theme profile example"
-                loading="lazy"
-              >
-              <img 
-                class="profile-img-layer light-img" 
-                src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/light.png" 
-                alt="netlazy light theme profile example"
-                loading="lazy"
-              >
+              <img class="profile-img-layer dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/dark.png" alt="netlazy dark theme profile example" loading="lazy">
+              <img class="profile-img-layer light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/light.png" alt="netlazy light theme profile example" loading="lazy">
             </div>
           </div>
           
           <div class="scroll-fade-right"></div>
           
-          <!-- UI Swipe Indicator (Only visible on scrollable viewports) -->
           <div class="swipe-hint" id="swipe-indicator">
             <i class="bi bi-arrow-left-right"></i>
             <span data-t="swipe_hint">swipe to view profiles</span>
           </div>
         </div>
-
       </div>
     </section>
 
-    <!-- CORE RE-STYLED BENEFIT CARD GRID -->
+    <!-- ZIGZAG FEATURES WITH EMBEDDED MICRO-UI -->
     <section class="reveal-section">
-      <h2 class="section-title" data-t="features_title">what we have</h2>
-      <div class="pillars-grid">
+      <div class="section-header-block">
+        <span class="section-tag">02 // CORE FEATURES</span>
+        <h2 class="section-title" data-t="features_title">what we have</h2>
+      </div>
+
+      <div class="features-timeline">
         
-        <div class="pillar-card">
-          <i class="bi bi-card-list pillar-icon"></i>
-          <h3 class="pillar-title" data-t="feature_auth_title">profiles feed instead of swipes</h3>
-          <p class="pillar-desc" data-t="feature_auth_desc">You get a feed of profiles so you can find partners more effectively.</p>
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_auth_title">profiles feed instead of swipes</h3>
+            <p class="feature-desc" data-t="feature_auth_desc">You get a feed of profiles so you can find partners more effectively.</p>
+            <div class="micro-ui-box">
+              <i class="bi bi-card-text" style="color:var(--accent-moss);"></i>
+              <span style="font-size:0.75rem; color:var(--text-muted);">scrollable chronological bulletin stream</span>
+            </div>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-view-stacked"></i></div>
+          <div class="feature-spacer"></div>
         </div>
 
-        <div class="pillar-card">
-          <i class="bi bi-tags-fill pillar-icon"></i>
-          <h3 class="pillar-title" data-t="feature_media_title">lots and lots of tags</h3>
-          <p class="pillar-desc" data-t="feature_media_desc">We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.</p>
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_media_title">lots and lots of tags</h3>
+            <p class="feature-desc" data-t="feature_media_desc">We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.</p>
+            <div class="micro-ui-box">
+              <div class="tag-cloud-pills">
+                <button type="button" class="tag-pill">#anime</button>
+                <button type="button" class="tag-pill">#cozy</button>
+                <button type="button" class="tag-pill">#music</button>
+                <button type="button" class="tag-pill">#gaming</button>
+                <button type="button" class="tag-pill">#coffee</button>
+                <button type="button" class="tag-pill">#lofi</button>
+              </div>
+            </div>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-hash"></i></div>
+          <div class="feature-spacer"></div>
         </div>
 
-        <div class="pillar-card">
-          <i class="bi bi-envelope-heart pillar-icon"></i>
-          <h3 class="pillar-title" data-t="feature_pow_title">three ways to like a profile</h3>
-          <p class="pillar-desc" data-t="feature_pow_desc">Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)</p>
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_pow_title">three ways to like a profile</h3>
+            <p class="feature-desc" data-t="feature_pow_desc">Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)</p>
+            <div class="micro-ui-box">
+              <div class="like-ways-group">
+                <button type="button" class="like-way-btn"><i class="bi bi-share"></i> share</button>
+                <button type="button" class="like-way-btn"><i class="bi bi-arrow-left-right"></i> exchange</button>
+                <button type="button" class="like-way-btn"><i class="bi bi-exclamation-circle"></i> demand</button>
+              </div>
+            </div>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-suit-heart"></i></div>
+          <div class="feature-spacer"></div>
         </div>
 
-        <div class="pillar-card">
-          <i class="bi bi-fingerprint pillar-icon"></i>
-          <h3 class="pillar-title" data-t="feature_handshake_title">and a little bit of cryptography</h3>
-          <p class="pillar-desc" data-t="feature_handshake_desc">Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.</p>
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_handshake_title">and a little bit of cryptography</h3>
+            <p class="feature-desc" data-t="feature_handshake_desc">Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.</p>
+            <div class="micro-ui-box">
+              <div class="crypto-chip">
+                <i class="bi bi-shield-lock-fill"></i>
+                <span>ed25519 keypair · 1-click zero footprint</span>
+              </div>
+            </div>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-fingerprint"></i></div>
+          <div class="feature-spacer"></div>
         </div>
 
       </div>
     </section>
 
-    <!-- FINAL EQUALLY WEIGHTED CTAS -->
+    <!-- BOTTOM CTA SECTION -->
     <section class="reveal-section bottom-cta-section">
-      <h2 class="section-title" data-t="cta_bottom_title">and if you are ready...</h2>
+      <div class="section-header-block">
+        <span class="section-tag">03 // JOIN NETLAZY</span>
+        <h2 class="section-title" data-t="cta_bottom_title">and if you are ready...</h2>
+      </div>
       <p class="bottom-cta-desc" data-t="cta_bottom_desc">Choose your platform, and be cute :^</p>
       
       <div class="bottom-nav-buttons">
-        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk" class="btn">
-          <i class="bi bi-android"></i> <span data-t="download_apk">android apk</span>
+        <a href="./netlazy" class="btn btn-primary">
+          <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
         </a>
         <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
           <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
         </a>
-        <a href="./netlazy" class="btn">
-          <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
+        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk" class="btn">
+          <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
         </a>
       </div>
     </section>
 
-    <!-- FOOTER -->
+    <!-- EDITORIAL MULTI-COLUMN FOOTER -->
     <footer class="footer">
-      <p data-t="copyright">&copy; 2026 netlazy. Attempting socialisation.</p>
+      <div class="footer-grid">
+        <div class="footer-brand-col">
+          <div class="brand" onclick="scrollToTop()">netlazy</div>
+          <p class="footer-quote">"Attempting socialization without noise. A bulletin board built for authentic connections."</p>
+        </div>
+        <div>
+          <div class="footer-col-title">PLATFORMS</div>
+          <ul class="footer-links">
+            <li><a href="./netlazy">Web Client</a></li>
+            <li><a href="https://t.me/netlazy_bot/netlazy" target="_blank" rel="noopener">Telegram MiniApp</a></li>
+            <li><a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.5.apk">Android APK</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">PROJECT</div>
+          <ul class="footer-links">
+            <li><a href="https://t.me/netlazy_bot" target="_blank" rel="noopener">Telegram Bot</a></li>
+            <li><a href="#" onclick="toggleTheme(); return false;">Switch Theme</a></li>
+            <li><a href="#" onclick="cycleLanguage(); return false;">Switch Language</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-t="copyright">&copy; 2026 netlazy. Attempting socialisation.</p>
+      </div>
     </footer>
 
   </main>
 
+  <!-- Lenis Smooth Scroll Library -->
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+
   <script>
-    // DYNAMIC TRANSLATION SYSTEM WITH MATCHING STYLE TRANSITIONS
+    // INITIALIZE LENIS SMOOTH INERTIAL SCROLLING
+    let lenis = null;
+    if (typeof Lenis !== 'undefined') {
+      lenis = new Lenis({
+        duration: 1.2,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        smoothTouch: false,
+        touchMultiplier: 1.5
+      });
+
+      function raf(time) {
+        lenis.raf(time);
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+    }
+
+    function scrollToTop() {
+      if (lenis) {
+        lenis.scrollTo(0);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // TRANSLATIONS
     const translations = {
       en: {
         welcome_desc: "A bulletin board for dating and light online chatting. Free and without aggressive monetization. :^",
@@ -915,50 +1339,33 @@
     let currentLang = 'en';
     const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
 
-    // HELPER: Detect the closest match to the user's browser language settings
     function detectClosestLanguage() {
       const userLangs = navigator.languages || [navigator.language || 'en'];
       for (let userLang of userLangs) {
         if (!userLang) continue;
         const langCode = userLang.split('-')[0].toLowerCase();
         
-        if (langs.includes(langCode)) {
-          return langCode;
-        }
+        if (langs.includes(langCode)) return langCode;
         
-        // Post-Soviet / CIS languages mapping to Russian fallback
         const ruGroup = ['ru', 'kk', 'be', 'uk', 'ky', 'tg', 'uz', 'tk', 'az', 'hy', 'ka', 'mn'];
-        if (ruGroup.includes(langCode)) {
-          return 'ru';
-        }
+        if (ruGroup.includes(langCode)) return 'ru';
         
-        // Romance languages mapping to Portuguese fallback (closest relative)
         const ptGroup = ['pt', 'es', 'it', 'fr', 'gl', 'ca', 'row'];
-        if (ptGroup.includes(langCode)) {
-          return 'pt';
-        }
+        if (ptGroup.includes(langCode)) return 'pt';
         
-        // Chinese language variants mapping to standard Chinese
         const zhGroup = ['zh', 'zt', 'sg'];
-        if (zhGroup.includes(langCode)) {
-          return 'zh';
-        }
+        if (zhGroup.includes(langCode)) return 'zh';
       }
-      return 'en'; // Global fallback
+      return 'en';
     }
 
-    // Applying translations globally
     function setLanguage(lang) {
       if (!langs.includes(lang)) lang = 'en';
       currentLang = lang;
       
-      // Update tag indicator
       const indicator = document.getElementById('lang-indicator');
-      if (indicator) {
-        indicator.textContent = currentLang;
-      }
+      if (indicator) indicator.textContent = currentLang;
 
-      // Perform translation updates via data-t tags
       document.querySelectorAll('[data-t]').forEach(el => {
         const key = el.getAttribute('data-t');
         if (translations[currentLang] && translations[currentLang][key]) {
@@ -977,24 +1384,31 @@
       }, 150);
     }
 
-    // AUTOMATIC DETECT AND SET CURRENT THEME
+    function updateDemoButtons() {
+      const isLight = document.body.classList.contains('light-theme');
+      const darkBtn = document.getElementById('toggle-dark-btn');
+      const lightBtn = document.getElementById('toggle-light-btn');
+      
+      if (darkBtn && lightBtn) {
+        if (isLight) {
+          lightBtn.classList.add('active');
+          darkBtn.classList.remove('active');
+        } else {
+          darkBtn.classList.add('active');
+          lightBtn.classList.remove('active');
+        }
+      }
+    }
+
     function initializeTheme() {
       const body = document.body;
       const themeIcon = document.getElementById('theme-icon');
       const storedTheme = localStorage.getItem('theme');
       
       let useLightTheme = false;
-      
-      if (storedTheme === 'light') {
-        useLightTheme = true;
-      } else if (storedTheme === 'dark') {
-        useLightTheme = false;
-      } else {
-        // Fallback to system preferences. If undetermined, defaults to dark (false).
-        useLightTheme = window.matchMedia('(prefers-color-scheme: light)').matches;
-      }
+      if (storedTheme === 'light') useLightTheme = true;
+      else if (storedTheme !== 'dark') useLightTheme = window.matchMedia('(prefers-color-scheme: light)').matches;
 
-      // Apply initial styling parameters
       if (useLightTheme) {
         body.classList.add('light-theme');
         if (themeIcon) themeIcon.className = 'bi bi-moon';
@@ -1002,9 +1416,9 @@
         body.classList.remove('light-theme');
         if (themeIcon) themeIcon.className = 'bi bi-sun';
       }
+      updateDemoButtons();
     }
 
-    // THEME SELECTION TOGGLE OVERRIDE
     function toggleTheme() {
       const body = document.body;
       const themeIcon = document.getElementById('theme-icon');
@@ -1018,17 +1432,52 @@
         themeIcon.className = 'bi bi-sun';
         localStorage.setItem('theme', 'dark');
       }
+      updateDemoButtons();
     }
 
-    // INTERACTIVE MOUSE PERSPECTIVE (3D CARD TILT EFFECT)
+    function setDemoTheme(mode) {
+      if ((mode === 'light' && !document.body.classList.contains('light-theme')) || 
+          (mode === 'dark' && document.body.classList.contains('light-theme'))) {
+        toggleTheme();
+      }
+    }
+
+    // MOUSE-RESPONSIVE MESH GRADIENT (PAUSES WHEN CURSOR IS IDLE FOR PERFORMANCE)
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let curX = mouseX, curY = mouseY;
+    let isGlowAnimating = false;
+
+    function updateGlowPosition() {
+      const dx = mouseX - curX;
+      const dy = mouseY - curY;
+
+      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        curX += dx * 0.08;
+        curY += dy * 0.08;
+        document.documentElement.style.setProperty('--mouse-x', `${curX}px`);
+        document.documentElement.style.setProperty('--mouse-y', `${curY}px`);
+        requestAnimationFrame(updateGlowPosition);
+      } else {
+        isGlowAnimating = false;
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!isGlowAnimating) {
+        isGlowAnimating = true;
+        requestAnimationFrame(updateGlowPosition);
+      }
+    }, { passive: true });
+
     function setupCard3DPerspective() {
       const card = document.getElementById('profile-card');
       const scrollContainer = document.getElementById('profile-scroll-container');
       if (!card || !scrollContainer) return;
 
-      // Handle desktop hover tilt
       card.addEventListener('mousemove', (e) => {
-        // Disable tilt calculation when swiping on narrow scrollable viewports
         if (window.innerWidth <= 853) return;
 
         const rect = card.getBoundingClientRect();
@@ -1038,34 +1487,32 @@
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         
-        // Tilt angles calculated based on alignment ratios
-        const tiltX = ((centerY - y) / centerY) * 10; // Degrees of rotation
+        const tiltX = ((centerY - y) / centerY) * 10;
         const tiltY = ((x - centerX) / centerX) * 10;
 
         card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.02, 1.02, 1.02)`;
-      });
+      }, { passive: true });
 
-      // Clear layout tilt properties when cursor leaves area
       card.addEventListener('mouseleave', () => {
         card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
       });
 
-      // Automatically hide swipe indicator overlay once the user scrolls horizontal preview
       const handleScroll = () => {
         const indicator = document.getElementById('swipe-indicator');
         if (indicator) {
           indicator.style.opacity = '0';
           indicator.style.pointerEvents = 'none';
-          indicator.style.transition = 'opacity 0.4s ease';
           scrollContainer.removeEventListener('scroll', handleScroll);
         }
       };
-      scrollContainer.addEventListener('scroll', handleScroll);
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     }
 
-    // 3D PARALLAX PERSPECTIVE SCROLL MONITOR
     document.addEventListener("DOMContentLoaded", () => {
-      const revealSections = document.querySelectorAll(".reveal-section");
+      document.documentElement.classList.remove('light-theme-applied');
+      initializeTheme();
+      setLanguage(detectClosestLanguage());
+      setupCard3DPerspective();
 
       const observerOptions = {
         root: null,
@@ -1082,31 +1529,11 @@
         });
       }, observerOptions);
 
-      revealSections.forEach(section => {
-        sectionObserver.observe(section);
-      });
-    });
+      document.querySelectorAll(".reveal-section").forEach(s => sectionObserver.observe(s));
 
-    // INITIALIZATION SEQUENCES
-    document.addEventListener("DOMContentLoaded", () => {
-      // 1. Remove initial styling class used to block white/dark screen flashes
-      document.documentElement.classList.remove('light-theme-applied');
-
-      // 2. Load system and manual theme preferences
-      initializeTheme();
-
-      // 3. Detect closest browser language and apply translations
-      const detectedLang = detectClosestLanguage();
-      setLanguage(detectedLang);
-
-      // 4. Initialize horizontal swipe indicator listener and 3D Tilt perspective
-      setupCard3DPerspective();
-
-      // 5. Perform base path determination for web version links
       const path = window.location.pathname;
       const welcomeIndex = path.lastIndexOf('/welcome');
       if (welcomeIndex !== -1) {
-        // Extracts the correct prefix base path up to '/netlazy'
         const netlazyPath = path.substring(0, welcomeIndex);
         document.querySelectorAll('a[href="./netlazy"]').forEach(link => {
           link.href = netlazyPath || "/";
