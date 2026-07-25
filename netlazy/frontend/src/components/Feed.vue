@@ -18,12 +18,25 @@
         </transition>
       </div>
       
-      <div class="tag-scroll-area" @wheel="handleWheel" style="padding-top: 1.6rem;">
-        <span class="chip" v-for="tag in sortedSearchTags" :key="tag.name" :class="tag.state" @click="cycleTagState(tag)" :data-tooltip="getTagTooltip(tag.state)" data-tooltip-pos="bottom">
+      <div class="tag-scroll-area" @wheel="handleWheel">
+        <span class="chip" 
+              v-for="tag in sortedSearchTags" 
+              :key="tag.name" 
+              :class="tag.state" 
+              @click="cycleTagState(tag)"
+              @mouseenter="showTooltip($event, tag.state)"
+              @mouseleave="hideTooltip">
           {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
         </span>
       </div>
     </div>
+
+    <!-- Viewport Floating Tooltip -->
+    <Teleport to="body">
+      <div v-if="tooltip.visible" class="floating-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+        {{ tooltip.text }}
+      </div>
+    </Teleport>
 
     <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
       <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
@@ -32,7 +45,9 @@
     </div>
 
     <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0">
-      <i class="bi bi-search empty-icon"></i>
+      <button class="footer-action icon-btn" @click="reloadFeed" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
       <h3>{{ store.t('no_profiles_match') }}</h3>
       <button class="footer-action" style="margin-top: 1rem;" @click="resetFilters" v-if="hasActiveFilters">
         <i class="bi bi-arrow-counterclockwise"></i> {{ store.t('reset_tags') }}
@@ -63,31 +78,31 @@
         <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
           <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
              <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-             <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" :data-tooltip="c.value" @click.stop="copyText(c.value)">{{ c.value }}</span>
-             <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
+             <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+             <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
           </div>
         </div>
         
         <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
           <template v-if="!profile.sent">
             <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
-              <span :data-tooltip="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'share'" style="display: inline-flex;">
+              <span style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
-                  @click.stop="handleContactButtonClick(profile, 'share')">
+                  @click.stop="handleContactButtonClick(profile, 'share', $event)">
                   <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                 </button>
               </span>
-              <span :data-tooltip="validPrivateContacts.length === 0 ? store.t('add_private_contact_tooltip') : 'exchange'" style="display: inline-flex;">
+              <span style="display: inline-flex;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
-                  @click.stop="handleContactButtonClick(profile, 'exchange')">
+                  @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
                   <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                 </button>
               </span>
-              <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="sendRequest(profile, 'demand')" data-tooltip="demand">
+              <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">
                 <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
               </button>
             </div>
@@ -96,14 +111,21 @@
             <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
           </button>
 
+          <!-- Desktop Popover for Handshakes -->
           <transition name="dropdown-fade">
-            <div class="glass-menu" v-if="!isMobile && profile.showContactSelect" style="bottom: 100%; top: auto; right: 0; left: auto; width: max-content; min-width: 250px; max-width: calc(100vw - 4rem); margin-bottom: 0.5rem;" @click.stop>
-              <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
-                <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
-                <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+            <div class="glass-menu" 
+                 v-if="!isMobile && profile.showContactSelect" 
+                 :style="profile.popoverPosition === 'top' ? { bottom: '100%', top: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginBottom: '0.5rem' } : { top: '100%', bottom: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginTop: '0.5rem' }" 
+                 @click.stop>
+              
+              <div class="glass-contacts-list" v-if="profile.pendingReqType !== 'demand'">
+                <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
+                  <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+                  <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+                </div>
               </div>
               
-              <div style="padding: 0.5rem 1rem; border-top: 1px dashed rgba(128,128,128,0.2); margin-top: 0.5rem;">
+              <div style="padding: 0.5rem 1rem;" :style="{ borderTop: profile.pendingReqType !== 'demand' ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
                 <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem; width: 100%;">
               </div>
 
@@ -111,12 +133,12 @@
                 <button class="icon-btn" 
                   style="background: none; border: none;" 
                   :style="{ 
-                    color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)',
-                    opacity: (!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq) ? 0.35 : 1,
-                    cursor: (!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer'
+                    color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : (profile.pendingReqType === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
+                    opacity: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 0.35 : 1,
+                    cursor: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 'not-allowed' : 'pointer'
                   }" 
                   @click.stop="sendRequest(profile, profile.pendingReqType)" 
-                  :disabled="!profile.selectedContacts || profile.selectedContacts.length === 0 || profile.isSendingReq">
+                  :disabled="(profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq">
                   <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
                 </button>
               </div>
@@ -150,8 +172,29 @@ let observer = null
 let feedAbortController = null
 
 const isMobile = ref(window.innerWidth <= 768)
-
 const highlightIndex = ref(-1)
+
+// Floating Tooltip State
+const tooltip = ref({ visible: false, text: '', x: 0, y: 0 })
+
+function showTooltip(e, state) {
+  const text = getTagTooltip(state);
+  if (!text) {
+    tooltip.value.visible = false;
+    return;
+  }
+  const rect = e.currentTarget.getBoundingClientRect();
+  tooltip.value = {
+    visible: true,
+    text: text,
+    x: rect.left + rect.width / 2,
+    y: rect.top
+  };
+}
+
+function hideTooltip() {
+  tooltip.value.visible = false;
+}
 
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')
@@ -229,6 +272,10 @@ function resetFilters() {
   store.state.availableSearchTags.forEach(t => t.state = 'neutral');
 }
 
+function reloadFeed() {
+  fetchFeed(true)
+}
+
 async function handleMediaError(profile, m) {
     if (m.isErrorHandled) return;
     m.isErrorHandled = true;
@@ -281,6 +328,7 @@ async function fetchFeed(reset = false) {
           p.selectedContacts = []
           p.showContactSelect = false
           p.pendingMessage = ""
+          p.popoverPosition = 'bottom'
       })
       store.state.feed.push(...batch)
     }
@@ -342,6 +390,8 @@ onActivated(() => {
 function cycleTagState(tagObj) {
   const states = ['neutral', 'require', 'exclude', 'bonus', 'abonus']
   tagObj.state = states[(states.indexOf(tagObj.state) + 1) % states.length]
+  // Update tooltip instantly when state changes
+  showTooltip({ currentTarget: event.currentTarget }, tagObj.state)
 }
 
 function getTagStateIcon(state) {
@@ -368,14 +418,28 @@ function handleMediaClick(mediaObj, mediaList) {
   }
 }
 
-function handleContactButtonClick(profile, type) {
+function handleContactButtonClick(profile, type, event) {
   if (isMobile.value) {
     openContactSelect(profile, type)
   } else {
-    profile.selectedContacts = []
-    profile.pendingReqType = type
-    profile.pendingMessage = ""
-    profile.showContactSelect = !profile.showContactSelect
+    // Smart Placement Calculation: Top vs Bottom
+    if (event && event.currentTarget) {
+      const cardRect = event.currentTarget.closest('.card').getBoundingClientRect();
+      const spaceBelow = window.innerHeight - cardRect.bottom;
+      const spaceAbove = cardRect.top;
+      profile.popoverPosition = spaceAbove > spaceBelow && spaceBelow < 280 ? 'top' : 'bottom';
+    } else {
+      profile.popoverPosition = 'bottom';
+    }
+
+    const isSameType = profile.pendingReqType === type && profile.showContactSelect;
+    closeAllMenus();
+    if (!isSameType) {
+      profile.selectedContacts = [];
+      profile.pendingReqType = type;
+      profile.pendingMessage = "";
+      profile.showContactSelect = true;
+    }
   }
 }
 

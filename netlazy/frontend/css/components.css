@@ -146,75 +146,49 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .section-header { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
 .section-header:hover { color: var(--text-main); }
 
-/* MINIMALIST GLASS DROPDOWNS */
+/* MINIMALIST GLASS DROPDOWNS & POPOVERS */
 .glass-menu { 
   position: absolute; 
-  background: transparent !important; 
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
-  border-radius: var(--radius-sm); z-index: 999; overflow-y: auto; 
-  box-shadow: none !important; 
-  border: 1px solid rgba(150, 150, 150, 0.1) !important; 
+  background: rgba(20, 20, 20, 0.85) !important; 
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
+  border-radius: var(--radius-md); z-index: 999; 
+  box-shadow: var(--shadow-md) !important; 
+  border: 1px solid var(--border-subtle) !important; 
   padding: 0.5rem 0; 
   max-width: 90vw;
 }
+.light-theme .glass-menu {
+  background: rgba(240, 235, 225, 0.85) !important;
+}
+
+.glass-contacts-list {
+  max-height: 175px;
+  overflow-y: auto;
+}
+
 .glass-option { padding: 0.4rem 1rem; cursor: pointer; font-size: 0.85rem; color: var(--text-main); display: flex; justify-content: flex-start; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s, color 0.15s; width: 100%; position: relative; overflow: hidden; }
 .glass-option:hover { background: transparent !important; color: var(--accent-moss) !important; }
 .glass-option.clicked { transform: scale(0.95); color: var(--accent-moss); }
 .glass-option.highlighted-option { color: var(--accent-moss) !important; }
 
-/* UNIFIED MINIMALIST CSS TOOLTIPS */
-[data-tooltip] {
-  position: relative;
-}
-[data-tooltip]::before {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
+/* UNCLIPPED FLOATING TOOLTIP */
+.floating-tooltip {
+  position: fixed;
+  z-index: 999999;
   background: var(--bg-surface);
   color: var(--text-main);
-  padding: 0.35rem 0.75rem;
+  padding: 0.4rem 0.8rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  font-size: 0.72rem;
+  border: 1px solid var(--border-focus);
+  font-size: 0.75rem;
   font-family: var(--font-main);
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--shadow-md);
-  z-index: 100000;
-}
-[data-tooltip]:hover::before {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-[data-tooltip=""]::before {
-  display: none !important;
-}
-
-/* Position modifiers */
-[data-tooltip-pos="bottom"]::before {
-  bottom: auto;
-  top: calc(100% + 6px);
-  transform: translateX(-50%) translateY(-4px);
-}
-[data-tooltip-pos="bottom"]:hover::before {
-  transform: translateX(-50%) translateY(0);
-}
-
-@media (max-width: 768px) {
-  /* On mobile fixed bottom feed header, tooltips always render pointing UP */
-  .feed-header [data-tooltip]::before {
-    bottom: calc(100% + 6px) !important;
-    top: auto !important;
-    transform: translateX(-50%) translateY(4px) !important;
-  }
-  .feed-header [data-tooltip]:hover::before {
-    transform: translateX(-50%) translateY(0) !important;
-  }
+  pointer-events: none;
+  transform: translate(-50%, -100%) translateY(-8px);
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Smooth animated underline for Tags & Contacts */

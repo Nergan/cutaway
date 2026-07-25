@@ -191,17 +191,19 @@
       <div class="bottom-sheet-backdrop" v-if="store.state.contactSelect.open" @click="store.state.contactSelect.open = false">
         <div class="bottom-sheet-box" @click.stop>
           <div class="bottom-sheet-body">
-            <div class="sheet-contact-row" 
-                 v-for="c in validPrivateContacts" 
-                 :key="c.value" 
-                 :class="{ 'is-selected': store.state.contactSelect.selectedContacts.includes(c.value) }"
-                 @click="toggleGlobalContact(c.value)">
-              <span class="sheet-contact-val">{{ c.value }}</span>
-            </div>
-            
-            <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
-              {{ store.t('no_valid_private') }}
-            </div>
+            <template v-if="store.state.contactSelect.type !== 'demand'">
+              <div class="sheet-contact-row" 
+                   v-for="c in validPrivateContacts" 
+                   :key="c.value" 
+                   :class="{ 'is-selected': store.state.contactSelect.selectedContacts.includes(c.value) }"
+                   @click="toggleGlobalContact(c.value)">
+                <span class="sheet-contact-val">{{ c.value }}</span>
+              </div>
+              
+              <div v-if="validPrivateContacts.length === 0" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">
+                {{ store.t('no_valid_private') }}
+              </div>
+            </template>
 
             <div style="margin-top: 0.5rem;" v-if="store.state.contactSelect.profile">
                 <input type="text" 
@@ -218,13 +220,13 @@
               <i class="bi bi-x-lg"></i>
             </button>
             <button class="footer-action icon-btn" 
-                    :disabled="store.state.contactSelect.selectedContacts.length === 0 || store.state.contactSelect.isSending" 
+                    :disabled="(store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0) || store.state.contactSelect.isSending" 
                     @click="submitGlobalHandshake" 
                     style="font-size: 1.5rem;"
                     :style="{ 
-                      color: store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : 'var(--accent-moss)',
-                      opacity: (store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0) ? 0.4 : 1,
-                      cursor: (store.state.contactSelect.isSending || store.state.contactSelect.selectedContacts.length === 0) ? 'not-allowed' : 'pointer'
+                      color: store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : (store.state.contactSelect.type === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
+                      opacity: (store.state.contactSelect.isSending || (store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0)) ? 0.4 : 1,
+                      cursor: (store.state.contactSelect.isSending || (store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0)) ? 'not-allowed' : 'pointer'
                     }">
               <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
             </button>
