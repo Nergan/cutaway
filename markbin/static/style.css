@@ -6,6 +6,12 @@
     --accent-color: #e06c75; 
     --border-color: rgba(255, 255, 255, 0.08);
     --hover-bg: rgba(255, 255, 255, 0.1);
+
+    /* FORCE OVERRIDE Vditor's root CSS variables for panel and textareas */
+    --panel-background-color: transparent !important;
+    --textarea-background-color: transparent !important;
+    --toolbar-background-color: transparent !important;
+    --vditor-bg: transparent !important;
 }
 
 body {
@@ -63,17 +69,15 @@ body {
 #editor-wrapper, #viewer { 
     width: 100%; max-width: 850px; 
     
-    /* Strong Glass Characteristics */
+    /* Pure glass container */
     background-color: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     
-    /* Shape and Edges */
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    padding: 1.5rem 2rem; /* Tightened up to remove the nested box feel */
+    padding: 1.5rem 2rem;
     
-    /* Lift */
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -155,29 +159,30 @@ body {
 }
 
 
-/* ===== VDITOR NUKING: Ensuring no rogue dark backgrounds obscure the glass ===== */
-.vditor, .vditor--dark {
-    --panel-background-color: transparent !important;
-    --textarea-background-color: transparent !important;
-    --toolbar-background-color: transparent !important;
-}
-
-/* Force every layer of the internal editor wrapper to be perfectly transparent */
-.vditor, 
-.vditor-content, 
-.vditor-ir, 
-.vditor-reset, 
-.vditor-textarea, 
+/* ===== DEEP VDITOR TRANSPARENCY OVERRIDES ===== */
+/* Force absolute transparency across Vditor's entire internal AST tree */
+#editor,
+#editor *,
+.vditor,
+.vditor *,
+.vditor--dark,
+.vditor--dark *,
+.vditor-content,
+.vditor-ir,
+.vditor-reset,
+.vditor-textarea,
 .markdown-body { 
     background-color: transparent !important; 
+    background-image: none !important;
     background: transparent !important;
-    border: none !important; 
+    border-color: transparent !important;
     box-shadow: none !important;
     font-family: 'Comfortaa', system-ui, -apple-system, sans-serif !important;
 }
+
 .vditor-ir { padding: 0 !important; }
 
-/* Text Shadow for maximum readability against background */
+/* Text Shadow for maximum readability directly over the video background */
 .vditor-reset, .markdown-body { 
     color: var(--text-color) !important; 
     font-size: 1.1rem; line-height: 1.7; 
@@ -186,22 +191,27 @@ body {
 
 .vditor-reset h1, .vditor-reset h2, .vditor-reset h3, .vditor-reset h4, .vditor-reset h5, .vditor-reset h6,
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-    color: var(--accent-color) !important; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; margin-top: 1em;
+    color: var(--accent-color) !important; 
+    border-bottom: 1px solid var(--border-color) !important; 
+    padding-bottom: 0.3em; margin-top: 1em;
 }
+
 .vditor-reset a, .markdown-body a { color: var(--accent-color) !important; text-decoration: none; }
 .vditor-reset a:hover, .markdown-body a:hover { text-decoration: underline; }
 .vditor-reset blockquote, .markdown-body blockquote { border-left: 4px solid var(--accent-color) !important; color: #b3b3b3 !important; }
 .markdown-body img, .vditor-reset img { max-width: 100%; border-radius: 8px; }
 
-/* SAKURA-VADER CODE BLOCKS (GLASS ADJUSTMENTS) */
-#editor-wrapper pre, #viewer pre, .vditor-reset pre, .markdown-body pre, .vditor-ir pre.vditor-reset {
+/* CODE BLOCKS (STAY READABLE WITH BLURRED GLASS BACKDROP) */
+#editor-wrapper pre, #viewer pre, .vditor-reset pre, .markdown-body pre, .vditor-ir pre.vditor-reset,
+#editor-wrapper pre *, #viewer pre *, .vditor-reset pre * {
     background-color: rgba(10, 10, 10, 0.6) !important; 
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--border-color) !important;
-    border-radius: 8px !important; padding: 1rem !important; overflow-x: auto !important;
-    text-shadow: none !important; /* Never add drop-shadow to code blocks */
+    border-radius: 8px !important; 
+    text-shadow: none !important;
 }
+
 #editor-wrapper code, #viewer code, .vditor-reset code, .markdown-body code {
     background-color: rgba(10, 10, 10, 0.5) !important; color: #abb2bf !important; padding: 0.2rem 0.4rem !important; 
     border-radius: 3px !important; font-family: 'Courier New', Courier, monospace !important;
