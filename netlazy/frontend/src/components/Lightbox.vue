@@ -4,14 +4,14 @@
       
       <button class="lightbox-close" @click.stop="closeLightbox"><i class="bi bi-x"></i></button>
 
-      <div v-if="currentMedia" class="lightbox-container" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+      <div v-if="currentMedia" class="lightbox-container" @touchstart="handleTouchStart" @touchend="handleTouchEnd" @wheel.prevent="handleWheel">
         
         <div class="lightbox-nav lightbox-nav-left" v-if="hasPrev" @click.stop="prevMedia">
           <i class="bi bi-chevron-left"></i>
         </div>
         
         <div class="lightbox-content-wrapper" @click.stop>
-          <transition name="lightbox-slide" mode="out-in">
+          <transition :name="transitionName">
             <img v-if="currentMedia.media_type === 'image'" 
                  v-show="currentMedia.blobUrl"
                  :key="currentMedia.url"
@@ -51,12 +51,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useStore } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
 
+const transitionName = ref('lightbox-slide-next')
 const hasPrev = computed(() => store.state.lightbox.index > 0)
 const hasNext = computed(() => store.state.lightbox.index < store.state.lightbox.mediaList.length - 1)
 const currentMedia = computed(() => store.state.lightbox.mediaList[store.state.lightbox.index])
@@ -66,11 +67,17 @@ function closeLightbox() {
 }
 
 function prevMedia() {
-  if (hasPrev.value) store.state.lightbox.index--
+  if (hasPrev.value) {
+    transitionName.value = 'lightbox-slide-prev'
+    store.state.lightbox.index--
+  }
 }
 
 function nextMedia() {
-  if (hasNext.value) store.state.lightbox.index++
+  if (hasNext.value) {
+    transitionName.value = 'lightbox-slide-next'
+    store.state.lightbox.index++
+  }
 }
 
 function handleMediaClick(m) {
@@ -95,6 +102,7 @@ async function removeMedia(m) {
     if (store.state.lightbox.mediaList.length === 0) {
       closeLightbox();
     } else if (store.state.lightbox.index >= store.state.lightbox.mediaList.length) {
+      transitionName.value = 'lightbox-slide-prev'
       store.state.lightbox.index = store.state.lightbox.mediaList.length - 1;
     }
     
@@ -123,6 +131,26 @@ async function toggleBlurMode(m) {
   }
 }
 
+let wheelTimeout = null;
+function handleWheel(e) {
+  if (wheelTimeout) return;
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (delta > 20) {
+    nextMedia();
+    wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 350);
+  } else if (delta < -20) {
+    prevMedia();
+    wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 350);
+  }
+}
+
+function handleKeyDown(e) {
+  if (!store.state.lightbox.open) return;
+  if (e.key === 'ArrowRight') nextMedia();
+  else if (e.key === 'ArrowLeft') prevMedia();
+  else if (e.key === 'Escape') closeLightbox();
+}
+
 let touchStartX = 0
 let touchEndX = 0
 
@@ -144,4 +172,12 @@ function handleSwipe() {
   if (diff < -50) nextMedia()
   else if (diff > 50) prevMedia()
 }
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 </script>

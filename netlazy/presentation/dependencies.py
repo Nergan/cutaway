@@ -120,7 +120,9 @@ async def verify_request_signature(
             signature=signature_bytes,
             canonical_payload=canonical_payload,
         )
-    except AuthenticationError:
+    except AuthenticationError as e:
+        if str(e) == "Unknown user":
+            raise HTTPException(status_code=401, detail="Unknown user")
         raise AUTH_ERROR
     except Exception as e:
         logging.error(f"Unexpected error during signature verification: {e}")

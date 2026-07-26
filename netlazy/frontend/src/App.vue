@@ -142,17 +142,20 @@
 
               <div class="scrollable-content" v-else-if="store.state.currentView === 'vault'" key="vault">
                  
-                 <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;" class="mobile-only-settings">
-                   <button class="footer-action icon-btn" @click="store.toggleTheme">
-                     <transition name="fade" mode="out-in">
-                       <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
-                     </transition>
-                   </button>
-                   <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang">
-                     <transition name="fade" mode="out-in">
-                       <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-                     </transition>
-                   </button>
+                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;" class="mobile-only-settings">
+                   <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-main); font-weight: 600;">{{ store.t('identity_vault') }}</h2>
+                   <div style="display: flex; gap: 1.5rem;">
+                       <button class="footer-action icon-btn" @click="store.toggleTheme">
+                         <transition name="fade" mode="out-in">
+                           <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+                         </transition>
+                       </button>
+                       <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang">
+                         <transition name="fade" mode="out-in">
+                           <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+                         </transition>
+                       </button>
+                   </div>
                  </div>
 
                  <div style="margin-bottom: 2rem; color:var(--text-muted);">

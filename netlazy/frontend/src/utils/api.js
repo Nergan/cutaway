@@ -90,11 +90,15 @@ api.interceptors.response.use(response => {
             if (error.response.status === 403) {
                 store.state.isBanned = true;
             } else {
-                if (!store.state.authErrorNotified) {
-                    store.addToast("Authentication Failed. Check your device clock.", "bi-exclamation-triangle");
-                    store.state.authErrorNotified = true;
+                if (error.response.data && error.response.data.detail === "Unknown user") {
+                    store.logout();
+                } else {
+                    if (!store.state.authErrorNotified) {
+                        store.addToast("Authentication Failed. Check your device clock.", "bi-exclamation-triangle");
+                        store.state.authErrorNotified = true;
+                    }
+                    // Intentionally removed store.logout() to prevent auto-deleting the user's keys on temporary 401s
                 }
-                // Intentionally removed store.logout() to prevent auto-deleting the user's keys on temporary 401s
             }
         }
     }
