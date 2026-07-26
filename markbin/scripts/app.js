@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const DRAFT_KEY = 'markbin_draft';
 
-    // --- MOUSE GLOW EFFECT ---
+    // --- MOUSE-RESPONSIVE AMBIENT GLOW ---
     const mouseGlow = document.getElementById('mouse-glow');
     let ticking = false;
     window.addEventListener('mousemove', (e) => {
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTOC(headingsRaw) {
         tocContent.innerHTML = "";
         if (headingsRaw.length === 0) {
-            tocContent.innerHTML = "<span style='color: #888; font-size: 0.9rem; text-shadow: none;'>No headings found.</span>";
+            tocContent.innerHTML = "<span style='color: #888; font-size: 0.9rem'>No headings found.</span>";
             return;
         }
         const tree = buildTree(headingsRaw);
@@ -337,11 +337,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
 
-        // CRITICAL FIX: Set theme to 'classic' so Vditor stops injecting solid dark theme CSS variables at runtime
+        // Clean native Vditor Dark setup
         vditorInstance = new Vditor('editor', {
             value: savedDraft,
             mode: 'ir',
-            theme: 'classic',
+            theme: 'dark',
             icon: 'material',
             toolbarConfig: { hide: true },
             cache: { enable: false },
