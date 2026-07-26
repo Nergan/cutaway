@@ -18,9 +18,16 @@
     <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png">
     
     <!-- Cache-buster appended to force mobile browsers to fetch the updated CSS -->
-    <link rel="stylesheet" href="{{ base_url }}/static/style.css?v=1.2">
+    <link rel="stylesheet" href="{{ base_url }}/static/style.css?v=1.3">
 </head>
 <body>
+    <!-- Dynamic Atmospheric Background & Effects -->
+    <video autoplay loop muted playsinline class="bg-video">
+        <source src="https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/background.mp4" type="video/mp4">
+    </video>
+    <div class="bg-overlay"></div>
+    <div class="mouse-glow" id="mouse-glow"></div>
+
     <div id="toast" class="toast"></div>
 
     <!-- Custom Confirm Modal -->
@@ -93,6 +100,6 @@
         };
     </script>
     
-    <script src="{{ base_url }}/scripts/app.js?v=1.2"></script>
+    <script src="{{ base_url }}/scripts/app.js?v=1.3"></script>
 </body>
 </html>

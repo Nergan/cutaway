@@ -20,6 +20,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let rawMarkdown = "";
     
     const DRAFT_KEY = 'markbin_draft';
+
+    // --- MOUSE GLOW EFFECT ---
+    const mouseGlow = document.getElementById('mouse-glow');
+    let ticking = false;
+    window.addEventListener('mousemove', (e) => {
+        if (!ticking && mouseGlow) {
+            window.requestAnimationFrame(() => {
+                mouseGlow.style.setProperty('--mouse-x', `${e.clientX}px`);
+                mouseGlow.style.setProperty('--mouse-y', `${e.clientY}px`);
+                ticking = false;
+            });
+            ticking = true;
+        }
+    });
     
     function showToast(message) {
         toast.textContent = message;
@@ -162,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTOC(headingsRaw) {
         tocContent.innerHTML = "";
         if (headingsRaw.length === 0) {
-            tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
+            tocContent.innerHTML = "<span style='color: #888; font-size: 0.9rem; text-shadow: none;'>No headings found.</span>";
             return;
         }
         const tree = buildTree(headingsRaw);
