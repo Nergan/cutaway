@@ -145,14 +145,17 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
                 else:
                     vf.append(f"crop={crop_val}")
 
-            if v_opts.get('filter') == 'grayscale': vf.append("format=gray")
-            elif v_opts.get('filter') == 'sepia': vf.append("colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131")
-            elif v_opts.get('filter') == 'invert': vf.append("negate")
+            if v_opts.get('filter') == 'grayscale':
+                vf.append("hue=s=0")
+            elif v_opts.get('filter') == 'sepia':
+                vf.append("colorchannelmixer=rr=.393:rg=.769:rb=.189:gr=.349:gg=.686:gb=.168:br=.272:bg=.534:bb=.131")
+            elif v_opts.get('filter') == 'invert':
+                vf.append("negate")
         except: pass
 
     if vf and to_fmt in ['mp4', 'webm']:
         vf.append("format=yuv420p")
-        
+
     if audio_opts and to_fmt not in ['jpg', 'png', 'webp']:
         try:
             a_opts = json.loads(audio_opts)
