@@ -141,13 +141,15 @@ window.Formular.createCard = function(file) {
         selectBox.value = targetFormat;
         const customTriggerSpan = cardElement.querySelector('.custom-select-trigger span');
         if (customTriggerSpan && targetFormat) {
-            const isSparkling = customTriggerSpan.textContent.includes('✨');
-            customTriggerSpan.textContent = targetFormat.toUpperCase() + (isSparkling ? ' ✨' : '');
+            const hasStar = Boolean(customTriggerSpan.querySelector('.star-icon'));
+            customTriggerSpan.innerHTML = targetFormat.toUpperCase() + (hasStar ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
         }
         
         convertBtn.disabled = true;
+        convertBtn.classList.add('is-processing');
         convertBtn.innerText = 'PROCESSING...';
         convertBtn.style.background = 'var(--orange)';
+        convertBtn.style.color = 'var(--black)';
         dlBtn.style.display = 'none';
         cardElement.style.setProperty('--progress', '0%');
         clearInterval(progressInterval);
@@ -193,8 +195,11 @@ window.Formular.createCard = function(file) {
             clearInterval(progressInterval);
             cardElement.style.setProperty('--progress', '100%');
             
+            convertBtn.classList.remove('is-processing');
             convertBtn.innerText = 'RE-CONVERT';
             convertBtn.disabled = false;
+            convertBtn.style.background = '';
+            convertBtn.style.color = '';
             
             dlBtn.style.display = 'inline-block';
             if (dlBtn.href) URL.revokeObjectURL(dlBtn.href);
@@ -210,8 +215,11 @@ window.Formular.createCard = function(file) {
             if (e.name !== 'AbortError') {
                 clearInterval(progressInterval);
                 cardElement.style.setProperty('--progress', '0%');
+                convertBtn.classList.remove('is-processing');
                 convertBtn.disabled = false;
                 convertBtn.innerText = 'RETRY';
+                convertBtn.style.background = '';
+                convertBtn.style.color = '';
                 activeController = null;
                 window.Formular.Toast.show(e.message || `Forge failed: ${file.filename}`, 'error');
             }

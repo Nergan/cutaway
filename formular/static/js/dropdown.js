@@ -313,7 +313,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         optDiv.className = 'format-chip';
         
         const isOriginal = (opt.value === origFmt);
-        optDiv.innerHTML = isOriginal ? `${opt.text} <i class="bi bi-stars" style="color:var(--orange);"></i>` : opt.text;
+        optDiv.innerHTML = isOriginal ? `${opt.text} <i class="bi bi-stars star-icon"></i>` : opt.text;
         
         optDiv.dataset.value = opt.value;
         optDiv.addEventListener('click', (e) => {
@@ -323,8 +323,9 @@ window.Formular.initCustomSelect = function(selectEl) {
             currentSelectedFormat = opt.value;
             selectEl.value = opt.value;
             
-            const isModified = trigger.querySelector('span').textContent.includes('✨');
-            trigger.querySelector('span').textContent = opt.text + (isModified ? ' ✨' : '');
+            const spanEl = trigger.querySelector('span');
+            const isModified = Boolean(spanEl.querySelector('.star-icon')) || (opt.value === origFmt);
+            spanEl.innerHTML = opt.text + (isModified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
 
             updateTabVisibility(opt.value);
             validateForm();
@@ -758,7 +759,8 @@ window.Formular.initCustomSelect = function(selectEl) {
             selectEl.dataset.mergeLoop = false;
         }
         
-        const formatText = grid.querySelector('.format-chip.active').textContent.replace('✨', '').trim();
+        const activeChip = grid.querySelector('.format-chip.active');
+        const formatText = activeChip ? activeChip.dataset.value.toUpperCase() : currentSelectedFormat.toUpperCase();
         let modified = false;
         if (hasMediaMods) {
             const a = JSON.parse(selectEl.dataset.audioOpts || "{}");
@@ -768,7 +770,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
         }
         
-        trigger.querySelector('span').textContent = formatText + (modified ? ' ✨' : '');
+        trigger.querySelector('span').innerHTML = formatText + (modified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
         optionsContainer.classList.remove('open');
         trigger.classList.remove('open');
         

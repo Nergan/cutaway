@@ -60,6 +60,13 @@
     background: rgba(255, 255, 255, 0.1); color: rgba(255,255,255,0.3); 
     cursor: not-allowed; transform: scale(1); box-shadow: none;
 }
+.btn-custom.is-processing,
+.btn-custom[disabled].is-processing {
+    background: var(--orange) !important;
+    color: var(--black) !important;
+    opacity: 1 !important;
+    cursor: wait;
+}
 .btn-download { 
     background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.5); 
     color: #28a745; text-decoration: none; display: inline-block; 
@@ -148,6 +155,14 @@ body.bulk-active #toast-container { bottom: 100px; }
     background: rgba(255, 107, 53, 0.05); border: 1px solid rgba(255, 107, 53, 0.3); 
     color: var(--text-light); border-radius: 6px; text-align: center; padding: 6px 0; 
     cursor: pointer; font-size: 0.85rem; letter-spacing: 0.5px; transition: all 0.2s; user-select: none; 
+}
+.format-chip .star-icon {
+    color: var(--orange);
+    margin-left: 4px;
+    font-size: 0.9rem;
+}
+.format-chip.active .star-icon {
+    color: var(--black) !important;
 }
 .format-chip:hover { background: rgba(255, 107, 53, 0.2); border-color: var(--orange-light); transform: translateY(-1px); }
 .format-chip.active { 
