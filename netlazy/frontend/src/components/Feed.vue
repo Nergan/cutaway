@@ -45,7 +45,7 @@
     </Teleport>
 
     <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
-      <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+      <div style="column-span: all; -webkit-column-span: all; text-align: center; padding: 4rem 2rem;">
         <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
       </div>
     </div>

@@ -38,10 +38,8 @@ body.light-theme .tag-library-header.blurred-header::before {
 .tag-scroll-area::-webkit-scrollbar { display: none; }
 
 .grid { 
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  align-items: start;
+  columns: 280px;
+  column-gap: 1.5rem;
   width: 100%; 
   padding-top: 1.5rem; 
 }
@@ -58,6 +56,9 @@ body.light-theme .tag-library-header.blurred-header::before {
   gap: 0.8rem; 
   transition: transform 0.2s ease, box-shadow 0.2s ease; 
   box-shadow: var(--shadow-sm); 
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin-bottom: 1.5rem;
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 

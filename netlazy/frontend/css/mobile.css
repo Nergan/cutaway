@@ -127,8 +127,8 @@
   }
 
   /* Prevent card blowout */
-  .grid { grid-template-columns: 1fr; gap: 1.2rem; }
-  .card { gap: 0.6rem; margin-bottom: 0; width: 100%; max-width: calc(100vw - 3rem); box-sizing: border-box; overflow: hidden; }
+  .grid { columns: 1; column-gap: 0; }
+  .card { gap: 0.6rem; margin-bottom: 1.2rem; width: 100%; max-width: calc(100vw - 3rem); box-sizing: border-box; overflow: hidden; }
 
   .toast-container {
     top: calc(1rem + env(safe-area-inset-top)); /* Adjust for notch overlay */
