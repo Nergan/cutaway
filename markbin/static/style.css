@@ -64,17 +64,17 @@ body {
     width: 100%; max-width: 850px; 
     
     /* Strong Glass Characteristics */
-    background-color: rgba(20, 20, 22, 0.55);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     
     /* Shape and Edges */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    padding: 3rem 4rem; /* Wide inner margins to feel like a document */
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem 2rem; /* Tightened up to remove the nested box feel */
     
     /* Lift */
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* --- OTHER GLASS COMPONENTS --- */
@@ -154,12 +154,23 @@ body {
     border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.5);
 }
 
-/* VDITOR NUKING: Ensuring no rogue dark backgrounds obscure the glass */
-.vditor, .vditor--dark, .vditor-ir, .vditor-reset, .markdown-body { 
+
+/* ===== VDITOR NUKING: Ensuring no rogue dark backgrounds obscure the glass ===== */
+.vditor, .vditor--dark {
+    --panel-background-color: transparent !important;
+    --textarea-background-color: transparent !important;
+    --toolbar-background-color: transparent !important;
+}
+
+/* Force every layer of the internal editor wrapper to be perfectly transparent */
+.vditor, 
+.vditor-content, 
+.vditor-ir, 
+.vditor-reset, 
+.vditor-textarea, 
+.markdown-body { 
     background-color: transparent !important; 
     background: transparent !important;
-    --panel-background-color: transparent !important; 
-    --textarea-background-color: transparent !important;
     border: none !important; 
     box-shadow: none !important;
     font-family: 'Comfortaa', system-ui, -apple-system, sans-serif !important;
