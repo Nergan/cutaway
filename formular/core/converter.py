@@ -72,7 +72,7 @@ async def _run_process(*cmd, timeout=300):
         raise Exception(f"Engine failure with code {proc.returncode}.")
 
 async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str, video_opts: str, custom_ffmpeg: str, merge_path: str = None, merge_loop: bool = False):
-    cmd = ["ffmpeg", "-y"]
+    cmd = ["ffmpeg", "-y", "-nostdin"]
     vf = []
     af = []
     
@@ -148,6 +148,17 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     if to_fmt in ['jpg', 'png', 'webp'] and (from_fmt in ['gif', 'mp4', 'webm'] or (merge_path and not is_merge_audio)):
         cmd.extend(["-vframes", "1"])
         
+    if not custom_ffmpeg:
+        has_video = not is_input_audio
+        if merge_path and not is_merge_audio:
+            has_video = True
+            
+        if has_video:
+            if to_fmt == 'webm':
+                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "4"])
+            elif to_fmt == 'mp4':
+                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
+                
     if custom_ffmpeg:
         try:
             custom_args = shlex.split(custom_ffmpeg)
@@ -299,7 +310,18 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             stdout, _ = await proc.communicate()
             if not stdout.strip(): raise Exception("No audio track found in the video file.")
-        await _run_process("ffmpeg", "-y", "-i", input_path, output_path, timeout=600)
+            
+        cmd = ["ffmpeg", "-y", "-nostdin", "-i", input_path]
+        
+        has_video = not (from_fmt in ['mp3', 'wav', 'ogg'])
+        if has_video:
+            if to_fmt == 'webm':
+                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "4"])
+            elif to_fmt == 'mp4':
+                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
+                
+        cmd.append(output_path)
+        await _run_process(*cmd, timeout=600)
         return
     
     PANDOC_IN = {'md': 'markdown', 'txt': 'markdown', 'html': 'html', 'docx': 'docx', 'rtf': 'rtf', 'epub': 'epub', 'odt': 'odt'}
