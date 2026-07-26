@@ -1,24 +1,24 @@
 :root, [data-theme="dark"] {
   --text-main: #e0e0e0;
-  --text-muted: #9e9e9e;
+  --text-muted: #a0a0a0;
   --text-accent: #81b262;
   
-  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(18, 22, 18, 0.45) 0%, rgba(10, 14, 10, 0.82) 100%),
-                linear-gradient(to bottom, rgba(12, 16, 12, 0.5), rgba(8, 12, 8, 0.75));
+  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(12, 16, 12, 0.2) 0%, rgba(6, 10, 6, 0.6) 100%),
+                linear-gradient(to bottom, rgba(10, 14, 10, 0.3), rgba(6, 10, 6, 0.5));
 
-  --sidebar-bg: rgba(22, 25, 22, 0.75);
-  --sidebar-hover-bg: rgba(30, 35, 30, 0.85);
+  --sidebar-bg: rgba(18, 22, 18, 0.42);
+  --sidebar-hover-bg: rgba(28, 34, 28, 0.55);
   --sidebar-border: rgba(129, 178, 98, 0.25);
 
-  --card-bg: rgba(28, 32, 28, 0.65);
+  --card-bg: rgba(20, 25, 20, 0.35);
   --card-border: rgba(129, 178, 98, 0.22);
-  --card-hover-bg: rgba(38, 44, 38, 0.8);
+  --card-hover-bg: rgba(30, 38, 30, 0.52);
   --card-hover-border: rgba(129, 178, 98, 0.5);
 
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
-  --glass-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+  --glass-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
 
-  --box-bg: rgba(255, 255, 255, 0.05);
+  --box-bg: rgba(0, 0, 0, 0.2);
   --box-border: rgba(255, 255, 255, 0.08);
 
   --btn-bg: rgba(129, 178, 98, 0.15);
@@ -26,58 +26,58 @@
   --btn-active: #5c8038;
   --btn-active-text: #fdfaf0;
 
-  --tag-bg: rgba(255, 255, 255, 0.08);
-  --tag-text: #cccccc;
-  --tag-spec-bg: rgba(138, 100, 158, 0.28);
-  --tag-spec-text: #dcd3e6;
-  --cr-badge-bg: rgba(129, 178, 98, 0.18);
+  --tag-bg: rgba(0, 0, 0, 0.25);
+  --tag-text: #d0d0d0;
+  --tag-spec-bg: rgba(138, 100, 158, 0.3);
+  --tag-spec-text: #e0d8ea;
+  --cr-badge-bg: rgba(129, 178, 98, 0.2);
   --cr-badge-text: #e0e0e0;
 
-  --input-bg: rgba(20, 24, 20, 0.7);
+  --input-bg: rgba(15, 20, 15, 0.4);
   --input-border: rgba(129, 178, 98, 0.3);
   --input-focus-ring: rgba(129, 178, 98, 0.35);
 
-  --scroll-track: rgba(0, 0, 0, 0.25);
+  --scroll-track: rgba(0, 0, 0, 0.2);
   --scroll-thumb: rgba(129, 178, 98, 0.35);
   --speed-slow: #ff6b6b;
 }
 
 [data-theme="light"] {
-  --text-main: #2c2a1f;
-  --text-muted: #555555;
+  --text-main: #222018;
+  --text-muted: #444444;
   --text-accent: #3e4a2d;
 
-  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(225, 215, 185, 0.55) 0%, rgba(195, 180, 140, 0.82) 100%),
-                linear-gradient(to bottom, rgba(220, 210, 180, 0.5), rgba(185, 170, 130, 0.75));
+  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(225, 215, 185, 0.35) 0%, rgba(195, 180, 140, 0.65) 100%),
+                linear-gradient(to bottom, rgba(220, 210, 180, 0.3), rgba(185, 170, 130, 0.6));
 
-  --sidebar-bg: rgba(235, 225, 190, 0.75);
-  --sidebar-hover-bg: rgba(225, 212, 172, 0.85);
+  --sidebar-bg: rgba(235, 225, 190, 0.45);
+  --sidebar-hover-bg: rgba(225, 212, 172, 0.6);
   --sidebar-border: rgba(111, 94, 63, 0.35);
 
-  --card-bg: rgba(248, 242, 215, 0.65);
+  --card-bg: rgba(248, 242, 215, 0.4);
   --card-border: rgba(111, 94, 63, 0.3);
-  --card-hover-bg: rgba(255, 252, 235, 0.88);
+  --card-hover-bg: rgba(255, 252, 235, 0.62);
   --card-hover-border: rgba(62, 74, 45, 0.5);
 
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   --glass-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
 
-  --box-bg: rgba(111, 94, 63, 0.08);
-  --box-border: rgba(111, 94, 63, 0.15);
+  --box-bg: rgba(111, 94, 63, 0.1);
+  --box-border: rgba(111, 94, 63, 0.2);
 
-  --btn-bg: rgba(245, 238, 205, 0.75);
-  --btn-hover: rgba(245, 238, 205, 0.95);
+  --btn-bg: rgba(245, 238, 205, 0.55);
+  --btn-hover: rgba(245, 238, 205, 0.8);
   --btn-active: #5c8038;
   --btn-active-text: #fdfaf0;
 
-  --tag-bg: #e5dbbc;
-  --tag-text: #4a4635;
-  --tag-spec-bg: #dcd3e6;
-  --tag-spec-text: #4a3554;
-  --cr-badge-bg: #e5dbbc;
-  --cr-badge-text: #4a4635;
+  --tag-bg: rgba(229, 219, 188, 0.6);
+  --tag-text: #333025;
+  --tag-spec-bg: rgba(220, 211, 230, 0.7);
+  --tag-spec-text: #3c2a45;
+  --cr-badge-bg: rgba(229, 219, 188, 0.6);
+  --cr-badge-text: #333025;
 
-  --input-bg: rgba(248, 242, 215, 0.75);
+  --input-bg: rgba(248, 242, 215, 0.45);
   --input-border: rgba(111, 94, 63, 0.35);
   --input-focus-ring: rgba(62, 74, 45, 0.25);
 

@@ -5,12 +5,12 @@
   --text-accent: #ff6b6b;
   --text-highlight: #8fc96e;
 
-  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(18, 22, 18, 0.45) 0%, rgba(10, 14, 10, 0.82) 100%),
-                linear-gradient(to bottom, rgba(12, 16, 12, 0.5), rgba(8, 12, 8, 0.75));
+  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(12, 16, 12, 0.2) 0%, rgba(6, 10, 6, 0.6) 100%),
+                linear-gradient(to bottom, rgba(10, 14, 10, 0.3), rgba(6, 10, 6, 0.5));
 
-  --container-bg: rgba(22, 26, 22, 0.72);
-  --card-bg: rgba(28, 32, 28, 0.65);
-  --card-hover: rgba(38, 44, 38, 0.8);
+  --container-bg: rgba(22, 26, 22, 0.42);
+  --card-bg: rgba(20, 25, 20, 0.35);
+  --card-hover: rgba(30, 38, 30, 0.52);
   --border-color: rgba(129, 178, 98, 0.25);
   
   --btn-bg: rgba(129, 178, 98, 0.15);
@@ -19,32 +19,32 @@
   --btn-text: #fdfaf0;
   --accent: #81b262;
 
-  --table-bg: rgba(0, 0, 0, 0.2);
+  --table-bg: rgba(0, 0, 0, 0.12);
   --table-th: rgba(129, 178, 98, 0.18);
   --table-border: rgba(129, 178, 98, 0.15);
 
   --scroll-track: rgba(0, 0, 0, 0.25);
   --scroll-thumb: rgba(129, 178, 98, 0.35);
   --selection-bg: #5c8038;
-  --footer-bg: rgba(14, 18, 14, 0.8);
+  --footer-bg: rgba(14, 18, 14, 0.45);
   
-  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
   --glass-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
 [data-theme="light"] {
-  --text-main: #2c2a1f;
-  --text-sub: #4a4637;
+  --text-main: #222018;
+  --text-sub: #444444;
   --text-heading: #3a4729;
   --text-accent: #8b3a3a;
   --text-highlight: #6a994e;
 
-  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(225, 215, 185, 0.55) 0%, rgba(195, 180, 140, 0.82) 100%),
-                linear-gradient(to bottom, rgba(220, 210, 180, 0.5), rgba(185, 170, 130, 0.75));
+  --bg-overlay: radial-gradient(circle at 50% 50%, rgba(225, 215, 185, 0.35) 0%, rgba(195, 180, 140, 0.65) 100%),
+                linear-gradient(to bottom, rgba(220, 210, 180, 0.3), rgba(185, 170, 130, 0.6));
 
-  --container-bg: rgba(235, 225, 190, 0.75);
-  --card-bg: rgba(248, 242, 215, 0.65);
-  --card-hover: rgba(255, 252, 235, 0.88);
+  --container-bg: rgba(235, 225, 190, 0.45);
+  --card-bg: rgba(248, 242, 215, 0.4);
+  --card-hover: rgba(255, 252, 235, 0.62);
   --border-color: rgba(111, 94, 63, 0.35);
 
   --btn-bg: rgba(107, 140, 66, 0.25);
@@ -53,16 +53,16 @@
   --btn-text: #1e2f0c;
   --accent: #6a994e;
 
-  --table-bg: rgba(245, 238, 205, 0.5);
+  --table-bg: rgba(245, 238, 205, 0.25);
   --table-th: rgba(107, 140, 66, 0.25);
   --table-border: rgba(111, 94, 63, 0.2);
 
   --scroll-track: rgba(229, 219, 188, 0.5);
   --scroll-thumb: rgba(111, 94, 63, 0.6);
   --selection-bg: #6a994e;
-  --footer-bg: rgba(225, 212, 172, 0.85);
+  --footer-bg: rgba(225, 212, 172, 0.55);
 
-  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.12);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.1);
   --glass-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
 }
 
