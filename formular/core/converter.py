@@ -96,69 +96,113 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
                 if is_merge_img: cmd.extend(["-loop", "1"])
                 else: cmd.extend(["-stream_loop", "-1"])
             cmd.extend(["-i", merge_path])
-            
+            cmd.extend(["-i", input_path])
             if trim_start: cmd.extend(["-ss", str(trim_start)])
             if trim_end: cmd.extend(["-to", str(trim_end)])
-            cmd.extend(["-i", input_path])
-            
             cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-shortest"])
         else:
-            if trim_start: cmd.extend(["-ss", str(trim_start)])
-            if trim_end: cmd.extend(["-to", str(trim_end)])
             cmd.extend(["-i", input_path])
-            
             if merge_loop:
                 cmd.extend(["-stream_loop", "-1"])
             cmd.extend(["-i", merge_path])
-            
+            if trim_start: cmd.extend(["-ss", str(trim_start)])
+            if trim_end: cmd.extend(["-to", str(trim_end)])
             cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
             if merge_loop or is_merge_audio: 
                 cmd.extend(["-shortest"])
     else:
+        cmd.extend(["-i", input_path])
         if trim_start: cmd.extend(["-ss", str(trim_start)])
         if trim_end: cmd.extend(["-to", str(trim_end)])
-        cmd.extend(["-i", input_path])
     
     if video_opts and to_fmt not in ['mp3', 'wav', 'ogg']:
         try:
             v_opts = json.loads(video_opts)
-            if v_opts.get('resize'): vf.append(f"scale={v_opts['resize']}")
-            if v_opts.get('crop'): vf.append(f"crop={v_opts['crop']}")
+            if v_opts.get('resize'):
+                res_val = str(v_opts['resize']).strip().lower()
+                if 'x' in res_val:
+                    parts = res_val.split('x')
+                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                        rw, rh = int(parts[0]), int(parts[1])
+                        rw = rw if rw % 2 == 0 else max(2, rw - 1)
+                        rh = rh if rh % 2 == 0 else max(2, rh - 1)
+                        vf.append(f"scale={rw}:{rh}")
+                    else:
+                        vf.append(f"scale={res_val}")
+                else:
+                    vf.append(f"scale={res_val}")
+
+            if v_opts.get('crop'):
+                crop_val = str(v_opts['crop']).strip()
+                c_parts = crop_val.split(':')
+                if len(c_parts) == 4 and all(p.isdigit() for p in c_parts):
+                    cw, ch, cx, cy = [int(p) for p in c_parts]
+                    cw = cw if cw % 2 == 0 else max(2, cw - 1)
+                    ch = ch if ch % 2 == 0 else max(2, ch - 1)
+                    cx = cx if cx % 2 == 0 else max(0, cx - 1)
+                    cy = cy if cy % 2 == 0 else max(0, cy - 1)
+                    vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
+                else:
+                    vf.append(f"crop={crop_val}")
+
             if v_opts.get('filter') == 'grayscale': vf.append("format=gray")
             elif v_opts.get('filter') == 'sepia': vf.append("colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131")
             elif v_opts.get('filter') == 'invert': vf.append("negate")
         except: pass
+
+    if vf and to_fmt in ['mp4', 'webm']:
+        vf.append("format=yuv420p")
         
     if audio_opts and to_fmt not in ['jpg', 'png', 'webp']:
         try:
             a_opts = json.loads(audio_opts)
             tempo = float(a_opts.get('tempo', 1.0))
+            tempo = max(0.5, min(2.0, tempo))
             if tempo != 1.0: af.append(f"atempo={tempo}")
             reverb = float(a_opts.get('reverb', 0))
             if reverb > 0:
-                decay = reverb / 100.0
+                decay = min(1.0, max(0.0, reverb / 100.0))
                 af.append(f"aecho=0.8:0.9:1000:{decay}")
             bass = float(a_opts.get('bass', 0))
             if bass != 0: af.append(f"bass=g={bass}")
         except: pass
-        
-    if vf: cmd.extend(["-vf", ",".join(vf)])
-    if af: cmd.extend(["-af", ",".join(af)])
+
+    has_video = False
+    if from_fmt in ['jpg', 'png', 'webp', 'gif', 'mp4', 'webm']:
+        has_video = True
+    elif merge_path and merge_path.rsplit('.', 1)[-1].lower() in ['jpg', 'png', 'webp', 'gif', 'mp4', 'webm']:
+        has_video = True
+
+    has_audio = False
+    if is_input_audio:
+        has_audio = True
+    elif merge_path and merge_path.rsplit('.', 1)[-1].lower() in ['mp3', 'wav', 'ogg']:
+        has_audio = True
+    else:
+        try:
+            probe = await asyncio.create_subprocess_exec(
+                "ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            )
+            stdout, _ = await probe.communicate()
+            if stdout.strip():
+                has_audio = True
+        except:
+            pass
+
+    if vf and has_video: cmd.extend(["-vf", ",".join(vf)])
+    if af and has_audio: cmd.extend(["-af", ",".join(af)])
         
     if to_fmt in ['jpg', 'png', 'webp'] and (from_fmt in ['gif', 'mp4', 'webm'] or (merge_path and not is_merge_audio)):
         cmd.extend(["-vframes", "1"])
         
     if not custom_ffmpeg:
-        has_video = not is_input_audio
-        if merge_path and not is_merge_audio:
-            has_video = True
-            
         if has_video:
             if to_fmt == 'webm':
                 cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "4"])
             elif to_fmt == 'mp4':
                 cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
-                
+
     if custom_ffmpeg:
         try:
             custom_args = shlex.split(custom_ffmpeg)

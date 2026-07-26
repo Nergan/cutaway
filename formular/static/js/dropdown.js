@@ -113,7 +113,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                     </div>
                     <div style="flex:1;">
                         <label>Crop (W:H:X:Y):</label>
-                        <input type="text" class="v-crop custom-input" placeholder="e.g. 100:100:0:0">
+                        <input type="text" class="v-crop custom-input" placeholder="e.g. 508:360:66:0">
                     </div>
                 </div>
                 
@@ -145,7 +145,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         <button class="btn-custom btn-apply" style="width: 100%; margin-top: 10px;">APPLY</button>
     `;
 
-    // 1. Attach wrapper to DOM immediately so card references resolve
     wrapper.appendChild(trigger);
     wrapper.appendChild(optionsContainer);
     selectEl.parentNode.insertBefore(wrapper, selectEl.nextSibling);
@@ -198,7 +197,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         return true;
     }
 
-    // 2. Define validator before event handlers call it
     function validateForm() {
         if (!applyBtn) return;
         let valid = true;
@@ -272,7 +270,6 @@ window.Formular.initCustomSelect = function(selectEl) {
         return candidateCount;
     }
     
-    // Dynamic Dropdown synchronization (Handles file drops and drops in queue cleanly)
     const onFilesUpdated = () => {
         if (selectedMergeId && !window.Formular.LocalFiles[selectedMergeId]) {
             selectedMergeId = '';
@@ -351,7 +348,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     let currentTrimEnd = 0;
     const state = { audioPlayer: null, videoPlayer: null };
     
-    // Garbage cleanup on destroy
     if (card) {
         card.addEventListener('card:removed', () => {
             window.removeEventListener('formular:filesUpdated', onFilesUpdated);
@@ -597,11 +593,16 @@ window.Formular.initCustomSelect = function(selectEl) {
                 const boxWidth = parseFloat(vcCropBox.style.width || 100);
                 const boxHeight = parseFloat(vcCropBox.style.height || 100);
                 
-                const crop_w = Math.max(2, Math.round((boxWidth / 100) * originalMediaWidth));
-                const crop_h = Math.max(2, Math.round((boxHeight / 100) * originalMediaHeight));
-                const crop_x = Math.max(0, Math.round((boxLeft / 100) * originalMediaWidth));
-                const crop_y = Math.max(0, Math.round((boxTop / 100) * originalMediaHeight));
+                let crop_w = Math.max(2, Math.round((boxWidth / 100) * originalMediaWidth));
+                let crop_h = Math.max(2, Math.round((boxHeight / 100) * originalMediaHeight));
+                let crop_x = Math.max(0, Math.round((boxLeft / 100) * originalMediaWidth));
+                let crop_y = Math.max(0, Math.round((boxTop / 100) * originalMediaHeight));
                 
+                if (crop_w % 2 !== 0) crop_w = Math.max(2, crop_w - 1);
+                if (crop_h % 2 !== 0) crop_h = Math.max(2, crop_h - 1);
+                if (crop_x % 2 !== 0) crop_x = Math.max(0, crop_x - 1);
+                if (crop_y % 2 !== 0) crop_y = Math.max(0, crop_y - 1);
+
                 cropInput.value = `${crop_w}:${crop_h}:${crop_x}:${crop_y}`;
                 validateForm();
             }
@@ -819,4 +820,4 @@ document.addEventListener('click', (e) => {
             if (card) card.classList.remove('dropdown-open');
         }
     });
-}); 
+});
