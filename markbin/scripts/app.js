@@ -20,20 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let rawMarkdown = "";
     
     const DRAFT_KEY = 'markbin_draft';
-
-    // --- MOUSE-RESPONSIVE AMBIENT GLOW ---
-    const mouseGlow = document.getElementById('mouse-glow');
-    let ticking = false;
-    window.addEventListener('mousemove', (e) => {
-        if (!ticking && mouseGlow) {
-            window.requestAnimationFrame(() => {
-                mouseGlow.style.setProperty('--mouse-x', `${e.clientX}px`);
-                mouseGlow.style.setProperty('--mouse-y', `${e.clientY}px`);
-                ticking = false;
-            });
-            ticking = true;
-        }
-    });
     
     function showToast(message) {
         toast.textContent = message;
@@ -176,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTOC(headingsRaw) {
         tocContent.innerHTML = "";
         if (headingsRaw.length === 0) {
-            tocContent.innerHTML = "<span style='color: #888; font-size: 0.9rem'>No headings found.</span>";
+            tocContent.innerHTML = "<span style='color: #666; font-size: 0.9rem'>No headings found.</span>";
             return;
         }
         const tree = buildTree(headingsRaw);
@@ -238,17 +224,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- TTL MASK AND TIMER LOGIC ---
     
+    // Custom Vanilla JS Strict Mask (HH:MM:SS)
     ttlInput.addEventListener('input', function() {
+        // Strip everything but numbers, limit to 6 digits maximum
         let val = this.value.replace(/\D/g, '').substring(0, 6);
         let result = '';
         
         for (let i = 0; i < val.length; i++) {
+            // Cap the tens place of Minutes (index 2) and Seconds (index 4) at 5
+            // So a user cannot enter 60+ minutes or seconds.
             if ((i === 2 || i === 4) && parseInt(val[i]) > 5) {
                 result += '5';
             } else {
                 result += val[i];
             }
             
+            // Auto-inject colons after hours and minutes
             if ((i === 1 || i === 3) && i !== val.length - 1) {
                 result += ':';
             }
@@ -259,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getTtlSeconds() {
         if (!ttlInput.value.trim()) return null;
         
+        // Because of the strict mask, we can safely split and evaluate from left to right.
         const parts = ttlInput.value.trim().split(':').map(Number);
         const h = parts[0] || 0;
         const m = parts[1] || 0;
@@ -276,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = new Date().getTime();
             const diff = expiresAt - now;
             if (diff <= 0) {
-                window.location.reload();
+                window.location.reload(); // Self-destruct triggers DB 404 page
                 return;
             }
             const s = Math.floor(diff / 1000);
@@ -337,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedDraft = localStorage.getItem(DRAFT_KEY) || "";
         rawMarkdown = savedDraft;
 
-        // Clean native Vditor Dark setup
         vditorInstance = new Vditor('editor', {
             value: savedDraft,
             mode: 'ir',
@@ -425,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (vditorInstance) rawMarkdown = vditorInstance.getValue(); 
             if (rawMarkdown.trim() === "") return showToast("You haven't entered anything!");
 
+            // No validation check needed anymore. The mask makes format errors impossible.
             const ttlSeconds = getTtlSeconds();
 
             btnAction.innerHTML = '<i class="bi bi-arrow-repeat spinner"></i>';
