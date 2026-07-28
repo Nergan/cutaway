@@ -1,6 +1,13 @@
 <template>
   <div id="app-container">
     
+    <!-- Native Mobile Pull To Refresh Visual Indicator -->
+    <div class="ptr-indicator" :style="{ transform: `translateY(${ptrOffset}px)`, opacity: ptrOffset > -60 ? 1 : 0 }">
+      <div class="ptr-icon" :class="{ spin: isPtrRefreshing }">
+        <i class="bi bi-arrow-repeat"></i>
+      </div>
+    </div>
+
     <!-- Neutral app-wide splash screen to block structural pop-in during async hydration -->
     <div v-if="!store.state.isInitialized" class="welcome-container" style="justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; gap: 1.5rem;">
       <h1 class="welcome-brand" style="cursor: default;">netlazy</h1>
@@ -302,6 +309,9 @@ const importKeyInput = ref('')
 const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 
+const ptrOffset = ref(-60)
+const isPtrRefreshing = ref(false)
+
 let touchStartPos = { x: 0, y: 0 };
 let touchCurrentPos = { x: 0, y: 0 };
 let canPullToRefresh = false;
@@ -348,11 +358,18 @@ function handleGlobalTouchMove(e) {
   // or if any scroll container moves away from scrollTop = 0
   if (deltaY < 0 || !isViewAtVeryTop(e.target)) {
     canPullToRefresh = false;
+    ptrOffset.value = -60;
+  } else {
+    // Apply pull resistance visual
+    ptrOffset.value = Math.min(deltaY * 0.4, 80) - 60;
   }
 }
 
 function handleGlobalTouchEnd(e) {
-  if (!canPullToRefresh || window.innerWidth > 768) return;
+  if (!canPullToRefresh || window.innerWidth > 768) {
+    ptrOffset.value = -60;
+    return;
+  }
 
   if (e.changedTouches && e.changedTouches.length > 0) {
     const touch = e.changedTouches[0];
@@ -367,7 +384,11 @@ function handleGlobalTouchEnd(e) {
   // 2. Movement was predominantly vertical (deltaY > deltaX * 1.5)
   // 3. User was at the absolute top during the entire gesture
   if (deltaY > 140 && deltaY > deltaX * 1.5 && isViewAtVeryTop(e.target)) {
-    window.location.reload();
+    isPtrRefreshing.value = true;
+    ptrOffset.value = 20;
+    setTimeout(() => window.location.reload(), 500);
+  } else {
+    ptrOffset.value = -60;
   }
 
   canPullToRefresh = false;
@@ -376,6 +397,44 @@ function handleGlobalTouchEnd(e) {
 function handleGlobalTouchCancel() {
   // Disarm pull-to-refresh immediately when Android WebView initiates native scrolling
   canPullToRefresh = false;
+  ptrOffset.value = -60;
+}
+
+// CAPACITOR AUTO-UPDATE MECHANISM
+const CURRENT_VERSION = "0.0.8";
+
+function isNewerVersion(oldVer, newVer) {
+  const oldParts = oldVer.split('.').map(Number);
+  const newParts = newVer.split('.').map(Number);
+  for (let i = 0; i < Math.max(oldParts.length, newParts.length); i++) {
+    const a = newParts[i] || 0;
+    const b = oldParts[i] || 0;
+    if (a > b) return true;
+    if (a < b) return false;
+  }
+  return false;
+}
+
+async function checkForUpdates() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
+    if (res.ok) {
+        const data = await res.json();
+        if (isNewerVersion(CURRENT_VERSION, data.version)) {
+            store.showConfirm(
+              "Update Available",
+              `Version ${data.version} is available. ${data.release_notes || ''}`,
+              () => { window.open(data.url, '_system'); },
+              false,
+              "Download",
+              "Later"
+            );
+        }
+    }
+  } catch (e) {
+    console.warn("Update check failed", e);
+  }
 }
 
 onMounted(() => {
@@ -383,6 +442,8 @@ onMounted(() => {
   document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
   document.addEventListener('touchcancel', handleGlobalTouchCancel, { passive: true });
+
+  setTimeout(checkForUpdates, 3000);
 
   if (Capacitor.isNativePlatform()) {
     CapacitorApp.addListener('backButton', ({ canGoBack }) => {
@@ -562,5 +623,32 @@ watch(() => store.state.currentView, (newVal, oldVal) => {
 }
 @media (min-width: 769px) {
   .mobile-only-settings { display: none !important; }
+}
+
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  pointer-events: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s;
+}
+.ptr-icon {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-moss);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 </style>

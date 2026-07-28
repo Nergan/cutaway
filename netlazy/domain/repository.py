@@ -68,7 +68,7 @@ class ProfileRepository(ABC):
         ...
         
     @abstractmethod
-    async def get_feed(self, viewer_id: str, exclude_ids: List[str], cursor_dt: datetime, cursor_score: Optional[int], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
+    async def get_feed(self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
         ...
 
     @abstractmethod

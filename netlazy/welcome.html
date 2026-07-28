@@ -232,9 +232,63 @@
       transition: color 0.4s, text-shadow 0.4s;
     }
 
-    .brand:hover {
-      color: var(--accent-moss);
-      text-shadow: var(--glow-accent);
+    /* HOVER MEDIA QUERY TO FIX MOBILE STICKY HOVERS */
+    @media (hover: hover) and (pointer: fine) {
+      .brand:hover {
+        color: var(--accent-moss);
+        text-shadow: var(--glow-accent);
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent-moss);
+        background: var(--bg-glass-elevated);
+        box-shadow: var(--glass-highlight), var(--shadow-sm);
+      }
+      .btn-primary:hover {
+        background: var(--accent-moss);
+        filter: brightness(1.1);
+        border-color: var(--accent-moss);
+        color: #000000;
+        box-shadow: var(--glow-accent);
+      }
+      body.light-theme .btn-primary:hover {
+        color: #ffffff;
+      }
+      .theme-toggle:hover, .lang-toggle:hover {
+        color: var(--text-main);
+        border-color: var(--accent-moss);
+        transform: scale(1.05);
+      }
+      .hero-title:hover .hero-brand {
+        color: var(--accent-moss);
+        text-shadow: var(--glow-accent);
+      }
+      .profile-preview-outer:hover .profile-scroll-wrapper {
+        box-shadow: var(--glass-highlight), 0 25px 60px rgba(0, 0, 0, 0.7);
+      }
+      body.light-theme .profile-preview-outer:hover .profile-scroll-wrapper {
+        box-shadow: var(--glass-highlight), 0 25px 60px rgba(156, 133, 90, 0.25);
+      }
+      .profile-preview-outer:hover .swipe-hint { bottom: 20px; }
+      .feature-card:hover {
+        border-color: var(--accent-moss);
+        transform: translateY(-4px);
+        box-shadow: var(--glass-highlight), 0 20px 45px -10px var(--profile-glow);
+      }
+      .tag-pill:hover {
+        color: var(--accent-moss);
+        border-color: var(--accent-moss);
+      }
+      .like-way-btn:hover {
+        border-color: var(--accent-moss);
+        color: var(--accent-moss);
+      }
+      .footer-links a:hover { color: var(--accent-moss); }
+    }
+
+    /* MICRO-INTERACTIONS (TAP STATES FOR MOBILE) */
+    .btn:active, .tag-pill:active, .like-way-btn:active, .theme-toggle:active, .lang-toggle:active {
+      transform: scale(0.96);
     }
 
     .nav-buttons {
@@ -261,13 +315,6 @@
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .btn:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent-moss);
-      background: var(--bg-glass-elevated);
-      box-shadow: var(--glass-highlight), var(--shadow-sm);
-    }
-
     .btn-primary {
       background: var(--accent-moss);
       color: #000000;
@@ -279,18 +326,6 @@
     body.light-theme .btn-primary {
       color: #ffffff;
       box-shadow: 0 4px 16px rgba(104, 133, 76, 0.3);
-    }
-
-    .btn-primary:hover {
-      background: var(--accent-moss);
-      filter: brightness(1.1);
-      border-color: var(--accent-moss);
-      color: #000000;
-      box-shadow: var(--glow-accent);
-    }
-
-    body.light-theme .btn-primary:hover {
-      color: #ffffff;
     }
 
     .theme-toggle, .lang-toggle {
@@ -309,12 +344,6 @@
       height: 40px;
       border-radius: 50%;
       transition: all 0.3s ease;
-    }
-
-    .theme-toggle:hover, .lang-toggle:hover {
-      color: var(--text-main);
-      border-color: var(--accent-moss);
-      transform: scale(1.05);
     }
 
     .lang-toggle { font-weight: 700; font-size: 0.75rem; font-family: var(--font-heading); }
@@ -355,11 +384,6 @@
     .hero-brand {
       display: inline-block;
       transition: color 0.4s ease, text-shadow 0.4s ease;
-    }
-    
-    .hero-title:hover .hero-brand {
-      color: var(--accent-moss);
-      text-shadow: var(--glow-accent);
     }
 
     .hero-desc {
@@ -600,13 +624,6 @@
       transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .profile-preview-outer:hover .profile-scroll-wrapper {
-      box-shadow: var(--glass-highlight), 0 25px 60px rgba(0, 0, 0, 0.7);
-    }
-    body.light-theme .profile-preview-outer:hover .profile-scroll-wrapper {
-      box-shadow: var(--glass-highlight), 0 25px 60px rgba(156, 133, 90, 0.25);
-    }
-
     .profile-img-layer {
       position: absolute;
       top: 0; left: 0;
@@ -651,7 +668,6 @@
       border: 1px solid var(--border-glass);
       transition: opacity 0.3s, bottom 0.4s;
     }
-    .profile-preview-outer:hover .swipe-hint { bottom: 20px; }
 
     /* ZIGZAG TIMELINE & GLASS CARDS */
     .features-timeline {
@@ -700,12 +716,6 @@
       transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
                   border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
                   box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .feature-card:hover {
-      border-color: var(--accent-moss);
-      transform: translateY(-4px);
-      box-shadow: var(--glass-highlight), 0 20px 45px -10px var(--profile-glow);
     }
 
     .feature-spacer {
@@ -780,11 +790,6 @@
       transition: all 0.2s ease;
     }
 
-    .tag-pill:hover {
-      color: var(--accent-moss);
-      border-color: var(--accent-moss);
-    }
-
     .like-ways-group {
       display: flex;
       gap: 0.5rem;
@@ -808,11 +813,6 @@
       align-items: center;
       justify-content: center;
       gap: 0.35rem;
-    }
-
-    .like-way-btn:hover {
-      border-color: var(--accent-moss);
-      color: var(--accent-moss);
     }
 
     .crypto-chip {
@@ -891,8 +891,6 @@
       font-size: 0.82rem;
       color: var(--text-muted);
     }
-
-    .footer-links a:hover { color: var(--accent-moss); }
 
     .footer-bottom {
       border-top: 1px solid var(--border-glass);
@@ -990,7 +988,8 @@
           <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
           </a>
-          <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk" class="btn">
+          <!-- Dynamically Updated via JS version fetch -->
+          <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk" class="btn apk-dl-link">
             <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
           </a>
         </div>
@@ -1145,7 +1144,7 @@
         <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
           <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
         </a>
-        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk" class="btn">
+        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk" class="btn apk-dl-link">
           <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
         </a>
       </div>
@@ -1163,7 +1162,7 @@
           <ul class="footer-links">
             <li><a href="./netlazy">Web Client</a></li>
             <li><a href="https://t.me/netlazy_bot/netlazy" target="_blank" rel="noopener">Telegram MiniApp</a></li>
-            <li><a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk">Android APK</a></li>
+            <li><a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.8.apk" class="apk-dl-link">Android APK</a></li>
           </ul>
         </div>
         <div>
@@ -1508,11 +1507,29 @@
       scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     }
 
+    // AUTOMATIC VERSIONING UPDATE
+    async function updateApkLinks() {
+      try {
+        const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.url) {
+            document.querySelectorAll('.apk-dl-link').forEach(a => {
+              a.href = data.url;
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch latest APK version", e);
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       document.documentElement.classList.remove('light-theme-applied');
       initializeTheme();
       setLanguage(detectClosestLanguage());
       setupCard3DPerspective();
+      updateApkLinks();
 
       const observerOptions = {
         root: null,

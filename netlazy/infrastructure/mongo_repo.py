@@ -237,7 +237,7 @@ class MongoProfileRepository(ProfileRepository):
             session=session
         )
 
-    async def get_feed(self, viewer_id: str, exclude_ids: List[str], cursor_dt: datetime, cursor_score: Optional[int], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
+    async def get_feed(self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
         banned_users_cursor = db_instance.users_collection.find({"is_banned": True}, {"user_id": 1})
         banned_ids = [u["user_id"] async for u in banned_users_cursor]
 
@@ -274,19 +274,8 @@ class MongoProfileRepository(ProfileRepository):
         else:
             pipeline.append({"$addFields": {"score": 0}})
 
-        if cursor_score is not None and cursor_dt is not None:
-            pipeline.append({
-                "$match": {
-                    "$or": [
-                        {"score": {"$lt": cursor_score}},
-                        {"score": cursor_score, "created_at": {"$lt": cursor_dt}}
-                    ]
-                }
-            })
-        elif cursor_dt is not None:
-            pipeline.append({"$match": {"created_at": {"$lt": cursor_dt}}})
-
-        pipeline.append({"$sort": {"score": -1, "created_at": -1}})
+        pipeline.append({"$addFields": {"random_val": {"$rand": {}}}})
+        pipeline.append({"$sort": {"score": -1, "random_val": -1}})
         pipeline.append({"$limit": limit})
 
         db_cursor = db_instance.profiles_collection.aggregate(pipeline)

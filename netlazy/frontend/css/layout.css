@@ -37,7 +37,6 @@
   cursor: pointer; 
   transition: color 0.2s; 
 }
-.brand:hover { color: var(--accent-moss); }
 
 .collapse-btn { 
   background: none; 
@@ -51,7 +50,6 @@
   justify-content: center;
   padding: 0.2rem;
 }
-.collapse-btn:hover { color: var(--text-main); }
 
 .nav-section { margin-bottom: 1.5rem; }
 
@@ -78,7 +76,6 @@
   align-items: center;
   justify-content: center;
 }
-.nav-item:hover { color: var(--text-main); }
 .nav-item.active { color: var(--accent-moss); font-weight: 600; background: transparent; box-shadow: none; }
 .badge { margin-left: auto; background: var(--text-main); color: var(--bg-base); font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: var(--radius-pill); font-weight: 700; }
 
@@ -122,16 +119,25 @@
   gap: 0.5rem; 
   transition: color 0.2s; 
 }
-.footer-action:hover { color: var(--text-main); }
 
 .icon-btn { font-size: 1.2rem; padding: 0.2rem; transition: transform 0.2s; width: 32px; height: 32px; }
-.icon-btn:hover { transform: scale(1.1); }
 
 .lang-btn {
   font-weight: bold;
   text-transform: lowercase;
   width: 32px;
   height: 32px;
+}
+
+/* ------------------------------------------------------------- */
+/* HOVER MEDIA QUERY: PREVENTS STICKY EFFECTS ON TOUCH DEVICES   */
+/* ------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .brand:hover { color: var(--accent-moss); }
+  .collapse-btn:hover { color: var(--text-main); }
+  .nav-item:hover { color: var(--text-main); }
+  .footer-action:hover { color: var(--text-main); }
+  .icon-btn:hover { transform: scale(1.1); }
 }
 
 /* COLLAPSED STATE SPECIFICS */

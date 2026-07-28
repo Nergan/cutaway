@@ -182,8 +182,6 @@ const feedRoot = ref(null)
 const filterText = ref('')
 const isLoading = ref(false)
 const hasMore = ref(true)
-let currentCursor = null
-let currentCursorScore = null
 let observer = null
 let feedAbortController = null
 
@@ -329,14 +327,12 @@ async function fetchFeed(reset = false) {
     if (feedAbortController) feedAbortController.abort();
     feedAbortController = new AbortController();
     store.state.feed = [];
-    currentCursor = null;
-    currentCursorScore = null;
     hasMore.value = true;
   } else if (isLoading.value || !hasMore.value) {
     return;
   }
   
-  if (!currentCursor) store.state.isFeedLoading = true;
+  if (store.state.feed.length === 0) store.state.isFeedLoading = true;
   isLoading.value = true;
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
@@ -344,21 +340,21 @@ async function fetchFeed(reset = false) {
     const bonus = store.state.availableSearchTags.filter(t => t.state === 'bonus').map(t => t.name)
     const abonus = store.state.availableSearchTags.filter(t => t.state === 'abonus').map(t => t.name)
     
-    const params = new URLSearchParams()
-    if (currentCursor) params.append('cursor', currentCursor)
-    if (currentCursorScore !== null) params.append('cursor_score', currentCursorScore)
-    requires.forEach(r => params.append('requires', r))
-    excludes.forEach(e => params.append('excludes', e))
-    bonus.forEach(b => params.append('bonus', b))
-    abonus.forEach(a => params.append('abonus', a))
+    const seen_ids = store.state.feed.map(p => p.user_id);
+    
+    const payload = {
+      seen_ids,
+      requires,
+      excludes,
+      bonus,
+      abonus
+    };
 
-    const res = await api.get(`/feed?${params.toString()}`, { signal: feedAbortController.signal })
+    const res = await api.post(`/feed/search`, payload, { signal: feedAbortController.signal })
     const batch = res.data
     
     if (batch.length < 20) hasMore.value = false
     if (batch.length > 0) {
-      currentCursor = batch[batch.length - 1].created_at
-      currentCursorScore = batch[batch.length - 1].score
       batch.forEach(p => {
           if (p.media) p.media.forEach(m => m.isLoaded = false)
           p.selectedContacts = []

@@ -163,7 +163,7 @@
                          v-model="c.value" :placeholder="store.t('contact_placeholder')" 
                          @input="handleContactInput(c)" @blur="cleanExistingContact(c, idx)" @keyup.enter="$event.target.blur()">
                   <i class="bi bi-copy contact-action" @click="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
-                  <i class="bi contact-action" :class="c.is_private ? 'bi-shield-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :data-tooltip="store.t('toggle_privacy')"></i>
+                  <i class="bi contact-action" :class="c.is_private ? 'bi-eye-slash' : 'bi-eye'" @click="c.is_private = !c.is_private; triggerAutosave()" :data-tooltip="store.t('toggle_privacy')"></i>
                   <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
                 </div>
               </transition-group>
@@ -173,7 +173,7 @@
                        :style="{ color: newContact.type === 'unknown' && newContact.value ? 'var(--accent-danger)' : '' }"
                        v-model="newContact.value" :placeholder="store.t('contact_placeholder')" 
                        @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
-                <i class="bi contact-action" :class="newContact.is_private ? 'bi-shield-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :data-tooltip="store.t('toggle_privacy')"></i>
+                <i class="bi contact-action" :class="newContact.is_private ? 'bi-eye-slash' : 'bi-eye'" @click="newContact.is_private = !newContact.is_private" :data-tooltip="store.t('toggle_privacy')"></i>
               </div>
             </div>
           </transition>
