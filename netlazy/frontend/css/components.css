@@ -267,10 +267,18 @@ body.light-theme .floating-tooltip {
   content: ''; 
   position: absolute; 
   width: 0; 
-  height: 1px !important; /* Uniform crisp underline thickness across all elements */
+  /* 
+   * FIX FOR INCONSISTENT UNDERLINE THICKNESS:
+   * The varying thickness across the site was caused by sub-pixel rendering. 
+   * When an element sits on a fractional Y-coordinate (due to flexbox centering, line-heights, or display scaling), 
+   * a `height: 1px` block gets anti-aliased across 2 physical pixels, making it look thicker and blurrier.
+   * To make all underlines exactly the same size, we replace `height` and `background-color` 
+   * with `border-bottom: 1px solid currentColor`. Browsers natively pixel-snap borders, 
+   * guaranteeing a perfectly crisp 1px line regardless of sub-pixel positioning.
+   */
+  border-bottom: 1px solid currentColor; 
   bottom: 0; 
   left: 0; 
-  background-color: currentColor; 
   transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
 }
 

@@ -81,7 +81,8 @@
 
 .nav-item.active span.animated-underline::after { 
   width: 100%; 
-  background-color: var(--accent-moss); 
+  /* Uses currentColor from .nav-item.active automatically, but explicitly defined for safety */
+  border-bottom-color: var(--accent-moss); 
 }
 
 .sidebar-footer { 
