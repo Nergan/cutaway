@@ -1,7 +1,25 @@
 /* INPUTS */
-.seamless-input { width: 100%; background: transparent; border: none; color: var(--text-main); outline: none; resize: none; }
+.seamless-input { 
+  width: 100%; 
+  background: transparent !important; 
+  border: none !important; 
+  color: var(--text-main); 
+  outline: none !important; 
+  box-shadow: none !important;
+  resize: none; 
+}
 .seamless-input::placeholder { color: var(--text-muted); opacity: 0.6; }
-.editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 0.5rem; transition: border-color 0.3s; text-transform: none; }
+
+.editor-bio { 
+  font-size: 1rem; 
+  line-height: 1.6; 
+  border: none !important;
+  border-bottom: 1px solid var(--border-subtle) !important; 
+  padding-bottom: 0.5rem; 
+  margin-bottom: 0.5rem; 
+  transition: border-color 0.3s; 
+  text-transform: none; 
+}
 
 /* OVERRIDE GLOBALLY FORCED FOCUS RING ON INPUTS */
 .seamless-input:focus, .seamless-input:focus-visible,
@@ -10,6 +28,12 @@ input:focus, input:focus-visible,
 textarea:focus, textarea:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+  border: none !important;
+}
+
+/* Ensure editor-bio maintains its bottom border when focused */
+.editor-bio:focus, .editor-bio:focus-visible {
+  border-bottom: 1px solid var(--border-subtle) !important;
 }
 
 /* TACTILE MICRO-INTERACTIONS & CUSTOM SELECT BUTTONS */
@@ -255,6 +279,17 @@ body.light-theme .floating-tooltip {
 .footer-action:active > .animated-underline::after,
 .nav-item:active > .animated-underline::after {
   width: 100%;
+}
+
+/* Active color tint state on press/tap (touch & click) */
+.glass-option:active {
+  color: var(--accent-moss) !important;
+}
+.nav-item:active {
+  color: var(--accent-moss) !important;
+}
+.footer-action:active {
+  color: var(--text-main) !important;
 }
 
 .glass-option span.animated-underline { 
