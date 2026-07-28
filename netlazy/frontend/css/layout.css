@@ -8,7 +8,9 @@
   flex-shrink: 0; 
   will-change: width; 
   z-index: 1; 
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1); /* Smooth collapse/expand animation */
+  width: 220px; /* Explicit numeric width for smooth CSS transitions */
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Smooth collapse/expand animation */
+  overflow: hidden;
 }
 
 .sidebar-content { 
@@ -135,7 +137,6 @@
 /* COLLAPSED STATE SPECIFICS */
 .sidebar-collapsed {
   width: 60px !important;
-  min-width: 60px !important;
 }
 
 .sidebar-collapsed .sidebar-content {

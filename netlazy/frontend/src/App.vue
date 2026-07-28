@@ -69,7 +69,7 @@
     </div>
 
     <template v-else>
-      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed }" :style="{ width: store.state.isSidebarCollapsed ? '60px' : 'max-content', minWidth: store.state.isSidebarCollapsed ? '60px' : '200px' }">
+      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed }">
         <div class="sidebar-content">
           <div class="brand-row">
             <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="reloadPage">netlazy</div>
