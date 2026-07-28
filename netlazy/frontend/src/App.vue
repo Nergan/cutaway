@@ -3,8 +3,10 @@
     
     <!-- Native Mobile Pull To Refresh Visual Indicator -->
     <div class="ptr-indicator" :style="{ transform: `translateY(${ptrOffset}px)`, opacity: ptrOffset > -60 ? 1 : 0 }">
-      <div class="ptr-icon" :class="{ spin: isPtrRefreshing }">
-        <i class="bi bi-arrow-repeat"></i>
+      <div class="ptr-icon">
+        <i class="bi bi-arrow-repeat" 
+           :class="{ spin: isPtrRefreshing }"
+           :style="{ transform: !isPtrRefreshing ? `rotate(${ptrRotation}deg)` : 'none' }"></i>
       </div>
     </div>
 
@@ -310,6 +312,7 @@ const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 
 const ptrOffset = ref(-60)
+const ptrRotation = ref(0)
 const isPtrRefreshing = ref(false)
 
 let touchStartPos = { x: 0, y: 0 };
@@ -359,15 +362,18 @@ function handleGlobalTouchMove(e) {
   if (deltaY < 0 || !isViewAtVeryTop(e.target)) {
     canPullToRefresh = false;
     ptrOffset.value = -60;
+    ptrRotation.value = 0;
   } else {
-    // Apply pull resistance visual
+    // Apply pull resistance visual and rotation sync
     ptrOffset.value = Math.min(deltaY * 0.4, 80) - 60;
+    ptrRotation.value = Math.min(deltaY * 2.5, 360);
   }
 }
 
 function handleGlobalTouchEnd(e) {
   if (!canPullToRefresh || window.innerWidth > 768) {
     ptrOffset.value = -60;
+    ptrRotation.value = 0;
     return;
   }
 
@@ -389,6 +395,7 @@ function handleGlobalTouchEnd(e) {
     setTimeout(() => window.location.reload(), 500);
   } else {
     ptrOffset.value = -60;
+    ptrRotation.value = 0;
   }
 
   canPullToRefresh = false;
@@ -398,6 +405,7 @@ function handleGlobalTouchCancel() {
   // Disarm pull-to-refresh immediately when Android WebView initiates native scrolling
   canPullToRefresh = false;
   ptrOffset.value = -60;
+  ptrRotation.value = 0;
 }
 
 // CAPACITOR AUTO-UPDATE MECHANISM
@@ -643,12 +651,21 @@ watch(() => store.state.currentView, (newVal, oldVal) => {
   border: 1px solid var(--border-subtle);
   color: var(--accent-moss);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+}
+.ptr-icon i {
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  transform-origin: center center;
 }
 </style>
