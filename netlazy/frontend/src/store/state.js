@@ -221,9 +221,19 @@ export function useStore() {
             } else {
                 document.body.classList.remove('light-theme');
             }
+            if (state.isUserFriendlyInterface) {
+                document.body.classList.add('uf-mode');
+            } else {
+                document.body.classList.remove('uf-mode');
+            }
             state.isInitialized = true;
         }
     }
+
+    watch(() => state.isUserFriendlyInterface, (val) => {
+        if (val) document.body.classList.add('uf-mode');
+        else document.body.classList.remove('uf-mode');
+    }, { immediate: true });
 
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
@@ -525,7 +535,6 @@ export function useStore() {
     }
 
     loadSavedState();
-    if (state.theme === 'light') document.body.classList.add('light-theme');
 
     instance = {
         state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags

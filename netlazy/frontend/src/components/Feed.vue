@@ -68,7 +68,7 @@
           <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
         </div>
 
-        <div class="feed-media-stack" v-if="profile.media && profile.media.length > 0">
+        <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
           <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
              <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
              <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
@@ -92,30 +92,37 @@
         <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
           <template v-if="!profile.sent">
             <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
-              <span style="display: inline-flex;">
+              <span style="display: inline-flex; flex-direction: column; align-items: center;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                   @click.stop="handleContactButtonClick(profile, 'share', $event)">
                   <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                 </button>
+                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_share') }}</span>
               </span>
-              <span style="display: inline-flex;">
+              <span style="display: inline-flex; flex-direction: column; align-items: center;">
                 <button class="footer-action icon-btn" 
                   :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
                   :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                   @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
                   <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                 </button>
+                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_exchange') }}</span>
               </span>
-              <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">
-                <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
-              </button>
+              <span style="display: inline-flex; flex-direction: column; align-items: center;">
+                <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">
+                  <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
+                </button>
+                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--accent-danger); opacity: 0.8; margin-top: 0.1rem;">{{ store.t('uf_action_demand') }}</span>
+              </span>
             </div>
           </template>
-          <button v-else class="footer-action" style="color: var(--text-muted); width: 100%; justify-content: center;" disabled>
-            <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
-          </button>
+          <div v-else style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+            <button class="footer-action" style="color: var(--text-muted); width: 100%; justify-content: center;" disabled>
+              <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
+            </button>
+          </div>
 
           <!-- Desktop Popover for Handshakes -->
           <transition name="dropdown-fade">

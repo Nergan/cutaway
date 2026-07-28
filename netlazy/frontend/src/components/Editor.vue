@@ -80,8 +80,8 @@
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
               
-              <transition-group name="media-list" tag="div" class="media-preview-grid telegram-grid" v-if="validMedia.length > 0">
-                <div class="media-thumb" 
+              <transition-group name="media-list" tag="div" class="feed-media-stack" :data-count="validMedia.length + (validMedia.length < 10 ? 1 : 0)" v-if="validMedia.length > 0">
+                <div class="feed-media-item" 
                      v-for="(m, idx) in validMedia" 
                      :key="m.blobUrl || m.url" 
                      :class="{'drag-over': dragOverIdx === idx}" 
@@ -110,7 +110,7 @@
                   </div>
                 </div>
                 
-                <div class="media-thumb mini-add" key="mini-add" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length < 10">
+                <div class="feed-media-item mini-add" key="mini-add" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length < 10">
                   <i class="bi bi-plus-lg"></i>
                 </div>
               </transition-group>
@@ -163,7 +163,7 @@
                          v-model="c.value" :placeholder="store.t('contact_placeholder')" 
                          @input="handleContactInput(c)" @blur="cleanExistingContact(c, idx)" @keyup.enter="$event.target.blur()">
                   <i class="bi bi-copy contact-action" @click="copyText(c.value)" :data-tooltip="store.t('copy')"></i>
-                  <i class="bi contact-action" :class="c.is_private ? 'bi-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :data-tooltip="store.t('toggle_privacy')"></i>
+                  <i class="bi contact-action" :class="c.is_private ? 'bi-shield-lock' : 'bi-globe'" @click="c.is_private = !c.is_private; triggerAutosave()" :data-tooltip="store.t('toggle_privacy')"></i>
                   <i class="bi bi-x-lg contact-action danger" @click="removeContact(idx)"></i>
                 </div>
               </transition-group>
@@ -173,7 +173,7 @@
                        :style="{ color: newContact.type === 'unknown' && newContact.value ? 'var(--accent-danger)' : '' }"
                        v-model="newContact.value" :placeholder="store.t('contact_placeholder')" 
                        @input="handleNewContactInput" @blur="commitNewContact" @keyup.enter="commitNewContact">
-                <i class="bi contact-action" :class="newContact.is_private ? 'bi-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :data-tooltip="store.t('toggle_privacy')"></i>
+                <i class="bi contact-action" :class="newContact.is_private ? 'bi-shield-lock' : 'bi-globe'" @click="newContact.is_private = !newContact.is_private" :data-tooltip="store.t('toggle_privacy')"></i>
               </div>
             </div>
           </transition>

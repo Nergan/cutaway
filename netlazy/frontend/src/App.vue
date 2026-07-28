@@ -93,24 +93,25 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" :style="{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', paddingLeft: '0', paddingRight: '0', width: '100%' }">
-            <div style="display:flex; justify-content:center; gap:1.5rem; width:100%; flex-direction: row;">
-              <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                <transition name="fade" mode="out-in">
-                  <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
-                </transition>
-              </button>
-              <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
-                <transition name="fade" mode="out-in">
-                  <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-                </transition>
-              </button>
+          <div class="sidebar-footer" :style="{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', paddingBottom: '1rem', width: '100%' }">
+            <div class="nav-section" style="margin-bottom: 0;">
+              <div :style="{ display: 'flex', flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', gap: '1.5rem', alignItems: 'center', padding: '0 0.8rem', marginBottom: '1.5rem' }">
+                <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                  <transition name="fade" mode="out-in">
+                    <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+                  </transition>
+                </button>
+                <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
+                  <transition name="fade" mode="out-in">
+                    <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+                  </transition>
+                </button>
+              </div>
+              <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
+                <i class="bi bi-shield-lock"></i> 
+                <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
+              </a>
             </div>
-            
-            <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')" style="justify-content: center; width: 100%; margin: 0; padding: 0.6rem 0.8rem; display: flex; text-align: center;">
-              <i class="bi bi-shield-lock" :style="{ marginRight: store.state.isSidebarCollapsed ? '0' : '0.5rem' }"></i> 
-              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
-            </a>
           </div>
         </div>
       </nav>
@@ -158,13 +159,6 @@
                    </div>
                  </div>
 
-                 <div style="margin-bottom: 2rem;">
-                   <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text-main); font-weight:600;">
-                     <input type="checkbox" v-model="store.state.isUserFriendlyInterface" style="width:16px; height:16px; accent-color:var(--accent-moss);">
-                     <span>{{ store.t('userfriendly_interface') }}</span>
-                   </label>
-                 </div>
-
                  <div style="margin-bottom: 2rem; color:var(--text-muted);" v-html="store.state.isUserFriendlyInterface ? store.t('vault_desc_uf') : store.t('vault_desc')"></div>
                  
                  <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
@@ -185,6 +179,17 @@
                  <div class="code-block" :style="{filter: keyVisible ? 'none' : 'blur(5px)'}" @click="keyVisible = !keyVisible" :title="store.t('click_to_reveal')">
                    {{ displayPrivateKey }}
                  </div>
+
+                 <div style="margin-top: 3rem; border-top: 1px solid var(--border-subtle); padding-top: 1.5rem;">
+                   <h3 v-if="store.state.isUserFriendlyInterface" style="font-size: 1.1rem; color: var(--text-main); font-weight: 600; margin-bottom: 1rem;">
+                     {{ store.t('uf_settings') }}
+                   </h3>
+                   <div class="glass-option" @click="store.state.isUserFriendlyInterface = !store.state.isUserFriendlyInterface" style="padding: 0.5rem 0; width: max-content;">
+                     <span class="animated-underline">{{ store.t('userfriendly_interface') }}</span>
+                     <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
+                   </div>
+                 </div>
+
               </div>
             </KeepAlive>
           </transition>
