@@ -22,17 +22,17 @@
 }
 
 /* OVERRIDE GLOBALLY FORCED FOCUS RING ON INPUTS */
-.seamless-input:focus, .seamless-input:focus-visible,
-.editor-bio:focus, .editor-bio:focus-visible,
-input:focus, input:focus-visible,
-textarea:focus, textarea:focus-visible {
+body input:focus, body input:focus-visible,
+body textarea:focus, body textarea:focus-visible,
+body .seamless-input:focus, body .seamless-input:focus-visible,
+body .editor-bio:focus, body .editor-bio:focus-visible {
   outline: none !important;
   box-shadow: none !important;
-  border: none !important;
 }
 
-/* Ensure editor-bio maintains its bottom border when focused */
-.editor-bio:focus, .editor-bio:focus-visible {
+/* Ensure editor-bio maintains only its bottom border when focused */
+body .editor-bio:focus, body .editor-bio:focus-visible {
+  border: none !important;
   border-bottom: 1px solid var(--border-subtle) !important;
 }
 

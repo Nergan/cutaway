@@ -21,23 +21,24 @@ body, .sidebar, .card, .inbox-item, .glass-menu, .chip, .btn, .footer-action, .s
               box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Focus Ring Styling (Translucent Moss Glow) for non-input interactive elements */
-*:focus-visible {
+/* Focus Ring Styling (Translucent Moss Glow) ONLY for non-input interactive elements */
+*:not(input):not(textarea):focus-visible {
   outline: none !important;
   box-shadow: 0 0 0 3px rgba(141, 169, 112, 0.35) !important;
   transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
-body.light-theme *:focus-visible {
+body.light-theme *:not(input):not(textarea):focus-visible {
   box-shadow: 0 0 0 3px rgba(104, 133, 76, 0.35) !important;
 }
 
-/* Remove focus glow ring specifically from text inputs and textareas on desktop and mobile */
-input:focus, input:focus-visible,
-textarea:focus, textarea:focus-visible,
-.seamless-input:focus, .seamless-input:focus-visible,
-.editor-bio:focus, .editor-bio:focus-visible,
-.import-input:focus, .import-input:focus-visible,
-.search-header-input:focus, .search-header-input:focus-visible {
+/* Completely prevent focus glow rings, borders, and outlines on text inputs and textareas everywhere */
+body input, body textarea,
+body input:focus, body input:focus-visible, body input:focus-within,
+body textarea:focus, body textarea:focus-visible, body textarea:focus-within,
+body .seamless-input, body .seamless-input:focus, body .seamless-input:focus-visible,
+body .editor-bio:focus, body .editor-bio:focus-visible,
+body .import-input:focus, body .import-input:focus-visible,
+body .search-header-input:focus, body .search-header-input:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
