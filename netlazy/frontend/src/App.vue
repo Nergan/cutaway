@@ -69,8 +69,7 @@
     </div>
 
     <template v-else>
-      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed, 'is-resizing': isResizingSidebar }" :style="{ width: store.state.isSidebarCollapsed ? '60px' : store.state.sidebarWidth + 'px' }">
-        <div class="resizer-v" @mousedown="startResize"></div>
+      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed }" :style="{ width: store.state.isSidebarCollapsed ? '60px' : 'max-content', minWidth: store.state.isSidebarCollapsed ? '60px' : '200px' }">
         <div class="sidebar-content">
           <div class="brand-row">
             <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="reloadPage">netlazy</div>
@@ -93,24 +92,25 @@
               <span class="badge" v-if="pendingInboxCount > 0 && !store.state.isSidebarCollapsed">{{ pendingInboxCount }}</span>
             </a>
           </div>
-
-          <div class="nav-section">
-            <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
-              <i class="bi bi-fingerprint"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
-            </a>
-          </div>
           
-          <div class="sidebar-footer" :style="{ flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', paddingLeft: '0', paddingRight: '0', width: '100%' }">
-            <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-              <transition name="fade" mode="out-in">
-                <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
-              </transition>
-            </button>
-            <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
-              <transition name="fade" mode="out-in">
-                <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-              </transition>
-            </button>
+          <div class="sidebar-footer" :style="{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: 'auto', paddingBottom: '1rem', paddingLeft: '0', paddingRight: '0', width: '100%' }">
+            <div style="display:flex; justify-content:center; gap:1.5rem; width:100%; flex-direction: row;">
+              <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                <transition name="fade" mode="out-in">
+                  <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+                </transition>
+              </button>
+              <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
+                <transition name="fade" mode="out-in">
+                  <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+                </transition>
+              </button>
+            </div>
+            
+            <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')" style="justify-content: center; width: 100%; margin: 0; padding: 0.6rem 0.8rem; display: flex; text-align: center;">
+              <i class="bi bi-shield-lock" :style="{ marginRight: store.state.isSidebarCollapsed ? '0' : '0.5rem' }"></i> 
+              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
+            </a>
           </div>
         </div>
       </nav>
@@ -128,7 +128,7 @@
           <span v-else class="badge" style="margin: 0; font-size: 0.8rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">{{ pendingInboxCount }}</span>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'">
-          <i class="bi bi-fingerprint"></i>
+          <i class="bi bi-shield-lock"></i>
         </a>
       </nav>
 
@@ -158,9 +158,14 @@
                    </div>
                  </div>
 
-                 <div style="margin-bottom: 2rem; color:var(--text-muted);">
-                   {{ store.t('vault_desc') }}
+                 <div style="margin-bottom: 2rem;">
+                   <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text-main); font-weight:600;">
+                     <input type="checkbox" v-model="store.state.isUserFriendlyInterface" style="width:16px; height:16px; accent-color:var(--accent-moss);">
+                     <span>{{ store.t('userfriendly_interface') }}</span>
+                   </label>
                  </div>
+
+                 <div style="margin-bottom: 2rem; color:var(--text-muted);" v-html="store.state.isUserFriendlyInterface ? store.t('vault_desc_uf') : store.t('vault_desc')"></div>
                  
                  <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
                     <button class="footer-action" @click="copyKey">
@@ -290,7 +295,6 @@ const store = useStore()
 const importKeyInput = ref('')
 const keyVisible = ref(false)
 const importKeyVisible = ref(false)
-const isResizingSidebar = ref(false)
 
 let touchStartPos = { x: 0, y: 0 };
 let touchCurrentPos = { x: 0, y: 0 };
@@ -532,26 +536,6 @@ function rotateIdentityKey() {
     store.t('rotate_key_btn'),
     store.t('cancel')
   )
-}
-
-let startX, startW;
-function startResize(e) {
-  isResizingSidebar.value = true;
-  startX = e.clientX;
-  startW = store.state.sidebarWidth;
-  document.addEventListener('mousemove', doResize);
-  document.addEventListener('mouseup', stopResize);
-  document.body.style.userSelect = 'none';
-}
-function doResize(e) {
-  const w = startW + (e.clientX - startX);
-  if (w > 150 && w < 350) store.state.sidebarWidth = w;
-}
-function stopResize() {
-  isResizingSidebar.value = false;
-  document.removeEventListener('mousemove', doResize);
-  document.removeEventListener('mouseup', stopResize);
-  document.body.style.userSelect = '';
 }
 
 watch(() => store.state.currentView, (newVal, oldVal) => {

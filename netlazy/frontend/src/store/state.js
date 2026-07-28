@@ -17,13 +17,14 @@ const defaultState = {
     theme: 'dark',
     lang: 'en',
     
+    isUserFriendlyInterface: true,
+    
     userId: null,
     privateKeyPem: null,
     publicKeyPem: null,
     keyPair: null, 
 
     isSidebarCollapsed: window.innerWidth <= 768,
-    sidebarWidth: 220,
     workspaceWidth: 500,
     isWorkspaceCollapsed: false,
     inboxSplit: 50,
@@ -174,7 +175,7 @@ export function useStore() {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 
-                ['theme', 'lang', 'sidebarWidth', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
+                ['theme', 'lang', 'isUserFriendlyInterface', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
 
@@ -225,16 +226,16 @@ export function useStore() {
     }
 
     watch(() => [
-        state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang,
-        state.sidebarWidth, state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
+        state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
+        state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
         state.userId, state.privateKeyPem, state.publicKeyPem
     ], async () => {
         if (!state.isInitialized) return;
         try {
             const saveObj = {
                 isRegistered: state.isRegistered, isBanned: state.isBanned, currentView: state.currentView,
-                theme: state.theme, lang: state.lang,
-                sidebarWidth: state.sidebarWidth, workspaceWidth: state.workspaceWidth,
+                theme: state.theme, lang: state.lang, isUserFriendlyInterface: state.isUserFriendlyInterface,
+                workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
                 userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
             };

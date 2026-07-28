@@ -11,6 +11,10 @@
         </div>
       </div>
       
+      <h2 v-if="store.state.isUserFriendlyInterface" style="padding: 0 1.5rem; font-size: 1.1rem; color: var(--text-main); font-weight: 700; margin-top: 0.5rem; margin-bottom: 0;">
+        {{ store.t('uf_select_tags') }}
+      </h2>
+      
       <div class="tag-library-list chip-group" id="lib-tags-zone" style="padding: 1.5rem; align-content: flex-start; position: relative;">
         <div v-if="store.state.availableSearchTags.length === 0" style="width: 100%; text-align: center; color: var(--text-muted);" key="loading-spin">
           <i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i>
@@ -42,6 +46,10 @@
            @dragover.prevent="workspaceDragOver"
            @dragleave.prevent="workspaceDragLeave"
            @drop.prevent="workspaceDrop">
+
+        <h2 v-if="store.state.isUserFriendlyInterface" style="font-size: 1.5rem; color: var(--text-main); font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-subtle);">
+          {{ store.t('uf_your_profile') }}
+        </h2>
 
         <div v-if="store.state.isProfileLoading" style="text-align: center; padding: 2rem;">
           <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
@@ -120,7 +128,7 @@
           </div>
           <transition name="collapse">
             <div v-show="showBio" class="mobile-collapse-content">
-              <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" placeholder="..." rows="3" @input="triggerAutosave"></textarea>
+              <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" :placeholder="store.t('about_me_placeholder')" rows="3" @input="triggerAutosave"></textarea>
             </div>
           </transition>
 
@@ -136,7 +144,7 @@
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
                 </span>
-                <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;" key="none-placeholder">{{ store.t('none') }}</span>
+                <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;" key="none-placeholder">{{ store.t('no_tags') }}</span>
               </transition-group>
             </div>
           </transition>

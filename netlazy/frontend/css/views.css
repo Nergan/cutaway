@@ -75,6 +75,28 @@ body.light-theme .tag-library-header.blurred-header::before {
 .card-media img, .card-media video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s filter; pointer-events: none; }
 .is-blurred { filter: blur(20px); }
 
+/* FEED MEDIA STACK */
+.feed-media-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0.5rem;
+}
+.feed-media-item {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-elevated);
+  cursor: pointer;
+}
+.feed-media-item img, .feed-media-item video {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: 0.3s filter;
+}
+
 /* INBOX */
 .inbox-layout { display: flex; height: 100%; width: 100%; margin: -2rem -3rem; position: absolute; top: 2rem; bottom: 0; left: 3rem; right: 3rem; }
 .inbox-col { display: flex; flex-direction: column; padding: 0 1.5rem; overflow-y: auto; position: relative; }
