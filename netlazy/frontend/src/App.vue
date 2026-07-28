@@ -73,17 +73,19 @@
         <div class="sidebar-content">
           <div class="brand-row">
             <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="reloadPage">netlazy</div>
-            <button class="collapse-btn" @click="store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed" :style="{ margin: store.state.isSidebarCollapsed ? '0 auto' : '0' }">
+            <button class="collapse-btn" @click="store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed">
               <i class="bi" :class="store.state.isSidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i>
             </button>
           </div>
           
           <div class="nav-section">
             <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'" :title="store.t('search_profiles')">
-              <i class="bi bi-search"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
+              <i class="bi bi-search"></i> 
+              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'" :title="store.t('my_profile')">
-              <i class="bi bi-person-lines-fill"></i> <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('my_profile') }}</span>
+              <i class="bi bi-person-lines-fill"></i> 
+              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('my_profile') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'inbox'}" @click="store.state.currentView = 'inbox'" :title="store.t('inbox')">
               <i v-if="!store.state.isSidebarCollapsed || pendingInboxCount === 0" class="bi bi-envelope"></i> 
@@ -93,25 +95,24 @@
             </a>
           </div>
           
-          <div class="sidebar-footer" :style="{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', paddingBottom: '1rem', width: '100%' }">
-            <div class="nav-section" style="margin-bottom: 0;">
-              <div :style="{ display: 'flex', flexDirection: store.state.isSidebarCollapsed ? 'column' : 'row', gap: '1.5rem', alignItems: 'center', padding: '0 0.8rem', marginBottom: '1.5rem' }">
-                <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                  <transition name="fade" mode="out-in">
-                    <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
-                  </transition>
-                </button>
-                <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang" :title="store.t('lang')">
-                  <transition name="fade" mode="out-in">
-                    <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-                  </transition>
-                </button>
-              </div>
-              <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
-                <i class="bi bi-shield-lock"></i> 
-                <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
-              </a>
+          <div class="sidebar-footer">
+            <div class="sidebar-controls-row">
+              <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+                <transition name="fade" mode="out-in">
+                  <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
+                </transition>
+              </button>
+              <button class="footer-action lang-btn" @click="store.cycleLang" :title="store.t('lang')">
+                <transition name="fade" mode="out-in">
+                  <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
+                </transition>
+              </button>
             </div>
+            
+            <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
+              <i class="bi bi-shield-lock"></i> 
+              <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
+            </a>
           </div>
         </div>
       </nav>
