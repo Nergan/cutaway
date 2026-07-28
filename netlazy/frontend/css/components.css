@@ -197,6 +197,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   padding: 0.3rem 0; 
   max-width: 90vw;
   margin-top: 6px;
+  overflow-y: auto;
 }
 .light-theme .glass-menu {
   background: rgba(249, 246, 239, 0.85) !important;
