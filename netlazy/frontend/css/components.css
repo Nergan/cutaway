@@ -4,7 +4,11 @@
 .editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 0.5rem; transition: border-color 0.3s; text-transform: none; }
 
 /* OVERRIDE GLOBALLY FORCED FOCUS RING ON INPUTS */
-.seamless-input:focus-visible, .editor-bio:focus-visible {
+.seamless-input:focus, .seamless-input:focus-visible,
+.editor-bio:focus, .editor-bio:focus-visible,
+input:focus, input:focus-visible,
+textarea:focus, textarea:focus-visible {
+  outline: none !important;
   box-shadow: none !important;
 }
 
@@ -229,8 +233,8 @@ body.light-theme .floating-tooltip {
   position: relative; 
   display: inline-block; 
   white-space: nowrap; 
-  padding-bottom: 2px; 
-  margin-bottom: -2px; 
+  padding-bottom: 3px; 
+  margin-bottom: -3px; 
 }
 
 .animated-underline::after,
@@ -238,15 +242,30 @@ body.light-theme .floating-tooltip {
   content: ''; 
   position: absolute; 
   width: 0; 
-  height: 2px !important; /* Uniform crisp underline thickness across all elements */
-  bottom: -1px; 
+  height: 2.5px !important; /* Uniform crisp underline thickness across all elements */
+  bottom: 0; 
   left: 0; 
   background-color: currentColor; 
   transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
-.glass-option span.animated-underline { position: relative; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-bottom: 2px; margin-bottom: -2px; }
+/* Expand underline on active/touch press (mobile + desktop) */
+.glass-option:active > .animated-underline::after,
+.footer-action:active > .animated-underline::after,
+.nav-item:active > .animated-underline::after {
+  width: 100%;
+}
+
+.glass-option span.animated-underline { 
+  position: relative; 
+  display: inline-block; 
+  white-space: nowrap; 
+  text-overflow: ellipsis; 
+  max-width: 100%; 
+  padding-bottom: 3px; 
+  margin-bottom: -3px; 
+}
 
 /* ------------------------------------------------------------- */
 /* HOVER MEDIA QUERY: PREVENTS STICKY EFFECTS ON TOUCH DEVICES   */
