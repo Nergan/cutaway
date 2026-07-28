@@ -2,7 +2,6 @@
 .seamless-input { width: 100%; background: transparent; border: none; color: var(--text-main); outline: none; resize: none; }
 .seamless-input::placeholder { color: var(--text-muted); opacity: 0.6; }
 .editor-bio { font-size: 1rem; line-height: 1.6; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; margin-bottom: 0.5rem; transition: border-color 0.3s; text-transform: none; }
-.seamless-input:focus-visible, .editor-bio:focus-visible { outline: none !important; border-color: var(--border-focus); }
 
 /* TACTILE MICRO-INTERACTIONS & CUSTOM SELECT BUTTONS */
 .chip, .create-btn, .footer-action, .icon-btn, .custom-select {
@@ -49,11 +48,6 @@
 .footer-action:active {
   transform: scale(0.95);
 }
-button:focus-visible, .chip:focus-visible, .custom-select:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
-}
-.search-header-input:focus-visible { outline: none; }
 
 /* Rotating Cross & Privacy Icons */
 .search-clear-btn, .contact-action.danger, .media-remove, .lightbox-close, .contact-action.bi-lock, .contact-action.bi-shield-lock, .contact-action.bi-globe { 
@@ -252,11 +246,29 @@ body.light-theme .floating-tooltip {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Smooth animated underline for Tags & Contacts */
-.animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
-.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: currentColor; transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+/* Smooth animated underline for Tags, Contacts & Navigation */
+.animated-underline { 
+  position: relative; 
+  display: inline-block; 
+  white-space: nowrap; 
+  padding-bottom: 2px; 
+  margin-bottom: -2px; 
+}
 
-/* Target ONLY the specific hovered item to expand its green underline */
+.animated-underline::after,
+.nav-item span.animated-underline::after { 
+  content: ''; 
+  position: absolute; 
+  width: 0; 
+  height: 2px !important; /* Uniform crisp underline thickness across all elements */
+  bottom: -1px; 
+  left: 0; 
+  background-color: currentColor; 
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+  border-radius: 1px;
+}
+
+/* Target ONLY the specific hovered/active item to expand its green underline */
 .glass-option:hover > .animated-underline::after,
 .glass-option.highlighted-option > .animated-underline::after,
 .footer-action:hover > .animated-underline::after,

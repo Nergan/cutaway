@@ -109,7 +109,7 @@
               </button>
             </div>
             
-            <a class="nav-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
+            <a class="nav-item vault-item" :class="{active: store.state.currentView === 'vault'}" @click="store.state.currentView = 'vault'" :title="store.t('identity_vault')">
               <i class="bi bi-shield-lock"></i> 
               <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('identity_vault') }}</span>
             </a>

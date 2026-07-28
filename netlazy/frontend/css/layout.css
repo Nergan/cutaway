@@ -8,7 +8,7 @@
   flex-shrink: 0; 
   will-change: width; 
   z-index: 1; 
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1); /* Smooth collapse/expand animation */
 }
 
 .sidebar-content { 
@@ -80,12 +80,10 @@
 .nav-item.active { color: var(--accent-moss); font-weight: 600; background: transparent; box-shadow: none; }
 .badge { margin-left: auto; background: var(--text-main); color: var(--bg-base); font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: var(--radius-pill); font-weight: 700; }
 
-/* Sidebar Navigation Animated Underline */
-.nav-item span.animated-underline { position: relative; display: inline-block; white-space: nowrap; padding-bottom: 2px; margin-bottom: -2px; }
-.nav-item span.animated-underline::after { content: ''; position: absolute; width: 0; height: 1px; bottom: 0; left: 0; background-color: var(--text-main); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.nav-item:hover span.animated-underline::after { width: 100%; }
-.nav-item.active span.animated-underline::after { width: 100%; background-color: var(--accent-moss); }
-.sidebar-collapsed .nav-item.active span.animated-underline::after { display: none; }
+.nav-item.active span.animated-underline::after { 
+  width: 100%; 
+  background-color: var(--accent-moss); 
+}
 
 .sidebar-footer { 
   margin-top: auto; 
@@ -93,15 +91,21 @@
   flex-direction: column; 
   gap: 0.8rem; 
   width: 100%; 
+  align-items: center;
 }
 
 .sidebar-controls-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; /* Perfectly centered horizontally */
   gap: 1.5rem;
   width: 100%;
   margin-bottom: 0.5rem;
+}
+
+.sidebar-footer .nav-item.vault-item {
+  justify-content: center; /* Centers icon + text block together */
+  width: 100%;
 }
 
 .footer-action { 

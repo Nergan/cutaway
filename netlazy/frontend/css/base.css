@@ -1,10 +1,34 @@
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); }
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+  font-family: var(--font-main); 
+  -webkit-tap-highlight-color: transparent; /* Disable blue WebView tap rectangles */
+}
 
 body {
   background: var(--bg-base); color: var(--text-main);
   line-height: 1.5; height: 100vh; overflow: hidden;
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overscroll-behavior-y: none; /* Disable bounce/overscroll on mobile Native App contexts */
+}
+
+/* Global Theme Transition on Surface Elements */
+body, .sidebar, .card, .inbox-item, .glass-menu, .chip, .btn, .footer-action, .seamless-input, .code-block {
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Focus Ring Styling (Translucent Moss Glow) */
+*:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(141, 169, 112, 0.35) !important;
+  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+body.light-theme *:focus-visible {
+  box-shadow: 0 0 0 3px rgba(104, 133, 76, 0.35) !important;
 }
 
 /* Slim scrollbars */
