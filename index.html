@@ -351,7 +351,7 @@
         .visitor-counter {
             position: fixed;
             bottom: 24px;
-            right: 24px;
+            right: 72px; /* Adjusted to fit nicely next to donate button */
             font-family: 'EB Garamond', serif;
             font-size: 0.85rem;
             font-weight: 400;
@@ -368,6 +368,47 @@
         .visitor-counter:hover {
             border-color: var(--accent-moss);
             color: var(--text-light);
+        }
+
+        /* Donate Button Styles */
+        .donate-button {
+            position: fixed;
+            bottom: 18px; /* Positioned right at the bottom corner */
+            right: 16px;
+            width: 44px; /* Reduced size */
+            height: 44px;
+            z-index: 1000;
+            display: block;
+            transition: transform var(--transition);
+        }
+
+        .donate-button:hover {
+            transform: scale(1.15);
+        }
+
+        .donate-button img,
+        .donate-button video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated; /* Crisp look for pixel art */
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .donate-button video {
+            opacity: 0;
+            pointer-events: none; /* Prevents hovering glitches */
+        }
+
+        .donate-button:hover img {
+            opacity: 0;
+        }
+
+        .donate-button:hover video {
+            opacity: 1;
         }
 
         @media (max-width: 768px) {
@@ -395,7 +436,8 @@
             .badge-category, 
             .project-icon,
             .visitor-counter,
-            .learn-more-icon-btn {
+            .learn-more-icon-btn,
+            .donate-button {
                 transition: none;
             }
             .projects-grid {
@@ -436,6 +478,11 @@
 </main>
 
 <div class="visitor-counter" id="visitor-counter">visitors --</div>
+
+<a href="https://boosty.to/nargan/donate" target="_blank" class="donate-button" data-i18n-title="donate" title="Donate">
+    <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-img.webp" alt="Donate">
+    <video src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-animation.webm" autoplay loop muted playsinline></video>
+</a>
 
 <script>
     console.log('Greetings from GitHub!')
@@ -482,7 +529,8 @@
             project11_title: "netlazy",
             project11_desc: "just dating",
             project11_category: "social",
-            learn_more: "Learn more"
+            learn_more: "Learn more",
+            donate: "Support me on Boosty"
         },
         ru: {
             welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
@@ -513,7 +561,8 @@
             project11_title: "netlazy",
             project11_desc: "просто дэйтинг",
             project11_category: "общение",
-            learn_more: "Подробнее"
+            learn_more: "Подробнее",
+            donate: "Поддержать на Boosty"
         }
     };
 
