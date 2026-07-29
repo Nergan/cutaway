@@ -370,47 +370,6 @@
             color: var(--text-light);
         }
 
-        /* Donate Button Styles */
-        .donate-button {
-            position: fixed;
-            bottom: 18px; /* Positioned right at the bottom corner */
-            right: 16px;
-            width: 44px; /* Reduced size */
-            height: 44px;
-            z-index: 1000;
-            display: block;
-            transition: transform var(--transition);
-        }
-
-        .donate-button:hover {
-            transform: scale(1.15);
-        }
-
-        .donate-button img,
-        .donate-button video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            image-rendering: pixelated; /* Crisp look for pixel art */
-            transition: opacity 0.2s ease-in-out;
-        }
-
-        .donate-button video {
-            opacity: 0;
-            pointer-events: none; /* Prevents hovering glitches */
-        }
-
-        .donate-button:hover img {
-            opacity: 0;
-        }
-
-        .donate-button:hover video {
-            opacity: 1;
-        }
-
         @media (max-width: 768px) {
             body { padding: 1.2rem; }
             .welcome-text { font-size: 2rem; }
@@ -436,8 +395,7 @@
             .badge-category, 
             .project-icon,
             .visitor-counter,
-            .learn-more-icon-btn,
-            .donate-button {
+            .learn-more-icon-btn {
                 transition: none;
             }
             .projects-grid {
@@ -445,6 +403,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-widget.js" defer></script>
 </head>
 <body>
 
@@ -478,11 +437,6 @@
 </main>
 
 <div class="visitor-counter" id="visitor-counter">visitors --</div>
-
-<a href="https://boosty.to/nargan/donate" target="_blank" class="donate-button" data-i18n-title="donate" title="Donate">
-    <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-img.webp" alt="Donate">
-    <video src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-animation.webm" autoplay loop muted playsinline></video>
-</a>
 
 <script>
     console.log('Greetings from GitHub!')
@@ -631,6 +585,12 @@
             if (translations[lang][key]) el.setAttribute('title', translations[lang][key]);
             else if (translations['en'][key]) el.setAttribute('title', translations['en'][key]);
         });
+
+        // Update donate widget language
+        const donateWidget = document.querySelector('nargan-donate');
+        if (donateWidget) {
+            donateWidget.setAttribute('lang', lang);
+        }
     }
 
     function detectLanguage() {
