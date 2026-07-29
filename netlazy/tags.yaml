@@ -4943,3 +4943,11 @@ tags:
     ja: "ブリュッセル"
     ko: "브뤼셀"
     aliases: ["brussels", "брюссель", "bruxelas", "belgium", "location", "布魯塞爾", "ブリュッセル", "브뤼셀"]
+- name:
+    en: "architecture"
+    ru: "архитектура"
+    pt: "arquitetura"
+    zh: "建築學"
+    ja: "建築"
+    ko: "건축학"
+    aliases: ["архитектура", "постройки", "строительство", "урбанистика", "architecture", "buildings", "construction", "urban studies", "arquitetura", "edifícios", "construção", "estudos urbanos", "建築學", "建築", "施工", "城市研究", "建築", "建物", "建設", "都市研究", "건축", "건물", "건설", "도시", "연구"]
