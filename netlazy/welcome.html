@@ -126,7 +126,7 @@
     }
 
     /* TYPOGRAPHY ASSIGNMENTS */
-    h1, h2, h3, h4, .brand, .btn, .demo-toggle-btn, .section-tag, .hero-brand, .footer-col-title {
+    h1, h2, h3, h4, .brand, .btn, .section-tag, .hero-brand, .footer-col-title {
       font-family: var(--font-heading);
     }
 
@@ -145,12 +145,11 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center 65%; /* Optimized for desktop widescreen focus on water droplets */
+      object-position: center 65%;
       transition: opacity 0.5s ease, filter 0.5s ease;
       will-change: transform;
     }
 
-    /* Dark Mode Video Effects: Deep Moody Forest Greens & Specular Highlights */
     body:not(.light-theme) .bg-video {
       opacity: 0.55;
       filter: brightness(0.65) contrast(1.25) saturate(1.15);
@@ -158,7 +157,6 @@
       -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 35%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
     }
 
-    /* Light Mode Video Effects: Soft Botanical Watercolors on Cream Canvas */
     body.light-theme .bg-video {
       opacity: 0.38;
       mix-blend-mode: multiply;
@@ -263,31 +261,23 @@
         color: var(--accent-moss);
         text-shadow: var(--glow-accent);
       }
-      .profile-preview-outer:hover .profile-scroll-wrapper {
-        box-shadow: var(--glass-highlight), 0 25px 60px rgba(0, 0, 0, 0.7);
-      }
-      body.light-theme .profile-preview-outer:hover .profile-scroll-wrapper {
-        box-shadow: var(--glass-highlight), 0 25px 60px rgba(156, 133, 90, 0.25);
-      }
-      .profile-preview-outer:hover .swipe-hint { bottom: 20px; }
       .feature-card:hover {
         border-color: var(--accent-moss);
         transform: translateY(-4px);
         box-shadow: var(--glass-highlight), 0 20px 45px -10px var(--profile-glow);
       }
-      .tag-pill:hover {
-        color: var(--accent-moss);
-        border-color: var(--accent-moss);
+      .img-wrapper:hover {
+        transform: perspective(1000px) rotateY(0deg) scale(1.02) !important;
+        box-shadow: var(--glass-highlight), 0 30px 60px rgba(0,0,0,0.4);
       }
-      .like-way-btn:hover {
-        border-color: var(--accent-moss);
-        color: var(--accent-moss);
+      body.light-theme .img-wrapper:hover {
+        box-shadow: var(--glass-highlight), 0 30px 60px rgba(156, 133, 90, 0.2);
       }
       .footer-links a:hover { color: var(--accent-moss); }
     }
 
     /* MICRO-INTERACTIONS (TAP STATES FOR MOBILE) */
-    .btn:active, .tag-pill:active, .like-way-btn:active, .theme-toggle:active, .lang-toggle:active {
+    .btn:active, .theme-toggle:active, .lang-toggle:active {
       transform: scale(0.96);
     }
 
@@ -539,136 +529,6 @@
       letter-spacing: -0.03em;
     }
 
-    /* PROFILE PREVIEW & CONTROLS */
-    .app-demo-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .demo-controls {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      background: var(--bg-glass-card);
-      padding: 0.35rem 0.5rem;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border-glass);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      box-shadow: var(--glass-highlight);
-    }
-
-    .demo-toggle-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      padding: 0.35rem 0.9rem;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-weight: 600;
-    }
-
-    .demo-toggle-btn.active {
-      background: var(--accent-moss);
-      color: #000000;
-      font-weight: 700;
-      box-shadow: var(--glow-accent);
-    }
-
-    body.light-theme .demo-toggle-btn.active {
-      color: #ffffff;
-    }
-
-    .profile-preview-outer {
-      position: relative;
-      width: 100%;
-      max-width: 853px;
-      height: 352px;
-      background: transparent;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform-style: preserve-3d;
-      will-change: transform;
-      transition: transform 0.1s ease-out;
-    }
-
-    .profile-preview-container {
-      width: 100%;
-      height: 100%;
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: block;
-      -webkit-overflow-scrolling: touch;
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .profile-preview-container::-webkit-scrollbar { display: none; }
-
-    .profile-scroll-wrapper {
-      position: relative;
-      width: 853px;
-      height: 352px;
-      display: block;
-      flex-shrink: 0;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      border: 1px solid var(--border-glass);
-      box-shadow: var(--glass-highlight), var(--shadow-md);
-      transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .profile-img-layer {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: contain;
-      pointer-events: none;
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-      opacity: 0;
-    }
-
-    body.light-theme .profile-img-layer.light-img { opacity: 1; transform: scale(1); }
-    body.light-theme .profile-img-layer.dark-img { opacity: 0; transform: scale(0.98); }
-    body:not(.light-theme) .profile-img-layer.dark-img { opacity: 1; transform: scale(1); }
-    body:not(.light-theme) .profile-img-layer.light-img { opacity: 0; transform: scale(0.98); }
-
-    .scroll-fade-left, .scroll-fade-right {
-      display: none;
-      position: absolute; top: 0; bottom: 0; width: 40px;
-      pointer-events: none; z-index: 5;
-    }
-    .scroll-fade-left { left: 0; background: linear-gradient(to right, var(--bg-base), transparent); }
-    .scroll-fade-right { right: 0; background: linear-gradient(to left, var(--bg-base), transparent); }
-
-    .swipe-hint {
-      display: none;
-      position: absolute;
-      bottom: -60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg-glass-card);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      color: var(--text-main);
-      padding: 0.6rem 1.2rem;
-      border-radius: var(--radius-pill);
-      font-size: 0.75rem;
-      gap: 0.5rem;
-      align-items: center;
-      pointer-events: none;
-      z-index: 10;
-      box-shadow: var(--glass-highlight), var(--shadow-sm);
-      border: 1px solid var(--border-glass);
-      transition: opacity 0.3s, bottom 0.4s;
-    }
-
     /* ZIGZAG TIMELINE & GLASS CARDS */
     .features-timeline {
       position: relative;
@@ -718,10 +578,6 @@
                   box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .feature-spacer {
-      width: 45%;
-    }
-
     .feature-icon-wrapper {
       width: 58px;
       height: 58px;
@@ -753,75 +609,57 @@
       font-size: 0.92rem;
       color: var(--text-muted);
       line-height: 1.65;
-      margin-bottom: 1.25rem;
+      margin-bottom: 0;
     }
 
-    /* MICRO-UI EMBEDDED GLASS COMPONENTS */
-    .micro-ui-box {
-      background: var(--bg-glass-card);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border-glass);
-      box-shadow: var(--glass-highlight);
-      border-radius: var(--radius-sm);
-      padding: 0.85rem;
+    /* SCENARIO IMAGE CONTAINERS */
+    .feature-image-container {
+      width: 45%;
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .tag-cloud-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-
-    .tag-pill {
-      font-size: 0.72rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: var(--radius-pill);
-      background: var(--bg-glass-elevated);
-      color: var(--text-muted);
-      border: 1px solid var(--border-glass);
-      box-shadow: var(--glass-highlight);
-      cursor: pointer;
-      font-family: var(--font-body);
-      transition: all 0.2s ease;
-    }
-
-    .like-ways-group {
-      display: flex;
-      gap: 0.5rem;
-      width: 100%;
-    }
-
-    .like-way-btn {
-      flex: 1;
-      font-size: 0.72rem;
-      padding: 0.45rem 0.2rem;
-      text-align: center;
-      border-radius: var(--radius-sm);
-      background: var(--bg-glass-elevated);
-      border: 1px solid var(--border-glass);
-      box-shadow: var(--glass-highlight);
-      color: var(--text-main);
-      cursor: pointer;
-      font-family: var(--font-body);
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
       justify-content: center;
-      gap: 0.35rem;
+      align-items: center;
+      perspective: 1000px;
     }
 
-    .crypto-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-      color: var(--accent-moss);
+    .feature-image-container.double {
+      gap: 1.5rem;
     }
+
+    .img-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 260px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight), var(--shadow-md);
+      overflow: hidden;
+      background: var(--bg-surface);
+      line-height: 0;
+      transform: rotateY(0deg) translateZ(0);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feature-node:nth-child(odd) .img-wrapper {
+      transform: perspective(1000px) rotateY(-5deg);
+    }
+    
+    .feature-node:nth-child(even) .img-wrapper {
+      transform: perspective(1000px) rotateY(5deg);
+    }
+
+    .feature-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.light-theme .feature-img.light-img { opacity: 1; transform: scale(1); z-index: 2; }
+    body.light-theme .feature-img.dark-img { opacity: 0; transform: scale(0.98); z-index: 1; }
+    body:not(.light-theme) .feature-img.dark-img { opacity: 1; transform: scale(1); z-index: 2; }
+    body:not(.light-theme) .feature-img.light-img { opacity: 0; transform: scale(0.98); z-index: 1; }
 
     /* BOTTOM CTA SECTION */
     .bottom-cta-section {
@@ -914,35 +752,43 @@
       .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
     }
 
-    @media (max-width: 853px) {
-      .scroll-fade-left, .scroll-fade-right { display: block; }
-      .swipe-hint { display: inline-flex; bottom: 20px; }
-    }
-
     @media (max-width: 768px) {
       .top-nav { padding: 0.75rem 1.25rem; }
       .hero-actions { flex-direction: column; width: 100%; max-width: 280px; }
       .hero-actions .btn { justify-content: center; padding: 0.85rem; }
       
       .features-timeline::before { left: 24px; transform: none; }
+      
       .feature-node, .feature-node:nth-child(even) {
         flex-direction: column;
         align-items: flex-start;
-        gap: 1rem;
+        gap: 1.5rem;
       }
       .feature-card {
         width: 100%;
         padding: 1.5rem 1.5rem 1.5rem 4rem;
       }
-      .feature-spacer {
-        display: none;
-      }
       .feature-icon-wrapper { left: 24px; width: 42px; height: 42px; font-size: 1.1rem; }
+      
+      .feature-image-container {
+        width: 100%;
+        padding-left: 4rem;
+        justify-content: flex-start;
+      }
+      .feature-image-container.double {
+        gap: 1rem;
+      }
+      .feature-image-container .img-wrapper {
+        max-width: 240px;
+        transform: none !important; /* Reset 3D transform on mobile */
+      }
+      .feature-image-container.double .img-wrapper {
+        max-width: calc(50% - 0.5rem);
+      }
+
       .footer-bottom { flex-direction: column; gap: 0.75rem; text-align: center; }
     }
   </style>
-
-  <!-- <script src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-widget.js" defer></script> -->
 </head>
 <body>
 
@@ -1022,110 +868,82 @@
       </div>
     </section>
 
-    <!-- PHYSICAL CARD PREVIEW -->
+    <!-- ZIGZAG TIMELINE: HOW IT WORKS -->
     <section class="reveal-section">
       <div class="section-header-block">
-        <span class="section-tag">01 // INTERFACE PREVIEW</span>
-        <h2 class="section-title" data-t="demo_title">and this is what a profile looks like</h2>
-      </div>
-
-      <div class="app-demo-container">
-        <!-- THEME QUICK TOGGLE BUTTONS -->
-        <div class="demo-controls">
-          <button class="demo-toggle-btn" id="toggle-dark-btn" onclick="setDemoTheme('dark')" aria-label="Switch preview to dark theme">dark</button>
-          <button class="demo-toggle-btn" id="toggle-light-btn" onclick="setDemoTheme('light')" aria-label="Switch preview to light theme">light</button>
-        </div>
-
-        <div class="profile-preview-outer" id="profile-card">
-          <div class="scroll-fade-left"></div>
-          
-          <div class="profile-preview-container" id="profile-scroll-container" data-lenis-prevent>
-            <div class="profile-scroll-wrapper">
-              <img class="profile-img-layer dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/dark.png" alt="netlazy dark theme profile example" loading="lazy">
-              <img class="profile-img-layer light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/examples-profiles/light.png" alt="netlazy light theme profile example" loading="lazy">
-            </div>
-          </div>
-          
-          <div class="scroll-fade-right"></div>
-          
-          <div class="swipe-hint" id="swipe-indicator">
-            <i class="bi bi-arrow-left-right"></i>
-            <span data-t="swipe_hint">swipe to view profiles</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ZIGZAG FEATURES WITH EMBEDDED MICRO-UI -->
-    <section class="reveal-section">
-      <div class="section-header-block">
-        <span class="section-tag">02 // CORE FEATURES</span>
-        <h2 class="section-title" data-t="features_title">what we have</h2>
+        <span class="section-tag">01 // HOW IT WORKS</span>
+        <h2 class="section-title" data-t="how_it_works_title">how it works</h2>
       </div>
 
       <div class="features-timeline">
         
+        <!-- STEP 1 -->
         <div class="feature-node">
           <div class="feature-card">
-            <h3 class="feature-title" data-t="feature_auth_title">profiles feed instead of swipes</h3>
-            <p class="feature-desc" data-t="feature_auth_desc">You get a feed of profiles so you can find partners more effectively.</p>
-            <div class="micro-ui-box">
-              <i class="bi bi-card-text" style="color:var(--accent-moss);"></i>
-              <span style="font-size:0.75rem; color:var(--text-muted);">scrollable chronological bulletin stream</span>
-            </div>
-          </div>
-          <div class="feature-icon-wrapper"><i class="bi bi-view-stacked"></i></div>
-          <div class="feature-spacer"></div>
-        </div>
-
-        <div class="feature-node">
-          <div class="feature-card">
-            <h3 class="feature-title" data-t="feature_media_title">lots and lots of tags</h3>
-            <p class="feature-desc" data-t="feature_media_desc">We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.</p>
-            <div class="micro-ui-box">
-              <div class="tag-cloud-pills">
-                <button type="button" class="tag-pill">#anime</button>
-                <button type="button" class="tag-pill">#cozy</button>
-                <button type="button" class="tag-pill">#music</button>
-                <button type="button" class="tag-pill">#gaming</button>
-                <button type="button" class="tag-pill">#coffee</button>
-                <button type="button" class="tag-pill">#lofi</button>
-              </div>
-            </div>
-          </div>
-          <div class="feature-icon-wrapper"><i class="bi bi-hash"></i></div>
-          <div class="feature-spacer"></div>
-        </div>
-
-        <div class="feature-node">
-          <div class="feature-card">
-            <h3 class="feature-title" data-t="feature_pow_title">three ways to like a profile</h3>
-            <p class="feature-desc" data-t="feature_pow_desc">Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)</p>
-            <div class="micro-ui-box">
-              <div class="like-ways-group">
-                <button type="button" class="like-way-btn"><i class="bi bi-share"></i> share</button>
-                <button type="button" class="like-way-btn"><i class="bi bi-arrow-left-right"></i> exchange</button>
-                <button type="button" class="like-way-btn"><i class="bi bi-exclamation-circle"></i> demand</button>
-              </div>
-            </div>
-          </div>
-          <div class="feature-icon-wrapper"><i class="bi bi-suit-heart"></i></div>
-          <div class="feature-spacer"></div>
-        </div>
-
-        <div class="feature-node">
-          <div class="feature-card">
-            <h3 class="feature-title" data-t="feature_handshake_title">and a little bit of cryptography</h3>
-            <p class="feature-desc" data-t="feature_handshake_desc">Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.</p>
-            <div class="micro-ui-box">
-              <div class="crypto-chip">
-                <i class="bi bi-shield-lock-fill"></i>
-                <span>ed25519 keypair · 1-click zero footprint</span>
-              </div>
-            </div>
+            <h3 class="feature-title" data-t="feature_1_title">One-click registration</h3>
+            <p class="feature-desc" data-t="feature_1_desc">You can create an account in one click—without entering an email or phone number.</p>
           </div>
           <div class="feature-icon-wrapper"><i class="bi bi-fingerprint"></i></div>
-          <div class="feature-spacer"></div>
+          <div class="feature-image-container">
+            <div class="img-wrapper">
+              <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/welcome.png" style="visibility:hidden; width:100%; height:auto; display:block;" alt="">
+              <img class="feature-img dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/welcome.png" alt="Registration step" loading="lazy">
+              <img class="feature-img light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/light/welcome.png" alt="Registration step" loading="lazy">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_2_title">Customize your profile</h3>
+            <p class="feature-desc" data-t="feature_2_desc">Next, fill out the form, select any tags, attach a photo, video, or audio, tell us about yourself, and provide your contact information.</p>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-person-vcard"></i></div>
+          <div class="feature-image-container double">
+            <div class="img-wrapper">
+              <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/tags.png" style="visibility:hidden; width:100%; height:auto; display:block;" alt="">
+              <img class="feature-img dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/tags.png" alt="Tags selection" loading="lazy">
+              <img class="feature-img light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/light/tags.png" alt="Tags selection" loading="lazy">
+            </div>
+            <div class="img-wrapper">
+              <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/profile.png" style="visibility:hidden; width:100%; height:auto; display:block;" alt="">
+              <img class="feature-img dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/profile.png" alt="Profile setup" loading="lazy">
+              <img class="feature-img light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/light/profile.png" alt="Profile setup" loading="lazy">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_3_title">Public and private contacts</h3>
+            <p class="feature-desc" data-t="feature_3_desc">Contacts can be public or private. Public contacts are displayed in your profile, while private contacts will only be visible to the specific user, with your consent.</p>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-shield-lock"></i></div>
+          <div class="feature-image-container">
+            <div class="img-wrapper">
+              <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/contacts.png" style="visibility:hidden; width:100%; height:auto; display:block;" alt="">
+              <img class="feature-img dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/contacts.png" alt="Contacts privacy" loading="lazy">
+              <img class="feature-img light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/light/contacts.png" alt="Contacts privacy" loading="lazy">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="feature-node">
+          <div class="feature-card">
+            <h3 class="feature-title" data-t="feature_4_title">Three ways to request contacts</h3>
+            <p class="feature-desc" data-t="feature_4_desc">Next, you can begin choosing a profile. You can send a request for <b>private</b> contacts in three ways:<br>• <b>Share</b> - share a contact unilaterally<br>• <b>Exchange</b> - exchange contacts simultaneously<br>• <b>Demand</b> - ask the user for their contact information without sharing yours</p>
+          </div>
+          <div class="feature-icon-wrapper"><i class="bi bi-send"></i></div>
+          <div class="feature-image-container">
+            <div class="img-wrapper">
+              <img src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/requests.png" style="visibility:hidden; width:100%; height:auto; display:block;" alt="">
+              <img class="feature-img dark-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/dark/requests.png" alt="Sending requests" loading="lazy">
+              <img class="feature-img light-img" src="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/guide/light/requests.png" alt="Sending requests" loading="lazy">
+            </div>
+          </div>
         </div>
 
       </div>
@@ -1134,7 +952,7 @@
     <!-- BOTTOM CTA SECTION -->
     <section class="reveal-section bottom-cta-section">
       <div class="section-header-block">
-        <span class="section-tag">03 // JOIN NETLAZY</span>
+        <span class="section-tag">02 // JOIN NETLAZY</span>
         <h2 class="section-title" data-t="cta_bottom_title">and if you are ready...</h2>
       </div>
       <p class="bottom-cta-desc" data-t="cta_bottom_desc">Choose your platform, and be cute :^</p>
@@ -1220,19 +1038,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "what we have",
-        feature_auth_title: "profiles feed instead of swipes",
-        feature_auth_desc: "You get a feed of profiles so you can find partners more effectively.",
-        feature_media_title: "lots and lots of tags",
-        feature_media_desc: "We try to add tags to practically everything, so you can find profiles more efficiently and stay in control of your search.",
-        feature_pow_title: "three ways to like a profile",
-        feature_pow_desc: "Unlike standard likes, our requests revolve around managing each other's contact details. You can: share, exchange, or demand them. (And leaving a request unanswered serves as a native blacklist.)",
-        feature_handshake_title: "and a little bit of cryptography",
-        feature_handshake_desc: "Registration works in just one click, your account is not tied to any email or phone number, and your password never leaves your device.",
+        how_it_works_title: "how it works",
+        feature_1_title: "One-click registration",
+        feature_1_desc: "You can create an account in one click—without entering an email or phone number.",
+        feature_2_title: "Customize your profile",
+        feature_2_desc: "Next, fill out the form, select any tags, attach a photo, video, or audio, tell us about yourself, and provide your contact information.",
+        feature_3_title: "Public and private contacts",
+        feature_3_desc: "Contacts can be public or private. Public contacts are displayed in your profile, while private contacts will only be visible to the specific user, with your consent.",
+        feature_4_title: "Three ways to request contacts",
+        feature_4_desc: "Next, you can begin choosing a profile. You can send a request for <b>private</b> contacts in three ways:<br>• <b>Share</b> - share a contact unilaterally<br>• <b>Exchange</b> - exchange contacts simultaneously<br>• <b>Demand</b> - ask the user for their contact information without sharing yours",
         cta_bottom_title: "and if you are ready...",
         cta_bottom_desc: "Choose your platform, and be cute :^",
-        demo_title: "and this is what a profile looks like",
-        swipe_hint: "swipe to view profiles",
         copyright: "&copy; 2026 netlazy. Attempting socialisation."
       },
       ru: {
@@ -1240,19 +1056,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "что у нас есть",
-        feature_auth_title: "вместо сайпов - лента",
-        feature_auth_desc: "У Вас есть лента анкет, чтобы Вы могли эффектвинее искать партёнров.",
-        feature_media_title: "много-много тегов",
-        feature_media_desc: "Мы стараемся добавлять теги практически на всё, чтобы Вы могли эффетивнее искать анкеты, и сами конктроллировать этот поиск.",
-        feature_pow_title: "три способа лайкнуть анкету",
-        feature_pow_desc: "В отличии от обычных лайков, у нас запросы крутятся вокруг управления контактами друг-другa. И Вы можете ими: поделиться, обменяться, или затребовать. (А оставив запрос без ответа, вы реализуете нативный чёрный список.)",
-        feature_handshake_title: "и немножко криптографии",
-        feature_handshake_desc: "Регистрация работает в один клик, и Ваш аккаунт не привязан ни к почте, ни к телефону, а пароль никогда не покидает Ваше устройство.",
+        how_it_works_title: "как это работает",
+        feature_1_title: "Регистрация в один клик",
+        feature_1_desc: "Вы можете создать аккаунт в один клик — без ввода email или номера телефона.",
+        feature_2_title: "Настройка анкеты",
+        feature_2_desc: "Затем заполните форму, выберите любые теги, прикрепите фото, видео или аудио, расскажите о себе и укажите свои контактные данные.",
+        feature_3_title: "Публичные и приватные контакты",
+        feature_3_desc: "Контакты могут быть публичными или приватными. Публичные контакты отображаются в вашем профиле, а приватные будут видны только определенному пользователю с вашего согласия.",
+        feature_4_title: "Три способа отправить запрос",
+        feature_4_desc: "Далее вы можете начать выбирать анкету. Вы можете отправить запрос на <b>приватные</b> контакты тремя способами:<br>• <b>Поделиться</b> — поделиться контактом в одностороннем порядке<br>• <b>Обменяться</b> — обменяться контактами одновременно<br>• <b>Затребовать</b> — попросить пользователя дать контактную информацию, не делясь своей",
         cta_bottom_title: "и если Вы готовы..",
         cta_bottom_desc: "Выберите удобную платформу, и будьте хорошими :^",
-        demo_title: "а так выглядит анкета",
-        swipe_hint: "пролистайте, чтобы увидеть анкеты",
         copyright: "&copy; 2026 netlazy. Пытаемся в социализацию."
       },
       pt: {
@@ -1260,19 +1074,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "o que nós temos",
-        feature_auth_title: "feed de perfis em vez de swipes",
-        feature_auth_desc: "Você tem um feed de perfis para encontrar parceiros de forma mais eficaz.",
-        feature_media_title: "muitas, muitas tags",
-        feature_media_desc: "Tentamos adicionar tags a praticamente tudo para que você encontre perfis com mais eficiência e controle sua própria busca.",
-        feature_pow_title: "três maneiras de curtir um perfil",
-        feature_pow_desc: "Ao contrário das curtidas normais, nossas solicitações giram em torno do gerenciamento dos contatos um do outro. Você pode: compartilhar, trocar ou exigir. (E deixar uma solicitação sem resposta funciona como uma lista negra nativa.)",
-        feature_handshake_title: "e um pouco de criptografia",
-        feature_handshake_desc: "O registro funciona em um clique, sua conta não está vinculada a e-mail ou telefone, e a senha nunca sai do seu dispositivo.",
+        how_it_works_title: "como funciona",
+        feature_1_title: "Registro com um clique",
+        feature_1_desc: "Você pode criar uma conta com um clique — sem inserir um e-mail ou número de telefone.",
+        feature_2_title: "Personalize seu perfil",
+        feature_2_desc: "Em seguida, preencha o formulário, selecione tags, anexe uma foto, vídeo ou áudio, fale sobre você e forneça suas informações de contato.",
+        feature_3_title: "Contatos públicos e privados",
+        feature_3_desc: "Os contatos podem ser públicos ou privados. Os contatos públicos são exibidos no seu perfil, enquanto os contatos privados só serão visíveis para o usuário específico, com o seu consentimento.",
+        feature_4_title: "Três maneiras de solicitar contatos",
+        feature_4_desc: "Em seguida, você pode começar a escolher um perfil. Você pode enviar uma solicitação de contatos <b>privados</b> de três maneiras:<br>• <b>Compartilhar</b> - compartilhar um contato unilateralmente<br>• <b>Trocar</b> - trocar contatos simultaneamente<br>• <b>Exigir</b> - pedir as informações de contato do usuário sem compartilhar as suas",
         cta_bottom_title: "e se você estiver pronto...",
         cta_bottom_desc: "Escolha sua plataforma e seja fofo :^",
-        demo_title: "e é assim que um perfil se parece",
-        swipe_hint: "deslize para ver os perfis",
         copyright: "&copy; 2026 netlazy. Tentando socializar."
       },
       zh: {
@@ -1280,19 +1092,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "我們擁有的功能",
-        feature_auth_title: "以個人資料資訊流代替滑動",
-        feature_auth_desc: "您擁有個人資料資訊流，以便更有效地尋找伴侶。",
-        feature_media_title: "非常非常多的標籤",
-        feature_media_desc: "我們嘗試為幾乎所有內容添加標籤，以便您更有效地搜尋個人資料，並自行控制此搜尋。",
-        feature_pow_title: "三種給個人資料點讚的方式",
-        feature_pow_desc: "與一般的點讚不同，我們的請求圍繞著管理彼此的聯絡方式。您可以：分享、交換或要求。（而將請求置之不理則可實現原生的黑名單功能。）",
-        feature_handshake_title: "以及一點點密碼學",
-        feature_handshake_desc: "一鍵註冊，您的帳戶不綁定信箱或電話，密碼永遠不會離開您的裝置。",
+        how_it_works_title: "使用方法",
+        feature_1_title: "一鍵註冊",
+        feature_1_desc: "您可以一鍵建立帳戶—無需輸入電子郵件或電話號碼。",
+        feature_2_title: "自訂您的個人資料",
+        feature_2_desc: "接下來，填寫表單，選擇任何標籤，附上照片、影片或音訊，向我們介紹您自己，並提供您的聯絡方式。",
+        feature_3_title: "公開和私人聯絡方式",
+        feature_3_desc: "聯絡方式可以是公開的或私人的。公開的聯絡方式會顯示在您的個人資料中，而私人的聯絡方式只有在您同意的情況下才會向特定使用者顯示。",
+        feature_4_title: "三種請求聯絡方式的方法",
+        feature_4_desc: "接下來，您可以開始選擇個人資料。您可以透過三種方式傳送對<b>私人</b>聯絡方式的請求：<br>• <b>分享</b> - 單方面分享聯絡方式<br>• <b>交換</b> - 同時交換聯絡方式<br>• <b>要求</b> - 向使用者要求他們的聯絡方式而不分享您的",
         cta_bottom_title: "如果您準備好了...",
         cta_bottom_desc: "選擇合適的平台，要可愛一點哦 :^",
-        demo_title: "個人資料的外觀",
-        swipe_hint: "左右滑動查看個人資料",
         copyright: "&copy; 2026 netlazy。嘗試社交中。"
       },
       ja: {
@@ -1300,19 +1110,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "提供している機能",
-        feature_auth_title: "スワイプの代わりにプロフィールフィード",
-        feature_auth_desc: "より効率的にパートナーを探せるよう、プロフィールのフィードを提供しています。",
-        feature_media_title: "たくさんのタグ",
-        feature_media_desc: "ほぼすべてのものにタグを追加するようにしているので、効率的にプロフィールを検索し、自分で検索をコントロールできます。",
-        feature_pow_title: "プロフィールを「いいね」する3つの方法",
-        feature_pow_desc: "通常のいいねとは異なり、私たちのリクエストはお互いの連絡先の管理を中心に回っています。共有、交換、または要求が可能です。（リクエストを放置することで、ネイティブなブラックリスト機能が働きます。）",
-        feature_handshake_title: "そしてちょっとした暗号技術",
-        feature_handshake_desc: "登録はワンクリックで完了し、アカウントはメールアドレスや電話番号に紐付けられず、パスワードがデバイスから外に出ることはありません。",
+        how_it_works_title: "使い方",
+        feature_1_title: "ワンクリック登録",
+        feature_1_desc: "メールアドレスや電話番号を入力することなく、ワンクリックでアカウントを作成できます。",
+        feature_2_title: "プロフィールをカスタマイズ",
+        feature_2_desc: "次に、フォームに入力し、タグを選択し、写真、動画、または音声を添付して、自己紹介と連絡先情報を提供します。",
+        feature_3_title: "公開と非公開の連絡先",
+        feature_3_desc: "連絡先は公開または非公開にすることができます。公開連絡先はプロフィールに表示され、非公開連絡先はあなたの同意がある場合のみ、特定のユーザーに表示されます。",
+        feature_4_title: "連絡先をリクエストする3つの方法",
+        feature_4_desc: "次に、プロフィールを選び始めます。<b>非公開</b>の連絡先へのリクエストは3つの方法で送信できます：<br>• <b>シェア</b> - 一方的に連絡先を共有する<br>• <b>交換</b> - 同時に連絡先を交換する<br>• <b>要求</b> - 自分の連絡先を共有せずに相手の連絡先を要求する",
         cta_bottom_title: "準備ができたら...",
         cta_bottom_desc: "お好きなプラットフォームを選んで、可愛くしてね :^",
-        demo_title: "ちなみに、プロフィールはこんな感じ",
-        swipe_hint: "スワイプしてプロフィールを表示",
         copyright: "&copy; 2026 netlazy。社会化を試みています。"
       },
       ko: {
@@ -1320,19 +1128,17 @@
         download_apk: "android apk",
         telegram_bot: "telegram miniapp",
         web_version: "web version",
-        features_title: "제공하는 기능",
-        feature_auth_title: "스와이프 대신 프로필 피드",
-        feature_auth_desc: "더 효율적으로 상대를 찾을 수 있도록 프로필 피드를 제공합니다.",
-        feature_media_title: "엄청나게 많은 태그들",
-        feature_media_desc: "거의 모든 요소에 태그를 추가하여 효율적으로 프로필을 탐색하고, 직접 검색 과정을 제어할 수 있습니다.",
-        feature_pow_title: "프로필을 좋아할 수 있는 세 가지 방법",
-        feature_pow_desc: "일반적인 라이크와 달리, 우리의 요청은 서로의 연락처 관리를 중심으로 작동합니다. 공유, 교환, 또는 요구할 수 있습니다. (요청에 응답하지 않는 것으로 자연스럽게 블랙리스트를 구현할 수 있습니다.)",
-        feature_handshake_title: "그리고 약간의 암호학",
-        feature_handshake_desc: "원클릭으로 가입이 완료되며, 계정은 이메일이나 전화번호와 연동되지 않고 패스워드는 기기를 절대 벗어나지 않습니다.",
+        how_it_works_title: "사용 방법",
+        feature_1_title: "원클릭 가입",
+        feature_1_desc: "이메일이나 전화번호를 입력하지 않고 한 번의 클릭으로 계정을 생성할 수 있습니다.",
+        feature_2_title: "프로필 설정",
+        feature_2_desc: "다음으로 양식을 작성하고, 태그를 선택하고, 사진, 동영상 또는 오디오를 첨부하고, 자신을 소개하고, 연락처 정보를 제공하세요.",
+        feature_3_title: "공개 및 비공개 연락처",
+        feature_3_desc: "연락처는 공개하거나 비공개할 수 있습니다. 공개 연락처는 프로필에 표시되며, 비공개 연락처는 귀하의 동의 하에 특정 사용자에게만 표시됩니다.",
+        feature_4_title: "연락처를 요청하는 세 가지 방법",
+        feature_4_desc: "이제 프로필을 선택하기 시작할 수 있습니다. <b>비공개</b> 연락처에 대한 요청을 세 가지 방법으로 보낼 수 있습니다:<br>• <b>공유</b> - 일방적으로 연락처 공유<br>• <b>교환</b> - 동시에 연락처 교환<br>• <b>요구</b> - 자신의 연락처를 공유하지 않고 상대방의 연락처 정보 요청",
         cta_bottom_title: "시작할 준비가 되셨다면...",
         cta_bottom_desc: "원하는 플랫폼을 선택하고, 귀여운 행동을 보여주세요 :^",
-        demo_title: "프로필의 실제 모습",
-        swipe_hint: "스와이프하여 프로필 보기",
         copyright: "&copy; 2026 netlazy. 사회화를 시도하는 중."
       }
     };
@@ -1385,22 +1191,6 @@
       }, 150);
     }
 
-    function updateDemoButtons() {
-      const isLight = document.body.classList.contains('light-theme');
-      const darkBtn = document.getElementById('toggle-dark-btn');
-      const lightBtn = document.getElementById('toggle-light-btn');
-      
-      if (darkBtn && lightBtn) {
-        if (isLight) {
-          lightBtn.classList.add('active');
-          darkBtn.classList.remove('active');
-        } else {
-          darkBtn.classList.add('active');
-          lightBtn.classList.remove('active');
-        }
-      }
-    }
-
     function initializeTheme() {
       const body = document.body;
       const themeIcon = document.getElementById('theme-icon');
@@ -1417,7 +1207,6 @@
         body.classList.remove('light-theme');
         if (themeIcon) themeIcon.className = 'bi bi-sun';
       }
-      updateDemoButtons();
     }
 
     function toggleTheme() {
@@ -1432,14 +1221,6 @@
       } else {
         themeIcon.className = 'bi bi-sun';
         localStorage.setItem('theme', 'dark');
-      }
-      updateDemoButtons();
-    }
-
-    function setDemoTheme(mode) {
-      if ((mode === 'light' && !document.body.classList.contains('light-theme')) || 
-          (mode === 'dark' && document.body.classList.contains('light-theme'))) {
-        toggleTheme();
       }
     }
 
@@ -1473,42 +1254,6 @@
       }
     }, { passive: true });
 
-    function setupCard3DPerspective() {
-      const card = document.getElementById('profile-card');
-      const scrollContainer = document.getElementById('profile-scroll-container');
-      if (!card || !scrollContainer) return;
-
-      card.addEventListener('mousemove', (e) => {
-        if (window.innerWidth <= 853) return;
-
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        
-        const tiltX = ((centerY - y) / centerY) * 10;
-        const tiltY = ((x - centerX) / centerX) * 10;
-
-        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.02, 1.02, 1.02)`;
-      }, { passive: true });
-
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-      });
-
-      const handleScroll = () => {
-        const indicator = document.getElementById('swipe-indicator');
-        if (indicator) {
-          indicator.style.opacity = '0';
-          indicator.style.pointerEvents = 'none';
-          scrollContainer.removeEventListener('scroll', handleScroll);
-        }
-      };
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
     // AUTOMATIC VERSIONING UPDATE
     async function updateApkLinks() {
       try {
@@ -1530,7 +1275,6 @@
       document.documentElement.classList.remove('light-theme-applied');
       initializeTheme();
       setLanguage(detectClosestLanguage());
-      setupCard3DPerspective();
       updateApkLinks();
 
       const observerOptions = {
