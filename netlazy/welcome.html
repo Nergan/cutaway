@@ -261,7 +261,7 @@
         color: var(--accent-moss);
         text-shadow: var(--glow-accent);
       }
-      .feature-card:hover {
+      .feature-card:hover, .bento-card:hover {
         border-color: var(--accent-moss);
         transform: translateY(-4px);
         box-shadow: var(--glass-highlight), 0 20px 45px -10px var(--profile-glow);
@@ -529,7 +529,14 @@
       letter-spacing: -0.03em;
     }
 
-    /* ZIGZAG TIMELINE & GLASS CARDS */
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ZIGZAG TIMELINE: HOW IT WORKS */
     .features-timeline {
       position: relative;
       padding: 1rem 0;
@@ -661,6 +668,65 @@
     body:not(.light-theme) .feature-img.dark-img { opacity: 1; transform: scale(1); z-index: 2; }
     body:not(.light-theme) .feature-img.light-img { opacity: 0; transform: scale(0.98); z-index: 1; }
 
+    /* BENTO BOX GRID (THE DIFFERENCE) */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .bento-card {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--glass-highlight), var(--shadow-sm);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                  border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .bento-icon {
+      font-size: 1.8rem;
+      color: var(--accent-moss);
+      margin-bottom: 1.25rem;
+      background: var(--bg-glass-elevated);
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-glass);
+    }
+
+    .bento-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.6rem;
+    }
+
+    .bento-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    
+    .bento-card:nth-child(1), .bento-card:nth-child(2), .bento-card:nth-child(3) {
+      grid-column: span 2;
+    }
+    .bento-card:nth-child(4), .bento-card:nth-child(5) {
+      grid-column: span 3;
+    }
+
     /* BOTTOM CTA SECTION */
     .bottom-cta-section {
       text-align: center;
@@ -750,6 +816,11 @@
       .hero-art-container { display: none; }
       .feature-card { width: 42%; }
       .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+      
+      .bento-card:nth-child(1), .bento-card:nth-child(2), .bento-card:nth-child(3),
+      .bento-card:nth-child(4), .bento-card:nth-child(5) {
+        grid-column: span 3;
+      }
     }
 
     @media (max-width: 768px) {
@@ -784,6 +855,13 @@
       }
       .feature-image-container.double .img-wrapper {
         max-width: calc(50% - 0.5rem);
+      }
+
+      .bento-grid {
+        grid-template-columns: 1fr;
+      }
+      .bento-card {
+        grid-column: span 1 !important;
       }
 
       .footer-bottom { flex-direction: column; gap: 0.75rem; text-align: center; }
@@ -949,10 +1027,53 @@
       </div>
     </section>
 
+    <!-- BENTO GRID: THE DIFFERENCE -->
+    <section class="reveal-section">
+      <div class="section-header-block">
+        <span class="section-tag">02 // THE DIFFERENCE</span>
+        <h2 class="section-title" data-t="why_different_title">why we're different</h2>
+        <p class="section-subtitle" data-t="why_different_subtitle">authentic connections. no algorithms. no noise.</p>
+      </div>
+      
+      <div class="bento-grid">
+        
+        <div class="bento-card">
+          <div class="bento-icon"><i class="bi bi-shield-check"></i></div>
+          <h3 class="bento-title" data-t="diff_privacy_title">Privacy</h3>
+          <p class="bento-desc" data-t="diff_privacy_desc">No emails or phone numbers. Your keys never leave your device.</p>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-icon"><i class="bi bi-eye"></i></div>
+          <h3 class="bento-title" data-t="diff_transparency_title">Transparency</h3>
+          <p class="bento-desc" data-t="diff_transparency_desc">No hidden algorithms deciding who you see. You are in full control.</p>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-icon"><i class="bi bi-heart"></i></div>
+          <h3 class="bento-title" data-t="diff_honesty_title">Honesty</h3>
+          <p class="bento-desc" data-t="diff_honesty_desc">No fake likes or aggressive monetization. Just real people.</p>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-icon"><i class="bi bi-hash"></i></div>
+          <h3 class="bento-title" data-t="diff_tags_title">Tags</h3>
+          <p class="bento-desc" data-t="diff_tags_desc">Granular search using tags lets you find exactly who you're looking for.</p>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-icon"><i class="bi bi-view-list"></i></div>
+          <h3 class="bento-title" data-t="diff_feed_title">Feed</h3>
+          <p class="bento-desc" data-t="diff_feed_desc">A simple, chronological feed of profiles instead of endless swiping.</p>
+        </div>
+
+      </div>
+    </section>
+
     <!-- BOTTOM CTA SECTION -->
     <section class="reveal-section bottom-cta-section">
       <div class="section-header-block">
-        <span class="section-tag">02 // JOIN NETLAZY</span>
+        <span class="section-tag">03 // JOIN NETLAZY</span>
         <h2 class="section-title" data-t="cta_bottom_title">and if you are ready...</h2>
       </div>
       <p class="bottom-cta-desc" data-t="cta_bottom_desc">Choose your platform, and be cute :^</p>
@@ -1047,6 +1168,18 @@
         feature_3_desc: "Contacts can be public or private. Public contacts are displayed in your profile, while private contacts will only be visible to the specific user, with your consent.",
         feature_4_title: "Three ways to request contacts",
         feature_4_desc: "Next, you can begin choosing a profile. You can send a request for <b>private</b> contacts in three ways:<br>• <b>Share</b> - share a contact unilaterally<br>• <b>Exchange</b> - exchange contacts simultaneously<br>• <b>Demand</b> - ask the user for their contact information without sharing yours",
+        why_different_title: "why we're different",
+        why_different_subtitle: "authentic connections. no algorithms. no noise.",
+        diff_privacy_title: "Privacy",
+        diff_privacy_desc: "No emails or phone numbers. Your keys never leave your device.",
+        diff_transparency_title: "Transparency",
+        diff_transparency_desc: "No hidden algorithms deciding who you see. You are in full control.",
+        diff_honesty_title: "Honesty",
+        diff_honesty_desc: "No fake likes or aggressive monetization. Just real people.",
+        diff_tags_title: "Tags",
+        diff_tags_desc: "Granular search using tags lets you find exactly who you're looking for.",
+        diff_feed_title: "Feed",
+        diff_feed_desc: "A simple, chronological feed of profiles instead of endless swiping.",
         cta_bottom_title: "and if you are ready...",
         cta_bottom_desc: "Choose your platform, and be cute :^",
         copyright: "&copy; 2026 netlazy. Attempting socialisation."
@@ -1065,6 +1198,18 @@
         feature_3_desc: "Контакты могут быть публичными или приватными. Публичные контакты отображаются в вашем профиле, а приватные будут видны только определенному пользователю с вашего согласия.",
         feature_4_title: "Три способа отправить запрос",
         feature_4_desc: "Далее вы можете начать выбирать анкету. Вы можете отправить запрос на <b>приватные</b> контакты тремя способами:<br>• <b>Поделиться</b> — поделиться контактом в одностороннем порядке<br>• <b>Обменяться</b> — обменяться контактами одновременно<br>• <b>Затребовать</b> — попросить пользователя дать контактную информацию, не делясь своей",
+        why_different_title: "почему мы другие",
+        why_different_subtitle: "настоящие связи. никаких алгоритмов. никакого шума.",
+        diff_privacy_title: "Приватность",
+        diff_privacy_desc: "Без почты и номеров телефонов. Ваши ключи никогда не покидают устройство.",
+        diff_transparency_title: "Прозрачность",
+        diff_transparency_desc: "Никаких скрытых алгоритмов, решающих, кого вам показывать. Вы полностью контролируете поиск.",
+        diff_honesty_title: "Честность",
+        diff_honesty_desc: "Никаких фейковых лайков и агрессивной монетизации. Только настоящие люди.",
+        diff_tags_title: "Теги",
+        diff_tags_desc: "Детальный поиск по тегам позволяет найти именно тех, кого вы ищете.",
+        diff_feed_title: "Лента",
+        diff_feed_desc: "Простая хронологическая лента анкет вместо бесконечных свайпов.",
         cta_bottom_title: "и если Вы готовы..",
         cta_bottom_desc: "Выберите удобную платформу, и будьте хорошими :^",
         copyright: "&copy; 2026 netlazy. Пытаемся в социализацию."
@@ -1083,6 +1228,18 @@
         feature_3_desc: "Os contatos podem ser públicos ou privados. Os contatos públicos são exibidos no seu perfil, enquanto os contatos privados só serão visíveis para o usuário específico, com o seu consentimento.",
         feature_4_title: "Três maneiras de solicitar contatos",
         feature_4_desc: "Em seguida, você pode começar a escolher um perfil. Você pode enviar uma solicitação de contatos <b>privados</b> de três maneiras:<br>• <b>Compartilhar</b> - compartilhar um contato unilateralmente<br>• <b>Trocar</b> - trocar contatos simultaneamente<br>• <b>Exigir</b> - pedir as informações de contato do usuário sem compartilhar as suas",
+        why_different_title: "por que somos diferentes",
+        why_different_subtitle: "conexões autênticas. sem algoritmos. sem ruído.",
+        diff_privacy_title: "Privacidade",
+        diff_privacy_desc: "Sem e-mails ou números de telefone. Suas chaves nunca saem do seu dispositivo.",
+        diff_transparency_title: "Transparência",
+        diff_transparency_desc: "Sem algoritmos ocultos decidindo quem você vê. Você tem controle total.",
+        diff_honesty_title: "Honestidade",
+        diff_honesty_desc: "Sem curtidas falsas ou monetização agressiva. Apenas pessoas reais.",
+        diff_tags_title: "Tags",
+        diff_tags_desc: "A pesquisa granular usando tags permite encontrar exatamente quem você procura.",
+        diff_feed_title: "Feed",
+        diff_feed_desc: "Um feed cronológico simples de perfis em vez de deslizar sem fim.",
         cta_bottom_title: "e se você estiver pronto...",
         cta_bottom_desc: "Escolha sua plataforma e seja fofo :^",
         copyright: "&copy; 2026 netlazy. Tentando socializar."
@@ -1101,6 +1258,18 @@
         feature_3_desc: "聯絡方式可以是公開的或私人的。公開的聯絡方式會顯示在您的個人資料中，而私人的聯絡方式只有在您同意的情況下才會向特定使用者顯示。",
         feature_4_title: "三種請求聯絡方式的方法",
         feature_4_desc: "接下來，您可以開始選擇個人資料。您可以透過三種方式傳送對<b>私人</b>聯絡方式的請求：<br>• <b>分享</b> - 單方面分享聯絡方式<br>• <b>交換</b> - 同時交換聯絡方式<br>• <b>要求</b> - 向使用者要求他們的聯絡方式而不分享您的",
+        why_different_title: "我們與眾不同之處",
+        why_different_subtitle: "真實的連結。沒有演算法。沒有噪音。",
+        diff_privacy_title: "隱私",
+        diff_privacy_desc: "無需電子郵件或電話號碼。您的金鑰永遠不會離開您的設備。",
+        diff_transparency_title: "透明度",
+        diff_transparency_desc: "沒有隱藏的演算法決定您能看到誰。完全由您掌控。",
+        diff_honesty_title: "誠實",
+        diff_honesty_desc: "沒有虛假的點讚或侵略性的變現。只有真實的使用者。",
+        diff_tags_title: "標籤",
+        diff_tags_desc: "使用標籤進行精細搜尋，讓您精確找到想找的人。",
+        diff_feed_title: "資訊流",
+        diff_feed_desc: "簡單的按時間排序的個人資料資訊流，取代無盡的滑動。",
         cta_bottom_title: "如果您準備好了...",
         cta_bottom_desc: "選擇合適的平台，要可愛一點哦 :^",
         copyright: "&copy; 2026 netlazy。嘗試社交中。"
@@ -1119,6 +1288,18 @@
         feature_3_desc: "連絡先は公開または非公開にすることができます。公開連絡先はプロフィールに表示され、非公開連絡先はあなたの同意がある場合のみ、特定のユーザーに表示されます。",
         feature_4_title: "連絡先をリクエストする3つの方法",
         feature_4_desc: "次に、プロフィールを選び始めます。<b>非公開</b>の連絡先へのリクエストは3つの方法で送信できます：<br>• <b>シェア</b> - 一方的に連絡先を共有する<br>• <b>交換</b> - 同時に連絡先を交換する<br>• <b>要求</b> - 自分の連絡先を共有せずに相手の連絡先を要求する",
+        why_different_title: "私たちの違い",
+        why_different_subtitle: "本物のつながり。アルゴリズムなし。ノイズなし。",
+        diff_privacy_title: "プライバシー",
+        diff_privacy_desc: "メールアドレスや電話番号は不要。キーはデバイスから出ることはありません。",
+        diff_transparency_title: "透明性",
+        diff_transparency_desc: "誰を表示するかを決める隠されたアルゴリズムはありません。すべてをあなたがコントロールします。",
+        diff_honesty_title: "誠実さ",
+        diff_honesty_desc: "偽の「いいね」や強引な収益化はありません。実在の人々だけです。",
+        diff_tags_title: "タグ",
+        diff_tags_desc: "タグを使った詳細な検索により、探している人を正確に見つけることができます。",
+        diff_feed_title: "フィード",
+        diff_feed_desc: "無限のスワイプの代わりに、シンプルな時系列のプロフィールフィードを提供します。",
         cta_bottom_title: "準備ができたら...",
         cta_bottom_desc: "お好きなプラットフォームを選んで、可愛くしてね :^",
         copyright: "&copy; 2026 netlazy。社会化を試みています。"
@@ -1137,6 +1318,18 @@
         feature_3_desc: "연락처는 공개하거나 비공개할 수 있습니다. 공개 연락처는 프로필에 표시되며, 비공개 연락처는 귀하의 동의 하에 특정 사용자에게만 표시됩니다.",
         feature_4_title: "연락처를 요청하는 세 가지 방법",
         feature_4_desc: "이제 프로필을 선택하기 시작할 수 있습니다. <b>비공개</b> 연락처에 대한 요청을 세 가지 방법으로 보낼 수 있습니다:<br>• <b>공유</b> - 일방적으로 연락처 공유<br>• <b>교환</b> - 동시에 연락처 교환<br>• <b>요구</b> - 자신의 연락처를 공유하지 않고 상대방의 연락처 정보 요청",
+        why_different_title: "우리가 다른 이유",
+        why_different_subtitle: "진정한 연결. 알고리즘 없음. 불필요한 소음 없음.",
+        diff_privacy_title: "프라이버시",
+        diff_privacy_desc: "이메일이나 전화번호가 필요 없습니다. 암호화 키는 절대 기기를 벗어나지 않습니다.",
+        diff_transparency_title: "투명성",
+        diff_transparency_desc: "누구를 볼지 결정하는 숨겨진 알고리즘이 없습니다. 모든 것은 당신이 통제합니다.",
+        diff_honesty_title: "정직함",
+        diff_honesty_desc: "가짜 '좋아요'나 공격적인 수익 창출이 없습니다. 진짜 사람들만 있습니다.",
+        diff_tags_title: "태그",
+        diff_tags_desc: "태그를 활용한 세밀한 검색으로 찾고자 하는 사람을 정확히 찾을 수 있습니다.",
+        diff_feed_title: "피드",
+        diff_feed_desc: "끝없는 스와이프 대신, 간단하고 시간순으로 정렬된 프로필 피드를 제공합니다.",
         cta_bottom_title: "시작할 준비가 되셨다면...",
         cta_bottom_desc: "원하는 플랫폼을 선택하고, 귀여운 행동을 보여주세요 :^",
         copyright: "&copy; 2026 netlazy. 사회화를 시도하는 중."
