@@ -24,6 +24,7 @@ static/
 
 ### Capacitor & Native Mobile Platforms ###
 # android/
+android/app/src/main/ic_launcher-playstore.png
 ios/
 
 ### Mobile Build Output, IDE Caches & Signing Keys ###

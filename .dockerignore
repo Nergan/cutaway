@@ -29,6 +29,7 @@ Dockerfile
 
 ### Capacitor & Native Mobile Platforms ###
 # **/android
+**/netlazy/android/app/src/main/ic_launcher-playstore.png
 **/ios
 
 ### Mobile Build Output, IDE Caches & Signing Keys ###
