@@ -1,0 +1,96 @@
+# ====================================================================
+# Build & Release Artifacts
+# ====================================================================
+.gradle/
+build/
+app/build/
+bin/
+gen/
+out/
+# release/
+
+# Android Specific Build Artifacts
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+output-metadata.json
+
+# ====================================================================
+# Local Configuration & Security (Crucial for CI)
+# ====================================================================
+local.properties
+gradle.properties
+*.jks
+*.keystore
+google-services.json
+
+# ====================================================================
+# IDE & System Files (IntelliJ, Android Studio, macOS)
+# ====================================================================
+.idea/
+*.iml
+.DS_Store
+vcs.xml
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+.navigation/
+
+# Older Android Studio specific IntelliJ subfolders (covered by .idea/ but kept for safety)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+
+# ====================================================================
+# System Logs & Profiling
+# ====================================================================
+*.log
+*.hprof
+captures/
+
+# ====================================================================
+# Native Build Tools (C/C++)
+# ====================================================================
+.externalNativeBuild/
+.cxx/
+
+# ====================================================================
+# Lint Tools
+# ====================================================================
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+# lint/reports/
+proguard/
+
+# ====================================================================
+# Hybrid Frameworks & Plugins (Capacitor, Cordova, Freeline, Fastlane)
+# ====================================================================
+# Capacitor / Cordova
+capacitor-cordova-android-plugins/
+capacitor-cordova-android-plugins/build/
+app/src/main/assets/public/
+app/src/main/assets/capacitor.config.json
+app/src/main/assets/capacitor.plugins.json
+app/src/main/res/xml/config.xml
+
+# Freeline
+freeline.py
+freeline/
+freeline_project_description.json
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/readme.md
