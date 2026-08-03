@@ -1,0 +1,7 @@
+# Exclude Android native assets and build artifacts from Hugging Face
+android/
+.gradle/
+*.apk
+*.jks
+*.keystore
+node_modules/
