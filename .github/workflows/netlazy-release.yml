@@ -108,7 +108,9 @@ jobs:
 
       - name: Build and Sign APK
         working-directory: netlazy/android
-        run: ./gradlew clean assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleRelease
 
       - name: Rename Output & Compute SHA-256
         working-directory: netlazy
