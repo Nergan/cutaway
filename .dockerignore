@@ -1,58 +1,65 @@
+### Docker Specific ###
 .git
 .github
 Dockerfile
 .dockerignore
 
+### logs ###
+**/*.log
+
+### Python ###
 **/__pycache__
 **/*.pyc
 **/*.pyo
 **/*.pyd
 **/.venv
+
+### Netlazy Frontend & Web Builds ###
+**/netlazy/assets
+**/netlazy/node_modules
+**/netlazy/npm-debug.log*
+**/netlazy/dist
+**/.vite
+**/netlazy/static
+**/assets
+**/node_modules
+**/npm-debug.log*
+**/dist
+
+### Capacitor & Native Mobile Platforms ###
+# **/android
+**/ios
+
+### Mobile Build Output, IDE Caches & Signing Keys ###
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.keystore
+**/*.jks
+**/local.properties
+**/.gradle
+**/build
+**/.idea
+**/*.iml
+
+### Testing (pytest & coverage) ###
 **/.pytest_cache
 **/.coverage
 **/htmlcov
 
-**/node_modules
-**/npm-debug.log*
-**/dist
-**/.vite
-**/netlazy/static
-
+### Environment & Secrets ###
 .env
+**/.env
+
+### Deployment ###
 vercel.json
 
+### Project Management & Documentation ###
 context.md
 roadmap.txt
 kanban.json
 plan.md
 
+### Tooling (Repomix) ###
 repomix.config.json
 code.md
-
-# Logs
-**/*.log
-
-# Capacitor & Native Mobile Platforms
-**/android
-**/ios
-
-# Mobile Build Outputs & Local Gradle Caches
-**/*.apk
-**/*.aab
-**/*.ipa
-**/.gradle
-**/build
-
-# Security Keys & Local Configurations
-**/*.keystore
-**/*.jks
-**/local.properties
-
-# IDE Caches & Project Files
-**/.idea
-**/*.iml
-
-# Windows build commands & potentially local assets
-**/netlazy/build.cmd
-**/assets
-**/netlazy/assets

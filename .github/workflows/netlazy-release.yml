@@ -1,0 +1,178 @@
+name: netlazy APK Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'netlazy/**'
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Manual version override (e.g. 0.0.15)'
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: netlazy-release
+    permissions:
+      contents: write # Needed for GitHub Releases
+    
+    steps:
+      - name: Checkout cutaway monorepo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed to fetch all tags for version resolution
+
+      - name: Resolve Version
+        id: version
+        working-directory: netlazy
+        run: |
+          # Find highest netlazy-v* tag
+          LATEST_TAG=$(git tag -l "netlazy-v*" | sort -V | tail -n 1 || true)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_VERSION="0.0.0"
+          else
+            LATEST_VERSION=${LATEST_TAG#netlazy-v}
+          fi
+
+          if [ -n "${{ inputs.version_override }}" ]; then
+            VERSION="${{ inputs.version_override }}"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+            # Default to 0 if parsing fails
+            MAJOR=${MAJOR:-0}
+            MINOR=${MINOR:-0}
+            PATCH=${PATCH:-0}
+            VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+
+          # Derive versionCode: major * 1000000 + minor * 1000 + patch
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
+
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "Resolved Version: $VERSION (Code: $VERSION_CODE)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: netlazy/package-lock.json
+
+      - name: Build Web Assets
+        working-directory: netlazy
+        run: |
+          npm ci
+          # VITE_APP_VERSION is automatically exposed to import.meta.env in the Vue app
+          VITE_APP_VERSION=${{ env.APP_VERSION }} npm run build:mobile
+
+      - name: Sync Native Project
+        working-directory: netlazy
+        run: npx cap sync android
+
+      - name: Set Native Version Fields
+        working-directory: netlazy/android/app
+        run: |
+          # Replace hardcoded base versions with resolved CI versions
+          sed -i "s/versionCode 1/versionCode ${{ env.APP_VERSION_CODE }}/g" build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"${{ env.APP_VERSION }}\"/g" build.gradle
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Keystore
+        working-directory: netlazy/android
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+          
+          # Write parameters directly to a gitignored local properties file for the build
+          cat << EOF > gradle.properties
+          RELEASE_STORE_FILE=../keystore.jks
+          RELEASE_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS=${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Build and Sign APK
+        working-directory: netlazy/android
+        run: ./gradlew clean assembleRelease
+
+      - name: Rename Output & Compute SHA-256
+        working-directory: netlazy
+        id: apk_prep
+        run: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          NEW_APK_NAME="netlazy-${{ env.APP_VERSION }}.apk"
+          
+          mv "$APK_PATH" "$NEW_APK_NAME"
+          SHA256=$(sha256sum "$NEW_APK_NAME" | awk '{ print $1 }')
+          
+          echo "APK_FILE=$NEW_APK_NAME" >> $GITHUB_ENV
+          echo "APK_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "SHA256: $SHA256"
+
+      - name: Checkout media repo
+        uses: actions/checkout@v4
+        with:
+          repository: Nergan/media
+          token: ${{ secrets.MEDIA_REPO_PAT }}
+          path: media-repo
+
+      - name: Publish to CDN repo
+        working-directory: media-repo
+        run: |
+          mkdir -p netlazy/apk
+          
+          # Remove previous APK to keep working tree bounded
+          rm -f netlazy/apk/*.apk
+          # Copy newly built APK
+          cp ../netlazy/${{ env.APK_FILE }} netlazy/apk/
+          
+          # Safely update version.json
+          cat << EOF > netlazy/version.json
+          {
+            "version": "${{ env.APP_VERSION }}",
+            "versionCode": ${{ env.APP_VERSION_CODE }},
+            "url": "https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/${{ env.APK_FILE }}",
+            "release_notes": "Automated pipeline release.",
+            "sha256": "${{ env.APK_SHA256 }}"
+          }
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Track the replaced APK & version file
+          git add -u netlazy/apk/
+          git add netlazy/apk/${{ env.APK_FILE }} netlazy/version.json
+          
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "chore(netlazy): release v${{ env.APP_VERSION }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: netlazy-v${{ env.APP_VERSION }}
+          name: netlazy v${{ env.APP_VERSION }}
+          body: |
+            **netlazy v${{ env.APP_VERSION }}**
+            
+            SHA-256 Checksum: \`${{ env.APK_SHA256 }}\`
+          files: netlazy/${{ env.APK_FILE }}

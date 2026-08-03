@@ -200,6 +200,11 @@
                    </div>
                  </div>
 
+                 <!-- In-App Version Label (Injected by CI) -->
+                 <div style="margin-top: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-family: monospace;">
+                    netlazy v{{ CURRENT_VERSION }}
+                 </div>
+
               </div>
             </KeepAlive>
           </transition>
@@ -409,7 +414,7 @@ function handleGlobalTouchCancel() {
 }
 
 // CAPACITOR AUTO-UPDATE MECHANISM
-const CURRENT_VERSION = "0.0.8";
+const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION || "0.0.1";
 
 function isNewerVersion(oldVer, newVer) {
   const oldParts = oldVer.split('.').map(Number);
