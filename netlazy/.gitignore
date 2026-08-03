@@ -23,7 +23,7 @@ dist/
 static/
 
 ### Capacitor & Native Mobile Platforms ###
-android/
+# android/
 ios/
 
 ### Mobile Build Output, IDE Caches & Signing Keys ###
