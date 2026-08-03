@@ -99,8 +99,11 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
           
-          # APPEND to gradle.properties instead of overwriting to preserve android.useAndroidX=true
-          cat << EOF >> gradle.properties
+          # Explicitly create gradle.properties with AndroidX flags included
+          cat << EOF > gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
           
           # CI Signing Configuration
           RELEASE_STORE_FILE=../keystore.jks
