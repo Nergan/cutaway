@@ -915,7 +915,7 @@
             <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
           </a>
           <!-- Dynamically Updated via JS version fetch -->
-          <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.13.apk" class="btn apk-dl-link">
+          <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-latest.apk" class="btn apk-dl-link">
             <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
           </a>
         </div>
@@ -1085,7 +1085,7 @@
         <a href="https://t.me/netlazy_bot/netlazy" class="btn" target="_blank" rel="noopener noreferrer">
           <i class="bi bi-telegram"></i> <span data-t="telegram_bot">telegram miniapp</span>
         </a>
-        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.13.apk" class="btn apk-dl-link">
+        <a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-latest.apk" class="btn apk-dl-link">
           <i class="bi bi-android2"></i> <span data-t="download_apk">android apk</span>
         </a>
       </div>
@@ -1103,7 +1103,7 @@
           <ul class="footer-links">
             <li><a href="./netlazy">Web Client</a></li>
             <li><a href="https://t.me/netlazy_bot/netlazy" target="_blank" rel="noopener">Telegram MiniApp</a></li>
-            <li><a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-0.0.13.apk" class="apk-dl-link">Android APK</a></li>
+            <li><a href="https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/netlazy-latest.apk" class="apk-dl-link">Android APK</a></li>
           </ul>
         </div>
         <div>
@@ -1447,10 +1447,10 @@
       }
     }, { passive: true });
 
-    // AUTOMATIC VERSIONING UPDATE
+    // AUTOMATIC VERSIONING UPDATE (FETCH DIRECTLY FROM RAW GITHUB TO BYPASS CDN DELAY)
     async function updateApkLinks() {
       try {
-        const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
+        const res = await fetch("https://raw.githubusercontent.com/Nergan/media/main/netlazy/version.json?t=" + Date.now());
         if (res.ok) {
           const data = await res.json();
           if (data && data.url) {
@@ -1463,6 +1463,9 @@
         console.warn("Failed to fetch latest APK version", e);
       }
     }
+
+    // Run version fetch immediately to update links as fast as possible
+    updateApkLinks();
 
     document.addEventListener("DOMContentLoaded", () => {
       document.documentElement.classList.remove('light-theme-applied');
