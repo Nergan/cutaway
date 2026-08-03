@@ -15,6 +15,7 @@ Dockerfile
 **/.venv
 
 ### Netlazy Frontend & Web Builds ###
+**/netlazy/build.cmd
 **/netlazy/assets
 **/netlazy/node_modules
 **/netlazy/npm-debug.log*
