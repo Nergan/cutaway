@@ -10,21 +10,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1 # Depth 1 is faster since we wipe history anyway
+          fetch-depth: 1 
           lfs: false
 
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Remove the entire Android native build folder
-          # HF does not need it to run Python, and it prevents binary file rejections
           rm -rf netlazy/android
-          
-          # 2. Wipe the GitHub commit history completely
           rm -rf .git
           
-          # 3. Initialize a fresh, flat Git repository
           git init
           git checkout -b main
           git add .
@@ -32,5 +27,19 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "Automated sync from GitHub"
           
-          # 4. Force push the single clean commit to Hugging Face
-          git push https://Nergan:$HF_TOKEN@huggingface.co/spaces/Nargan/projects main --force
+          # Retry loop to handle Hugging Face 429 (Too Many Requests) errors
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i to push to Hugging Face..."
+            if git push https://Nergan:$HF_TOKEN@huggingface.co/spaces/Nargan/projects main --force; then
+              echo "Push successful!"
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Push failed. Waiting 60 seconds before retrying..."
+              sleep 60
+            fi
+          done
+          
+          echo "Failed to push after $MAX_RETRIES attempts."
+          exit 1
