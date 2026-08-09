@@ -20,17 +20,35 @@
         </transition>
       </div>
       
-      <div class="tag-scroll-area" @wheel="handleWheel">
-        <span class="chip" 
-              v-for="tag in sortedSearchTags" 
-              :key="tag.name" 
-              :class="getTempTagState(tag)" 
-              @mouseenter="openTagMenu($event, tag)"
-              @mouseleave="closeTagMenu"
-              @click.stop="openTagMenu($event, tag)"
-              style="cursor: default;">
-          {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
-        </span>
+      <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">
+        <div class="marquee-content" :class="{ 'is-marquee': !hasActiveFilters }">
+            <span v-if="hasActiveFilters" class="chip tag-reset-btn" @click.stop="resetFilters">
+                <i class="bi bi-x"></i>
+            </span>
+            
+            <span class="chip" 
+                  v-for="tag in sortedSearchTags" 
+                  :key="tag.name" 
+                  :class="getTempTagState(tag)" 
+                  @mouseenter="openTagMenu($event, tag)"
+                  @mouseleave="closeTagMenu"
+                  @click.stop="openTagMenu($event, tag)"
+                  style="cursor: default;">
+              {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+            </span>
+
+            <template v-if="!hasActiveFilters">
+                <span class="chip" 
+                      v-for="tag in sortedSearchTags" 
+                      :key="'dup-'+tag.name" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
+                      style="cursor: default;">
+                  {{ store.getLocalizedTag(tag.name) }}
+                </span>
+            </template>
+        </div>
       </div>
     </div>
 
@@ -44,25 +62,45 @@
                position: 'fixed',
                display: 'flex',
                gap: '0.4rem',
-               padding: '0.4rem',
+               padding: '0.6rem 0.8rem',
                flexDirection: 'row',
                transform: tagMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
              }"
              @mouseleave="closeTagMenu"
              @mouseenter="keepTagMenu"
              @click.stop>
-            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'require' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'require' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('require')">
-                <i class="bi bi-plus-lg"></i>
-            </button>
-            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'exclude' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'exclude' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('exclude')">
-                <i class="bi bi-dash-lg"></i>
-            </button>
-            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'bonus' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'bonus' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('bonus')">
-                <i class="bi bi-chevron-up"></i>
-            </button>
-            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'abonus' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'abonus' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('abonus')">
-                <i class="bi bi-chevron-down"></i>
-            </button>
+            <div class="filter-col">
+                <button class="footer-action icon-btn tag-filter-btn" 
+                        :style="{ background: tagMenu.tag.pendingState === 'require' ? 'rgba(141, 169, 112, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'require' ? 'var(--accent-moss)' : 'var(--text-muted)' }" 
+                        @click="setTagFilter('require')">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
+            </div>
+            <div class="filter-col">
+                <button class="footer-action icon-btn tag-filter-btn" 
+                        :style="{ background: tagMenu.tag.pendingState === 'exclude' ? 'rgba(189, 106, 94, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'exclude' ? 'var(--accent-danger)' : 'var(--text-muted)' }" 
+                        @click="setTagFilter('exclude')">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
+            </div>
+            <div class="filter-col">
+                <button class="footer-action icon-btn tag-filter-btn" 
+                        :style="{ background: tagMenu.tag.pendingState === 'bonus' ? 'rgba(110, 157, 174, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'bonus' ? 'var(--accent-info)' : 'var(--text-muted)' }" 
+                        @click="setTagFilter('bonus')">
+                    <i class="bi bi-chevron-up"></i>
+                </button>
+                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
+            </div>
+            <div class="filter-col">
+                <button class="footer-action icon-btn tag-filter-btn" 
+                        :style="{ background: tagMenu.tag.pendingState === 'abonus' ? 'rgba(199, 179, 138, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'abonus' ? 'var(--accent-earth)' : 'var(--text-muted)' }" 
+                        @click="setTagFilter('abonus')">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
+            </div>
         </div>
       </transition>
     </Teleport>
@@ -225,6 +263,11 @@ async function openTagMenu(e, tag) {
     if (tagMenuTimeout) {
         clearTimeout(tagMenuTimeout);
         tagMenuTimeout = null;
+    }
+    
+    // Fix: Check if already interacting with the exact same tag menu
+    if (tagMenu.value.visible && tagMenu.value.tag === tag) {
+        return;
     }
     
     if (tagMenu.value.visible && tagMenu.value.tag && tagMenu.value.tag !== tag) {
@@ -457,6 +500,20 @@ function setupObserver() {
   if (bottomEl) observer.observe(bottomEl)
 }
 
+function handleTagScroll(e) {
+    const el = e.currentTarget;
+    if (!el) return;
+    const atStart = el.scrollLeft <= 10;
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 10;
+    
+    const leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
+    const rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
+    
+    const mask = `linear-gradient(to right, ${leftFade}, ${rightFade})`;
+    el.style.webkitMaskImage = mask;
+    el.style.maskImage = mask;
+}
+
 onMounted(() => {
   lastFilterString = activeFiltersString.value;
   if (store.state.feed.length === 0) {
@@ -466,6 +523,9 @@ onMounted(() => {
   document.addEventListener('click', closeAllMenus)
   document.addEventListener('click', handleGlobalClickForTagMenu)
   window.addEventListener('resize', handleResize)
+  
+  const area = document.querySelector('.tag-scroll-area');
+  if (area) handleTagScroll({ currentTarget: area });
 })
 
 onUnmounted(() => {

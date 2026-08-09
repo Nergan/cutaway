@@ -25,10 +25,8 @@
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
         </button>
-        <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click.stop="openLangMenu">
-          <transition name="fade" mode="out-in">
-            <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-          </transition>
+        <button class="footer-action lang-btn icon-btn" @click.stop="toggleLangMenu">
+          <i class="bi bi-translate"></i>
         </button>
       </div>
 
@@ -51,10 +49,8 @@
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
         </button>
-        <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click.stop="openLangMenu">
-          <transition name="fade" mode="out-in">
-            <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-          </transition>
+        <button class="footer-action lang-btn icon-btn" @click.stop="toggleLangMenu">
+          <i class="bi bi-translate"></i>
         </button>
       </div>
 
@@ -113,10 +109,8 @@
                   <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                 </transition>
               </button>
-              <button class="footer-action lang-btn" @click.stop="openLangMenu" :title="store.t('lang')">
-                <transition name="fade" mode="out-in">
-                  <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-                </transition>
+              <button class="footer-action lang-btn icon-btn" @click.stop="toggleLangMenu" :title="store.t('lang')">
+                <i class="bi bi-translate"></i>
               </button>
             </div>
             
@@ -163,10 +157,8 @@
                            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                          </transition>
                        </button>
-                       <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click.stop="openLangMenu">
-                         <transition name="fade" mode="out-in">
-                           <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
-                         </transition>
+                       <button class="footer-action lang-btn icon-btn" @click.stop="toggleLangMenu">
+                         <i class="bi bi-translate"></i>
                        </button>
                    </div>
                  </div>
@@ -202,13 +194,13 @@
                    </button>
 
                    <div class="glass-option" @click="store.state.isUserFriendlyInterface = !store.state.isUserFriendlyInterface" style="padding: 0.5rem 0; width: max-content;">
-                     <i class="bi bi-emoji-smile" style="margin-right: 0.5rem; color: var(--text-muted);"></i>
+                     <i class="bi bi-flower3 uf-icon" style="margin-right: 0.5rem; color: var(--text-muted); transition: color 0.2s;"></i>
                      <span class="animated-underline">{{ store.t('userfriendly_interface') }}</span>
                      <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
                  </div>
 
-                 <!-- In-App Version Label (Injected by CI) -->
+                 <!-- In-App Version Label (Injected by CI, Mobile Only) -->
                  <div v-if="Capacitor.isNativePlatform()" style="margin-top: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-family: monospace;">
                     netlazy v{{ CURRENT_VERSION }}
                  </div>
@@ -363,16 +355,19 @@ const availableLangs = [
     { code: 'ko', name: 'korean' }
 ];
 
-function openLangMenu(e) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const isBelow = rect.top < window.innerHeight / 2; 
-    
-    langMenu.value = {
-        open: true,
-        x: rect.left + rect.width / 2,
-        y: isBelow ? rect.bottom : rect.top,
-        isBelow
-    };
+function toggleLangMenu(e) {
+    if (langMenu.value.open) {
+        langMenu.value.open = false;
+    } else {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const isBelow = rect.top < window.innerHeight / 2; 
+        langMenu.value = {
+            open: true,
+            x: rect.left + rect.width / 2,
+            y: isBelow ? rect.bottom : rect.top,
+            isBelow
+        };
+    }
 }
 
 function selectLang(code) {

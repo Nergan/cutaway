@@ -1,3 +1,5 @@
+# 3. frontend/css/components.css
+
 /* INPUTS */
 .seamless-input { 
   width: 100%; 
@@ -88,7 +90,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
   transform: scale(0.9);
 }
 
-/* TAG CHIPS */
+/* TAG CHIPS & MARQUEE */
 .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; position: relative; }
 .chip { font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: var(--radius-pill); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted); }
 .chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
@@ -96,6 +98,41 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); border-color: rgba(199, 179, 138, 0.3); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
+
+/* Tag Reset Button */
+.tag-reset-btn {
+  background: rgba(189, 106, 94, 0.1);
+  color: var(--accent-danger);
+  border-color: rgba(189, 106, 94, 0.3);
+  padding: 0.25rem 0.6rem;
+}
+.tag-reset-btn i {
+  font-size: 1rem;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+}
+.tag-reset-btn:hover i {
+  transform: rotate(90deg);
+}
+
+/* Marquee Scroll Layout */
+.marquee-content {
+  display: inline-flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+  width: max-content;
+}
+.marquee-content.is-marquee {
+  animation: marquee-scroll 45s linear infinite;
+}
+.tag-scroll-area:hover .marquee-content.is-marquee,
+.tag-scroll-area:active .marquee-content.is-marquee {
+  animation-play-state: paused;
+}
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 0.25rem)); }
+}
 
 /* Subtle Tactile Animation for Tag Selection */
 @keyframes tagSelectPulse {
@@ -203,6 +240,41 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   background: rgba(249, 246, 239, 0.85) !important;
   border: none !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Ultra-Blurred Interactive Floating Menus */
+.tag-filter-menu, .lang-dropdown {
+  background: rgba(20, 20, 20, 0.1) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+.light-theme .tag-filter-menu, .light-theme .lang-dropdown {
+  background: rgba(250, 250, 250, 0.2) !important;
+}
+
+/* Tag Selection Inner Items */
+.filter-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem;
+}
+.tag-filter-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+  padding: 0 !important;
+}
+.filter-label {
+  font-size: 0.65rem;
+  font-weight: 500;
 }
 
 .glass-contacts-list {
@@ -326,6 +398,7 @@ body.light-theme .floating-tooltip {
   .contact-action:hover { color: var(--text-main); }
   .section-header:hover { color: var(--text-main); }
   .glass-option:hover { color: var(--accent-moss) !important; }
+  .glass-option:hover .uf-icon { color: var(--accent-moss) !important; }
   
   .glass-option:hover > .animated-underline::after,
   .glass-option.highlighted-option > .animated-underline::after,
