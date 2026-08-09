@@ -1,5 +1,3 @@
-# 1. frontend/src/App.vue
-
 <template>
   <div id="app-container">
     
@@ -194,7 +192,7 @@
                    </button>
 
                    <div class="glass-option" @click="store.state.isUserFriendlyInterface = !store.state.isUserFriendlyInterface" style="padding: 0.5rem 0; width: max-content;">
-                     <i class="bi bi-flower3 uf-icon" style="margin-right: 0.5rem; color: var(--text-muted); transition: color 0.2s;"></i>
+                     <i class="bi bi-flower3 uf-icon" style="margin-right: 0.5rem; transition: color 0.2s;"></i>
                      <span class="animated-underline">{{ store.t('userfriendly_interface') }}</span>
                      <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>

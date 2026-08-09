@@ -9,7 +9,7 @@ import { Capacitor } from '@capacitor/core';
 const STORAGE_KEY = 'netlazy_state';
 
 const defaultState = {
-    isInitialized: false, // Prevents layout pop-in on cold boots
+    isInitialized: false,
     isRegistered: false,
     isBanned: false,
     authErrorNotified: false,
@@ -87,6 +87,7 @@ export function useStore() {
                 if (state.currentView !== 'editor') {
                     fetchMyProfile(true);
                 }
+                fetchTags(); // Silently sync tags to catch new additions from admins
             }
         }, 10000);
     }
@@ -111,8 +112,6 @@ export function useStore() {
                 applyPendingUrlTags();
             }
         }
-
-        // Clean up direct visits to nested/invalid URLs like /profile/config back to canonical /profile
         syncViewToUrl(true);
     }
 
@@ -124,7 +123,6 @@ export function useStore() {
         const segments = window.location.pathname.split('/');
         if (segments[segments.length - 1] === '') segments.pop();
         
-        // Remove trailing view path segments if present
         while (segments.length > 0 && ['search', 'profile', 'inbox', 'privacy', 'config'].includes(segments[segments.length - 1])) {
             segments.pop();
         }
@@ -487,13 +485,19 @@ export function useStore() {
     async function fetchTags() {
         try {
             const res = await api.get('/tags/search');
-            state.availableSearchTags = res.data.map(t => ({ 
-                name: t.name, 
-                aliases: t.aliases || [], 
-                hidden: t.hidden, 
-                state: 'neutral',
-                i18n: t.i18n || {}
-            }));
+            // Safely map incoming tags while retaining local interactive states (prevents tag reset bug)
+            const oldTags = state.availableSearchTags;
+            state.availableSearchTags = res.data.map(t => {
+                const oldT = oldTags.find(ot => ot.name === t.name);
+                return { 
+                    name: t.name, 
+                    aliases: t.aliases || [], 
+                    hidden: t.hidden, 
+                    state: oldT ? oldT.state : 'neutral',
+                    pendingState: oldT ? oldT.pendingState : undefined,
+                    i18n: t.i18n || {}
+                };
+            });
             applyPendingUrlTags();
         } catch (e) {}
     }

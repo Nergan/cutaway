@@ -1,5 +1,3 @@
-# 3. frontend/css/components.css
-
 /* INPUTS */
 .seamless-input { 
   width: 100%; 
@@ -110,6 +108,8 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
   font-size: 1rem;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-block;
+  margin: 0;
+  line-height: 1;
 }
 .tag-reset-btn:hover i {
   transform: rotate(90deg);
@@ -123,11 +123,12 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
   width: max-content;
 }
 .marquee-content.is-marquee {
-  animation: marquee-scroll 45s linear infinite;
+  animation: marquee-scroll 120s linear infinite; /* Slower */
 }
+.marquee-content.is-marquee.is-paused,
 .tag-scroll-area:hover .marquee-content.is-marquee,
 .tag-scroll-area:active .marquee-content.is-marquee {
-  animation-play-state: paused;
+  animation-play-state: paused !important;
 }
 @keyframes marquee-scroll {
   0% { transform: translateX(0); }
@@ -244,14 +245,14 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 /* Ultra-Blurred Interactive Floating Menus */
 .tag-filter-menu, .lang-dropdown {
-  background: rgba(20, 20, 20, 0.1) !important;
+  background: transparent !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
   box-shadow: none !important;
 }
-.light-theme .tag-filter-menu, .light-theme .lang-dropdown {
-  background: rgba(250, 250, 250, 0.2) !important;
+body.light-theme .tag-filter-menu, body.light-theme .lang-dropdown {
+  background: transparent !important;
 }
 
 /* Tag Selection Inner Items */
@@ -259,19 +260,43 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
   padding: 0.2rem;
 }
 .tag-filter-btn {
   width: 36px !important;
   height: 36px !important;
-  border-radius: 50% !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--border-subtle) !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s, background-color 0.2s, border-color 0.2s, color 0.2s;
   padding: 0 !important;
+  margin: 0 !important;
 }
+.tag-filter-btn:hover {
+  transform: scale(1.15);
+  filter: brightness(1.2);
+}
+.tag-filter-btn i {
+  margin: 0;
+  line-height: 1;
+}
+
+/* Dynamic Active States matching tags */
+.filter-require { color: var(--accent-moss) !important; }
+.filter-require.active { background: rgba(141, 169, 112, 0.15) !important; border-color: rgba(141, 169, 112, 0.3) !important; }
+
+.filter-exclude { color: var(--accent-danger) !important; }
+.filter-exclude.active { background: rgba(189, 106, 94, 0.15) !important; border-color: rgba(189, 106, 94, 0.3) !important; }
+
+.filter-bonus { color: var(--accent-info) !important; }
+.filter-bonus.active { background: rgba(110, 157, 174, 0.15) !important; border-color: rgba(110, 157, 174, 0.3) !important; }
+
+.filter-abonus { color: var(--accent-earth) !important; }
+.filter-abonus.active { background: rgba(199, 179, 138, 0.15) !important; border-color: rgba(199, 179, 138, 0.3) !important; }
+
 .filter-label {
   font-size: 0.65rem;
   font-weight: 500;
@@ -339,15 +364,6 @@ body.light-theme .floating-tooltip {
   content: ''; 
   position: absolute; 
   width: 0; 
-  /* 
-   * FIX FOR INCONSISTENT UNDERLINE THICKNESS:
-   * The varying thickness across the site was caused by sub-pixel rendering. 
-   * When an element sits on a fractional Y-coordinate (due to flexbox centering, line-heights, or display scaling), 
-   * a `height: 1px` block gets anti-aliased across 2 physical pixels, making it look thicker and blurrier.
-   * To make all underlines exactly the same size, we replace `height` and `background-color` 
-   * with `border-bottom: 1px solid currentColor`. Browsers natively pixel-snap borders, 
-   * guaranteeing a perfectly crisp 1px line regardless of sub-pixel positioning.
-   */
   border-bottom: 1px solid currentColor; 
   bottom: 0; 
   left: 0; 
@@ -617,4 +633,13 @@ body.uf-mode .seamless-input {
   background: rgba(128, 128, 128, 0.05);
   padding: 0.8rem 1.25rem;
   border-radius: var(--radius-md);
+}
+
+/* Fix for search bar looking like a box in uf-mode */
+body.uf-mode .search-header-input {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }

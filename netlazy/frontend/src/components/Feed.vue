@@ -1,5 +1,3 @@
-# 2. frontend/src/components/Feed.vue
-
 <template>
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header blurred-header">
@@ -21,7 +19,7 @@
       </div>
       
       <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">
-        <div class="marquee-content" :class="{ 'is-marquee': !hasActiveFilters }">
+        <div class="marquee-content" :class="{ 'is-marquee': !hasActiveFilters, 'is-paused': tagMenu.visible }">
             <span v-if="hasActiveFilters" class="chip tag-reset-btn" @click.stop="resetFilters">
                 <i class="bi bi-x"></i>
             </span>
@@ -70,32 +68,32 @@
              @mouseenter="keepTagMenu"
              @click.stop>
             <div class="filter-col">
-                <button class="footer-action icon-btn tag-filter-btn" 
-                        :style="{ background: tagMenu.tag.pendingState === 'require' ? 'rgba(141, 169, 112, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'require' ? 'var(--accent-moss)' : 'var(--text-muted)' }" 
+                <button class="footer-action tag-filter-btn filter-require" 
+                        :class="{ 'active': tagMenu.tag.pendingState === 'require' }"
                         @click="setTagFilter('require')">
                     <i class="bi bi-plus-lg"></i>
                 </button>
                 <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
             </div>
             <div class="filter-col">
-                <button class="footer-action icon-btn tag-filter-btn" 
-                        :style="{ background: tagMenu.tag.pendingState === 'exclude' ? 'rgba(189, 106, 94, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'exclude' ? 'var(--accent-danger)' : 'var(--text-muted)' }" 
+                <button class="footer-action tag-filter-btn filter-exclude" 
+                        :class="{ 'active': tagMenu.tag.pendingState === 'exclude' }"
                         @click="setTagFilter('exclude')">
                     <i class="bi bi-dash-lg"></i>
                 </button>
                 <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
             </div>
             <div class="filter-col">
-                <button class="footer-action icon-btn tag-filter-btn" 
-                        :style="{ background: tagMenu.tag.pendingState === 'bonus' ? 'rgba(110, 157, 174, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'bonus' ? 'var(--accent-info)' : 'var(--text-muted)' }" 
+                <button class="footer-action tag-filter-btn filter-bonus" 
+                        :class="{ 'active': tagMenu.tag.pendingState === 'bonus' }"
                         @click="setTagFilter('bonus')">
                     <i class="bi bi-chevron-up"></i>
                 </button>
                 <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
             </div>
             <div class="filter-col">
-                <button class="footer-action icon-btn tag-filter-btn" 
-                        :style="{ background: tagMenu.tag.pendingState === 'abonus' ? 'rgba(199, 179, 138, 0.25)' : 'transparent', color: tagMenu.tag.pendingState === 'abonus' ? 'var(--accent-earth)' : 'var(--text-muted)' }" 
+                <button class="footer-action tag-filter-btn filter-abonus" 
+                        :class="{ 'active': tagMenu.tag.pendingState === 'abonus' }"
                         @click="setTagFilter('abonus')">
                     <i class="bi bi-chevron-down"></i>
                 </button>
@@ -265,7 +263,6 @@ async function openTagMenu(e, tag) {
         tagMenuTimeout = null;
     }
     
-    // Fix: Check if already interacting with the exact same tag menu
     if (tagMenu.value.visible && tagMenu.value.tag === tag) {
         return;
     }
@@ -501,18 +498,33 @@ function setupObserver() {
 }
 
 function handleTagScroll(e) {
-    const el = e.currentTarget;
+    const el = e.currentTarget || document.querySelector('.tag-scroll-area');
     if (!el) return;
-    const atStart = el.scrollLeft <= 10;
-    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 10;
     
-    const leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
-    const rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
-    
+    const isMarquee = !hasActiveFilters.value; 
+    let leftFade, rightFade;
+
+    if (isMarquee) {
+        leftFade = 'transparent 0%, black 10%';
+        rightFade = 'black 90%, transparent 100%';
+    } else {
+        const atStart = el.scrollLeft <= 10;
+        const atEnd = Math.ceil(el.scrollLeft) >= el.scrollWidth - el.clientWidth - 10;
+        leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
+        rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
+    }
+
     const mask = `linear-gradient(to right, ${leftFade}, ${rightFade})`;
     el.style.webkitMaskImage = mask;
     el.style.maskImage = mask;
 }
+
+watch(hasActiveFilters, () => {
+    nextTick(() => {
+        const area = document.querySelector('.tag-scroll-area');
+        if (area) handleTagScroll({ currentTarget: area });
+    });
+});
 
 onMounted(() => {
   lastFilterString = activeFiltersString.value;
