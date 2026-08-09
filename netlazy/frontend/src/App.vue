@@ -1,3 +1,5 @@
+# 1. frontend/src/App.vue
+
 <template>
   <div id="app-container">
     
@@ -23,7 +25,7 @@
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
         </button>
-        <button class="footer-action" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+        <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click.stop="openLangMenu">
           <transition name="fade" mode="out-in">
             <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
           </transition>
@@ -49,7 +51,7 @@
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
         </button>
-        <button class="footer-action" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click="store.cycleLang">
+        <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; justify-content: center; display: inline-flex;" @click.stop="openLangMenu">
           <transition name="fade" mode="out-in">
             <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
           </transition>
@@ -111,7 +113,7 @@
                   <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                 </transition>
               </button>
-              <button class="footer-action lang-btn" @click="store.cycleLang" :title="store.t('lang')">
+              <button class="footer-action lang-btn" @click.stop="openLangMenu" :title="store.t('lang')">
                 <transition name="fade" mode="out-in">
                   <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
                 </transition>
@@ -161,7 +163,7 @@
                            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                          </transition>
                        </button>
-                       <button class="footer-action" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click="store.cycleLang">
+                       <button class="footer-action lang-btn" style="font-weight: bold; text-transform: lowercase; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" @click.stop="openLangMenu">
                          <transition name="fade" mode="out-in">
                            <span :key="store.state.lang">{{ store.state.lang.toLowerCase() }}</span>
                          </transition>
@@ -194,14 +196,20 @@
                    <h3 v-if="store.state.isUserFriendlyInterface" style="font-size: 1.1rem; color: var(--text-main); font-weight: 600; margin-bottom: 1rem;">
                      {{ store.t('uf_settings') }}
                    </h3>
+
+                   <button v-if="Capacitor.isNativePlatform() && updateAvailable" class="footer-action" style="color: var(--accent-moss); margin-bottom: 1rem; width: max-content; display: flex; align-items: center;" @click="doUpdate">
+                      <i class="bi bi-cloud-download" style="margin-right: 0.5rem;"></i> <span class="animated-underline">{{ store.t('update_app') || 'update app' }}</span>
+                   </button>
+
                    <div class="glass-option" @click="store.state.isUserFriendlyInterface = !store.state.isUserFriendlyInterface" style="padding: 0.5rem 0; width: max-content;">
+                     <i class="bi bi-emoji-smile" style="margin-right: 0.5rem; color: var(--text-muted);"></i>
                      <span class="animated-underline">{{ store.t('userfriendly_interface') }}</span>
                      <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
                  </div>
 
                  <!-- In-App Version Label (Injected by CI) -->
-                 <div style="margin-top: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-family: monospace;">
+                 <div v-if="Capacitor.isNativePlatform()" style="margin-top: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-family: monospace;">
                     netlazy v{{ CURRENT_VERSION }}
                  </div>
 
@@ -286,6 +294,24 @@
       </div>
     </transition>
 
+    <Teleport to="body">
+      <transition name="dropdown-fade">
+        <div v-if="langMenu.open" 
+             class="glass-menu lang-dropdown" 
+             :style="{
+               position: 'fixed',
+               left: langMenu.x + 'px',
+               top: langMenu.y + 'px',
+               transform: langMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
+             }"
+             @click.stop>
+             <div class="glass-option" v-for="l in availableLangs" :key="l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
+                 <span class="animated-underline">{{ l.name }}</span>
+             </div>
+        </div>
+      </transition>
+    </Teleport>
+
     <!-- Invisible Global Hardware Decoder for Media Obfuscation -->
     <svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
       <filter id="channel-restore">
@@ -320,12 +346,69 @@ const ptrOffset = ref(-60)
 const ptrRotation = ref(0)
 const isPtrRefreshing = ref(false)
 
+const SECTIONS = ['feed', 'editor', 'inbox', 'vault'];
+
 let touchStartPos = { x: 0, y: 0 };
 let touchCurrentPos = { x: 0, y: 0 };
 let canPullToRefresh = false;
 
-// Walks up the DOM tree from the touched element and verifies 
-// that ALL scrollable parent containers above target are at scrollTop <= 2.
+// Language Menu Logic
+const langMenu = ref({ open: false, x: 0, y: 0, isBelow: false });
+const availableLangs = [
+    { code: 'en', name: 'english' },
+    { code: 'ru', name: 'russian' },
+    { code: 'pt', name: 'portuguese' },
+    { code: 'zh', name: 'chinese' },
+    { code: 'ja', name: 'japanese' },
+    { code: 'ko', name: 'korean' }
+];
+
+function openLangMenu(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBelow = rect.top < window.innerHeight / 2; 
+    
+    langMenu.value = {
+        open: true,
+        x: rect.left + rect.width / 2,
+        y: isBelow ? rect.bottom : rect.top,
+        isBelow
+    };
+}
+
+function selectLang(code) {
+    if (store.state.lang !== code) {
+        document.body.classList.add('is-translating');
+        setTimeout(() => {
+            store.state.lang = code;
+            setTimeout(() => document.body.classList.remove('is-translating'), 50);
+        }, 150);
+    }
+    langMenu.value.open = false;
+}
+
+function handleGlobalClick(e) {
+    if (langMenu.value.open) {
+        const el = document.querySelector('.lang-dropdown');
+        if (el && el.contains(e.target)) return;
+        langMenu.value.open = false;
+    }
+}
+
+function isInsideHorizontalScroll(target) {
+  let el = target;
+  while (el && el !== document.body && el !== document.documentElement) {
+    const style = window.getComputedStyle(el);
+    const overflowX = style.overflowX;
+    const isScrollable = (overflowX === 'auto' || overflowX === 'scroll') && (el.scrollWidth > el.clientWidth + 5);
+    
+    if (isScrollable || el.tagName === 'INPUT' || el.classList.contains('lightbox-container') || el.classList.contains('feed-media-item')) {
+      return true;
+    }
+    el = el.parentElement;
+  }
+  return false;
+}
+
 function isViewAtVeryTop(target) {
   let el = target;
   while (el && el !== document.body && el !== document.documentElement) {
@@ -349,34 +432,29 @@ function handleGlobalTouchStart(e) {
   const touch = e.touches[0];
   touchStartPos = { x: touch.clientX, y: touch.clientY };
   touchCurrentPos = { x: touch.clientX, y: touch.clientY };
-
-  // Only allow pull-to-refresh if every scrollable parent container is at the top
   canPullToRefresh = isViewAtVeryTop(e.target);
 }
 
 function handleGlobalTouchMove(e) {
-  if (!canPullToRefresh || e.touches.length !== 1) return;
-
+  if (e.touches.length !== 1) return;
   const touch = e.touches[0];
   touchCurrentPos = { x: touch.clientX, y: touch.clientY };
 
+  if (!canPullToRefresh) return;
   const deltaY = touchCurrentPos.y - touchStartPos.y;
-
-  // Immediately cancel if finger moves UP (scrolling down the page)
-  // or if any scroll container moves away from scrollTop = 0
   if (deltaY < 0 || !isViewAtVeryTop(e.target)) {
     canPullToRefresh = false;
     ptrOffset.value = -60;
     ptrRotation.value = 0;
   } else {
-    // Apply pull resistance visual and rotation sync
     ptrOffset.value = Math.min(deltaY * 0.4, 80) - 60;
     ptrRotation.value = Math.min(deltaY * 2.5, 360);
   }
 }
 
 function handleGlobalTouchEnd(e) {
-  if (!canPullToRefresh || window.innerWidth > 768) {
+  if (window.innerWidth > 768) {
+    canPullToRefresh = false;
     ptrOffset.value = -60;
     ptrRotation.value = 0;
     return;
@@ -388,26 +466,39 @@ function handleGlobalTouchEnd(e) {
   }
 
   const deltaY = touchCurrentPos.y - touchStartPos.y;
-  const deltaX = Math.abs(touchCurrentPos.x - touchStartPos.x);
+  const deltaX = touchCurrentPos.x - touchStartPos.x;
+  const absDeltaX = Math.abs(deltaX);
+  const absDeltaY = Math.abs(deltaY);
 
-  // Reload ONLY if:
-  // 1. Finger was pulled DOWN > 140px
-  // 2. Movement was predominantly vertical (deltaY > deltaX * 1.5)
-  // 3. User was at the absolute top during the entire gesture
-  if (deltaY > 140 && deltaY > deltaX * 1.5 && isViewAtVeryTop(e.target)) {
-    isPtrRefreshing.value = true;
-    ptrOffset.value = 20;
-    setTimeout(() => window.location.reload(), 500);
-  } else {
-    ptrOffset.value = -60;
-    ptrRotation.value = 0;
+  if (absDeltaX > 80 && absDeltaX > absDeltaY * 1.5) {
+      if (!store.state.lightbox.open && !store.state.contactSelect.open && !store.state.confirmModal.open && !langMenu.value.open) {
+          if (!isInsideHorizontalScroll(e.target)) {
+              const currentIndex = SECTIONS.indexOf(store.state.currentView);
+              if (currentIndex !== -1) {
+                  if (deltaX < 0 && currentIndex < SECTIONS.length - 1) {
+                      store.state.currentView = SECTIONS[currentIndex + 1];
+                  } else if (deltaX > 0 && currentIndex > 0) {
+                      store.state.currentView = SECTIONS[currentIndex - 1];
+                  }
+              }
+          }
+      }
   }
 
-  canPullToRefresh = false;
+  if (canPullToRefresh) {
+    if (deltaY > 140 && deltaY > absDeltaX * 1.5 && isViewAtVeryTop(e.target)) {
+      isPtrRefreshing.value = true;
+      ptrOffset.value = 20;
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      ptrOffset.value = -60;
+      ptrRotation.value = 0;
+    }
+    canPullToRefresh = false;
+  }
 }
 
 function handleGlobalTouchCancel() {
-  // Disarm pull-to-refresh immediately when Android WebView initiates native scrolling
   canPullToRefresh = false;
   ptrOffset.value = -60;
   ptrRotation.value = 0;
@@ -415,6 +506,8 @@ function handleGlobalTouchCancel() {
 
 // CAPACITOR AUTO-UPDATE MECHANISM
 const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION || "0.0.1";
+const updateAvailable = ref(false);
+const updateData = ref(null);
 
 function isNewerVersion(oldVer, newVer) {
   const oldParts = oldVer.split('.').map(Number);
@@ -435,14 +528,8 @@ async function checkForUpdates() {
     if (res.ok) {
         const data = await res.json();
         if (isNewerVersion(CURRENT_VERSION, data.version)) {
-            store.showConfirm(
-              "Update Available",
-              `Version ${data.version} is available. ${data.release_notes || ''}`,
-              () => { window.open(data.url, '_system'); },
-              false,
-              "Download",
-              "Later"
-            );
+            updateAvailable.value = true;
+            updateData.value = data;
         }
     }
   } catch (e) {
@@ -450,11 +537,18 @@ async function checkForUpdates() {
   }
 }
 
+function doUpdate() {
+    if (updateData.value && updateData.value.url) {
+        window.open(updateData.value.url, '_system');
+    }
+}
+
 onMounted(() => {
   document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
   document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
   document.addEventListener('touchcancel', handleGlobalTouchCancel, { passive: true });
+  document.addEventListener('click', handleGlobalClick);
 
   setTimeout(checkForUpdates, 3000);
 
@@ -466,6 +560,8 @@ onMounted(() => {
         store.state.contactSelect.open = false;
       } else if (store.state.confirmModal.open) {
         store.state.confirmModal.open = false;
+      } else if (langMenu.value.open) {
+        langMenu.value.open = false;
       } else if (store.state.currentView !== 'feed') {
         store.state.currentView = 'feed';
       } else {
@@ -489,6 +585,7 @@ onUnmounted(() => {
   document.removeEventListener('touchmove', handleGlobalTouchMove);
   document.removeEventListener('touchend', handleGlobalTouchEnd);
   document.removeEventListener('touchcancel', handleGlobalTouchCancel);
+  document.removeEventListener('click', handleGlobalClick);
 });
 
 function reloadPage() {
@@ -551,7 +648,7 @@ async function submitGlobalHandshake() {
     
     store.addToast(store.t('sent', { type: cs.type }), 'bi-send-check');
     cs.open = false;
-    cs.message = ''; // Reset message field after successful send
+    cs.message = ''; 
   } catch (e) {
     if (e.response && e.response.data && e.response.data.detail) {
       store.addToast(e.response.data.detail, "bi-x-circle");

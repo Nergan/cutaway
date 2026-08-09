@@ -1,3 +1,5 @@
+# 2. frontend/src/components/Feed.vue
+
 <template>
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header blurred-header">
@@ -22,26 +24,47 @@
         <span class="chip" 
               v-for="tag in sortedSearchTags" 
               :key="tag.name" 
-              :class="tag.state" 
-              @click="cycleTagState(tag, $event)"
-              @mouseenter="showTooltip($event, tag.state)"
-              @mouseleave="hideTooltip">
-          {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+              :class="getTempTagState(tag)" 
+              @mouseenter="openTagMenu($event, tag)"
+              @mouseleave="closeTagMenu"
+              @click.stop="openTagMenu($event, tag)"
+              style="cursor: default;">
+          {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
         </span>
       </div>
     </div>
 
-    <!-- Viewport Unclipped Floating Tooltip -->
     <Teleport to="body">
-      <div v-if="tooltip.visible" 
-           class="floating-tooltip" 
-           :style="{ 
-             left: tooltip.x + 'px', 
-             top: tooltip.y + 'px',
-             transform: tooltip.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
-           }">
-        {{ tooltip.text }}
-      </div>
+      <transition name="dropdown-fade">
+        <div v-if="tagMenu.visible"
+             class="glass-menu tag-filter-menu"
+             :style="{
+               left: tagMenu.x + 'px',
+               top: tagMenu.y + 'px',
+               position: 'fixed',
+               display: 'flex',
+               gap: '0.4rem',
+               padding: '0.4rem',
+               flexDirection: 'row',
+               transform: tagMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
+             }"
+             @mouseleave="closeTagMenu"
+             @mouseenter="keepTagMenu"
+             @click.stop>
+            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'require' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'require' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('require')">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'exclude' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'exclude' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('exclude')">
+                <i class="bi bi-dash-lg"></i>
+            </button>
+            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'bonus' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'bonus' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('bonus')">
+                <i class="bi bi-chevron-up"></i>
+            </button>
+            <button class="footer-action icon-btn" :style="{ color: tagMenu.tag.pendingState === 'abonus' ? 'var(--text-main)' : 'var(--text-muted)', background: tagMenu.tag.pendingState === 'abonus' ? 'rgba(128,128,128,0.2)' : 'transparent', borderRadius: '4px' }" @click="setTagFilter('abonus')">
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+      </transition>
     </Teleport>
 
     <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
@@ -188,46 +211,92 @@ let feedAbortController = null
 const isMobile = ref(window.innerWidth <= 768)
 const highlightIndex = ref(-1)
 
-// Viewport Floating Tooltip State
-const tooltip = ref({ visible: false, text: '', x: 0, y: 0, isBelow: false })
+const tagMenu = ref({ visible: false, x: 0, y: 0, tag: null, isBelow: false });
+let tagMenuTimeout = null;
 
-async function showTooltip(e, state) {
-  const text = getTagTooltip(state);
-  if (!text) {
-    tooltip.value.visible = false;
-    return;
-  }
-  const rect = e.currentTarget.getBoundingClientRect();
-  const isBelow = !isMobile.value; // Desktop = downwards (below), Mobile = upwards (above)
-  
-  let x = rect.left + rect.width / 2;
-  let y = isBelow ? rect.bottom : rect.top;
-
-  tooltip.value = {
-    visible: true,
-    text: text,
-    x: x,
-    y: y,
-    isBelow: isBelow
-  };
-
-  await nextTick();
-  const ttEl = document.querySelector('.floating-tooltip');
-  if (ttEl) {
-    const ttWidth = ttEl.offsetWidth;
-    const padding = 12;
-    let clampedX = x;
-    if (clampedX - ttWidth / 2 < padding) {
-      clampedX = padding + ttWidth / 2;
-    } else if (clampedX + ttWidth / 2 > window.innerWidth - padding) {
-      clampedX = window.innerWidth - padding - ttWidth / 2;
+function getTempTagState(tag) {
+    if (tagMenu.value.visible && tagMenu.value.tag === tag && tag.pendingState !== undefined) {
+        return tag.pendingState;
     }
-    tooltip.value.x = clampedX;
-  }
+    return tag.state;
 }
 
-function hideTooltip() {
-  tooltip.value.visible = false;
+async function openTagMenu(e, tag) {
+    if (tagMenuTimeout) {
+        clearTimeout(tagMenuTimeout);
+        tagMenuTimeout = null;
+    }
+    
+    if (tagMenu.value.visible && tagMenu.value.tag && tagMenu.value.tag !== tag) {
+        applyTagMenuState();
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isBelow = !isMobile.value; 
+    let x = rect.left + rect.width / 2;
+    let y = isBelow ? rect.bottom : rect.top;
+
+    tag.pendingState = tag.state;
+
+    tagMenu.value = {
+        visible: true,
+        tag: tag,
+        x: x,
+        y: y,
+        isBelow: isBelow
+    };
+    
+    await nextTick();
+    const menuEl = document.querySelector('.tag-filter-menu');
+    if (menuEl) {
+        const menuWidth = menuEl.offsetWidth;
+        const padding = 12;
+        let clampedX = x;
+        if (clampedX - menuWidth / 2 < padding) clampedX = padding + menuWidth / 2;
+        else if (clampedX + menuWidth / 2 > window.innerWidth - padding) clampedX = window.innerWidth - padding - menuWidth / 2;
+        tagMenu.value.x = clampedX;
+    }
+}
+
+function keepTagMenu() {
+    if (tagMenuTimeout) {
+        clearTimeout(tagMenuTimeout);
+        tagMenuTimeout = null;
+    }
+}
+
+function closeTagMenu() {
+    if (tagMenuTimeout) clearTimeout(tagMenuTimeout);
+    tagMenuTimeout = setTimeout(() => {
+        applyTagMenuState();
+    }, 250);
+}
+
+function applyTagMenuState() {
+    if (tagMenu.value.visible && tagMenu.value.tag) {
+        if (tagMenu.value.tag.state !== tagMenu.value.tag.pendingState) {
+            tagMenu.value.tag.state = tagMenu.value.tag.pendingState;
+        }
+        tagMenu.value.visible = false;
+        tagMenu.value.tag = null;
+    }
+}
+
+function setTagFilter(state) {
+    if (!tagMenu.value.tag) return;
+    if (tagMenu.value.tag.pendingState === state) {
+        tagMenu.value.tag.pendingState = 'neutral';
+    } else {
+        tagMenu.value.tag.pendingState = state;
+    }
+}
+
+function handleGlobalClickForTagMenu(e) {
+    if (tagMenu.value.visible) {
+        const menuEl = document.querySelector('.tag-filter-menu');
+        if (menuEl && menuEl.contains(e.target)) return;
+        applyTagMenuState();
+    }
 }
 
 const validPrivateContacts = computed(() => 
@@ -247,14 +316,9 @@ const visibleSearchTags = computed(() => {
   if (!query) return [];
   
   return store.state.availableSearchTags.filter(t => {
-     const matchesQuery = (t.name && String(t.name).toLowerCase().includes(query)) || 
+     return (t.name && String(t.name).toLowerCase().includes(query)) || 
       (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
       (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)));
-     
-     if (t.hidden) {
-         return matchesQuery && (t.name.toLowerCase() === query || t.aliases.some(a => a.toLowerCase() === query));
-     }
-     return matchesQuery;
   })
 })
 
@@ -400,6 +464,7 @@ onMounted(() => {
   }
   setTimeout(setupObserver, 500)
   document.addEventListener('click', closeAllMenus)
+  document.addEventListener('click', handleGlobalClickForTagMenu)
   window.addEventListener('resize', handleResize)
 })
 
@@ -407,6 +472,7 @@ onUnmounted(() => {
   if (observer) observer.disconnect()
   if (feedAbortController) feedAbortController.abort()
   document.removeEventListener('click', closeAllMenus)
+  document.removeEventListener('click', handleGlobalClickForTagMenu)
   window.removeEventListener('resize', handleResize)
 })
 
@@ -419,20 +485,8 @@ onActivated(() => {
   }
 })
 
-function cycleTagState(tagObj, event) {
-  const states = ['neutral', 'require', 'exclude', 'bonus', 'abonus']
-  tagObj.state = states[(states.indexOf(tagObj.state) + 1) % states.length]
-  if (event) {
-    showTooltip(event, tagObj.state)
-  }
-}
-
 function getTagStateIcon(state) {
   return { 'require': 'bi-plus-lg', 'exclude': 'bi-dash-lg', 'bonus': 'bi-chevron-up', 'abonus': 'bi-chevron-down', 'neutral': '' }[state]
-}
-
-function getTagTooltip(state) {
-  return { 'require': store.t('tooltip_require'), 'exclude': store.t('tooltip_exclude'), 'bonus': store.t('tooltip_bonus'), 'abonus': store.t('tooltip_abonus'), 'neutral': '' }[state] || '';
 }
 
 function handleWheel(e) {

@@ -1,3 +1,5 @@
+# 3. frontend/src/store/translations.js
+
 export default {
   en: {
     welcome_desc: "Just dating. No manipulative mechanics, no aggressive monetization. Be responsible :^",
@@ -98,7 +100,8 @@ export default {
     tooltip_require: "Must have this tag",
     tooltip_exclude: "Must NOT have this tag",
     tooltip_bonus: "Adds points to score",
-    tooltip_abonus: "Subtracts points from score"
+    tooltip_abonus: "Subtracts points from score",
+    update_app: "update app"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -199,7 +202,8 @@ export default {
     tooltip_require: "Обязательно должен быть этот тег",
     tooltip_exclude: "Не должно быть этого тега",
     tooltip_bonus: "Добавляет баллы к рейтингу",
-    tooltip_abonus: "Отнимает баллы от рейтинга"
+    tooltip_abonus: "Отнимает баллы от рейтинга",
+    update_app: "обновить приложение"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -300,7 +304,8 @@ export default {
     tooltip_require: "Deve ter esta tag",
     tooltip_exclude: "NÃO deve ter esta tag",
     tooltip_bonus: "Adiciona pontos à pontuação",
-    tooltip_abonus: "Subtrai pontos da pontuação"
+    tooltip_abonus: "Subtrai pontos da pontuação",
+    update_app: "atualizar aplicativo"
   },
   zh: {
     welcome_desc: "編譯器會在用戶端生成金鑰，保證通訊極致隱私安全。請負責地使用。 :^",
@@ -401,7 +406,8 @@ export default {
     tooltip_require: "必須包含此標籤",
     tooltip_exclude: "不得包含此標籤",
     tooltip_bonus: "為評分增加分數",
-    tooltip_abonus: "從評分中扣除分數"
+    tooltip_abonus: "從評分中扣除分數",
+    update_app: "更新應用程式"
   },
   ja: {
     welcome_desc: "ただのデートです。操作的な仕組みや、積極的な収益化はありません。責任を持って行動してください :^",
@@ -502,7 +508,8 @@ export default {
     tooltip_require: "このタグを含める必要があります",
     tooltip_exclude: "このタグを含めてはいけません",
     tooltip_bonus: "スコアにポイントを追加します",
-    tooltip_abonus: "スコアからポイントを減算します"
+    tooltip_abonus: "スコアからポイントを減算します",
+    update_app: "アプリを更新"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -603,6 +610,7 @@ export default {
     tooltip_require: "이 태그가 반드시 포함되어야 합니다",
     tooltip_exclude: "이 태그가 포함되어서는 안 됩니다",
     tooltip_bonus: "점수에 포인트를 더합니다",
-    tooltip_abonus: "점수에서 포인트를 뺍니다"
+    tooltip_abonus: "점수에서 포인트를 뺍니다",
+    update_app: "앱 업데이트"
   }
 };
