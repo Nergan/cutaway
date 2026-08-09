@@ -19,39 +19,56 @@
       </div>
       
       <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">
-        <div class="marquee-content" :class="{ 'is-marquee': !hasActiveFilters, 'is-paused': tagMenu.visible }">
+        <div class="marquee-content" :class="{ 'is-paused': tagMenu.visible }">
             <span v-if="hasActiveFilters" class="chip tag-reset-btn" @click.stop="resetFilters">
                 <i class="bi bi-x"></i>
             </span>
             
-            <span class="chip" 
-                  v-for="tag in sortedSearchTags" 
-                  :key="tag.name" 
-                  :class="getTempTagState(tag)" 
-                  @mouseenter="openTagMenu($event, tag)"
-                  @mouseleave="closeTagMenu"
-                  @click.stop="openTagMenu($event, tag)"
-                  style="cursor: default;">
-              {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
-            </span>
-
             <template v-if="!hasActiveFilters">
+              <div class="marquee-group">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
-                      :key="'dup-'+tag.name" 
+                      :key="tag.name" 
+                      :class="getTempTagState(tag)" 
                       @mouseenter="openTagMenu($event, tag)"
                       @mouseleave="closeTagMenu"
                       @click.stop="openTagMenu($event, tag)"
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }}
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
+              </div>
+              <div class="marquee-group" aria-hidden="true">
+                <span class="chip" 
+                      v-for="tag in sortedSearchTags" 
+                      :key="'dup-'+tag.name" 
+                      :class="getTempTagState(tag)" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
+                      style="cursor: default;">
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                </span>
+              </div>
+            </template>
+
+            <template v-else>
+              <span class="chip" 
+                    v-for="tag in sortedSearchTags" 
+                    :key="tag.name" 
+                    :class="getTempTagState(tag)" 
+                    @mouseenter="openTagMenu($event, tag)"
+                    @mouseleave="closeTagMenu"
+                    @click.stop="openTagMenu($event, tag)"
+                    style="cursor: default;">
+                {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+              </span>
             </template>
         </div>
       </div>
     </div>
 
     <Teleport to="body">
-      <transition name="dropdown-fade">
+      <transition name="popover-fade">
         <div v-if="tagMenu.visible"
              class="glass-menu tag-filter-menu"
              :style="{
@@ -67,37 +84,39 @@
              @mouseleave="closeTagMenu"
              @mouseenter="keepTagMenu"
              @click.stop>
-            <div class="filter-col">
-                <button class="footer-action tag-filter-btn filter-require" 
-                        :class="{ 'active': tagMenu.tag.pendingState === 'require' }"
-                        @click="setTagFilter('require')">
-                    <i class="bi bi-plus-lg"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
-            </div>
-            <div class="filter-col">
-                <button class="footer-action tag-filter-btn filter-exclude" 
-                        :class="{ 'active': tagMenu.tag.pendingState === 'exclude' }"
-                        @click="setTagFilter('exclude')">
-                    <i class="bi bi-dash-lg"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
-            </div>
-            <div class="filter-col">
-                <button class="footer-action tag-filter-btn filter-bonus" 
-                        :class="{ 'active': tagMenu.tag.pendingState === 'bonus' }"
-                        @click="setTagFilter('bonus')">
-                    <i class="bi bi-chevron-up"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
-            </div>
-            <div class="filter-col">
-                <button class="footer-action tag-filter-btn filter-abonus" 
-                        :class="{ 'active': tagMenu.tag.pendingState === 'abonus' }"
-                        @click="setTagFilter('abonus')">
-                    <i class="bi bi-chevron-down"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
+            <div class="popover-content" style="display: flex; gap: 0.4rem;">
+              <div class="filter-col">
+                  <button class="footer-action tag-filter-btn filter-require" 
+                          :class="{ 'active': tagMenu.tag.pendingState === 'require' }"
+                          @click="setTagFilter('require')">
+                      <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
+              </div>
+              <div class="filter-col">
+                  <button class="footer-action tag-filter-btn filter-exclude" 
+                          :class="{ 'active': tagMenu.tag.pendingState === 'exclude' }"
+                          @click="setTagFilter('exclude')">
+                      <i class="bi bi-dash-lg"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
+              </div>
+              <div class="filter-col">
+                  <button class="footer-action tag-filter-btn filter-bonus" 
+                          :class="{ 'active': tagMenu.tag.pendingState === 'bonus' }"
+                          @click="setTagFilter('bonus')">
+                      <i class="bi bi-chevron-up"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
+              </div>
+              <div class="filter-col">
+                  <button class="footer-action tag-filter-btn filter-abonus" 
+                          :class="{ 'active': tagMenu.tag.pendingState === 'abonus' }"
+                          @click="setTagFilter('abonus')">
+                      <i class="bi bi-chevron-down"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
+              </div>
             </div>
         </div>
       </transition>
@@ -498,12 +517,23 @@ function setupObserver() {
 }
 
 function handleTagScroll(e) {
-    const el = e.currentTarget || document.querySelector('.tag-scroll-area');
+    const el = e ? (e.currentTarget || e.target) : document.querySelector('.tag-scroll-area');
     if (!el) return;
     
-    const isMarquee = !hasActiveFilters.value; 
-    let leftFade, rightFade;
+    const isMarquee = !hasActiveFilters.value;
 
+    // Handle seamless infinite manual scrolling during marquee mode
+    if (isMarquee) {
+        const groupEl = el.querySelector('.marquee-group');
+        if (groupEl) {
+            const groupWidth = groupEl.offsetWidth + 8; // Width + 0.5rem gap (8px)
+            if (el.scrollLeft >= groupWidth) {
+                el.scrollLeft -= groupWidth;
+            }
+        }
+    }
+
+    let leftFade, rightFade;
     if (isMarquee) {
         leftFade = 'transparent 0%, black 10%';
         rightFade = 'black 90%, transparent 100%';

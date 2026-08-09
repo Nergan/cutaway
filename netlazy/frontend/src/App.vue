@@ -285,7 +285,7 @@
     </transition>
 
     <Teleport to="body">
-      <transition name="dropdown-fade">
+      <transition name="popover-fade">
         <div v-if="langMenu.open" 
              class="glass-menu lang-dropdown" 
              :style="{
@@ -295,8 +295,10 @@
                transform: langMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
              }"
              @click.stop>
-             <div class="glass-option" v-for="l in availableLangs" :key="l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
-                 <span class="animated-underline">{{ l.name }}</span>
+             <div class="popover-content">
+               <div class="glass-option" v-for="l in availableLangs" :key="l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
+                   <span class="animated-underline">{{ l.name }}</span>
+               </div>
              </div>
         </div>
       </transition>
