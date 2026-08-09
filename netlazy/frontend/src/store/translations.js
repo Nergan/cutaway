@@ -1,5 +1,3 @@
-# 4. frontend/src/store/translations.js
-
 export default {
   en: {
     welcome_desc: "Just dating. No manipulative mechanics, no aggressive monetization. Be responsible :^",
