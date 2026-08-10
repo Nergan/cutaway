@@ -30,11 +30,44 @@ body.light-theme .tag-library-header.blurred-header::before {
 .profile-workspace-pane.collapsed .workspace-toggle-btn { left: -34px; top: 1.65rem; width: 34px; height: 50px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-right: none; border-radius: 25px 0 0 25px; display: flex; align-items: center; justify-content: center; box-shadow: -2px 2px 8px rgba(0,0,0,0.2); }
 
 /* FEED */
-.feed-header { padding: 1.7rem 3rem 0.65rem 3rem; margin: -2rem -3rem 1.2rem -3rem; display: flex; flex-direction: column; gap: 0.65rem; }
-.feed-header.blurred-header::before { border-bottom: none; }
-.light-theme .feed-header.blurred-header::before { border-bottom: none; }
+.feed-header { 
+  position: sticky; 
+  top: 0; 
+  z-index: 10; 
+  margin: -2rem -3rem 1.2rem -3rem; 
+  display: flex; 
+  flex-direction: column; 
+  pointer-events: none; 
+}
+.feed-header > * { pointer-events: auto; }
 
-.tag-scroll-area { display: flex; overflow-x: auto; white-space: nowrap; gap: 0.5rem; padding: 0 1.5rem 0.5rem 1.5rem; mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); cursor: grab; scroll-behavior: smooth; }
+.feed-search-bar {
+  padding: 2.3rem 3rem 0.8rem 3rem; /* Lowered search bar to align with burger button */
+  position: relative;
+}
+.feed-search-bar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+.light-theme .feed-search-bar::before { 
+  background: rgba(254, 252, 245, 0.3); 
+  border-bottom: 1px solid var(--border-subtle); 
+}
+
+.tag-scroll-area { 
+  display: flex; 
+  overflow-x: auto; 
+  white-space: nowrap; 
+  gap: 0.5rem; 
+  padding: 1.2rem 1.5rem 0.5rem 1.5rem; /* Increased top padding for floating distance */
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); 
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); 
+  cursor: grab; 
+  scroll-behavior: smooth; 
+  background: transparent !important;
+}
 .tag-scroll-area::-webkit-scrollbar { display: none; }
 
 .masonry-grid {

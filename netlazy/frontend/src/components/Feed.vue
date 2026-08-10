@@ -1,21 +1,23 @@
 <template>
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
-    <div class="feed-header blurred-header">
-      <div style="position: relative; display: flex; align-items: center; width: 100%;">
-        <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
-        <transition name="fade">
-          <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
-        </transition>
-        
-        <transition name="dropdown-fade">
-          <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', overflowY: 'auto', width: '100%' }">
-            <transition-group name="tag-list" tag="div">
-              <div class="glass-option" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}" @mousedown="animateAndSelectTag($event, tag)">
-                <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
-              </div>
-            </transition-group>
-          </div>
-        </transition>
+    <div class="feed-header">
+      <div class="feed-search-bar">
+        <div style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
+          <transition name="fade">
+            <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
+          </transition>
+          
+          <transition name="dropdown-fade">
+            <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', overflowY: 'auto', width: '100%' }">
+              <transition-group name="tag-list" tag="div">
+                <div class="glass-option" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}" @mousedown="animateAndSelectTag($event, tag)">
+                  <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+                </div>
+              </transition-group>
+            </div>
+          </transition>
+        </div>
       </div>
       
       <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">

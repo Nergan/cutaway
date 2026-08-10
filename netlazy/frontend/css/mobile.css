@@ -92,13 +92,24 @@
     background: transparent !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: none;
-    padding: 0.65rem 1.2rem !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    padding: 0 !important;
     margin: 0 !important;
-    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: none !important;
+    pointer-events: none;
+    flex-direction: column-reverse; /* Put tags ABOVE search bar on mobile */
   }
-  .feed-header::before {
+  .feed-header > * { pointer-events: auto; }
+
+  .feed-search-bar {
+    background: transparent !important;
+    padding: 0.65rem 1.2rem !important;
+    border-top: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
+    position: relative;
+  }
+  .feed-search-bar::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -108,14 +119,9 @@
     -webkit-backdrop-filter: blur(12px) !important;
     pointer-events: none;
   }
-  .feed-header .search-header-input {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    font-size: 0.95rem;
-  }
+  
   .tag-scroll-area {
-    padding: 0.4rem 0 0 0;
+    padding: 0.4rem 0 0.8rem 0 !important; /* Spacing between tags and search bar */
     mask-image: none;
     -webkit-mask-image: none;
     -webkit-overflow-scrolling: touch;
