@@ -112,21 +112,21 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(128, 128, 128, 0.08) !important;
+  background: rgba(20, 20, 20, 0.25) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle);
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(250, 246, 238, 0.35) !important;
 }
 .tag-scroll-area .chip:hover {
   border-color: var(--accent-moss) !important;
 }
-.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.15) !important; }
-.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.15) !important; }
-.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.15) !important; }
-.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.15) !important; }
+.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.25) !important; }
+.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.25) !important; }
+.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.25) !important; }
+.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.25) !important; }
 
 /* Tag Reset Button */
 .tag-reset-btn {
@@ -160,7 +160,7 @@ body.light-theme .tag-scroll-area .chip {
   display: inline-flex;
   gap: 0.5rem;
   animation: marquee-group-scroll 1024s linear infinite;
-  will-change: transform;
+  /* Removed will-change: transform to prevent GPU layer isolation from breaking backdrop-filter */
 }
 .marquee-content.is-paused .marquee-group,
 .tag-scroll-area:hover .marquee-group,
@@ -280,52 +280,39 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Unified Glass Dropdowns */
-.glass-menu.lang-dropdown {
-  background: rgba(20, 20, 20, 0.25) !important;
+/* Unified Glass Dropdowns (Language and Tag Filter) */
+.glass-menu.lang-dropdown,
+.glass-menu.tag-filter-menu {
+  background: rgba(20, 20, 20, 0.4) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: var(--shadow-md) !important;
   border: 1px solid var(--border-subtle) !important;
 }
-body.light-theme .glass-menu.lang-dropdown {
-  background: rgba(250, 246, 238, 0.35) !important;
+body.light-theme .glass-menu.lang-dropdown,
+body.light-theme .glass-menu.tag-filter-menu {
+  background: rgba(250, 246, 238, 0.5) !important;
   border: 1px solid var(--border-subtle) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Tag Filter Menu Parent Container: Must NOT contain any blur, only its buttons do */
-.glass-menu.tag-filter-menu {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-body.light-theme .glass-menu.tag-filter-menu {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
 /* Specific Search Autocomplete Dropdown styling */
 .tag-search-dropdown {
-  background: rgba(20, 20, 20, 0.25) !important;
+  background: rgba(20, 20, 20, 0.35) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-md) !important;
   overflow-y: auto;
-  scrollbar-width: thin;
   scrollbar-color: var(--border-focus) transparent;
 }
 body.light-theme .tag-search-dropdown {
-  background: rgba(250, 246, 238, 0.35) !important;
+  background: rgba(250, 246, 238, 0.5) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 
-/* Ultra-minimalist Scrollbar specific to dropdowns */
+/* Ultra-minimalist 3px Scrollbar */
 .tag-search-dropdown::-webkit-scrollbar { width: 3px; height: 3px; }
 .tag-search-dropdown::-webkit-scrollbar-track { background: transparent; }
 .tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 3px; }
@@ -361,7 +348,7 @@ body.light-theme .tag-search-dropdown {
   right: 0.8rem;
 }
 
-/* Inline Filter Buttons - NO backdrop-filter here to avoid parent clipping/cancellation */
+/* Inline Filter Buttons */
 .inline-filter-btn {
   background: rgba(128, 128, 128, 0.1) !important;
   border: 1px solid transparent;
@@ -392,7 +379,7 @@ body.light-theme .inline-filter-btn {
 .inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.2) !important; }
 .inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.2) !important; }
 
-/* Individual Filter Buttons - These get the blur since parent menu wrapper doesn't have it */
+/* Individual Filter Buttons */
 .filter-col {
   display: flex;
   flex-direction: column;
@@ -405,9 +392,9 @@ body.light-theme .inline-filter-btn {
   height: 38px !important;
   border-radius: 14px !important;
   border: 1px solid var(--border-subtle) !important;
-  background: rgba(20, 20, 20, 0.25) !important;
-  backdrop-filter: blur(25px) !important;
-  -webkit-backdrop-filter: blur(25px) !important;
+  background: rgba(128, 128, 128, 0.1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -417,7 +404,7 @@ body.light-theme .inline-filter-btn {
   box-shadow: var(--shadow-sm) !important;
 }
 body.light-theme .tag-filter-btn {
-  background: rgba(250, 246, 238, 0.35) !important;
+  background: rgba(0, 0, 0, 0.05) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 .tag-filter-btn:hover {
