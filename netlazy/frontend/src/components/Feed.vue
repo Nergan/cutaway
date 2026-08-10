@@ -91,12 +91,13 @@
                gap: '0.4rem',
                padding: '0.6rem 0.8rem',
                flexDirection: 'row',
-               transform: tagMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
+               '--popover-translate': tagMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)',
+               transform: 'var(--popover-translate) scale(1)',
+               transformOrigin: tagMenu.isBelow ? 'top center' : 'bottom center'
              }"
              @mouseleave="closeTagMenu"
              @mouseenter="keepTagMenu"
              @click.stop>
-            <div class="popover-content" style="display: flex; gap: 0.4rem;">
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-require" 
                           :class="{ 'active': tagMenu.pendingState === 'require' }"
@@ -129,7 +130,6 @@
                   </button>
                   <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
               </div>
-            </div>
         </div>
       </transition>
     </Teleport>

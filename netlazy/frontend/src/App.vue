@@ -306,13 +306,13 @@
                position: 'fixed',
                left: langMenu.x + 'px',
                top: langMenu.y + 'px',
-               transform: langMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)'
+               '--popover-translate': langMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)',
+               transform: 'var(--popover-translate) scale(1)',
+               transformOrigin: langMenu.isBelow ? 'top center' : 'bottom center'
              }"
              @click.stop>
-             <div class="popover-content">
-               <div class="glass-option" v-for="l in availableLangs" :key="'desk'+l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
-                   <span class="animated-underline">{{ l.name }}</span>
-               </div>
+             <div class="glass-option" v-for="l in availableLangs" :key="'desk'+l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
+                 <span class="animated-underline">{{ l.name }}</span>
              </div>
         </div>
       </transition>

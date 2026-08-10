@@ -97,10 +97,17 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); border-color: rgba(199, 179, 138, 0.3); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
+/* Force fully transparent glass look on scrollable tags */
+.tag-scroll-area .chip {
+  background: transparent !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+}
+
 /* Tag Reset Button */
 .tag-reset-btn {
   background: transparent !important;
-  color: var(--accent-danger);
+  color: var(--accent-danger) !important;
   border: none !important;
   padding: 0.25rem 0.6rem;
 }
@@ -125,10 +132,10 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .marquee-group {
   display: inline-flex;
   gap: 0.5rem;
-  animation: marquee-group-scroll 720s linear infinite;
+  animation: marquee-group-scroll 360s linear infinite;
   will-change: transform;
 }
-.marquee-content.is-paused .marquee-group,  
+.marquee-content.is-paused .marquee-group,
 .tag-scroll-area:hover .marquee-group,
 .tag-scroll-area:active .marquee-group {
   animation-play-state: paused !important;
@@ -246,22 +253,22 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Translucent & Blurred Language Dropdown */
+/* Unified Glass Dropdowns (Language and Tag Filter) */
+/* rgba(0,0,0,0.02) tint forces compositors on Webkit/Blink to physically render the backdrop-filter */
 .glass-menu.lang-dropdown,
-.light-theme .glass-menu.lang-dropdown {
-  background: transparent !important;
+.glass-menu.tag-filter-menu {
+  background: rgba(0, 0, 0, 0.02) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid var(--border-subtle) !important;
   box-shadow: var(--shadow-md) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+body.light-theme .glass-menu.lang-dropdown,
+body.light-theme .glass-menu.tag-filter-menu {
+  background: rgba(255, 255, 255, 0.02) !important;
 }
 
-/* Fully Transparent Tag Filter Menu Wrapper */
-.glass-menu.tag-filter-menu,
-.light-theme .glass-menu.tag-filter-menu {
-  background: transparent !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+.glass-menu.tag-filter-menu {
   border: none !important;
   box-shadow: none !important;
 }
@@ -277,7 +284,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 .tag-filter-btn {
   width: 38px !important;
   height: 38px !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: 14px !important;
   border: 1px solid var(--border-subtle) !important;
   background: transparent !important;
   backdrop-filter: blur(25px) !important;
@@ -319,12 +326,15 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 /* Popover Spring Scale-Fade Entrance & Exit Animation */
 .popover-fade-enter-active, .popover-fade-leave-active {
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: center center;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .popover-fade-enter-from, .popover-fade-leave-to {
   opacity: 0;
-  transform: scale(0.9) translateY(-10px);
+  transform: var(--popover-translate) scale(0.85) !important;
+}
+.popover-fade-enter-to, .popover-fade-leave-from {
+  opacity: 1;
+  transform: var(--popover-translate) scale(1) !important;
 }
 
 .glass-contacts-list {
