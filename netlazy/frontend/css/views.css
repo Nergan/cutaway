@@ -42,14 +42,14 @@ body.light-theme .tag-library-header.blurred-header::before {
 .feed-header > * { pointer-events: auto; }
 
 .feed-search-bar {
-  padding: 1.4rem 3rem 0.8rem 3rem; /* Adjusted top padding to align vertically with burger button */
+  padding: 1.75rem 3rem 0.2rem 3rem; /* Lowered top padding to align search input with burger button, reduced bottom padding */
   position: relative;
   border-bottom: none !important;
 }
 .feed-search-bar::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
   background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-bottom: none !important; /* Removed search bar bottom border */
+  border-bottom: none !important;
   pointer-events: none;
 }
 .light-theme .feed-search-bar::before { 
@@ -62,7 +62,7 @@ body.light-theme .tag-library-header.blurred-header::before {
   overflow-x: auto; 
   white-space: nowrap; 
   gap: 0.5rem; 
-  padding: 1.2rem 1.5rem 0.5rem 1.5rem; 
+  padding: 0.4rem 1.5rem 0.5rem 1.5rem; /* Reduced top padding to tighten distance with search bar */
   cursor: grab; 
   scroll-behavior: smooth; 
   background: transparent !important;
