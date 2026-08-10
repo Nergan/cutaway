@@ -125,10 +125,10 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .marquee-group {
   display: inline-flex;
   gap: 0.5rem;
-  animation: marquee-group-scroll 360s linear infinite;
+  animation: marquee-group-scroll 720s linear infinite;
   will-change: transform;
 }
-.marquee-content.is-paused .marquee-group,
+.marquee-content.is-paused .marquee-group,  
 .tag-scroll-area:hover .marquee-group,
 .tag-scroll-area:active .marquee-group {
   animation-play-state: paused !important;
