@@ -108,25 +108,57 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Force translucent glass look on scrollable tags with working 20px backdrop blur */
+/* Fully transparent glass look on scrollable tags with working 20px backdrop blur */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(20, 20, 20, 0.25) !important;
+  background: transparent !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle);
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(250, 246, 238, 0.35) !important;
+  background: transparent !important;
 }
 .tag-scroll-area .chip:hover {
   border-color: var(--accent-moss) !important;
 }
-.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.25) !important; }
-.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.25) !important; }
-.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.25) !important; }
-.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.25) !important; }
+.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.2) !important; }
+.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.2) !important; }
+.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.2) !important; }
+.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.2) !important; }
+
+/* Tag Scroll Area Edge Diffusion / Fade Overlays */
+.tag-scroll-area {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  gap: 0.5rem;
+  cursor: grab;
+  scroll-behavior: smooth;
+  position: relative;
+}
+.tag-scroll-area::before,
+.tag-scroll-area::after {
+  content: '';
+  position: sticky;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  flex-shrink: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.tag-scroll-area::before {
+  left: 0;
+  margin-right: -32px;
+  background: linear-gradient(to right, var(--bg-base), transparent);
+}
+.tag-scroll-area::after {
+  right: 0;
+  margin-left: -32px;
+  background: linear-gradient(to left, var(--bg-base), transparent);
+}
 
 /* Tag Reset Button */
 .tag-reset-btn {
@@ -160,7 +192,6 @@ body.light-theme .tag-scroll-area .chip {
   display: inline-flex;
   gap: 0.5rem;
   animation: marquee-group-scroll 1024s linear infinite;
-  /* Removed will-change: transform to prevent GPU layer isolation from breaking backdrop-filter */
 }
 .marquee-content.is-paused .marquee-group,
 .tag-scroll-area:hover .marquee-group,
@@ -280,25 +311,39 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Unified Glass Dropdowns (Language and Tag Filter) */
-.glass-menu.lang-dropdown,
-.glass-menu.tag-filter-menu {
-  background: rgba(20, 20, 20, 0.4) !important;
+/* Language Selection Menu: Fully transparent background with 20px backdrop blur */
+.glass-menu.lang-dropdown {
+  background: transparent !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: var(--shadow-md) !important;
   border: 1px solid var(--border-subtle) !important;
 }
-body.light-theme .glass-menu.lang-dropdown,
+body.light-theme .glass-menu.lang-dropdown {
+  background: transparent !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Tag Filter Popover Card: Transparent background with 20px backdrop blur */
+.glass-menu.tag-filter-menu {
+  background: transparent !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: var(--shadow-md) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.6rem 0.8rem !important;
+}
 body.light-theme .glass-menu.tag-filter-menu {
-  background: rgba(250, 246, 238, 0.5) !important;
+  background: transparent !important;
   border: 1px solid var(--border-subtle) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Specific Search Autocomplete Dropdown styling */
 .tag-search-dropdown {
-  background: rgba(20, 20, 20, 0.35) !important;
+  background: rgba(20, 20, 20, 0.25) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -308,15 +353,15 @@ body.light-theme .glass-menu.tag-filter-menu {
   scrollbar-color: var(--border-focus) transparent;
 }
 body.light-theme .tag-search-dropdown {
-  background: rgba(250, 246, 238, 0.5) !important;
+  background: rgba(250, 246, 238, 0.35) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 
-/* Ultra-minimalist 3px Scrollbar */
-.tag-search-dropdown::-webkit-scrollbar { width: 3px; height: 3px; }
-.tag-search-dropdown::-webkit-scrollbar-track { background: transparent; }
-.tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 3px; }
-.tag-search-dropdown::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+/* Ultra-minimalist 2px Scrollbar for Dropdowns */
+.tag-search-dropdown::-webkit-scrollbar { width: 2px !important; height: 2px !important; }
+.tag-search-dropdown::-webkit-scrollbar-track { background: transparent !important; }
+.tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus) !important; border-radius: 2px !important; }
+.tag-search-dropdown::-webkit-scrollbar-thumb:hover { background: var(--text-muted) !important; }
 
 /* DROPDOWN TAG ROW & INLINE FILTERS */
 .dropdown-tag-row {

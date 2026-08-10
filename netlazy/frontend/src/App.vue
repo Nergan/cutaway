@@ -380,12 +380,7 @@ function toggleLangMenu(e) {
         const isBelow = rect.top < window.innerHeight / 2; 
         
         let x = rect.left + rect.width / 2;
-        if (!store.state.isSidebarCollapsed) {
-            // Position over the main view content area when sidebar is open so backdrop blur has page content to process
-            x = Math.max(x, 240);
-        } else {
-            if (x < 100) x = 100;
-        }
+        if (x < 100) x = 100; // clamp to prevent off-screen left
         
         langMenu.value = {
             open: true,
