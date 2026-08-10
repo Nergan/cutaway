@@ -2,7 +2,7 @@
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header">
       <div class="feed-search-bar">
-        <div style="position: relative; display: flex; align-items: center; width: 100%;">
+        <div style="position: relative; display: flex; align-items: center; width: 100%; height: 100%;">
           <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
           <transition name="fade">
             <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
@@ -11,24 +11,24 @@
           <transition name="dropdown-fade">
             <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', overflowY: 'auto', width: '100%' }">
               <transition-group name="tag-list" tag="div">
-                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}">
-                  <span class="dropdown-tag-name">{{ store.getLocalizedTag(tag.name) }}</span>
+                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'is-expanded': expandedTag === tag.name}" @click.stop="handleTagRowClick(tag)">
+                  <span class="dropdown-tag-name animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
                   <div class="dropdown-tag-filters" @click.stop>
                       <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click="setTagStateInline(tag, 'require')">
                           <i class="bi bi-plus-lg"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">require</span>
+                          <span v-if="store.state.isUserFriendlyInterface">req</span>
                       </button>
                       <button class="inline-filter-btn exclude" :class="{active: tag.state === 'exclude'}" @click="setTagStateInline(tag, 'exclude')">
                           <i class="bi bi-dash-lg"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">exclude</span>
+                          <span v-if="store.state.isUserFriendlyInterface">exc</span>
                       </button>
                       <button class="inline-filter-btn bonus" :class="{active: tag.state === 'bonus'}" @click="setTagStateInline(tag, 'bonus')">
                           <i class="bi bi-chevron-up"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">bonus</span>
+                          <span v-if="store.state.isUserFriendlyInterface">+</span>
                       </button>
                       <button class="inline-filter-btn abonus" :class="{active: tag.state === 'abonus'}" @click="setTagStateInline(tag, 'abonus')">
                           <i class="bi bi-chevron-down"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">abonus</span>
+                          <span v-if="store.state.isUserFriendlyInterface">-</span>
                       </button>
                   </div>
                 </div>
@@ -124,7 +124,7 @@
                           @click="setTagFilter('require')">
                       <i class="bi bi-plus-lg"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">req</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-exclude" 
@@ -132,7 +132,7 @@
                           @click="setTagFilter('exclude')">
                       <i class="bi bi-dash-lg"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exc</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-bonus" 
@@ -140,7 +140,7 @@
                           @click="setTagFilter('bonus')">
                       <i class="bi bi-chevron-up"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">+</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-abonus" 
@@ -148,7 +148,7 @@
                           @click="setTagFilter('abonus')">
                       <i class="bi bi-chevron-down"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">-</span>
               </div>
         </div>
       </transition>
@@ -304,6 +304,14 @@ const columnsCount = ref(1)
 const tagMenu = ref({ visible: false, x: 0, y: 0, tagName: null, pendingState: null, isBelow: false });
 let tagMenuTimeout = null;
 
+const expandedTag = ref(null)
+
+function handleTagRowClick(tag) {
+  if (isMobile.value) {
+    expandedTag.value = expandedTag.value === tag.name ? null : tag.name;
+  }
+}
+
 function updateColumnsCount() {
   if (!feedRoot.value) return;
   const width = feedRoot.value.clientWidth;
@@ -435,7 +443,7 @@ const activeFiltersString = computed(() => {
 })
 
 const hasActiveFilters = computed(() => {
-  return filterText.value.trim() !== '' || store.state.availableSearchTags.some(t => t.state !== 'neutral')
+  return store.state.availableSearchTags.some(t => t.state !== 'neutral')
 })
 
 const visibleSearchTags = computed(() => {
@@ -473,25 +481,13 @@ function navigateTags(dir) {
 function selectHighlightedTag() {
     const list = visibleSearchTags.value.slice(0, 15);
     if (highlightIndex.value >= 0 && highlightIndex.value < list.length) {
-        selectTagFromAutocomplete(list[highlightIndex.value]);
+        const selected = list[highlightIndex.value]
+        setTagStateInline(selected, 'require');
+        filterText.value = '';
     }
 }
 
-watch(filterText, () => { highlightIndex.value = -1; });
-
-function animateAndSelectTag(e, tag) {
-  const el = e.currentTarget;
-  el.classList.add('clicked');
-  setTimeout(() => {
-    selectTagFromAutocomplete(tag);
-    el.classList.remove('clicked');
-  }, 150);
-}
-
-function selectTagFromAutocomplete(tag) {
-  if (tag.state === 'neutral') tag.state = 'require';
-  filterText.value = '';
-}
+watch(filterText, () => { highlightIndex.value = -1; expandedTag.value = null; });
 
 function setTagStateInline(tag, state) {
   if (tag.state === state) {
@@ -617,7 +613,7 @@ watch(hasActiveFilters, () => {
     nextTick(() => {
         const area = document.querySelector('.tag-scroll-area');
         if (area) {
-            area.scrollLeft = 0; // Reset scroll position when filter mode changes
+            area.scrollLeft = 0; 
             handleTagScroll({ currentTarget: area });
         }
     });

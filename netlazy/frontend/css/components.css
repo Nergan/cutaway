@@ -110,16 +110,16 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(128, 128, 128, 0.1) !important;
+  background: rgba(128, 128, 128, 0.01) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
 }
 .tag-scroll-area .chip:hover {
-  border-color: var(--border-focus);
+  border-color: var(--accent-moss) !important;
 }
 
 /* Tag Reset Button */
@@ -128,7 +128,7 @@ body.light-theme .tag-scroll-area .chip {
   color: var(--accent-danger) !important;
   border: 1px solid transparent !important;
   padding: 0.25rem 0.6rem;
-  flex-shrink: 0; /* Prevents button from collapsing */
+  flex-shrink: 0;
 }
 .tag-reset-btn i {
   font-size: 1rem;
@@ -258,35 +258,22 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* MINIMALIST GLASS DROPDOWNS & POPOVERS */
 .glass-menu { 
   position: absolute; 
-  background: rgba(20, 20, 20, 0.75) !important; 
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
+  background: rgba(128, 128, 128, 0.01) !important; 
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
   border-radius: var(--radius-md) !important; z-index: 999; 
   box-shadow: var(--shadow-md) !important; 
-  border: none !important; 
+  border: 1px solid var(--border-subtle) !important; 
   padding: 0.3rem 0; 
   max-width: 90vw;
   margin-top: 6px;
   overflow-y: auto;
 }
-.light-theme .glass-menu {
-  background: rgba(249, 246, 239, 0.85) !important;
-  border: none !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
-}
+.glass-menu::-webkit-scrollbar { width: 4px; }
+.glass-menu::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 4px; }
 
-/* Unified Glass Dropdowns (Language and Tag Filter) */
-/* The background uses a 1% opacity trick to force WebKit/Blink to physically composite the blur layer over fully transparent backgrounds */
-.glass-menu.lang-dropdown,
-.glass-menu.tag-filter-menu {
-  background: rgba(20, 20, 20, 0.01) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  box-shadow: var(--shadow-md) !important;
-  border: 1px solid var(--border-subtle) !important;
-}
-body.light-theme .glass-menu.lang-dropdown,
-body.light-theme .glass-menu.tag-filter-menu {
+body.light-theme .glass-menu {
   background: rgba(255, 255, 255, 0.01) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
 .glass-menu.tag-filter-menu {
@@ -300,7 +287,7 @@ body.light-theme .glass-menu.tag-filter-menu {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.8rem;
-  cursor: default !important; /* Not a button anymore */
+  cursor: default !important; 
   position: relative;
   overflow: hidden;
   color: var(--text-muted);
@@ -310,7 +297,7 @@ body.light-theme .glass-menu.tag-filter-menu {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, color 0.2s ease, text-shadow 0.2s ease;
   font-size: 0.85rem;
 }
 .dropdown-tag-filters {
@@ -318,42 +305,56 @@ body.light-theme .glass-menu.tag-filter-menu {
   gap: 0.3rem;
   opacity: 0;
   transform: translateX(10px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: none;
   position: absolute;
   right: 0.8rem;
 }
-.dropdown-tag-row:hover .dropdown-tag-filters {
+
+.dropdown-tag-row:hover .dropdown-tag-filters,
+.dropdown-tag-row.is-expanded .dropdown-tag-filters {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
 }
-.dropdown-tag-row:hover .dropdown-tag-name {
-  opacity: 0.3; /* Dim text to focus on the buttons */
+.dropdown-tag-row:hover .dropdown-tag-name,
+.dropdown-tag-row.is-expanded .dropdown-tag-name {
+  color: var(--text-main);
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(255,255,255,0.15);
+}
+.dropdown-tag-row:hover .animated-underline::after,
+.dropdown-tag-row.is-expanded .animated-underline::after {
+  width: 100%;
 }
 
 /* Inline Filter Buttons */
 .inline-filter-btn {
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(128, 128, 128, 0.01);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.3rem 0.5rem;
+  padding: 0.2rem 0.45rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(8px);
+  gap: 0.3rem;
+  font-size: 0.65rem; /* Shorter tags for user-friendly interface */
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
 }
-.inline-filter-btn:hover { background: rgba(128, 128, 128, 0.15); }
+.inline-filter-btn:hover { 
+  transform: scale(1.15) translateY(-2px); 
+}
 .inline-filter-btn:active { transform: scale(0.85); }
-.inline-filter-btn.active.require { color: var(--accent-moss); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.1); }
-.inline-filter-btn.active.exclude { color: var(--accent-danger); border-color: var(--accent-danger); background: rgba(189, 106, 94, 0.1); }
-.inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.1); }
-.inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.1); }
 
+/* specific hover colors */
+.inline-filter-btn.require:hover, .inline-filter-btn.active.require { color: var(--accent-moss); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.1); }
+.inline-filter-btn.exclude:hover, .inline-filter-btn.active.exclude { color: var(--accent-danger); border-color: var(--accent-danger); background: rgba(189, 106, 94, 0.1); }
+.inline-filter-btn.bonus:hover, .inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.1); }
+.inline-filter-btn.abonus:hover, .inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.1); }
 
 /* Individual Filter Buttons with 25px Blur */
 .filter-col {
@@ -442,7 +443,6 @@ body.light-theme .glass-menu.tag-filter-menu {
   background: transparent !important;
 }
 .glass-option.clicked { transform: scale(0.98); }
-.glass-option.highlighted-option { color: var(--accent-moss) !important; }
 
 /* UNCLIPPED TRANSPARENT BLURRED FLOATING TOOLTIP (NO BORDER) */
 .floating-tooltip {
@@ -536,7 +536,6 @@ body.light-theme .floating-tooltip {
   .glass-option:hover .uf-icon { color: var(--accent-moss) !important; }
   
   .glass-option:not(.dropdown-tag-row):hover > .animated-underline::after,
-  .glass-option.highlighted-option > .animated-underline::after,
   .footer-action:hover > .animated-underline::after,
   .nav-item:hover > .animated-underline::after {
     width: 100%;
@@ -749,15 +748,12 @@ body.uf-mode .btn, body.uf-mode .footer-action {
 }
 
 body.uf-mode .seamless-input {
-  background: rgba(128, 128, 128, 0.05);
-  padding: 0.8rem 1.25rem;
-  border-radius: var(--radius-md);
+  background: transparent !important;
 }
 
 /* Fix for search bar looking like a box in uf-mode */
 body.uf-mode .search-header-input {
   background: transparent !important;
-  padding: 0 !important;
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
