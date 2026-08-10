@@ -82,6 +82,7 @@
   .inbox-col { width: 100% !important; padding: 0 0 2rem 0 !important; overflow-y: visible; }
   .inbox-layout .resizer-v { display: none !important; }
 
+  /* OVERRIDE DESKTOP SIDE-BY-SIDE FEED HEADER FOR MOBILE */
   .feed-header {
     position: fixed;
     bottom: calc(65px + env(safe-area-inset-bottom)); /* Above bottom nav and safe area */
@@ -98,15 +99,19 @@
     margin: 0 !important;
     box-shadow: none !important;
     pointer-events: none;
-    flex-direction: column-reverse; /* Put tags ABOVE search bar on mobile */
+    flex-direction: column-reverse !important; /* Stack vertically, Tags ABOVE search bar */
   }
   .feed-header > * { pointer-events: auto; }
 
   .feed-search-bar {
+    flex: unset !important;
     background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-radius: 0 !important;
     padding: 0.65rem 1.2rem !important;
     border-top: 1px solid var(--border-subtle) !important;
-    border-bottom: none !important;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
     position: relative;
   }
@@ -118,13 +123,18 @@
     background: var(--bg-surface) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-    border-bottom: none !important;
     pointer-events: none;
+  }
+  .feed-search-bar .search-header-input {
+    padding: 0 !important;
   }
   
   .tag-scroll-area {
+    flex: unset !important;
     padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
   }
 
   .scrollable-content {

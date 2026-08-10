@@ -11,8 +11,26 @@
           <transition name="dropdown-fade">
             <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', overflowY: 'auto', width: '100%' }">
               <transition-group name="tag-list" tag="div">
-                <div class="glass-option" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}" @mousedown="animateAndSelectTag($event, tag)">
-                  <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex}">
+                  <span class="dropdown-tag-name">{{ store.getLocalizedTag(tag.name) }}</span>
+                  <div class="dropdown-tag-filters" @click.stop>
+                      <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click="setTagStateInline(tag, 'require')">
+                          <i class="bi bi-plus-lg"></i>
+                          <span v-if="store.state.isUserFriendlyInterface">require</span>
+                      </button>
+                      <button class="inline-filter-btn exclude" :class="{active: tag.state === 'exclude'}" @click="setTagStateInline(tag, 'exclude')">
+                          <i class="bi bi-dash-lg"></i>
+                          <span v-if="store.state.isUserFriendlyInterface">exclude</span>
+                      </button>
+                      <button class="inline-filter-btn bonus" :class="{active: tag.state === 'bonus'}" @click="setTagStateInline(tag, 'bonus')">
+                          <i class="bi bi-chevron-up"></i>
+                          <span v-if="store.state.isUserFriendlyInterface">bonus</span>
+                      </button>
+                      <button class="inline-filter-btn abonus" :class="{active: tag.state === 'abonus'}" @click="setTagStateInline(tag, 'abonus')">
+                          <i class="bi bi-chevron-down"></i>
+                          <span v-if="store.state.isUserFriendlyInterface">abonus</span>
+                      </button>
+                  </div>
                 </div>
               </transition-group>
             </div>
@@ -475,6 +493,14 @@ function selectTagFromAutocomplete(tag) {
   filterText.value = '';
 }
 
+function setTagStateInline(tag, state) {
+  if (tag.state === state) {
+    tag.state = 'neutral';
+  } else {
+    tag.state = state;
+  }
+}
+
 function resetFilters() {
   filterText.value = '';
   store.state.availableSearchTags.forEach(t => t.state = 'neutral');
@@ -745,4 +771,4 @@ async function copyText(txt) {
   await navigator.clipboard.writeText(txt)
   store.addToast(store.t('copied'), "bi-check2")
 }
-</script> 
+</script>

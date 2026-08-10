@@ -41,20 +41,42 @@ body.light-theme .tag-library-header.blurred-header::before {
 }
 .feed-header > * { pointer-events: auto; }
 
-.feed-search-bar {
-  padding: 1.75rem 3rem 0.2rem 3rem; /* Lowered top padding to align search input with burger button, reduced bottom padding */
-  position: relative;
-  border-bottom: none !important;
-}
-.feed-search-bar::before {
-  content: ''; position: absolute; inset: 0; z-index: -1;
-  background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-bottom: none !important;
-  pointer-events: none;
-}
-.light-theme .feed-search-bar::before { 
-  background: rgba(254, 252, 245, 0.3); 
-  border-bottom: none !important;
+/* Desktop-specific side-by-side layout for Search & Tags */
+@media (min-width: 769px) {
+  .feed-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 1.5rem 3rem 0.5rem 3rem;
+    gap: 1.5rem;
+  }
+  .feed-search-bar {
+    flex: 0 0 33.333%;
+    padding: 0;
+    background: rgba(128, 128, 128, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  body.light-theme .feed-search-bar {
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+  .feed-search-bar:hover, .feed-search-bar:focus-within {
+    border-color: var(--border-focus);
+  }
+  .feed-search-bar .search-header-input {
+    padding: 0.65rem 1.2rem !important;
+  }
+  .tag-scroll-area {
+    flex: 1; /* Automatically takes up remaining ~66% */
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    /* Edge scattering restored for desktop tags */
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); 
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); 
+  }
 }
 
 .tag-scroll-area { 
@@ -62,10 +84,8 @@ body.light-theme .tag-library-header.blurred-header::before {
   overflow-x: auto; 
   white-space: nowrap; 
   gap: 0.5rem; 
-  padding: 0.4rem 1.5rem 0.5rem 1.5rem; /* Reduced top padding to tighten distance with search bar */
   cursor: grab; 
   scroll-behavior: smooth; 
-  background: transparent !important;
 }
 .tag-scroll-area::-webkit-scrollbar { display: none; }
 
@@ -89,7 +109,7 @@ body.light-theme .tag-library-header.blurred-header::before {
   width: 100%; 
   max-width: 100vw;
   box-sizing: border-box;
-  background: var(--bg-surface); 
+  background: var(--bg-surface) !important; 
   border: 1px solid var(--border-subtle); 
   border-radius: var(--radius-md); 
   padding: 1rem; 

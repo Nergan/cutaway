@@ -21,11 +21,8 @@
   text-transform: none; 
 }
 
-/* OVERRIDE GLOBALLY FORCED FOCUS RING ON INPUTS */
-body input:focus, body input:focus-visible,
-body textarea:focus, body textarea:focus-visible,
-body .seamless-input:focus, body .seamless-input:focus-visible,
-body .editor-bio:focus, body .editor-bio:focus-visible {
+/* OVERRIDE GLOBALLY FORCED FOCUS RING ON ALL ELEMENTS */
+*:focus, *:focus-visible, *:focus-within {
   outline: none !important;
   box-shadow: none !important;
 }
@@ -90,31 +87,48 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 
 /* TAG CHIPS & MARQUEE */
 .chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; position: relative; }
-.chip { font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: var(--radius-pill); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--text-muted); }
-.chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); border-color: rgba(141, 169, 112, 0.3); }
-.chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); border-color: rgba(189, 106, 94, 0.3); }
-.chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); border-color: rgba(110, 157, 174, 0.3); }
-.chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); border-color: rgba(199, 179, 138, 0.3); }
+.chip { 
+  font-size: 0.75rem; 
+  padding: 0.25rem 0.7rem; 
+  border-radius: var(--radius-pill); 
+  cursor: pointer; 
+  user-select: none; 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 0.3rem; 
+  border: 1px solid transparent; 
+  background: var(--bg-elevated); 
+  color: var(--text-muted); 
+}
+.chip.require { background: rgba(141, 169, 112, 0.1); color: var(--accent-moss); }
+.chip.exclude { background: rgba(189, 106, 94, 0.1); color: var(--accent-danger); }
+.chip.bonus { background: rgba(110, 157, 174, 0.1); color: var(--accent-info); }
+.chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
 /* Force fully transparent glass look on scrollable tags with working 20px backdrop blur */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(128, 128, 128, 0.15) !important;
+  background: rgba(128, 128, 128, 0.1) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent;
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+.tag-scroll-area .chip:hover {
+  border-color: var(--border-focus);
 }
 
 /* Tag Reset Button */
 .tag-reset-btn {
   background: transparent !important;
   color: var(--accent-danger) !important;
-  border: none !important;
+  border: 1px solid transparent !important;
   padding: 0.25rem 0.6rem;
+  flex-shrink: 0; /* Prevents button from collapsing */
 }
 .tag-reset-btn i {
   font-size: 1rem;
@@ -122,6 +136,9 @@ body.light-theme .tag-scroll-area .chip {
   display: inline-block;
   margin: 0;
   line-height: 1;
+}
+.tag-reset-btn:hover {
+  border-color: var(--accent-danger) !important;
 }
 .tag-reset-btn:hover i {
   transform: rotate(90deg);
@@ -258,9 +275,10 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 
 /* Unified Glass Dropdowns (Language and Tag Filter) */
+/* The background uses a 1% opacity trick to force WebKit/Blink to physically composite the blur layer over fully transparent backgrounds */
 .glass-menu.lang-dropdown,
 .glass-menu.tag-filter-menu {
-  background: transparent !important;
+  background: rgba(20, 20, 20, 0.01) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: var(--shadow-md) !important;
@@ -268,13 +286,74 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 body.light-theme .glass-menu.lang-dropdown,
 body.light-theme .glass-menu.tag-filter-menu {
-  background: transparent !important;
+  background: rgba(255, 255, 255, 0.01) !important;
 }
 
 .glass-menu.tag-filter-menu {
   border: none !important;
   box-shadow: none !important;
 }
+
+/* DROPDOWN TAG ROW & INLINE FILTERS */
+.dropdown-tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  cursor: default !important; /* Not a button anymore */
+  position: relative;
+  overflow: hidden;
+  color: var(--text-muted);
+}
+.dropdown-tag-name {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s ease;
+  font-size: 0.85rem;
+}
+.dropdown-tag-filters {
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  position: absolute;
+  right: 0.8rem;
+}
+.dropdown-tag-row:hover .dropdown-tag-filters {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.dropdown-tag-row:hover .dropdown-tag-name {
+  opacity: 0.3; /* Dim text to focus on the buttons */
+}
+
+/* Inline Filter Buttons */
+.inline-filter-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+}
+.inline-filter-btn:hover { background: rgba(128, 128, 128, 0.15); }
+.inline-filter-btn:active { transform: scale(0.85); }
+.inline-filter-btn.active.require { color: var(--accent-moss); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.1); }
+.inline-filter-btn.active.exclude { color: var(--accent-danger); border-color: var(--accent-danger); background: rgba(189, 106, 94, 0.1); }
+.inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.1); }
+.inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.1); }
+
 
 /* Individual Filter Buttons with 25px Blur */
 .filter-col {
@@ -447,17 +526,16 @@ body.light-theme .floating-tooltip {
   .chip:hover, .create-btn:hover, .icon-btn:hover { transform: scale(1.02); }
   .search-clear-btn:hover, .contact-action.danger:hover, .media-remove:hover, .lightbox-close:hover { color: var(--accent-danger); transform: rotate(90deg); }
   .contact-action.bi-eye-slash:hover, .contact-action.bi-eye:hover { color: var(--text-main); transform: scale(1.15) rotate(10deg); }
-  #active-tags-zone .chip:hover, #lib-tags-zone .chip:hover, .tag-scroll-area .chip:hover { border-color: var(--border-focus); filter: brightness(1.1); }
   .media-zone:hover { color: var(--text-main); border-color: var(--text-main); background: rgba(128,128,128,0.02); }
   .audio-minimal:hover { opacity: 1; }
   .feed-media-item:hover { transform: scale(1.02); box-shadow: var(--shadow-md); z-index: 2; }
   .mini-add:hover { color: var(--text-main); border-color: var(--text-main); }
   .contact-action:hover { color: var(--text-main); }
   .section-header:hover { color: var(--text-main); }
-  .glass-option:hover { color: var(--accent-moss) !important; }
+  .glass-option:not(.dropdown-tag-row):hover { color: var(--accent-moss) !important; }
   .glass-option:hover .uf-icon { color: var(--accent-moss) !important; }
   
-  .glass-option:hover > .animated-underline::after,
+  .glass-option:not(.dropdown-tag-row):hover > .animated-underline::after,
   .glass-option.highlighted-option > .animated-underline::after,
   .footer-action:hover > .animated-underline::after,
   .nav-item:hover > .animated-underline::after {
@@ -655,9 +733,9 @@ body.uf-mode {
 }
 
 body.uf-mode .card, body.uf-mode .inbox-item {
+  background: var(--bg-surface) !important;
   box-shadow: 0 8px 30px rgba(0,0,0,0.15);
   border-color: transparent;
-  background: var(--bg-surface);
   border-radius: var(--radius-md);
   padding: 1.5rem;
 }
