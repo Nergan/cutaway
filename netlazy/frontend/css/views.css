@@ -53,8 +53,6 @@ body.light-theme .tag-library-header.blurred-header::before {
     flex: 0 0 33.333%;
     padding: 0;
     background: transparent !important;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
     border-radius: var(--radius-pill);
     border: 1px solid transparent;
     transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -70,8 +68,6 @@ body.light-theme .tag-library-header.blurred-header::before {
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
-    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
   }
 }
 
@@ -82,8 +78,6 @@ body.light-theme .tag-library-header.blurred-header::before {
   gap: 0.5rem; 
   cursor: grab; 
   scroll-behavior: smooth; 
-  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
 }
 .tag-scroll-area::-webkit-scrollbar { display: none; }
 

@@ -106,8 +106,6 @@
   .feed-search-bar {
     flex: unset !important;
     background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
     border: none !important;
     border-radius: 0 !important;
     padding: 0.65rem 1.2rem !important;
@@ -121,8 +119,6 @@
     inset: 0;
     z-index: -1;
     background: var(--bg-surface) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
     pointer-events: none;
   }
   
@@ -130,8 +126,6 @@
     flex: unset !important;
     padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
   }
 
   .scrollable-content {
