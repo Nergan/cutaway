@@ -12,7 +12,7 @@
             <div class="glass-menu tag-search-dropdown" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <transition-group name="tag-list" tag="div">
                 <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" @click="handleDropdownTagClick(tag)">
-                  <span class="dropdown-tag-name animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+                  <span class="dropdown-tag-name"><span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span></span>
                   <div class="dropdown-tag-filters" @click.stop>
                       <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click.stop="setTagStateInline(tag, 'require')">
                           <i class="bi bi-plus-lg"></i>
@@ -49,27 +49,36 @@
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="tag.name" 
-                      :class="tag.state" 
+                      :class="getTempTagState(tag)" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
               <div class="marquee-group" aria-hidden="true">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="'dup1-'+tag.name" 
-                      :class="tag.state" 
+                      :class="getTempTagState(tag)" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
               <div class="marquee-group" aria-hidden="true">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="'dup2-'+tag.name" 
-                      :class="tag.state" 
+                      :class="getTempTagState(tag)" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
             </template>
@@ -78,10 +87,12 @@
               <span class="chip" 
                     v-for="tag in sortedSearchTags" 
                     :key="tag.name" 
-                    :class="tag.state" 
-                    @click.stop="setTagStateInline(tag, 'neutral')"
+                    :class="getTempTagState(tag)" 
+                    @mouseenter="openTagMenu($event, tag)"
+                    @mouseleave="closeTagMenu"
+                    @click.stop="openTagMenu($event, tag)"
                     style="cursor: pointer;">
-                {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
+                {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
               </span>
             </template>
         </div>
@@ -617,21 +628,6 @@ function handleTagScroll(e) {
             }
         }
     }
-
-    let leftFade, rightFade;
-    if (isMarquee) {
-        leftFade = 'transparent 0%, black 10%';
-        rightFade = 'black 90%, transparent 100%';
-    } else {
-        const atStart = el.scrollLeft <= 10;
-        const atEnd = Math.ceil(el.scrollLeft) >= el.scrollWidth - el.clientWidth - 10;
-        leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
-        rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
-    }
-
-    const mask = `linear-gradient(to right, ${leftFade}, ${rightFade})`;
-    el.style.webkitMaskImage = mask;
-    el.style.maskImage = mask;
 }
 
 watch(hasActiveFilters, () => {

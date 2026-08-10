@@ -21,8 +21,10 @@
   text-transform: none; 
 }
 
-/* OVERRIDE GLOBALLY FORCED FOCUS RING ON ALL ELEMENTS */
-*:focus, *:focus-visible, *:focus-within {
+/* OVERRIDE GLOBALLY FORCED FOCUS RING ON ALL NON-INPUT ELEMENTS */
+*:not(input):not(textarea):focus, 
+*:not(input):not(textarea):focus-visible, 
+*:not(input):not(textarea):focus-within {
   outline: none !important;
   box-shadow: none !important;
 }
@@ -106,14 +108,17 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Force fully transparent glass look on scrollable tags with working 20px backdrop blur */
+/* Fully transparent glass look on scrollable tags with 20px blur */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: transparent !important;
+  background: rgba(128, 128, 128, 0.08) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid transparent;
+}
+body.light-theme .tag-scroll-area .chip {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 .tag-scroll-area .chip:hover {
   border-color: var(--accent-moss) !important;
@@ -274,7 +279,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* Unified Glass Dropdowns (Language and Tag Filter) */
 .glass-menu.lang-dropdown,
 .glass-menu.tag-filter-menu {
-  background: transparent !important;
+  background: rgba(20, 20, 20, 0.25) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: var(--shadow-md) !important;
@@ -282,7 +287,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 }
 body.light-theme .glass-menu.lang-dropdown,
 body.light-theme .glass-menu.tag-filter-menu {
-  background: transparent !important;
+  background: rgba(250, 246, 238, 0.35) !important;
 }
 
 .glass-menu.tag-filter-menu {
@@ -290,9 +295,9 @@ body.light-theme .glass-menu.tag-filter-menu {
   box-shadow: none !important;
 }
 
-/* Specific Search Autocomplete Dropdown styling */
+/* Search Autocomplete Menu */
 .tag-search-dropdown {
-  background: transparent !important;
+  background: rgba(20, 20, 20, 0.25) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -301,6 +306,9 @@ body.light-theme .glass-menu.tag-filter-menu {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-focus) transparent;
+}
+body.light-theme .tag-search-dropdown {
+  background: rgba(250, 246, 238, 0.35) !important;
 }
 .tag-search-dropdown::-webkit-scrollbar { width: 4px; }
 .tag-search-dropdown::-webkit-scrollbar-track { background: transparent; }
@@ -312,18 +320,18 @@ body.light-theme .glass-menu.tag-filter-menu {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.8rem;
-  cursor: default !important; /* Row serves as container */
+  cursor: default !important;
   position: relative;
   overflow: hidden;
   color: var(--text-muted);
 }
 .dropdown-tag-name {
-  flex-grow: 1;
+  display: inline-block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.2s ease, color 0.2s ease;
   font-size: 0.85rem;
+  max-width: 60%;
 }
 .dropdown-tag-filters {
   display: flex;
@@ -338,21 +346,21 @@ body.light-theme .glass-menu.tag-filter-menu {
 
 /* Inline Filter Buttons */
 .inline-filter-btn {
-  background: transparent;
+  background: rgba(128, 128, 128, 0.1) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.45rem;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  font-weight: 500;
+  text-transform: lowercase;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .inline-filter-btn:hover { 
   transform: scale(1.15); 
@@ -361,11 +369,10 @@ body.light-theme .glass-menu.tag-filter-menu {
 .inline-filter-btn:active { 
   transform: scale(0.85); 
 }
-.inline-filter-btn.active.require { color: var(--accent-moss); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.1); }
-.inline-filter-btn.active.exclude { color: var(--accent-danger); border-color: var(--accent-danger); background: rgba(189, 106, 94, 0.1); }
-.inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.1); }
-.inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.1); }
-
+.inline-filter-btn.active.require { color: var(--accent-moss); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.1) !important; }
+.inline-filter-btn.active.exclude { color: var(--accent-danger); border-color: var(--accent-danger); background: rgba(189, 106, 94, 0.1) !important; }
+.inline-filter-btn.active.bonus { color: var(--accent-info); border-color: var(--accent-info); background: rgba(110, 157, 174, 0.1) !important; }
+.inline-filter-btn.active.abonus { color: var(--accent-earth); border-color: var(--accent-earth); background: rgba(199, 179, 138, 0.1) !important; }
 
 /* Individual Filter Buttons with 25px Blur */
 .filter-col {
@@ -506,7 +513,7 @@ body.light-theme .floating-tooltip {
 .glass-option:not(.dropdown-tag-row):active > .animated-underline::after,
 .footer-action:active > .animated-underline::after,
 .nav-item:active > .animated-underline::after,
-.dropdown-tag-row.mobile-active .dropdown-tag-name::after {
+.dropdown-tag-row.mobile-active .animated-underline::after {
   width: 100%;
 }
 
@@ -561,7 +568,7 @@ body.light-theme .floating-tooltip {
     color: var(--text-main);
     font-weight: 600;
   }
-  .dropdown-tag-row:hover .dropdown-tag-name::after {
+  .dropdown-tag-row:hover .animated-underline::after {
     width: 100%;
     border-bottom-color: var(--accent-moss);
   }
@@ -798,7 +805,7 @@ body.uf-mode .seamless-input {
 /* Fix for search bar looking like a box in uf-mode */
 body.uf-mode .search-header-input {
   background: transparent !important;
-  padding: 0.35rem 0 !important; 
+  padding: 0.35rem 1.2rem !important;
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;

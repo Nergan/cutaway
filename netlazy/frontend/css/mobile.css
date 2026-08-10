@@ -130,9 +130,6 @@
     flex: unset !important;
     padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
-    /* Explicitly re-enable the mask image for the mobile tag scroll area fade effect */
-    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent) !important;
-    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent) !important;
   }
 
   .scrollable-content {
