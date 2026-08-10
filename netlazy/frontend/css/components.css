@@ -108,7 +108,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Fully transparent glass look on scrollable tags with working 20px backdrop blur */
+/* Force translucent glass look on scrollable tags with working 20px backdrop blur */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
@@ -350,7 +350,6 @@ body.light-theme .glass-menu.tag-filter-menu {
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-md) !important;
   overflow-y: auto;
-  scrollbar-color: var(--border-focus) transparent;
 }
 body.light-theme .tag-search-dropdown {
   background: rgba(250, 246, 238, 0.35) !important;
