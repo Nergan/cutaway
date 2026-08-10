@@ -106,6 +106,7 @@
     background: transparent !important;
     padding: 0.65rem 1.2rem !important;
     border-top: 1px solid var(--border-subtle) !important;
+    border-bottom: none !important;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
     position: relative;
   }
@@ -117,13 +118,12 @@
     background: var(--bg-surface) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: none !important;
     pointer-events: none;
   }
   
   .tag-scroll-area {
-    padding: 0.4rem 0 0.8rem 0 !important; /* Spacing between tags and search bar */
-    mask-image: none;
-    -webkit-mask-image: none;
+    padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
   }
 

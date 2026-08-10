@@ -585,21 +585,6 @@ function handleTagScroll(e) {
             }
         }
     }
-
-    let leftFade, rightFade;
-    if (isMarquee) {
-        leftFade = 'transparent 0%, black 10%';
-        rightFade = 'black 90%, transparent 100%';
-    } else {
-        const atStart = el.scrollLeft <= 10;
-        const atEnd = Math.ceil(el.scrollLeft) >= el.scrollWidth - el.clientWidth - 10;
-        leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
-        rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
-    }
-
-    const mask = `linear-gradient(to right, ${leftFade}, ${rightFade})`;
-    el.style.webkitMaskImage = mask;
-    el.style.maskImage = mask;
 }
 
 watch(hasActiveFilters, () => {
@@ -760,4 +745,4 @@ async function copyText(txt) {
   await navigator.clipboard.writeText(txt)
   store.addToast(store.t('copied'), "bi-check2")
 }
-</script>
+</script> 

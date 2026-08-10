@@ -42,18 +42,19 @@ body.light-theme .tag-library-header.blurred-header::before {
 .feed-header > * { pointer-events: auto; }
 
 .feed-search-bar {
-  padding: 2.3rem 3rem 0.8rem 3rem; /* Lowered search bar to align with burger button */
+  padding: 1.4rem 3rem 0.8rem 3rem; /* Adjusted top padding to align vertically with burger button */
   position: relative;
+  border-bottom: none !important;
 }
 .feed-search-bar::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
   background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none !important; /* Removed search bar bottom border */
   pointer-events: none;
 }
 .light-theme .feed-search-bar::before { 
   background: rgba(254, 252, 245, 0.3); 
-  border-bottom: 1px solid var(--border-subtle); 
+  border-bottom: none !important;
 }
 
 .tag-scroll-area { 
@@ -61,9 +62,7 @@ body.light-theme .tag-library-header.blurred-header::before {
   overflow-x: auto; 
   white-space: nowrap; 
   gap: 0.5rem; 
-  padding: 1.2rem 1.5rem 0.5rem 1.5rem; /* Increased top padding for floating distance */
-  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); 
-  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); 
+  padding: 1.2rem 1.5rem 0.5rem 1.5rem; 
   cursor: grab; 
   scroll-behavior: smooth; 
   background: transparent !important;

@@ -97,16 +97,16 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); border-color: rgba(199, 179, 138, 0.3); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Force fully transparent glass look on scrollable tags */
+/* Force fully transparent glass look on scrollable tags with working 20px backdrop blur */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(128, 128, 128, 0.08) !important;
-  backdrop-filter: blur(25px) !important;
-  -webkit-backdrop-filter: blur(25px) !important;
+  background: rgba(128, 128, 128, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(0, 0, 0, 0.03) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 /* Tag Reset Button */
