@@ -134,6 +134,16 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Show filter buttons in tag search dropdown list by default on mobile */
+  .dropdown-tag-filters {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
+  }
+  .dropdown-tag-name {
+    max-width: 50% !important;
+  }
+
   .scrollable-content {
     padding: 1.2rem 1.5rem !important;
     padding-bottom: 120px !important;
