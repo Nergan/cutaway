@@ -112,53 +112,21 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: transparent !important;
+  background: rgba(20, 20, 20, 0.25) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle);
 }
 body.light-theme .tag-scroll-area .chip {
-  background: transparent !important;
+  background: rgba(250, 246, 238, 0.35) !important;
 }
 .tag-scroll-area .chip:hover {
   border-color: var(--accent-moss) !important;
 }
-.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.2) !important; }
-.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.2) !important; }
-.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.2) !important; }
-.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.2) !important; }
-
-/* Tag Scroll Area Edge Diffusion / Fade Overlays */
-.tag-scroll-area {
-  display: flex;
-  overflow-x: auto;
-  white-space: nowrap;
-  gap: 0.5rem;
-  cursor: grab;
-  scroll-behavior: smooth;
-  position: relative;
-}
-.tag-scroll-area::before,
-.tag-scroll-area::after {
-  content: '';
-  position: sticky;
-  top: 0;
-  bottom: 0;
-  width: 32px;
-  flex-shrink: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-.tag-scroll-area::before {
-  left: 0;
-  margin-right: -32px;
-  background: linear-gradient(to right, var(--bg-base), transparent);
-}
-.tag-scroll-area::after {
-  right: 0;
-  margin-left: -32px;
-  background: linear-gradient(to left, var(--bg-base), transparent);
-}
+.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.25) !important; }
+.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.25) !important; }
+.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.25) !important; }
+.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.25) !important; }
 
 /* Tag Reset Button */
 .tag-reset-btn {
@@ -311,21 +279,21 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Language Selection Menu: Fully transparent background with 20px backdrop blur */
+/* Unified Glass Dropdowns (Language) */
 .glass-menu.lang-dropdown {
-  background: transparent !important;
+  background: rgba(30, 30, 30, 0.85) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: var(--shadow-md) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 body.light-theme .glass-menu.lang-dropdown {
-  background: transparent !important;
+  background: rgba(250, 246, 238, 0.85) !important;
   border: 1px solid var(--border-subtle) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Tag Filter Popover Card: Transparent background with 20px backdrop blur */
+/* Tag Filter Popover Card */
 .glass-menu.tag-filter-menu {
   background: transparent !important;
   backdrop-filter: blur(20px) !important;
@@ -343,7 +311,7 @@ body.light-theme .glass-menu.tag-filter-menu {
 
 /* Specific Search Autocomplete Dropdown styling */
 .tag-search-dropdown {
-  background: rgba(20, 20, 20, 0.25) !important;
+  background: rgba(30, 30, 30, 0.85) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -352,14 +320,14 @@ body.light-theme .glass-menu.tag-filter-menu {
   overflow-y: auto;
 }
 body.light-theme .tag-search-dropdown {
-  background: rgba(250, 246, 238, 0.35) !important;
+  background: rgba(250, 246, 238, 0.85) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 
-/* Ultra-minimalist 2px Scrollbar for Dropdowns */
-.tag-search-dropdown::-webkit-scrollbar { width: 2px !important; height: 2px !important; }
+/* Ultra-minimalist 4px Scrollbar for Dropdowns (Disables Native Fallbacks) */
+.tag-search-dropdown::-webkit-scrollbar { width: 4px !important; height: 4px !important; }
 .tag-search-dropdown::-webkit-scrollbar-track { background: transparent !important; }
-.tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus) !important; border-radius: 2px !important; }
+.tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus) !important; border-radius: 4px !important; border: none !important; }
 .tag-search-dropdown::-webkit-scrollbar-thumb:hover { background: var(--text-muted) !important; }
 
 /* DROPDOWN TAG ROW & INLINE FILTERS */
