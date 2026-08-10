@@ -187,8 +187,15 @@
                      {{ store.t('uf_settings') }}
                    </h3>
 
-                   <button v-if="Capacitor.isNativePlatform() && updateAvailable" class="footer-action" style="color: var(--accent-moss); margin-bottom: 1rem; width: max-content; display: flex; align-items: center;" @click="doUpdate">
-                      <i class="bi bi-cloud-download" style="margin-right: 0.5rem;"></i> <span class="animated-underline">{{ store.t('update_app') || 'update app' }}</span>
+                   <!-- Mobile Only Update App Button -->
+                   <button v-if="Capacitor.isNativePlatform()" 
+                           class="footer-action" 
+                           style="color: var(--accent-moss); margin-bottom: 1rem; width: max-content; display: flex; align-items: center;" 
+                           @click="handleUpdateApp"
+                           :disabled="isCheckingUpdate">
+                      <i class="bi" :class="isCheckingUpdate ? 'bi-arrow-repeat spin' : (updateAvailable ? 'bi-cloud-download-fill' : 'bi-cloud-download')" style="margin-right: 0.5rem;"></i> 
+                      <span class="animated-underline">{{ store.t('update_app') }}</span>
+                      <span v-if="updateAvailable" style="margin-left: 0.5rem; background: var(--accent-moss); color: var(--bg-base); font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: var(--radius-pill); font-weight: bold;">NEW</span>
                    </button>
 
                    <div class="glass-option" @click="store.state.isUserFriendlyInterface = !store.state.isUserFriendlyInterface" style="padding: 0.5rem 0; width: max-content;">
@@ -524,6 +531,7 @@ function handleGlobalTouchCancel() {
 const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION || "0.0.1";
 const updateAvailable = ref(false);
 const updateData = ref(null);
+const isCheckingUpdate = ref(false);
 
 function isNewerVersion(oldVer, newVer) {
   const oldParts = oldVer.split('.').map(Number);
@@ -553,10 +561,40 @@ async function checkForUpdates() {
   }
 }
 
-function doUpdate() {
-    if (updateData.value && updateData.value.url) {
-        window.open(updateData.value.url, '_system');
+async function handleUpdateApp() {
+  if (!Capacitor.isNativePlatform()) return;
+
+  if (updateAvailable.value && updateData.value && updateData.value.url) {
+    window.open(updateData.value.url, '_system');
+    return;
+  }
+
+  isCheckingUpdate.value = true;
+  store.addToast("Checking for updates...", "bi-hourglass-split");
+
+  try {
+    const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      if (isNewerVersion(CURRENT_VERSION, data.version)) {
+        updateAvailable.value = true;
+        updateData.value = data;
+        if (data.url) {
+          window.open(data.url, '_system');
+        } else {
+          store.addToast(store.t('update_app'), "bi-cloud-download");
+        }
+      } else {
+        store.addToast("App is up to date (v" + CURRENT_VERSION + ")", "bi-check-circle");
+      }
+    } else {
+      window.open("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/app-release.apk", '_system');
     }
+  } catch (e) {
+    window.open("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/app-release.apk", '_system');
+  } finally {
+    isCheckingUpdate.value = false;
+  }
 }
 
 onMounted(() => {
