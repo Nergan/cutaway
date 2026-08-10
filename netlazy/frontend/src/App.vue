@@ -387,7 +387,12 @@ function toggleLangMenu(e) {
         const isBelow = rect.top < window.innerHeight / 2; 
         
         let x = rect.left + rect.width / 2;
-        if (x < 100) x = 100; // clamp to prevent off-screen left
+        if (!store.state.isSidebarCollapsed && !isMobile.value) {
+            // Position over the main view content area when sidebar is open so backdrop blur has page content to process
+            x = Math.max(x, 240);
+        } else {
+            if (x < 100) x = 100; // clamp to prevent off-screen left
+        }
         
         langMenu.value = {
             open: true,
@@ -545,20 +550,37 @@ function isNewerVersion(oldVer, newVer) {
   return false;
 }
 
-async function checkForUpdates() {
-  if (!Capacitor.isNativePlatform()) return;
+async function fetchLatestReleaseData() {
   try {
-    const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
+    const res = await fetch("https://api.github.com/repos/Nergan/media/contents/netlazy/apk?t=" + Date.now());
     if (res.ok) {
-        const data = await res.json();
-        if (isNewerVersion(CURRENT_VERSION, data.version)) {
-            updateAvailable.value = true;
-            updateData.value = data;
+        const files = await res.json();
+        const apkFile = files.find(f => f.name.endsWith('.apk') && f.name.startsWith('netlazy-'));
+        if (apkFile) {
+            const match = apkFile.name.match(/netlazy-v?([\d\.]+)\.apk/i);
+            if (match) {
+                return {
+                    version: match[1],
+                    url: `https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/${apkFile.name}`
+                };
+            }
         }
     }
   } catch (e) {
-    console.warn("Update check failed", e);
+    console.warn("GitHub API check failed", e);
   }
+  return null;
+}
+
+async function checkForUpdates() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const data = await fetchLatestReleaseData();
+    if (data && isNewerVersion(CURRENT_VERSION, data.version)) {
+        updateAvailable.value = true;
+        updateData.value = data;
+    }
+  } catch (e) {}
 }
 
 async function handleUpdateApp() {
@@ -573,25 +595,20 @@ async function handleUpdateApp() {
   store.addToast("Checking for updates...", "bi-hourglass-split");
 
   try {
-    const res = await fetch("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/version.json?t=" + Date.now());
-    if (res.ok) {
-      const data = await res.json();
+    const data = await fetchLatestReleaseData();
+    if (data) {
       if (isNewerVersion(CURRENT_VERSION, data.version)) {
         updateAvailable.value = true;
         updateData.value = data;
-        if (data.url) {
-          window.open(data.url, '_system');
-        } else {
-          store.addToast(store.t('update_app'), "bi-cloud-download");
-        }
+        window.open(data.url, '_system');
       } else {
         store.addToast("App is up to date (v" + CURRENT_VERSION + ")", "bi-check-circle");
       }
     } else {
-      window.open("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/app-release.apk", '_system');
+        store.addToast("Could not find latest APK", "bi-exclamation-triangle");
     }
   } catch (e) {
-    window.open("https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/app-release.apk", '_system');
+    store.addToast("Failed to check for updates", "bi-x-circle");
   } finally {
     isCheckingUpdate.value = false;
   }

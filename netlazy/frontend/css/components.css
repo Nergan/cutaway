@@ -58,12 +58,12 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 
 .custom-select.is-open {
   border-radius: var(--radius-md) !important;
-  background: rgba(20, 20, 20, 0.75);
+  background: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 .light-theme .custom-select.is-open {
-  background: rgba(249, 246, 238, 0.85);
+  background: rgba(249, 246, 238, 0.9);
 }
 
 .chip:active, .create-btn:active, .icon-btn:active {
@@ -108,25 +108,23 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.1); color: var(--accent-earth); }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Force translucent glass look on scrollable tags with working 20px backdrop blur */
+/* Translucent tag styling for scroll area */
 .tag-scroll-area .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.9rem;
-  background: rgba(20, 20, 20, 0.25) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+  background: rgba(40, 40, 40, 0.65) !important;
   border: 1px solid var(--border-subtle);
 }
 body.light-theme .tag-scroll-area .chip {
-  background: rgba(250, 246, 238, 0.35) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
 }
 .tag-scroll-area .chip:hover {
   border-color: var(--accent-moss) !important;
 }
-.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.25) !important; }
-.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.25) !important; }
-.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.25) !important; }
-.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.25) !important; }
+.tag-scroll-area .chip.require { background: rgba(141, 169, 112, 0.35) !important; }
+.tag-scroll-area .chip.exclude { background: rgba(189, 106, 94, 0.35) !important; }
+.tag-scroll-area .chip.bonus { background: rgba(110, 157, 174, 0.35) !important; }
+.tag-scroll-area .chip.abonus { background: rgba(199, 179, 138, 0.35) !important; }
 
 /* Tag Reset Button */
 .tag-reset-btn {
@@ -263,7 +261,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* MINIMALIST GLASS DROPDOWNS & POPOVERS */
 .glass-menu { 
   position: absolute; 
-  background: rgba(20, 20, 20, 0.75) !important; 
+  background: rgba(30, 30, 30, 0.85) !important; 
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
   border-radius: var(--radius-md) !important; z-index: 999; 
   box-shadow: var(--shadow-md) !important; 
@@ -274,26 +272,12 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   overflow-y: auto;
 }
 .light-theme .glass-menu {
-  background: rgba(249, 246, 238, 0.85) !important;
-  border: none !important;
+  background: rgba(249, 246, 238, 0.95) !important;
+  border: 1px solid var(--border-subtle) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Unified Glass Dropdowns (Language) */
-.glass-menu.lang-dropdown {
-  background: rgba(30, 30, 30, 0.85) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  box-shadow: var(--shadow-md) !important;
-  border: 1px solid var(--border-subtle) !important;
-}
-body.light-theme .glass-menu.lang-dropdown {
-  background: rgba(250, 246, 238, 0.85) !important;
-  border: 1px solid var(--border-subtle) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
-}
-
-/* Tag Filter Popover Card */
+/* Tag Filter Popover Card: Transparent background with 20px backdrop blur */
 .glass-menu.tag-filter-menu {
   background: transparent !important;
   backdrop-filter: blur(20px) !important;
@@ -320,15 +304,26 @@ body.light-theme .glass-menu.tag-filter-menu {
   overflow-y: auto;
 }
 body.light-theme .tag-search-dropdown {
-  background: rgba(250, 246, 238, 0.85) !important;
+  background: rgba(250, 246, 238, 0.95) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 
-/* Ultra-minimalist 4px Scrollbar for Dropdowns (Disables Native Fallbacks) */
-.tag-search-dropdown::-webkit-scrollbar { width: 4px !important; height: 4px !important; }
-.tag-search-dropdown::-webkit-scrollbar-track { background: transparent !important; }
-.tag-search-dropdown::-webkit-scrollbar-thumb { background: var(--border-focus) !important; border-radius: 4px !important; border: none !important; }
-.tag-search-dropdown::-webkit-scrollbar-thumb:hover { background: var(--text-muted) !important; }
+/* Ultra-minimalist Scrollbars for Custom Dropdowns */
+.glass-menu::-webkit-scrollbar,
+.tag-search-dropdown::-webkit-scrollbar { 
+  width: 3px !important; 
+  height: 3px !important; 
+}
+.glass-menu::-webkit-scrollbar-track,
+.tag-search-dropdown::-webkit-scrollbar-track { 
+  background: transparent !important; 
+}
+.glass-menu::-webkit-scrollbar-thumb,
+.tag-search-dropdown::-webkit-scrollbar-thumb { 
+  background: var(--border-focus) !important; 
+  border-radius: 3px !important; 
+  border: none !important; 
+}
 
 /* DROPDOWN TAG ROW & INLINE FILTERS */
 .dropdown-tag-row {
