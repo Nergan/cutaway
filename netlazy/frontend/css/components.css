@@ -125,7 +125,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .marquee-group {
   display: inline-flex;
   gap: 0.5rem;
-  animation: marquee-group-scroll 500s linear infinite;
+  animation: marquee-group-scroll 256s linear infinite;
   will-change: transform;
 }
 .marquee-content.is-paused .marquee-group,
