@@ -209,7 +209,7 @@
 
 /* MAIN CONTENT */
 .main-view { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-base); position: relative; z-index: 2; }
-.scrollable-content { flex-grow: 1; overflow-y: auto; padding: 2rem 3rem; position: relative; }
+.scrollable-content { flex-grow: 1; overflow-y: auto; padding: 2rem 3rem; position: relative; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 
 /* SHARED BLURRED HEADERS */
 .blurred-header { position: sticky; top: 0; z-index: 10; padding: 1rem 1.5rem; background: transparent !important; border-bottom: none !important; }

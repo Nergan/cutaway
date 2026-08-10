@@ -485,7 +485,6 @@ export function useStore() {
     async function fetchTags() {
         try {
             const res = await api.get('/tags/search');
-            // Safely map incoming tags while retaining local interactive states (prevents tag reset bug)
             const oldTags = state.availableSearchTags;
             state.availableSearchTags = res.data.map(t => {
                 const oldT = oldTags.find(ot => ot.name === t.name);

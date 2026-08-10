@@ -99,9 +99,9 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 
 /* Tag Reset Button */
 .tag-reset-btn {
-  background: rgba(189, 106, 94, 0.1);
+  background: transparent !important;
   color: var(--accent-danger);
-  border-color: rgba(189, 106, 94, 0.3);
+  border: none !important;
   padding: 0.25rem 0.6rem;
 }
 .tag-reset-btn i {
@@ -115,7 +115,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
   transform: rotate(90deg);
 }
 
-/* Marquee Scroll Layout - 8x Slower (960s) & Pixel-Perfect Loop */
+/* Marquee Scroll Layout - 8x Slower (360s) & Pixel-Perfect Loop */
 .marquee-content {
   display: inline-flex;
   gap: 0.5rem;
@@ -125,7 +125,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .marquee-group {
   display: inline-flex;
   gap: 0.5rem;
-  animation: marquee-group-scroll 960s linear infinite;
+  animation: marquee-group-scroll 500s linear infinite;
   will-change: transform;
 }
 .marquee-content.is-paused .marquee-group,
@@ -249,22 +249,19 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 /* Translucent & Blurred Language Dropdown */
 .glass-menu.lang-dropdown,
 .light-theme .glass-menu.lang-dropdown {
-  background: rgba(20, 20, 20, 0.3) !important;
+  background: transparent !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--border-subtle) !important;
   box-shadow: var(--shadow-md) !important;
-}
-.light-theme .glass-menu.lang-dropdown {
-  background: rgba(250, 250, 250, 0.45) !important;
 }
 
 /* Fully Transparent Tag Filter Menu Wrapper */
 .glass-menu.tag-filter-menu,
 .light-theme .glass-menu.tag-filter-menu {
   background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
   border: none !important;
   box-shadow: none !important;
 }
@@ -282,21 +279,17 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
   height: 38px !important;
   border-radius: var(--radius-sm) !important;
   border: 1px solid var(--border-subtle) !important;
-  background: rgba(20, 20, 20, 0.45) !important;
+  background: transparent !important;
   backdrop-filter: blur(25px) !important;
   -webkit-backdrop-filter: blur(25px) !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s, background-color 0.2s, border-color 0.2s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s, background-color 0.2s, border-color 0.2s, color 0.2s;
   padding: 0 !important;
   margin: 0 !important;
   box-shadow: var(--shadow-sm) !important;
 }
-.light-theme .tag-filter-btn {
-  background: rgba(255, 255, 255, 0.55) !important;
-}
-
 .tag-filter-btn:hover {
   transform: scale(1.15);
   filter: brightness(1.25);
@@ -308,16 +301,16 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 /* Dynamic Active States matching tags with solid matching outlines */
 .filter-require { color: var(--accent-moss) !important; }
-.filter-require.active { background: rgba(141, 169, 112, 0.25) !important; border-color: rgba(141, 169, 112, 0.6) !important; }
+.filter-require.active { background: transparent !important; border-color: var(--accent-moss) !important; }
 
 .filter-exclude { color: var(--accent-danger) !important; }
-.filter-exclude.active { background: rgba(189, 106, 94, 0.25) !important; border-color: rgba(189, 106, 94, 0.6) !important; }
+.filter-exclude.active { background: transparent !important; border-color: var(--accent-danger) !important; }
 
 .filter-bonus { color: var(--accent-info) !important; }
-.filter-bonus.active { background: rgba(110, 157, 174, 0.25) !important; border-color: rgba(110, 157, 174, 0.6) !important; }
+.filter-bonus.active { background: transparent !important; border-color: var(--accent-info) !important; }
 
 .filter-abonus { color: var(--accent-earth) !important; }
-.filter-abonus.active { background: rgba(199, 179, 138, 0.25) !important; border-color: rgba(199, 179, 138, 0.6) !important; }
+.filter-abonus.active { background: transparent !important; border-color: var(--accent-earth) !important; }
 
 .filter-label {
   font-size: 0.65rem;
@@ -326,20 +319,12 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 /* Popover Spring Scale-Fade Entrance & Exit Animation */
 .popover-fade-enter-active, .popover-fade-leave-active {
-  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.popover-fade-enter-active .popover-content,
-.popover-fade-leave-active .popover-content {
-  transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.25), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center center;
 }
 .popover-fade-enter-from, .popover-fade-leave-to {
   opacity: 0;
-}
-.popover-fade-enter-from .popover-content,
-.popover-fade-leave-to .popover-content {
-  opacity: 0;
-  transform: scale(0.88) translateY(-4px);
+  transform: scale(0.9) translateY(-10px);
 }
 
 .glass-contacts-list {

@@ -284,9 +284,23 @@
       </div>
     </transition>
 
+    <!-- Language Selection Bottom Sheet (Mobile Only) -->
+    <transition name="sheet-fade">
+      <div class="bottom-sheet-backdrop" v-if="langMenu.open && isMobile" @click="langMenu.open = false">
+        <div class="bottom-sheet-box" @click.stop>
+          <div class="bottom-sheet-body">
+             <div class="sheet-contact-row" v-for="l in availableLangs" :key="'mob'+l.code" @click="selectLang(l.code)" :class="{'is-selected': store.state.lang === l.code}">
+                 <span class="sheet-contact-val" style="text-transform: lowercase;">{{ l.name }}</span>
+             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Language Selection Popover (Desktop Only) -->
     <Teleport to="body">
       <transition name="popover-fade">
-        <div v-if="langMenu.open" 
+        <div v-if="langMenu.open && !isMobile" 
              class="glass-menu lang-dropdown" 
              :style="{
                position: 'fixed',
@@ -296,7 +310,7 @@
              }"
              @click.stop>
              <div class="popover-content">
-               <div class="glass-option" v-for="l in availableLangs" :key="l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
+               <div class="glass-option" v-for="l in availableLangs" :key="'desk'+l.code" @click="selectLang(l.code)" :class="{'highlighted-option': store.state.lang === l.code}">
                    <span class="animated-underline">{{ l.name }}</span>
                </div>
              </div>
@@ -343,6 +357,9 @@ const SECTIONS = ['feed', 'editor', 'inbox', 'vault'];
 let touchStartPos = { x: 0, y: 0 };
 let touchCurrentPos = { x: 0, y: 0 };
 let canPullToRefresh = false;
+
+const isMobile = ref(window.innerWidth <= 768);
+function handleResize() { isMobile.value = window.innerWidth <= 768; }
 
 // Language Menu Logic
 const langMenu = ref({ open: false, x: 0, y: 0, isBelow: false });
@@ -539,6 +556,7 @@ function doUpdate() {
 }
 
 onMounted(() => {
+  window.addEventListener('resize', handleResize);
   document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
   document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
@@ -576,6 +594,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
   document.removeEventListener('touchstart', handleGlobalTouchStart);
   document.removeEventListener('touchmove', handleGlobalTouchMove);
   document.removeEventListener('touchend', handleGlobalTouchEnd);

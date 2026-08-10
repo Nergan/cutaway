@@ -40,7 +40,19 @@
               <div class="marquee-group" aria-hidden="true">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
-                      :key="'dup-'+tag.name" 
+                      :key="'dup1-'+tag.name" 
+                      :class="getTempTagState(tag)" 
+                      @mouseenter="openTagMenu($event, tag)"
+                      @mouseleave="closeTagMenu"
+                      @click.stop="openTagMenu($event, tag)"
+                      style="cursor: default;">
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                </span>
+              </div>
+              <div class="marquee-group" aria-hidden="true">
+                <span class="chip" 
+                      v-for="tag in sortedSearchTags" 
+                      :key="'dup2-'+tag.name" 
                       :class="getTempTagState(tag)" 
                       @mouseenter="openTagMenu($event, tag)"
                       @mouseleave="closeTagMenu"
@@ -87,7 +99,7 @@
             <div class="popover-content" style="display: flex; gap: 0.4rem;">
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-require" 
-                          :class="{ 'active': tagMenu.tag.pendingState === 'require' }"
+                          :class="{ 'active': tagMenu.pendingState === 'require' }"
                           @click="setTagFilter('require')">
                       <i class="bi bi-plus-lg"></i>
                   </button>
@@ -95,7 +107,7 @@
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-exclude" 
-                          :class="{ 'active': tagMenu.tag.pendingState === 'exclude' }"
+                          :class="{ 'active': tagMenu.pendingState === 'exclude' }"
                           @click="setTagFilter('exclude')">
                       <i class="bi bi-dash-lg"></i>
                   </button>
@@ -103,7 +115,7 @@
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-bonus" 
-                          :class="{ 'active': tagMenu.tag.pendingState === 'bonus' }"
+                          :class="{ 'active': tagMenu.pendingState === 'bonus' }"
                           @click="setTagFilter('bonus')">
                       <i class="bi bi-chevron-up"></i>
                   </button>
@@ -111,7 +123,7 @@
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-abonus" 
-                          :class="{ 'active': tagMenu.tag.pendingState === 'abonus' }"
+                          :class="{ 'active': tagMenu.pendingState === 'abonus' }"
                           @click="setTagFilter('abonus')">
                       <i class="bi bi-chevron-down"></i>
                   </button>
@@ -266,12 +278,12 @@ let feedAbortController = null
 const isMobile = ref(window.innerWidth <= 768)
 const highlightIndex = ref(-1)
 
-const tagMenu = ref({ visible: false, x: 0, y: 0, tag: null, isBelow: false });
+const tagMenu = ref({ visible: false, x: 0, y: 0, tagName: null, pendingState: null, isBelow: false });
 let tagMenuTimeout = null;
 
 function getTempTagState(tag) {
-    if (tagMenu.value.visible && tagMenu.value.tag === tag && tag.pendingState !== undefined) {
-        return tag.pendingState;
+    if (tagMenu.value.visible && tagMenu.value.tagName === tag.name && tagMenu.value.pendingState !== undefined) {
+        return tagMenu.value.pendingState;
     }
     return tag.state;
 }
@@ -282,11 +294,11 @@ async function openTagMenu(e, tag) {
         tagMenuTimeout = null;
     }
     
-    if (tagMenu.value.visible && tagMenu.value.tag === tag) {
+    if (tagMenu.value.visible && tagMenu.value.tagName === tag.name) {
         return;
     }
     
-    if (tagMenu.value.visible && tagMenu.value.tag && tagMenu.value.tag !== tag) {
+    if (tagMenu.value.visible && tagMenu.value.tagName && tagMenu.value.tagName !== tag.name) {
         applyTagMenuState();
     }
 
@@ -295,11 +307,10 @@ async function openTagMenu(e, tag) {
     let x = rect.left + rect.width / 2;
     let y = isBelow ? rect.bottom : rect.top;
 
-    tag.pendingState = tag.state;
-
     tagMenu.value = {
         visible: true,
-        tag: tag,
+        tagName: tag.name,
+        pendingState: tag.state,
         x: x,
         y: y,
         isBelow: isBelow
@@ -332,21 +343,22 @@ function closeTagMenu() {
 }
 
 function applyTagMenuState() {
-    if (tagMenu.value.visible && tagMenu.value.tag) {
-        if (tagMenu.value.tag.state !== tagMenu.value.tag.pendingState) {
-            tagMenu.value.tag.state = tagMenu.value.tag.pendingState;
+    if (tagMenu.value.visible && tagMenu.value.tagName) {
+        const tagObj = store.state.availableSearchTags.find(t => t.name === tagMenu.value.tagName);
+        if (tagObj && tagObj.state !== tagMenu.value.pendingState) {
+            tagObj.state = tagMenu.value.pendingState;
         }
         tagMenu.value.visible = false;
-        tagMenu.value.tag = null;
+        tagMenu.value.tagName = null;
     }
 }
 
 function setTagFilter(state) {
-    if (!tagMenu.value.tag) return;
-    if (tagMenu.value.tag.pendingState === state) {
-        tagMenu.value.tag.pendingState = 'neutral';
+    if (!tagMenu.value.tagName) return;
+    if (tagMenu.value.pendingState === state) {
+        tagMenu.value.pendingState = 'neutral';
     } else {
-        tagMenu.value.tag.pendingState = state;
+        tagMenu.value.pendingState = state;
     }
 }
 
@@ -527,8 +539,10 @@ function handleTagScroll(e) {
         const groupEl = el.querySelector('.marquee-group');
         if (groupEl) {
             const groupWidth = groupEl.offsetWidth + 8; // Width + 0.5rem gap (8px)
-            if (el.scrollLeft >= groupWidth) {
-                el.scrollLeft -= groupWidth;
+            if (el.scrollLeft >= groupWidth * 2) {
+                el.scrollLeft -= groupWidth; // Seamless looping forward
+            } else if (el.scrollLeft <= 0) {
+                el.scrollLeft += groupWidth; // Seamless looping backward
             }
         }
     }
@@ -552,7 +566,10 @@ function handleTagScroll(e) {
 watch(hasActiveFilters, () => {
     nextTick(() => {
         const area = document.querySelector('.tag-scroll-area');
-        if (area) handleTagScroll({ currentTarget: area });
+        if (area) {
+            area.scrollLeft = 0; // Reset scroll position when filter mode changes
+            handleTagScroll({ currentTarget: area });
+        }
     });
 });
 
@@ -592,8 +609,11 @@ function getTagStateIcon(state) {
 }
 
 function handleWheel(e) {
-  e.preventDefault()
-  e.currentTarget.scrollLeft += e.deltaY
+  // Use horizontal smooth scroll translating vertical wheel ticks
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    e.preventDefault();
+    e.currentTarget.scrollBy({ left: e.deltaY > 0 ? 250 : -250, behavior: 'smooth' });
+  }
 }
 
 function handleMediaClick(mediaObj, mediaList) {
