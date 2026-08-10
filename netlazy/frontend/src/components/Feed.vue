@@ -39,7 +39,7 @@
       </div>
       
       <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">
-        <div class="marquee-content">
+        <div class="marquee-content" :class="{ 'is-paused': tagMenu.visible }">
             <span v-if="hasActiveFilters" class="chip tag-reset-btn" @click.stop="resetFilters">
                 <i class="bi bi-x"></i>
             </span>

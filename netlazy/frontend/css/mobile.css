@@ -130,6 +130,8 @@
     flex: unset !important;
     padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%) !important;
   }
 
   .scrollable-content {
