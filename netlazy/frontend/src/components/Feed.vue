@@ -134,8 +134,8 @@
       </transition>
     </Teleport>
 
-    <div class="grid" v-if="store.state.isFeedLoading && store.state.feed.length === 0">
-      <div style="column-span: all; -webkit-column-span: all; text-align: center; padding: 4rem 2rem;">
+    <div v-if="store.state.isFeedLoading && store.state.feed.length === 0">
+      <div style="text-align: center; padding: 4rem 2rem;">
         <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
       </div>
     </div>
@@ -150,108 +150,110 @@
       </button>
     </div>
 
-    <div class="grid" @click="closeAllMenus" v-else>
-      <div class="card" v-for="profile in store.state.feed" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
-        
-        <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)">
-          <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
-          <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
-        </div>
-
-        <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
-          <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
-             <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
-             <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
-             <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
+    <div class="masonry-grid" @click="closeAllMenus" v-else>
+      <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
+        <div class="card" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
+          
+          <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)">
+            <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
+            <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
           </div>
-        </div>
-        
-        <div class="chip-group" v-if="profile.tags && profile.tags.length > 0">
-          <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
-        </div>
-        <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
 
-        <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-          <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-             <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-             <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-             <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-          </div>
-        </div>
-        
-        <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
-          <template v-if="!profile.sent">
-            <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
-              <span style="display: inline-flex; flex-direction: column; align-items: center;">
-                <button class="footer-action icon-btn" 
-                  :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
-                  :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
-                  @click.stop="handleContactButtonClick(profile, 'share', $event)">
-                  <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_share') }}</span>
-              </span>
-              <span style="display: inline-flex; flex-direction: column; align-items: center;">
-                <button class="footer-action icon-btn" 
-                  :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
-                  :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
-                  @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
-                  <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_exchange') }}</span>
-              </span>
-              <span style="display: inline-flex; flex-direction: column; align-items: center;">
-                <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">
-                  <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
-                </button>
-                <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--accent-danger); opacity: 0.8; margin-top: 0.1rem;">{{ store.t('uf_action_demand') }}</span>
-              </span>
+          <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
+            <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
+               <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
+               <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
+               <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
             </div>
-          </template>
-          <div v-else style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-            <button class="footer-action" style="color: var(--text-muted); width: 100%; justify-content: center;" disabled>
-              <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
-            </button>
+          </div>
+          
+          <div class="chip-group" v-if="profile.tags && profile.tags.length > 0">
+            <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
+          </div>
+          <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
+
+          <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
+            <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+               <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+               <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+               <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+            </div>
+          </div>
+          
+          <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
+            <template v-if="!profile.sent">
+              <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
+                <span style="display: inline-flex; flex-direction: column; align-items: center;">
+                  <button class="footer-action icon-btn" 
+                    :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
+                    :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
+                    @click.stop="handleContactButtonClick(profile, 'share', $event)">
+                    <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_share') }}</span>
+                </span>
+                <span style="display: inline-flex; flex-direction: column; align-items: center;">
+                  <button class="footer-action icon-btn" 
+                    :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
+                    :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
+                    @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
+                    <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_exchange') }}</span>
+                </span>
+                <span style="display: inline-flex; flex-direction: column; align-items: center;">
+                  <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">
+                    <i class="bi" :class="profile.isSendingReq === 'demand' ? 'bi-hourglass-split spin' : 'bi-box-arrow-in-down'"></i>
+                  </button>
+                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--accent-danger); opacity: 0.8; margin-top: 0.1rem;">{{ store.t('uf_action_demand') }}</span>
+                </span>
+              </div>
+            </template>
+            <div v-else style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+              <button class="footer-action" style="color: var(--text-muted); width: 100%; justify-content: center;" disabled>
+                <i class="bi bi-check2"></i> {{ store.t('sent', { type: profile.sentType }) }}
+              </button>
+            </div>
+
+            <!-- Desktop Popover for Handshakes -->
+            <transition name="dropdown-fade">
+              <div class="glass-menu" 
+                   v-if="!isMobile && profile.showContactSelect" 
+                   :style="profile.popoverPosition === 'top' ? { bottom: '100%', top: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginBottom: '0.5rem' } : { top: '100%', bottom: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginTop: '0.5rem' }" 
+                   @click.stop>
+                
+                <div class="glass-contacts-list" v-if="profile.pendingReqType !== 'demand'">
+                  <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
+                    <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
+                    <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
+                  </div>
+                  <div v-if="validPrivateContacts.length === 0" style="padding: 0.8rem 1rem; text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.85rem;">
+                    {{ store.t('no_valid_private') }}
+                  </div>
+                </div>
+                
+                <div style="padding: 0.5rem 1rem;" :style="{ borderTop: (profile.pendingReqType !== 'demand' && validPrivateContacts.length > 0) ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
+                  <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-pill); font-size: 0.85rem; width: 100%;">
+                </div>
+
+                <div style="padding: 0.5rem 1rem; text-align: right;">
+                  <button class="icon-btn" 
+                    style="background: none; border: none;" 
+                    :style="{ 
+                      color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : (profile.pendingReqType === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
+                      opacity: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 0.35 : 1,
+                      cursor: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 'not-allowed' : 'pointer'
+                    }" 
+                    @click.stop="sendRequest(profile, profile.pendingReqType)" 
+                    :disabled="(profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq">
+                    <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
+                  </button>
+                </div>
+              </div>
+            </transition>
           </div>
 
-          <!-- Desktop Popover for Handshakes -->
-          <transition name="dropdown-fade">
-            <div class="glass-menu" 
-                 v-if="!isMobile && profile.showContactSelect" 
-                 :style="profile.popoverPosition === 'top' ? { bottom: '100%', top: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginBottom: '0.5rem' } : { top: '100%', bottom: 'auto', right: 0, left: 'auto', width: 'max-content', minWidth: '260px', maxWidth: 'calc(100vw - 4rem)', marginTop: '0.5rem' }" 
-                 @click.stop>
-              
-              <div class="glass-contacts-list" v-if="profile.pendingReqType !== 'demand'">
-                <div class="glass-option" v-for="c in validPrivateContacts" :key="c.value" @click.stop="toggleProfileContact(profile, c.value)">
-                  <span class="animated-underline">{{ c.type }}: {{ c.value }}</span>
-                  <i class="bi" :class="profile.selectedContacts && profile.selectedContacts.includes(c.value) ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; flex-shrink: 0;"></i>
-                </div>
-                <div v-if="validPrivateContacts.length === 0" style="padding: 0.8rem 1rem; text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.85rem;">
-                  {{ store.t('no_valid_private') }}
-                </div>
-              </div>
-              
-              <div style="padding: 0.5rem 1rem;" :style="{ borderTop: (profile.pendingReqType !== 'demand' && validPrivateContacts.length > 0) ? '1px dashed rgba(128,128,128,0.2)' : 'none' }">
-                <input type="text" class="seamless-input" v-model="profile.pendingMessage" :placeholder="store.t('message_placeholder')" maxlength="100" style="background: rgba(128,128,128,0.08); padding: 0.6rem; border-radius: var(--radius-pill); font-size: 0.85rem; width: 100%;">
-              </div>
-
-              <div style="padding: 0.5rem 1rem; text-align: right;">
-                <button class="icon-btn" 
-                  style="background: none; border: none;" 
-                  :style="{ 
-                    color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : (profile.pendingReqType === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
-                    opacity: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 0.35 : 1,
-                    cursor: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 'not-allowed' : 'pointer'
-                  }" 
-                  @click.stop="sendRequest(profile, profile.pendingReqType)" 
-                  :disabled="(profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq">
-                  <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
-                </button>
-              </div>
-            </div>
-          </transition>
         </div>
-
       </div>
     </div>
     
@@ -277,9 +279,41 @@ let feedAbortController = null
 
 const isMobile = ref(window.innerWidth <= 768)
 const highlightIndex = ref(-1)
+const columnsCount = ref(1)
 
 const tagMenu = ref({ visible: false, x: 0, y: 0, tagName: null, pendingState: null, isBelow: false });
 let tagMenuTimeout = null;
+
+function updateColumnsCount() {
+  if (!feedRoot.value) return;
+  const width = feedRoot.value.clientWidth;
+  const padding = isMobile.value ? 2 * 1.5 * 16 : 2 * 3 * 16; 
+  const availableWidth = width - padding;
+  let cols = Math.floor((availableWidth + 24) / (280 + 24));
+  if (cols < 1) cols = 1;
+  columnsCount.value = cols;
+}
+
+const masonryColumns = computed(() => {
+  const cols = Array.from({length: columnsCount.value}, () => []);
+  const heights = Array.from({length: columnsCount.value}, () => 0);
+  
+  store.state.feed.forEach(profile => {
+    let h = 100;
+    if (profile.audio) h += 50;
+    if (profile.media && profile.media.length > 0) {
+      h += Math.min(profile.media.length, 3) * 250;
+    }
+    if (profile.tags && profile.tags.length > 0) h += 30;
+    if (profile.bio) h += profile.bio.length * 0.5;
+    if (profile.contacts && profile.contacts.length > 0) h += profile.contacts.length * 30;
+    
+    const minIdx = heights.indexOf(Math.min(...heights));
+    cols[minIdx].push(profile);
+    heights[minIdx] += h;
+  });
+  return cols;
+});
 
 function getTempTagState(tag) {
     if (tagMenu.value.visible && tagMenu.value.tagName === tag.name && tagMenu.value.pendingState !== undefined) {
@@ -343,13 +377,15 @@ function closeTagMenu() {
 }
 
 function applyTagMenuState() {
-    if (tagMenu.value.visible && tagMenu.value.tagName) {
+    if (tagMenu.value.tagName) {
         const tagObj = store.state.availableSearchTags.find(t => t.name === tagMenu.value.tagName);
         if (tagObj && tagObj.state !== tagMenu.value.pendingState) {
             tagObj.state = tagMenu.value.pendingState;
         }
         tagMenu.value.visible = false;
-        tagMenu.value.tagName = null;
+        setTimeout(() => {
+            if (!tagMenu.value.visible) tagMenu.value.tagName = null;
+        }, 300);
     }
 }
 
@@ -405,6 +441,7 @@ const sortedSearchTags = computed(() => {
 
 function handleResize() {
   isMobile.value = window.innerWidth <= 768
+  updateColumnsCount()
 }
 
 function navigateTags(dir) {
@@ -582,6 +619,7 @@ onMounted(() => {
   document.addEventListener('click', closeAllMenus)
   document.addEventListener('click', handleGlobalClickForTagMenu)
   window.addEventListener('resize', handleResize)
+  setTimeout(updateColumnsCount, 50)
   
   const area = document.querySelector('.tag-scroll-area');
   if (area) handleTagScroll({ currentTarget: area });

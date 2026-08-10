@@ -85,7 +85,7 @@
           
           <div class="nav-section">
             <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'" :title="store.t('search_profiles')">
-              <i class="bi bi-search"></i> 
+              <i class="bi bi-compass"></i> 
               <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
             </a>
             <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'" :title="store.t('my_profile')">
@@ -123,7 +123,7 @@
       <!-- Native Mobile App Bottom Navigation -->
       <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
         <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
-          <i class="bi bi-search"></i>
+          <i class="bi bi-compass"></i>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
           <i class="bi bi-person-lines-fill"></i>
@@ -378,9 +378,13 @@ function toggleLangMenu(e) {
     } else {
         const rect = e.currentTarget.getBoundingClientRect();
         const isBelow = rect.top < window.innerHeight / 2; 
+        
+        let x = rect.left + rect.width / 2;
+        if (x < 100) x = 100; // clamp to prevent off-screen left when collapsed
+        
         langMenu.value = {
             open: true,
-            x: rect.left + rect.width / 2,
+            x: x,
             y: isBelow ? rect.bottom : rect.top,
             isBelow
         };

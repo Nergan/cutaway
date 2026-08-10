@@ -126,9 +126,10 @@
     padding-bottom: 120px !important;
   }
 
-  /* Prevent card blowout */
-  .grid { columns: 1; column-gap: 0; }
-  .card { gap: 0.6rem; margin-bottom: 1.2rem; width: 100%; max-width: calc(100vw - 3rem); box-sizing: border-box; overflow: hidden; }
+  /* Prevent card blowout in Javascript Masonry Mode */
+  .masonry-grid { gap: 1.2rem; }
+  .masonry-col { gap: 1.2rem; }
+  .card { gap: 0.6rem; width: 100%; max-width: calc(100vw - 3rem); box-sizing: border-box; overflow: hidden; margin-bottom: 0; }
 
   .toast-container {
     top: calc(1rem + env(safe-area-inset-top)); /* Adjust for notch overlay */
