@@ -46,38 +46,24 @@ body.light-theme .tag-library-header.blurred-header::before {
   .feed-header {
     flex-direction: row;
     align-items: center;
-    padding: 1.35rem 3rem 0.5rem 3rem; /* Perfectly matches height of the tags */
+    padding: 1.5rem 3rem 0.5rem 3rem;
     gap: 1.5rem;
   }
   .feed-search-bar {
     flex: 0 0 33.333%;
-    height: 42px; /* Set exact height to match tags */
     padding: 0;
-    background: rgba(128, 128, 128, 0.01) !important;
+    background: transparent !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     border-radius: var(--radius-pill);
     border: 1px solid transparent;
     transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  body.light-theme .feed-search-bar {
-    background: rgba(255, 255, 255, 0.01) !important;
-  }
   .feed-search-bar:hover, .feed-search-bar:focus-within {
-    border-color: var(--accent-moss);
+    border-color: var(--accent-moss) !important;
   }
   .feed-search-bar .search-header-input {
-    height: 100%;
-    padding: 0 1.2rem !important; /* Perfect vertical centering */
-  }
-  .search-clear-btn {
-    top: 50%;
-    transform: translateY(-50%);
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-  .search-clear-btn:active {
-    transform: translateY(-50%) scale(0.85) rotate(90deg);
+    padding: 0.35rem 1.2rem !important;
   }
   .tag-scroll-area {
     flex: 1; /* Automatically takes up remaining ~66% */

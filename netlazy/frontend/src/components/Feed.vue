@@ -2,33 +2,33 @@
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header">
       <div class="feed-search-bar">
-        <div style="position: relative; display: flex; align-items: center; width: 100%; height: 100%;">
+        <div style="position: relative; display: flex; align-items: center; width: 100%;">
           <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
           <transition name="fade">
             <i v-if="filterText" class="bi bi-x-lg search-clear-btn" @click="filterText = ''"></i>
           </transition>
           
           <transition name="dropdown-fade">
-            <div class="glass-menu" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', overflowY: 'auto', width: '100%' }">
+            <div class="glass-menu tag-search-dropdown" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <transition-group name="tag-list" tag="div">
-                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'is-expanded': expandedTag === tag.name}" @click.stop="handleTagRowClick(tag)">
+                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" @click="handleDropdownTagClick(tag)">
                   <span class="dropdown-tag-name animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
                   <div class="dropdown-tag-filters" @click.stop>
-                      <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click="setTagStateInline(tag, 'require')">
+                      <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click.stop="setTagStateInline(tag, 'require')">
                           <i class="bi bi-plus-lg"></i>
                           <span v-if="store.state.isUserFriendlyInterface">req</span>
                       </button>
-                      <button class="inline-filter-btn exclude" :class="{active: tag.state === 'exclude'}" @click="setTagStateInline(tag, 'exclude')">
+                      <button class="inline-filter-btn exclude" :class="{active: tag.state === 'exclude'}" @click.stop="setTagStateInline(tag, 'exclude')">
                           <i class="bi bi-dash-lg"></i>
                           <span v-if="store.state.isUserFriendlyInterface">exc</span>
                       </button>
-                      <button class="inline-filter-btn bonus" :class="{active: tag.state === 'bonus'}" @click="setTagStateInline(tag, 'bonus')">
+                      <button class="inline-filter-btn bonus" :class="{active: tag.state === 'bonus'}" @click.stop="setTagStateInline(tag, 'bonus')">
                           <i class="bi bi-chevron-up"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">+</span>
+                          <span v-if="store.state.isUserFriendlyInterface">bon</span>
                       </button>
-                      <button class="inline-filter-btn abonus" :class="{active: tag.state === 'abonus'}" @click="setTagStateInline(tag, 'abonus')">
+                      <button class="inline-filter-btn abonus" :class="{active: tag.state === 'abonus'}" @click.stop="setTagStateInline(tag, 'abonus')">
                           <i class="bi bi-chevron-down"></i>
-                          <span v-if="store.state.isUserFriendlyInterface">-</span>
+                          <span v-if="store.state.isUserFriendlyInterface">pen</span>
                       </button>
                   </div>
                 </div>
@@ -39,7 +39,7 @@
       </div>
       
       <div class="tag-scroll-area" @scroll="handleTagScroll" @wheel="handleWheel">
-        <div class="marquee-content" :class="{ 'is-paused': tagMenu.visible }">
+        <div class="marquee-content">
             <span v-if="hasActiveFilters" class="chip tag-reset-btn" @click.stop="resetFilters">
                 <i class="bi bi-x"></i>
             </span>
@@ -49,36 +49,27 @@
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="tag.name" 
-                      :class="getTempTagState(tag)" 
-                      @mouseenter="openTagMenu($event, tag)"
-                      @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
+                      :class="tag.state" 
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
                 </span>
               </div>
               <div class="marquee-group" aria-hidden="true">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="'dup1-'+tag.name" 
-                      :class="getTempTagState(tag)" 
-                      @mouseenter="openTagMenu($event, tag)"
-                      @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
+                      :class="tag.state" 
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
                 </span>
               </div>
               <div class="marquee-group" aria-hidden="true">
                 <span class="chip" 
                       v-for="tag in sortedSearchTags" 
                       :key="'dup2-'+tag.name" 
-                      :class="getTempTagState(tag)" 
-                      @mouseenter="openTagMenu($event, tag)"
-                      @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
+                      :class="tag.state" 
                       style="cursor: default;">
-                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                  {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
                 </span>
               </div>
             </template>
@@ -87,12 +78,10 @@
               <span class="chip" 
                     v-for="tag in sortedSearchTags" 
                     :key="tag.name" 
-                    :class="getTempTagState(tag)" 
-                    @mouseenter="openTagMenu($event, tag)"
-                    @mouseleave="closeTagMenu"
-                    @click.stop="openTagMenu($event, tag)"
-                    style="cursor: default;">
-                {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
+                    :class="tag.state" 
+                    @click.stop="setTagStateInline(tag, 'neutral')"
+                    style="cursor: pointer;">
+                {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(tag.state)"></i>
               </span>
             </template>
         </div>
@@ -124,7 +113,7 @@
                           @click="setTagFilter('require')">
                       <i class="bi bi-plus-lg"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">req</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-moss);">require</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-exclude" 
@@ -132,7 +121,7 @@
                           @click="setTagFilter('exclude')">
                       <i class="bi bi-dash-lg"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exc</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-danger);">exclude</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-bonus" 
@@ -140,7 +129,7 @@
                           @click="setTagFilter('bonus')">
                       <i class="bi bi-chevron-up"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">+</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-info);">bonus</span>
               </div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-abonus" 
@@ -148,7 +137,7 @@
                           @click="setTagFilter('abonus')">
                       <i class="bi bi-chevron-down"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">-</span>
+                  <span v-if="store.state.isUserFriendlyInterface" class="filter-label" style="color: var(--accent-earth);">abonus</span>
               </div>
         </div>
       </transition>
@@ -304,13 +293,7 @@ const columnsCount = ref(1)
 const tagMenu = ref({ visible: false, x: 0, y: 0, tagName: null, pendingState: null, isBelow: false });
 let tagMenuTimeout = null;
 
-const expandedTag = ref(null)
-
-function handleTagRowClick(tag) {
-  if (isMobile.value) {
-    expandedTag.value = expandedTag.value === tag.name ? null : tag.name;
-  }
-}
+const activeMobileTag = ref(null);
 
 function updateColumnsCount() {
   if (!feedRoot.value) return;
@@ -432,6 +415,7 @@ function handleGlobalClickForTagMenu(e) {
         if (menuEl && menuEl.contains(e.target)) return;
         applyTagMenuState();
     }
+    activeMobileTag.value = null;
 }
 
 const validPrivateContacts = computed(() => 
@@ -481,13 +465,38 @@ function navigateTags(dir) {
 function selectHighlightedTag() {
     const list = visibleSearchTags.value.slice(0, 15);
     if (highlightIndex.value >= 0 && highlightIndex.value < list.length) {
-        const selected = list[highlightIndex.value]
-        setTagStateInline(selected, 'require');
-        filterText.value = '';
+        selectTagFromAutocomplete(list[highlightIndex.value]);
     }
 }
 
-watch(filterText, () => { highlightIndex.value = -1; expandedTag.value = null; });
+watch(filterText, () => { highlightIndex.value = -1; activeMobileTag.value = null; });
+
+function animateAndSelectTag(e, tag) {
+  const el = e.currentTarget;
+  el.classList.add('clicked');
+  setTimeout(() => {
+    selectTagFromAutocomplete(tag);
+    el.classList.remove('clicked');
+  }, 150);
+}
+
+function handleDropdownTagClick(tag) {
+  if (isMobile.value) {
+    if (activeMobileTag.value === tag.name) {
+      activeMobileTag.value = null;
+    } else {
+      activeMobileTag.value = tag.name;
+    }
+  } else {
+    selectTagFromAutocomplete(tag);
+  }
+}
+
+function selectTagFromAutocomplete(tag) {
+  if (tag.state === 'neutral') tag.state = 'require';
+  filterText.value = '';
+  activeMobileTag.value = null;
+}
 
 function setTagStateInline(tag, state) {
   if (tag.state === state) {
@@ -495,6 +504,7 @@ function setTagStateInline(tag, state) {
   } else {
     tag.state = state;
   }
+  activeMobileTag.value = null;
 }
 
 function resetFilters() {
@@ -607,13 +617,28 @@ function handleTagScroll(e) {
             }
         }
     }
+
+    let leftFade, rightFade;
+    if (isMarquee) {
+        leftFade = 'transparent 0%, black 10%';
+        rightFade = 'black 90%, transparent 100%';
+    } else {
+        const atStart = el.scrollLeft <= 10;
+        const atEnd = Math.ceil(el.scrollLeft) >= el.scrollWidth - el.clientWidth - 10;
+        leftFade = atStart ? 'black 0%' : 'transparent 0%, black 10%';
+        rightFade = atEnd ? 'black 100%' : 'black 90%, transparent 100%';
+    }
+
+    const mask = `linear-gradient(to right, ${leftFade}, ${rightFade})`;
+    el.style.webkitMaskImage = mask;
+    el.style.maskImage = mask;
 }
 
 watch(hasActiveFilters, () => {
     nextTick(() => {
         const area = document.querySelector('.tag-scroll-area');
         if (area) {
-            area.scrollLeft = 0; 
+            area.scrollLeft = 0; // Reset scroll position when filter mode changes
             handleTagScroll({ currentTarget: area });
         }
     });

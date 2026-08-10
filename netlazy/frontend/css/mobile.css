@@ -105,28 +105,32 @@
 
   .feed-search-bar {
     flex: unset !important;
-    background: rgba(128, 128, 128, 0.01) !important;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 0 !important;
+    padding: 0.65rem 1.2rem !important;
     border-top: 1px solid var(--border-subtle) !important;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
     position: relative;
-    height: 48px !important;
   }
-  
-  .feed-search-bar .search-header-input {
-    padding: 0 1.2rem !important;
-    height: 100%;
+  .feed-search-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--bg-surface) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    pointer-events: none;
   }
   
   .tag-scroll-area {
     flex: unset !important;
     padding: 0.4rem 0 0.8rem 0 !important;
     -webkit-overflow-scrolling: touch;
-    /* Restore fade masking effect on mobile */
+    /* Explicitly re-enable the mask image for the mobile tag scroll area fade effect */
     mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent) !important;
     -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent) !important;
   }
