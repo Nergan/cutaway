@@ -112,14 +112,20 @@
     border-top: 1px solid var(--border-subtle) !important;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
     position: relative;
+    z-index: 1;
   }
   .feed-search-bar::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: var(--bg-surface) !important;
+    background: rgba(20, 20, 20, 0.4); /* Slightly more opaque base */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     pointer-events: none;
+  }
+  body.light-theme .feed-search-bar::before {
+    background: rgba(250, 246, 238, 0.4);
   }
   
   .tag-scroll-area {

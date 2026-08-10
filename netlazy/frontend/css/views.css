@@ -56,6 +56,22 @@ body.light-theme .tag-library-header.blurred-header::before {
     border-radius: var(--radius-pill);
     border: 1px solid transparent;
     transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 1;
+  }
+  .feed-search-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: var(--radius-pill);
+    background: rgba(20, 20, 20, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    pointer-events: none;
+  }
+  body.light-theme .feed-search-bar::before {
+    background: rgba(250, 246, 238, 0.35);
   }
   .feed-search-bar:hover, .feed-search-bar:focus-within {
     border-color: var(--accent-moss) !important;
