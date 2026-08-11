@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
 from typing import List, Optional, Any
 from pymongo.errors import DuplicateKeyError
-from pymongo import UpdateOne
+from pymongo import UpdateOne, ReadPreference
 from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, Tag, User, UserAlreadyExistsError
-from netlazy.domain.repository import HandshakeRepository, NonceRepository, ProfileRepository, SecurityRepository, TagRepository, UserRepository
+from netlazy.domain.repository import (
+    HandshakeRepository, NonceRepository, ProfileRepository, SecurityRepository, 
+    TagRepository, UserRepository, TransactionManager
+)
 
 def _force_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
@@ -409,3 +412,8 @@ class MongoHandshakeRepository(HandshakeRepository):
             sender_deleted=doc.get("sender_deleted", False), receiver_deleted=doc.get("receiver_deleted", False),
             created_at=_force_utc(doc["created_at"]), updated_at=_force_utc(doc.get("updated_at"))
         )
+
+class MongoTransactionManager(TransactionManager):
+    async def execute_in_transaction(self, callback: Any) -> Any:
+        async with await db_instance.client.start_session() as session:
+            return await session.with_transaction(callback, read_preference=ReadPreference.PRIMARY)

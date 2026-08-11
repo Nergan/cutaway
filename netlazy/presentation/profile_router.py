@@ -2,12 +2,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from netlazy.domain.repository import (
+    MediaProcessingError,
+    UnsupportedMediaTypeError,
+)
 from netlazy.application.profile_service import (
     InvalidTagError,
     MediaLimitExceededError,
     MediaNotFoundError,
-    MediaProcessingError,
-    UnsupportedMediaTypeError,
 )
 from netlazy.domain.models import Contact, Profile, User
 from netlazy.presentation.dependencies import profile_service, verify_request_signature

@@ -4,8 +4,10 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import List
 from netlazy.domain.models import Contact, MediaItem, Profile
-from netlazy.domain.repository import MediaStorage, ProfileRepository, TagRepository
-from netlazy.infrastructure import media_processor
+from netlazy.domain.repository import (
+    MediaStorage, ProfileRepository, TagRepository, MediaProcessorPort,
+    MediaProcessingError, UnsupportedMediaTypeError
+)
 
 class InvalidTagError(Exception):
     def __init__(self, unknown_tags: List[str]):
@@ -13,8 +15,6 @@ class InvalidTagError(Exception):
         super().__init__(f"Unknown tags: {', '.join(unknown_tags)}")
 
 class MediaLimitExceededError(Exception): pass
-class UnsupportedMediaTypeError(Exception): pass
-class MediaProcessingError(Exception): pass
 class MediaNotFoundError(Exception): pass
 
 class ProfileService:
@@ -23,6 +23,7 @@ class ProfileService:
         profile_repo: ProfileRepository,
         tag_repo: TagRepository,
         media_storage: MediaStorage,
+        media_processor: MediaProcessorPort,
         max_media_items: int,
         max_bio_length: int,
         max_upload_bytes: int,
@@ -32,6 +33,7 @@ class ProfileService:
         self._profile_repo = profile_repo
         self._tag_repo = tag_repo
         self._media_storage = media_storage
+        self._media_processor = media_processor
         self._max_media_items = max_media_items
         self._max_bio_length = max_bio_length
         self._max_upload_bytes = max_upload_bytes
@@ -92,23 +94,17 @@ class ProfileService:
                 await self._profile_repo.upsert(profile)
                 return profile
 
-        mime_type = media_processor.sniff_mime_type(raw_bytes)
-        try:
-            media_type = media_processor.classify_media_type(mime_type)
-        except media_processor.UnsupportedMediaTypeError as e:
-            raise UnsupportedMediaTypeError(str(e)) from e
+        mime_type = self._media_processor.sniff_mime_type(raw_bytes)
+        media_type = self._media_processor.classify_media_type(mime_type)
 
-        try:
-            if media_type == "image":
-                processed = await media_processor.process_image(raw_bytes, self._image_max_dimension, user_id)
-            elif media_type == "video":
-                processed = await media_processor.process_video(raw_bytes, self._image_max_dimension, user_id)
-            elif media_type == "audio":
-                processed = await media_processor.process_audio(raw_bytes, self._audio_bitrate, user_id)
-            else:
-                processed = raw_bytes
-        except media_processor.MediaProcessingError as e:
-            raise MediaProcessingError(str(e)) from e
+        if media_type == "image":
+            processed = await self._media_processor.process_image(raw_bytes, self._image_max_dimension, user_id)
+        elif media_type == "video":
+            processed = await self._media_processor.process_video(raw_bytes, self._image_max_dimension, user_id)
+        elif media_type == "audio":
+            processed = await self._media_processor.process_audio(raw_bytes, self._audio_bitrate, user_id)
+        else:
+            processed = raw_bytes
 
         ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
         ext = ext_map.get(media_type, "bin")

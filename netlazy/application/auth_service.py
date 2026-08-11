@@ -1,29 +1,32 @@
 import logging
 import time
 from datetime import datetime, timezone
-from pymongo import ReadPreference
 from netlazy.domain.models import User, UserAlreadyExistsError
-from netlazy.domain.repository import NonceRepository, UserRepository, ProfileRepository, HandshakeRepository
-from netlazy.infrastructure import crypto_adapter
+from netlazy.domain.repository import (
+    NonceRepository, UserRepository, ProfileRepository, HandshakeRepository,
+    CryptoPort, TransactionManager, InvalidPublicKeyError, SignatureVerificationError
+)
 
 TIMESTAMP_TOLERANCE_SECONDS = 120
-
-class InvalidPublicKeyError(Exception):
-    pass
 
 class AuthenticationError(Exception):
     pass
 
 class AuthService:
-    def __init__(self, user_repo: UserRepository, nonce_repo: NonceRepository):
+    def __init__(
+        self, 
+        user_repo: UserRepository, 
+        nonce_repo: NonceRepository, 
+        crypto_port: CryptoPort, 
+        transaction_manager: TransactionManager
+    ):
         self._user_repo = user_repo
         self._nonce_repo = nonce_repo
+        self._crypto_port = crypto_port
+        self._transaction_manager = transaction_manager
 
     async def register_user(self, public_key_pem: str, ip: str = None, fingerprint: str = None) -> User:
-        try:
-            user_id = crypto_adapter.derive_user_id(public_key_pem)
-        except crypto_adapter.InvalidPublicKeyError as e:
-            raise InvalidPublicKeyError(str(e)) from e
+        user_id = self._crypto_port.derive_user_id(public_key_pem)
 
         user = User(
             user_id=user_id,
@@ -42,12 +45,7 @@ class AuthService:
         profile_repo: ProfileRepository,
         handshake_repo: HandshakeRepository
     ) -> str:
-        try:
-            new_user_id = crypto_adapter.derive_user_id(new_public_key_pem)
-        except crypto_adapter.InvalidPublicKeyError as e:
-            raise InvalidPublicKeyError(str(e)) from e
-
-        from netlazy.database import db_instance
+        new_user_id = self._crypto_port.derive_user_id(new_public_key_pem)
 
         async def _transaction_callback(session):
             existing_user = await self._user_repo.get_by_id(new_user_id, session=session)
@@ -80,8 +78,7 @@ class AuthService:
 
             return new_user_id
 
-        async with await db_instance.client.start_session() as session:
-            return await session.with_transaction(_transaction_callback, read_preference=ReadPreference.PRIMARY)
+        return await self._transaction_manager.execute_in_transaction(_transaction_callback)
 
     async def authenticate_request(
         self,
@@ -100,8 +97,8 @@ class AuthService:
             raise AuthenticationError("Unknown user")
 
         try:
-            crypto_adapter.verify_signature(user.public_key_pem, canonical_payload, signature)
-        except crypto_adapter.SignatureVerificationError:
+            self._crypto_port.verify_signature(user.public_key_pem, canonical_payload, signature)
+        except SignatureVerificationError:
             raise AuthenticationError("Signature verification failed")
 
         is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)

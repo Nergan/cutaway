@@ -3,12 +3,12 @@ import hashlib
 import inspect
 from typing import List
 from netlazy.domain.models import Tag
-from netlazy.domain.repository import TagRepository
-from netlazy.infrastructure.yaml_loader import load_tags_from_yaml
+from netlazy.domain.repository import TagRepository, TagLoaderPort
 
 class TagService:
-    def __init__(self, tag_repo: TagRepository):
+    def __init__(self, tag_repo: TagRepository, tag_loader: TagLoaderPort):
         self._tag_repo = tag_repo
+        self._tag_loader = tag_loader
 
     async def sync_from_yaml(self, yaml_path: str) -> int:
         file_hash = None
@@ -16,7 +16,7 @@ class TagService:
             with open(yaml_path, 'rb') as f:
                 file_hash = hashlib.md5(f.read()).hexdigest()
 
-        tags = load_tags_from_yaml(yaml_path)
+        tags = self._tag_loader.load_tags(yaml_path)
         
         # Dynamically check if the repository supports the optimized file_hash check
         sig = inspect.signature(self._tag_repo.sync)

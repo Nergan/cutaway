@@ -12,6 +12,9 @@ from netlazy.application.security_service import SecurityService, BannedError, P
 from netlazy.config import settings
 from netlazy.domain.models import User
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
+from netlazy.infrastructure.crypto_adapter import PyCryptoAdapter
+from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
+from netlazy.infrastructure.yaml_loader import YamlTagLoader
 from netlazy.infrastructure.mongo_repo import (
     MongoHandshakeRepository,
     MongoNonceRepository,
@@ -19,6 +22,7 @@ from netlazy.infrastructure.mongo_repo import (
     MongoSecurityRepository,
     MongoTagRepository,
     MongoUserRepository,
+    MongoTransactionManager,
 )
 
 AUTH_ERROR = HTTPException(status_code=401, detail="Invalid authentication credentials")
@@ -33,14 +37,25 @@ handshake_repo = MongoHandshakeRepository()
 security_repo = MongoSecurityRepository()
 media_storage = CloudinaryMediaStorage()
 
-auth_service = AuthService(user_repo=user_repo, nonce_repo=nonce_repo)
+crypto_adapter = PyCryptoAdapter()
+media_processor = FFmpegMediaProcessor()
+tag_loader = YamlTagLoader()
+transaction_manager = MongoTransactionManager()
 
-tag_service = TagService(tag_repo=tag_repo)
+auth_service = AuthService(
+    user_repo=user_repo, 
+    nonce_repo=nonce_repo, 
+    crypto_port=crypto_adapter, 
+    transaction_manager=transaction_manager
+)
+
+tag_service = TagService(tag_repo=tag_repo, tag_loader=tag_loader)
 
 profile_service = ProfileService(
     profile_repo=profile_repo,
     tag_repo=tag_repo,
     media_storage=media_storage,
+    media_processor=media_processor,
     max_media_items=settings.max_media_items,
     max_bio_length=settings.max_bio_length,
     max_upload_bytes=settings.max_upload_bytes,

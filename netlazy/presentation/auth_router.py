@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
-from netlazy.application.auth_service import InvalidPublicKeyError
+from netlazy.domain.repository import InvalidPublicKeyError
 from netlazy.domain.models import UserAlreadyExistsError
 from netlazy.domain.models import User
 from netlazy.presentation.dependencies import (

@@ -1,7 +1,52 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Callable
 from netlazy.domain.models import Handshake, PoWChallenge, Profile, Tag, User, MediaItem
+
+class InvalidPublicKeyError(Exception): pass
+class SignatureVerificationError(Exception): pass
+class UnsupportedMediaTypeError(Exception): pass
+class MediaProcessingError(Exception): pass
+
+class CryptoPort(ABC):
+    @abstractmethod
+    def derive_user_id(self, public_key_pem: str) -> str:
+        ...
+
+    @abstractmethod
+    def verify_signature(self, public_key_pem: str, payload: bytes, signature: bytes) -> None:
+        ...
+
+class MediaProcessorPort(ABC):
+    @abstractmethod
+    def sniff_mime_type(self, data: bytes) -> str:
+        ...
+
+    @abstractmethod
+    def classify_media_type(self, mime_type: str) -> str:
+        ...
+
+    @abstractmethod
+    async def process_image(self, data: bytes, max_dimension: int, user_id: str) -> bytes:
+        ...
+
+    @abstractmethod
+    async def process_video(self, data: bytes, max_dimension: int, user_id: str) -> bytes:
+        ...
+
+    @abstractmethod
+    async def process_audio(self, data: bytes, bitrate: str, user_id: str) -> bytes:
+        ...
+
+class TagLoaderPort(ABC):
+    @abstractmethod
+    def load_tags(self, path: str) -> List[Tag]:
+        ...
+
+class TransactionManager(ABC):
+    @abstractmethod
+    async def execute_in_transaction(self, callback: Callable) -> Any:
+        ...
 
 class UserRepository(ABC):
     @abstractmethod
@@ -35,7 +80,7 @@ class NonceRepository(ABC):
 
 class TagRepository(ABC):
     @abstractmethod
-    async def sync(self, tags: List[Tag]) -> None:
+    async def sync(self, tags: List[Tag], file_hash: Optional[str] = None) -> bool:
         ...
 
     @abstractmethod
