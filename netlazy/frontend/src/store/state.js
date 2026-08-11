@@ -1,4 +1,4 @@
-import { reactive, watch } from 'vue';
+import { reactive, watch, computed } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
@@ -78,6 +78,16 @@ export function useStore() {
 
     const state = reactive({ ...defaultState });
     let pollInterval = null;
+
+    // Cache localized tags avoiding massive loops during feed layout
+    const tagLocalesCache = computed(() => {
+        const cache = new Map();
+        const lang = state.lang || 'en';
+        state.availableSearchTags.forEach(t => {
+            cache.set(t.name, (t.i18n && (t.i18n[lang] || t.i18n['en'])) || t.name);
+        });
+        return cache;
+    });
 
     function startPolling() {
         if (pollInterval) clearInterval(pollInterval);
@@ -287,11 +297,7 @@ export function useStore() {
     }
 
     function getLocalizedTag(tagName) {
-        const tagObj = state.availableSearchTags.find(t => t.name === tagName);
-        if (tagObj && tagObj.i18n) {
-            return tagObj.i18n[state.lang] || tagObj.i18n['en'] || tagName;
-        }
-        return tagName;
+        return tagLocalesCache.value.get(tagName) || tagName;
     }
 
     function showConfirm(title, message, onConfirm, isDanger = false, confirmText = "confirm", cancelText = "cancel") {
@@ -486,8 +492,13 @@ export function useStore() {
         try {
             const res = await api.get('/tags/search');
             const oldTags = state.availableSearchTags;
+            const oldTagsMap = new Map();
+            for (let i = 0; i < oldTags.length; i++) {
+                oldTagsMap.set(oldTags[i].name, oldTags[i]);
+            }
+            
             state.availableSearchTags = res.data.map(t => {
-                const oldT = oldTags.find(ot => ot.name === t.name);
+                const oldT = oldTagsMap.get(t.name);
                 return { 
                     name: t.name, 
                     aliases: t.aliases || [], 
@@ -506,9 +517,13 @@ export function useStore() {
         try {
             const res = await api.get('/inbox');
             const oldInbox = state.inbox || [];
+            const oldInboxMap = new Map();
+            for (let i = 0; i < oldInbox.length; i++) {
+                oldInboxMap.set(oldInbox[i].id, oldInbox[i]);
+            }
             
             state.inbox = res.data.map(r => {
-                const oldR = oldInbox.find(old => old.id === r.id);
+                const oldR = oldInboxMap.get(r.id);
                 if (r.profile && r.profile.media) {
                     r.profile.media.forEach(m => {
                         const oldM = oldR?.profile?.media?.find(om => om.url === m.url);

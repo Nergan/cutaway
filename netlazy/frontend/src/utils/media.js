@@ -87,7 +87,8 @@ async function getRestoredAudioBlobUrl(arrayBuffer) {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-        Array.prototype.reverse.call(audioBuffer.getChannelData(i));
+        // Fast in-place reverse leveraging native Float32Array method
+        audioBuffer.getChannelData(i).reverse();
     }
     const wavBlob = audioBufferToWav(audioBuffer);
     return URL.createObjectURL(wavBlob);

@@ -193,11 +193,13 @@
           <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
 
           <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-            <div v-for="c in profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-               <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-               <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-               <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-            </div>
+            <template v-for="c in profile.contacts" :key="c.value">
+              <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+                 <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+                 <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                 <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+              </div>
+            </template>
           </div>
           
           <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
@@ -330,7 +332,15 @@ const masonryColumns = computed(() => {
     if (profile.bio) h += profile.bio.length * 0.5;
     if (profile.contacts && profile.contacts.length > 0) h += profile.contacts.length * 30;
     
-    const minIdx = heights.indexOf(Math.min(...heights));
+    let minIdx = 0;
+    let minH = heights[0];
+    for (let i = 1; i < heights.length; i++) {
+        if (heights[i] < minH) {
+            minH = heights[i];
+            minIdx = i;
+        }
+    }
+    
     cols[minIdx].push(profile);
     heights[minIdx] += h;
   });

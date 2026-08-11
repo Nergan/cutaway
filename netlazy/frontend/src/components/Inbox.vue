@@ -34,8 +34,8 @@
                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
                 </div>
 
-                <div class="feed-media-stack" :data-count="filterMedia(req.profile.media).length" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="feed-media-item" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
+                <div class="feed-media-stack" :data-count="req.profile.media.length" v-if="req.profile && req.profile.media && req.profile.media.length > 0">
+                  <div class="feed-media-item" v-for="m in req.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, req.profile.media)" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
                      <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
                      <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                      <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -48,11 +48,13 @@
                 <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-                  <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-                     <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-                  </div>
+                  <template v-for="c in req.profile.contacts" :key="c.value">
+                    <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+                       <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+                       <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                       <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+                    </div>
+                  </template>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
@@ -152,8 +154,8 @@
                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
                 </div>
 
-                <div class="feed-media-stack" :data-count="filterMedia(req.profile.media).length" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="feed-media-item" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
+                <div class="feed-media-stack" :data-count="req.profile.media.length" v-if="req.profile && req.profile.media && req.profile.media.length > 0">
+                  <div class="feed-media-item" v-for="m in req.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, req.profile.media)" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
                      <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
                      <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                      <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -166,11 +168,13 @@
                 <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-                  <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-                     <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-                  </div>
+                  <template v-for="c in req.profile.contacts" :key="c.value">
+                    <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+                       <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+                       <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                       <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+                    </div>
+                  </template>
                 </div>
 
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
@@ -246,8 +250,8 @@
                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
                 </div>
 
-                <div class="feed-media-stack" :data-count="filterMedia(req.profile.media).length" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="feed-media-item" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
+                <div class="feed-media-stack" :data-count="req.profile.media.length" v-if="req.profile && req.profile.media && req.profile.media.length > 0">
+                  <div class="feed-media-item" v-for="m in req.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, req.profile.media)" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
                      <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
                      <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                      <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -260,11 +264,13 @@
                 <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-                  <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-                     <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-                  </div>
+                  <template v-for="c in req.profile.contacts" :key="c.value">
+                    <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+                       <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+                       <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                       <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+                    </div>
+                  </template>
                 </div>
 
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
@@ -316,8 +322,8 @@
                   <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
                 </div>
 
-                <div class="feed-media-stack" :data-count="filterMedia(req.profile.media).length" v-if="req.profile && req.profile.media && filterMedia(req.profile.media).length > 0">
-                  <div class="feed-media-item" v-for="m in filterMedia(req.profile.media)" :key="m.blobUrl || m.url" @click="handleMediaClick(m, filterMedia(req.profile.media))" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
+                <div class="feed-media-stack" :data-count="req.profile.media.length" v-if="req.profile && req.profile.media && req.profile.media.length > 0">
+                  <div class="feed-media-item" v-for="m in req.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, req.profile.media)" v-intersect="() => store.loadDecryptedMedia(m, req.profile.user_id)">
                      <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
                      <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                      <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(req.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -330,11 +336,13 @@
                 <div style="font-size: 0.85rem;" v-if="req.profile && req.profile.bio">{{ req.profile.bio }}</div>
 
                 <div v-if="req.profile && req.profile.contacts && req.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
-                  <div v-for="c in req.profile.contacts.filter(c => !c.is_private && c.type !== 'unknown')" :key="c.value" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
-                     <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                     <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
-                     <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
-                  </div>
+                  <template v-for="c in req.profile.contacts" :key="c.value">
+                    <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
+                       <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
+                       <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                       <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
+                    </div>
+                  </template>
                 </div>
 
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: auto;">
@@ -430,10 +438,6 @@ const pendingRequests = computed(() => store.state.inbox.filter(r => r.status ==
 const sentRequests = computed(() => store.state.inbox.filter(r => r.status === 'pending' && r.is_sender))
 const acceptedRequests = computed(() => store.state.inbox.filter(r => r.status === 'accepted'))
 const declinedRequests = computed(() => store.state.inbox.filter(r => r.status === 'declined' && r.is_sender))
-
-function filterMedia(mediaArr) {
-  return (mediaArr || []).filter(m => m && (m.url || m.blobUrl));
-}
 
 // Reusable fluid JS collapse transitions
 const beforeEnter = (el) => {
