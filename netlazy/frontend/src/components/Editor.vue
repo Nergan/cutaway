@@ -143,6 +143,7 @@
               <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
+                  <i class="bi bi-x" style="font-size: 0.85rem; margin-left: 0.15rem;"></i>
                 </span>
                 <span v-if="store.state.myProfile.tags.length === 0" style="color:var(--text-muted); font-size:0.8rem; font-style:italic;" key="none-placeholder">{{ store.t('no_tags') }}</span>
               </transition-group>
