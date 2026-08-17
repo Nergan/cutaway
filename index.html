@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>nargan's projects</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
-    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/media@main/favicon.png">
+    <link rel="icon" type="image/x-icon" href="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <style>
         * {
@@ -403,7 +403,7 @@
             }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/gh/Nergan/media@main/donate-widget.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/donate-widget.js" defer></script>
 </head>
 <body>
 
@@ -442,15 +442,15 @@
     console.log('Greetings from GitHub!')
 
     const projectsConfig = [
-        { i18n: 1, plugin: "evenfest", link: "/evenfest", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/evenfest/favicon.png" },
-        { i18n: 2, plugin: "snake", link: "/snake", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/snake/favicon.png" },
-        { i18n: 3, plugin: "toadcode", link: "/toadcode", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/toadcode/favicon.png" },
-        { i18n: 5, plugin: "formular", link: "/formular", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/formular/favicon.png" },
-        { i18n: 6, plugin: "yellow_mirror", link: "/yellow-mirror", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/yellow-mirror/favicon.png" },
-        { i18n: 8, plugin: "dnd", link: "/dnd", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/dnd/menu favicon.png" },
-        { i18n: 9, plugin: "markbin", link: "/markbin", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/markbin/favicon.png" },
-        { i18n: 10, plugin: "kanban", link: "/kanban", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/kanban/favicon.png" },
-        { i18n: 11, plugin: "netlazy", link: "/netlazy", icon: "https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/favicon.png" }
+        { i18n: 1, plugin: "evenfest", link: "/evenfest", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/evenfest/favicon.png" },
+        { i18n: 2, plugin: "snake", link: "/snake", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/snake/favicon.png" },
+        { i18n: 3, plugin: "toadcode", link: "/toadcode", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/toadcode/favicon.png" },
+        { i18n: 5, plugin: "formular", link: "/formular", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/formular/favicon.png" },
+        { i18n: 6, plugin: "yellow_mirror", link: "/yellow-mirror", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/yellow-mirror/favicon.png" },
+        { i18n: 8, plugin: "dnd", link: "/dnd", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/dnd/menu favicon.png" },
+        { i18n: 9, plugin: "markbin", link: "/markbin", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/markbin/favicon.png" },
+        { i18n: 10, plugin: "kanban", link: "/kanban", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/kanban/favicon.png" },
+        { i18n: 11, plugin: "netlazy", link: "/netlazy", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/favicon.png" }
     ];
 
     const translations = {
@@ -654,7 +654,7 @@
             const randomIndex = Math.floor(Math.random() * backgrounds.length);
             const selected = backgrounds[randomIndex];
             const source = document.createElement('source');
-            source.src = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${selected}`;
+            source.src = `https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mainpage-backgrounds/${selected}`;
             source.type = 'video/mp4';
             videoElement.innerHTML = '';
             videoElement.appendChild(source);
@@ -663,7 +663,7 @@
             videoElement.onerror = () => {
                 console.warn(`Failed to load ${selected}, trying fallback`);
                 const fallbackIndex = (randomIndex + 1) % backgrounds.length;
-                const fallbackSrc = `https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/${backgrounds[fallbackIndex]}`;
+                const fallbackSrc = `https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mainpage-backgrounds/${backgrounds[fallbackIndex]}`;
                 videoElement.innerHTML = '';
                 const fallbackSource = document.createElement('source');
                 fallbackSource.src = fallbackSrc;
@@ -675,7 +675,7 @@
             console.error('Background error:', err);
             videoElement.innerHTML = '';
             const fallbackSource = document.createElement('source');
-            fallbackSource.src = 'https://cdn.jsdelivr.net/gh/Nergan/media@main/mainpage-backgrounds/autumn.mp4';
+            fallbackSource.src = 'https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mainpage-backgrounds/autumn.mp4';
             fallbackSource.type = 'video/mp4';
             videoElement.appendChild(fallbackSource);
             videoElement.load();

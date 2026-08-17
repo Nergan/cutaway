@@ -552,7 +552,7 @@ function isNewerVersion(oldVer, newVer) {
 
 async function fetchLatestReleaseData() {
   try {
-    const res = await fetch("https://api.github.com/repos/Nergan/media/contents/netlazy/apk?t=" + Date.now());
+    const res = await fetch("https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk?t=" + Date.now());
     if (res.ok) {
         const files = await res.json();
         const apkFile = files.find(f => f.name.endsWith('.apk') && f.name.startsWith('netlazy-'));
@@ -561,7 +561,7 @@ async function fetchLatestReleaseData() {
             if (match) {
                 return {
                     version: match[1],
-                    url: `https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/${apkFile.name}`
+                    url: `https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/${apkFile.name}`
                 };
             }
         }

@@ -135,7 +135,7 @@ jobs:
       - name: Checkout media repo
         uses: actions/checkout@v4
         with:
-          repository: Nergan/media
+          repository: Nergan/cdn
           token: ${{ secrets.MEDIA_REPO_PAT }}
           path: media-repo
 
@@ -155,7 +155,7 @@ jobs:
           data = {
               'version': '${{ env.APP_VERSION }}',
               'versionCode': ${{ env.APP_VERSION_CODE }},
-              'url': 'https://cdn.jsdelivr.net/gh/Nergan/media@main/netlazy/apk/${{ env.APK_FILE }}',
+              'url': 'https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/${{ env.APK_FILE }}',
               'release_notes': '''${{ inputs.release_notes || github.event.head_commit.message }}'''.strip(),
               'sha256': '${{ env.APK_SHA256 }}'
           }
