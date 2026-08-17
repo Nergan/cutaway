@@ -1,0 +1,28 @@
+# Специфичные файлы
+code.md
+kanban.json
+plan.md
+README*.md
+tags.yaml
+welcome.html
+LICENSE
+
+# Папки и сборщики
+android
+assets
+node_modules
+static
+**/vercel.json
+
+# Кэш и логи
+**/*.log
+**/__pycache__
+**/*.pyc
+
+# Скрытые файлы проекта (если нужно скрыть всё, кроме конкретных)
+.*
+!.dockerignore
+!.env
+!.gitattributes
+!.hfignore
+!.gitignore
