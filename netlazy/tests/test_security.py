@@ -34,7 +34,6 @@ async def test_verify_pow_success(security_service, security_deps):
     challenge_id = "challenge_101"
     security_deps["security_repo"].consume_challenge.return_value = PoWChallenge(id=challenge_id, difficulty=2)
 
-    # Solve 2-zero prefix PoW
     prefix = "00"
     nonce = 0
     while True:
@@ -62,29 +61,22 @@ async def test_verify_not_banned(security_service, security_deps):
         await security_service.verify_not_banned("192.168.1.1", "fp_123")
 
 
-def test_entropy_and_geo_velocity():
-    # Low entropy verification
+def test_entropy_scoring():
     zero_entropy = b"A" * 128
     assert shannon_entropy_ratio(zero_entropy) == 0.0
     assert score_entropy(shannon_entropy_ratio(zero_entropy), RiskThresholds()) > 0.0
 
-    # High entropy verification
     random_bytes = os.urandom(256)
     assert shannon_entropy_ratio(random_bytes) > 0.8
     assert score_entropy(shannon_entropy_ratio(random_bytes), RiskThresholds()) == 0.0
 
-    # Geo velocity (Impossible travel: 1000km in 0.1 hours = 10,000 km/h)
-    penalty = score_geo_velocity(1000.0, 0.1, RiskThresholds())
-    assert penalty == RiskThresholds().impossible_travel_score
-
 
 @pytest.mark.asyncio
-async def test_risk_evaluation_cascade_ban(security_service, security_deps):
+async def test_risk_evaluation_cascade_ban_on_low_entropy(security_service, security_deps):
     user = User("u1", "ed_pem", "mldsa_hex", None)
     security_deps["user_repo"].get_by_id.return_value = user
-    security_deps["user_repo"].get_last_activity.return_value = ("1.1.1.1", int(time.time()) - 5)
-    security_deps["user_repo"].increment_risk_score.return_value = 150.0  # Exceeds threshold
+    security_deps["user_repo"].increment_risk_score.return_value = 150.0
 
-    await security_service._evaluate_risk("u1", "2.2.2.2", b"low_entropy", int(time.time()))
+    await security_service._evaluate_risk("u1", "2.2.2.2", b"AAAAAAAAAAAAAAAA", int(time.time()))
 
     security_deps["security_repo"].apply_bans.assert_called_once()

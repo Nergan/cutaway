@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks
 
 from netlazy.domain.models import PoWChallenge
 from netlazy.domain.repository import SecurityRepository, UserRepository
-from netlazy.domain.risk import RiskThresholds, score_request_rate, score_geo_velocity, score_entropy, shannon_entropy_ratio
+from netlazy.domain.risk import RiskThresholds, score_entropy, shannon_entropy_ratio
 
 class BannedError(Exception):
     pass
@@ -82,11 +82,6 @@ class SecurityService:
         if payload:
             ratio = await asyncio.to_thread(shannon_entropy_ratio, payload)
             total_penalty += score_entropy(ratio, self._thresholds)
-
-        last_ip, last_time = await self._user_repo.get_last_activity(user_id)
-        if last_ip and ip != last_ip and last_time:
-            elapsed_hours = (current_time - last_time) / 3600.0 
-            total_penalty += score_geo_velocity(1000.0, elapsed_hours, self._thresholds)
 
         if total_penalty > 0:
             new_score = await self._user_repo.increment_risk_score(user_id, total_penalty)

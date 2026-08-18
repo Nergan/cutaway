@@ -24,6 +24,17 @@ def inbox_service(inbox_deps):
 
 
 @pytest.mark.asyncio
+async def test_send_handshake_self_rejected(inbox_service):
+    with pytest.raises(ValueError, match="Cannot send handshake to self"):
+        await inbox_service.send_handshake(
+            sender_id="user_same",
+            receiver_id="user_same",
+            handshake_type="share",
+            offered_contact="test@example.com"
+        )
+
+
+@pytest.mark.asyncio
 async def test_send_handshake_missing_offered_contact(inbox_service):
     with pytest.raises(ValueError, match="offered_contact is required"):
         await inbox_service.send_handshake(
@@ -31,6 +42,23 @@ async def test_send_handshake_missing_offered_contact(inbox_service):
             receiver_id="r1",
             handshake_type="share",
             offered_contact=None
+        )
+
+
+@pytest.mark.asyncio
+async def test_send_handshake_already_accepted(inbox_service, inbox_deps):
+    existing = Handshake(
+        id="h1", sender_id="s1", receiver_id="r1",
+        handshake_type="exchange", status="accepted"
+    )
+    inbox_deps["handshake_repo"].get_between_users.return_value = existing
+
+    with pytest.raises(InvalidHandshakeStateError, match="Handshake already accepted"):
+        await inbox_service.send_handshake(
+            sender_id="s1",
+            receiver_id="r1",
+            handshake_type="exchange",
+            offered_contact="contact_info"
         )
 
 
@@ -64,7 +92,6 @@ async def test_resolve_handshake_unauthorized(inbox_service, inbox_deps):
     inbox_deps["handshake_repo"].get_by_id.return_value = mock_handshake
 
     with pytest.raises(UnauthorizedHandshakeActionError):
-        # Non-receiver attempting to accept
         await inbox_service.resolve_handshake(
             user_id="intruder",
             handshake_id="h1",

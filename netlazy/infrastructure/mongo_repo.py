@@ -7,9 +7,16 @@ from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, Tag, User, UserAlreadyExistsError
 from netlazy.domain.repository import (
-    HandshakeRepository, NonceRepository, ProfileRepository, SecurityRepository, 
-    TagRepository, UserRepository, TransactionManager
+    ChainRepository,
+    HandshakeRepository,
+    NonceRepository,
+    ProfileRepository,
+    SecurityRepository,
+    TagRepository,
+    UserRepository,
+    TransactionManager,
 )
+
 
 def _force_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
@@ -17,6 +24,7 @@ def _force_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
 
 class MongoUserRepository(UserRepository):
     async def create(self, user: User, session: Any = None) -> None:
@@ -37,7 +45,7 @@ class MongoUserRepository(UserRepository):
     async def get_by_id(self, user_id: str, session: Any = None) -> Optional[User]:
         doc = await db_instance.users_collection.find_one({"user_id": user_id}, session=session)
         if not doc or "ed25519_public_pem" not in doc:
-            return None 
+            return None
         return self._to_domain(doc)
 
     def _to_domain(self, doc: dict) -> User:
@@ -53,11 +61,14 @@ class MongoUserRepository(UserRepository):
         )
 
     async def log_footprint(self, user_id: str, ip: str, fingerprint: str) -> None:
-        if not ip and not fingerprint: return
+        if not ip and not fingerprint:
+            return
         updates = {}
         trusted_ips = [t.strip() for t in settings.trusted_bot_ips.split(",") if t.strip()]
-        if ip and ip not in trusted_ips: updates["known_ips"] = ip
-        if fingerprint: updates["known_fingerprints"] = fingerprint
+        if ip and ip not in trusted_ips:
+            updates["known_ips"] = ip
+        if fingerprint:
+            updates["known_fingerprints"] = fingerprint
         if updates:
             await db_instance.users_collection.update_one(
                 {"user_id": user_id},
@@ -66,14 +77,15 @@ class MongoUserRepository(UserRepository):
 
     async def get_last_activity(self, user_id: str) -> Tuple[Optional[str], Optional[int]]:
         doc = await db_instance.users_collection.find_one({"user_id": user_id}, {"last_ip": 1, "last_active": 1})
-        if not doc: 
+        if not doc:
             return None, None
         last_active = doc.get("last_active")
         ts = int(last_active.timestamp()) if last_active else None
         return doc.get("last_ip"), ts
 
     async def increment_risk_score(self, user_id: str, score_delta: float) -> float:
-        if score_delta <= 0: return 0.0
+        if score_delta <= 0:
+            return 0.0
         doc = await db_instance.users_collection.find_one_and_update(
             {"user_id": user_id},
             {"$inc": {"risk_score": score_delta}},
@@ -83,13 +95,14 @@ class MongoUserRepository(UserRepository):
 
     async def delete(self, user_id: str, session: Any = None) -> None:
         await db_instance.users_collection.delete_one({"user_id": user_id}, session=session)
-        
+
     async def get_active_user_ids(self, user_ids: List[str]) -> List[str]:
         cursor = db_instance.users_collection.find({
             "user_id": {"$in": user_ids},
             "is_banned": {"$ne": True}
         }, {"user_id": 1})
         return [doc["user_id"] async for doc in cursor]
+
 
 class MongoNonceRepository(NonceRepository):
     async def insert_if_not_exists(self, user_id: str, nonce: str) -> bool:
@@ -106,6 +119,7 @@ class MongoNonceRepository(NonceRepository):
     async def delete_for_user(self, user_id: str, session: Any = None) -> None:
         await db_instance.used_nonces_collection.delete_many({"user_id": user_id}, session=session)
 
+
 class MongoSecurityRepository(SecurityRepository):
     async def create_challenge(self, challenge: PoWChallenge) -> None:
         await db_instance.challenges_collection.insert_one({
@@ -116,28 +130,35 @@ class MongoSecurityRepository(SecurityRepository):
 
     async def consume_challenge(self, challenge_id: str) -> Optional[PoWChallenge]:
         doc = await db_instance.challenges_collection.find_one_and_delete({"id": challenge_id})
-        if not doc: return None
+        if not doc:
+            return None
         return PoWChallenge(id=doc["id"], difficulty=doc["difficulty"], created_at=_force_utc(doc["created_at"]))
 
     async def is_banned(self, ip: str, fingerprint: str, user_id: Optional[str] = None) -> bool:
         queries = []
-        if ip: queries.append({"type": "ip", "value": ip})
-        if fingerprint: queries.append({"type": "fingerprint", "value": fingerprint})
-        if user_id: queries.append({"type": "user_id", "value": user_id})
-        
-        if not queries: return False
+        if ip:
+            queries.append({"type": "ip", "value": ip})
+        if fingerprint:
+            queries.append({"type": "fingerprint", "value": fingerprint})
+        if user_id:
+            queries.append({"type": "user_id", "value": user_id})
+
+        if not queries:
+            return False
         doc = await db_instance.bans_collection.find_one({"$or": queries})
         return doc is not None
 
     async def apply_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
         trusted_ips = [t.strip() for t in settings.trusted_bot_ips.split(",") if t.strip()]
         ips_to_ban = [ip for ip in ips if ip not in trusted_ips]
-        
+
         ops = []
-        for ip in ips_to_ban: ops.append({"type": "ip", "value": ip, "created_at": datetime.now(timezone.utc)})
-        for fp in fingerprints: ops.append({"type": "fingerprint", "value": fp, "created_at": datetime.now(timezone.utc)})
+        for ip in ips_to_ban:
+            ops.append({"type": "ip", "value": ip, "created_at": datetime.now(timezone.utc)})
+        for fp in fingerprints:
+            ops.append({"type": "fingerprint", "value": fp, "created_at": datetime.now(timezone.utc)})
         ops.append({"type": "user_id", "value": user_id, "created_at": datetime.now(timezone.utc)})
-            
+
         for op in ops:
             await db_instance.bans_collection.update_one(
                 {"type": op["type"], "value": op["value"]}, {"$set": op}, upsert=True
@@ -146,12 +167,15 @@ class MongoSecurityRepository(SecurityRepository):
 
     async def remove_bans(self, ips: List[str], fingerprints: List[str], user_id: str) -> None:
         ops = []
-        for ip in ips: ops.append({"type": "ip", "value": ip})
-        for fp in fingerprints: ops.append({"type": "fingerprint", "value": fp})
+        for ip in ips:
+            ops.append({"type": "ip", "value": ip})
+        for fp in fingerprints:
+            ops.append({"type": "fingerprint", "value": fp})
         ops.append({"type": "user_id", "value": user_id})
-            
+
         if ops:
             await db_instance.bans_collection.delete_many({"$or": ops})
+
 
 class MongoTagRepository(TagRepository):
     async def sync(self, tags: List[Tag], file_hash: Optional[str] = None) -> bool:
@@ -206,19 +230,23 @@ class MongoTagRepository(TagRepository):
 
     async def search(self, query: str) -> List[Tag]:
         tokens = query.strip().split()
-        if not tokens: return await self.list_visible()
+        if not tokens:
+            return await self.list_visible()
         positive = [t.lower() for t in tokens if not t.startswith("-")]
         negative = [t[1:].lower() for t in tokens if t.startswith("-") and len(t) > 1]
-        
+
         cursor = db_instance.tags_collection.find({"name": {"$ne": "__sync_hash__"}})
         all_tags = [self._to_domain(doc) async for doc in cursor]
-        
+
         def matches(tag: Tag, term: str) -> bool:
-            if term in tag.name.lower(): return True
-            if any(term in str(alias).lower() for alias in tag.aliases): return True
-            if tag.i18n and any(term in str(v).lower() for v in tag.i18n.values()): return True
+            if term in tag.name.lower():
+                return True
+            if any(term in str(alias).lower() for alias in tag.aliases):
+                return True
+            if tag.i18n and any(term in str(v).lower() for v in tag.i18n.values()):
+                return True
             return False
-            
+
         if positive:
             results = [t for t in all_tags if any(matches(t, term) for term in positive)]
         else:
@@ -234,17 +262,19 @@ class MongoTagRepository(TagRepository):
     def _to_domain(self, doc: dict) -> Tag:
         return Tag(
             name=doc["name"],
-            aliases=doc.get("aliases", []), 
+            aliases=doc.get("aliases", []),
             hidden=doc.get("hidden", False),
             i18n=doc.get("i18n", {})
         )
 
+
 class MongoProfileRepository(ProfileRepository):
     async def get_by_user_id(self, user_id: str, session: Any = None) -> Optional[Profile]:
         doc = await db_instance.profiles_collection.find_one({"user_id": user_id}, session=session)
-        if not doc: return None
+        if not doc:
+            return None
         return self._to_domain(doc)
-        
+
     async def get_by_user_ids(self, user_ids: List[str]) -> List[Profile]:
         cursor = db_instance.profiles_collection.find({"user_id": {"$in": user_ids}})
         return [self._to_domain(doc) async for doc in cursor]
@@ -257,15 +287,20 @@ class MongoProfileRepository(ProfileRepository):
             session=session
         )
 
-    async def get_feed(self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
+    async def get_feed(
+        self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str],
+        bonus: List[str], abonus: List[str], limit: int
+    ) -> List[Profile]:
         banned_users_cursor = db_instance.users_collection.find({"is_banned": True}, {"user_id": 1})
         banned_ids = [u["user_id"] async for u in banned_users_cursor]
 
         ignored = exclude_ids + [viewer_id] + banned_ids
         base_match = {"user_id": {"$nin": ignored}}
 
-        if requires: base_match["tags"] = {"$all": requires}
-        if excludes: base_match.setdefault("tags", {})["$nin"] = excludes
+        if requires:
+            base_match["tags"] = {"$all": requires}
+        if excludes:
+            base_match.setdefault("tags", {})["$nin"] = excludes
 
         base_match["$or"] = [
             {"bio": {"$nin": ["", None]}},
@@ -279,12 +314,14 @@ class MongoProfileRepository(ProfileRepository):
         fetch_limit = limit * 10
 
         async def fetch_profiles(direction_match):
-            pipeline = [{"$match": {**base_match, **direction_match}}]
-            pipeline.append({"$sort": {"random_index": 1}})
-            pipeline.append({"$limit": fetch_limit})
+            pipeline = [
+                {"$match": {**base_match, **direction_match}},
+                {"$sort": {"random_index": 1}},
+                {"$limit": fetch_limit}
+            ]
             db_cursor = db_instance.profiles_collection.aggregate(pipeline)
             docs = [self._to_domain(doc) async for doc in db_cursor]
-            
+
             for p in docs:
                 if bonus or abonus:
                     bonus_score = len(set(p.tags) & set(bonus))
@@ -292,27 +329,29 @@ class MongoProfileRepository(ProfileRepository):
                     p.score = bonus_score - abonus_score
                 else:
                     p.score = 0
-                    
+
             docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
             return docs[:limit]
 
         results = await fetch_profiles({"random_index": {"$gte": rand_val}})
-        
+
         if len(results) < limit:
             needed = limit - len(results)
             found_ids = [r.user_id for r in results]
-            
+
             wrap_match = {"random_index": {"$lt": rand_val}}
             wrap_base_match = base_match.copy()
             wrap_base_match["user_id"] = {"$nin": ignored + found_ids}
 
-            pipeline = [{"$match": {**wrap_base_match, **wrap_match}}]
-            pipeline.append({"$sort": {"random_index": 1}})
-            pipeline.append({"$limit": needed * 10})
+            pipeline = [
+                {"$match": {**wrap_base_match, **wrap_match}},
+                {"$sort": {"random_index": 1}},
+                {"$limit": needed * 10}
+            ]
 
             wrap_cursor = db_instance.profiles_collection.aggregate(pipeline)
             wrap_docs = [self._to_domain(doc) async for doc in wrap_cursor]
-            
+
             for p in wrap_docs:
                 if bonus or abonus:
                     bonus_score = len(set(p.tags) & set(bonus))
@@ -320,7 +359,7 @@ class MongoProfileRepository(ProfileRepository):
                     p.score = bonus_score - abonus_score
                 else:
                     p.score = 0
-            
+
             wrap_docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
             results.extend(wrap_docs[:needed])
 
@@ -330,7 +369,8 @@ class MongoProfileRepository(ProfileRepository):
         await db_instance.profiles_collection.delete_one({"user_id": user_id}, session=session)
 
     async def count_media_usage(self, file_hash: str) -> int:
-        if not file_hash: return 0
+        if not file_hash:
+            return 0
         return await db_instance.profiles_collection.count_documents({
             "$or": [
                 {"media.file_hash": file_hash},
@@ -339,7 +379,8 @@ class MongoProfileRepository(ProfileRepository):
         })
 
     async def find_media_by_hash(self, file_hash: str) -> Optional[MediaItem]:
-        if not file_hash: return None
+        if not file_hash:
+            return None
         doc = await db_instance.profiles_collection.find_one({
             "$or": [
                 {"media.file_hash": file_hash},
@@ -357,17 +398,24 @@ class MongoProfileRepository(ProfileRepository):
 
     def _to_doc(self, profile: Profile) -> dict:
         return {
-            "user_id": profile.user_id, "media_id": profile.media_id, "bio": profile.bio, "tags": profile.tags,
+            "user_id": profile.user_id,
+            "media_id": profile.media_id,
+            "bio": profile.bio,
+            "tags": profile.tags,
             "media": [self._media_to_doc(m) for m in profile.media],
             "audio": self._media_to_doc(profile.audio) if profile.audio else None,
             "contacts": [self._contact_to_doc(c) for c in profile.contacts],
-            "created_at": profile.created_at, "updated_at": profile.updated_at,
+            "created_at": profile.created_at,
+            "updated_at": profile.updated_at,
             "random_index": profile.random_index
         }
 
     def _to_domain(self, doc: dict) -> Profile:
         return Profile(
-            user_id=doc["user_id"], media_id=doc.get("media_id", doc["user_id"]), bio=doc.get("bio", ""), tags=doc.get("tags", []),
+            user_id=doc["user_id"],
+            media_id=doc.get("media_id", doc["user_id"]),
+            bio=doc.get("bio", ""),
+            tags=doc.get("tags", []),
             media=[self._media_from_doc(m) for m in doc.get("media", [])],
             audio=self._media_from_doc(doc["audio"]) if doc.get("audio") else None,
             contacts=[self._contact_from_doc(c) for c in doc.get("contacts", [])],
@@ -377,14 +425,23 @@ class MongoProfileRepository(ProfileRepository):
             random_index=doc.get("random_index", random.random())
         )
 
-    def _media_to_doc(self, m: MediaItem) -> dict: 
-        return {"url": m.url, "media_type": m.media_type, "blur": m.blur, "file_hash": m.file_hash, "public_id": m.public_id, "resource_type": m.resource_type}
-        
-    def _media_from_doc(self, d: dict) -> MediaItem: 
-        return MediaItem(url=d["url"], media_type=d["media_type"], blur=d.get("blur", False), file_hash=d.get("file_hash", ""), public_id=d.get("public_id"), resource_type=d.get("resource_type"))
-        
-    def _contact_to_doc(self, c: Contact) -> dict: return {"type": c.type, "value": c.value, "is_private": c.is_private}
-    def _contact_from_doc(self, d: dict) -> Contact: return Contact(type=d["type"], value=d["value"], is_private=d.get("is_private", True))
+    def _media_to_doc(self, m: MediaItem) -> dict:
+        return {
+            "url": m.url, "media_type": m.media_type, "blur": m.blur,
+            "file_hash": m.file_hash, "public_id": m.public_id, "resource_type": m.resource_type
+        }
+
+    def _media_from_doc(self, d: dict) -> MediaItem:
+        return MediaItem(
+            url=d["url"], media_type=d["media_type"], blur=d.get("blur", False),
+            file_hash=d.get("file_hash", ""), public_id=d.get("public_id"), resource_type=d.get("resource_type")
+        )
+
+    def _contact_to_doc(self, c: Contact) -> dict:
+        return {"type": c.type, "value": c.value, "is_private": c.is_private}
+
+    def _contact_from_doc(self, d: dict) -> Contact:
+        return Contact(type=d["type"], value=d["value"], is_private=d.get("is_private", True))
 
 
 class MongoHandshakeRepository(HandshakeRepository):
@@ -435,7 +492,10 @@ class MongoHandshakeRepository(HandshakeRepository):
         return list(interacted)
 
     async def delete_for_user(self, user_id: str, session: Any = None) -> None:
-        await db_instance.handshakes_collection.delete_many({"$or": [{"sender_id": user_id}, {"receiver_id": user_id}]}, session=session)
+        await db_instance.handshakes_collection.delete_many(
+            {"$or": [{"sender_id": user_id}, {"receiver_id": user_id}]},
+            session=session
+        )
 
     def _to_doc(self, h: Handshake) -> dict:
         return {
@@ -457,10 +517,12 @@ class MongoHandshakeRepository(HandshakeRepository):
             created_at=_force_utc(doc["created_at"]), updated_at=_force_utc(doc.get("updated_at"))
         )
 
+
 class MongoTransactionManager(TransactionManager):
     async def execute_in_transaction(self, callback: Any) -> Any:
         async with await db_instance.client.start_session() as session:
             return await session.with_transaction(callback, read_preference=ReadPreference.PRIMARY)
+
 
 class MongoChainRepository(ChainRepository):
     async def get_recent_anchors(self, user_id: str) -> List[str]:

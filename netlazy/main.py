@@ -6,10 +6,11 @@ import re
 import time
 import urllib.request
 import json
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,7 @@ mimetypes.add_type("text/css", ".css")
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
 class SensitiveRouteFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         if record.args and len(record.args) >= 3:
@@ -35,30 +37,56 @@ class SensitiveRouteFilter(logging.Filter):
             return False
         return True
 
+
 logging.getLogger("uvicorn.access").addFilter(SensitiveRouteFilter())
 
-async def _async_insert_log(log_doc):
-    try:
-        await db_instance.logs_collection.insert_one(log_doc)
-    except Exception:
-        pass
 
 class MongoLogHandler(logging.Handler):
+    def __init__(self, maxsize: int = 1000):
+        super().__init__()
+        self._queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
+        self._worker_task: asyncio.Task | None = None
+        self._running = False
+
+    def start_worker(self):
+        self._running = True
+        self._worker_task = asyncio.create_task(self._process_logs())
+
+    async def stop_worker(self):
+        self._running = False
+        if self._worker_task:
+            self._worker_task.cancel()
+            try:
+                await self._worker_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _process_logs(self):
+        while self._running:
+            try:
+                doc = await self._queue.get()
+                if db_instance.logs_collection is not None:
+                    await db_instance.logs_collection.insert_one(doc)
+                self._queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                pass
+
     def emit(self, record):
-        if db_instance.logs_collection is None:
+        if not self._running or db_instance.logs_collection is None:
             return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return
-            
         log_doc = {
             "timestamp": datetime.fromtimestamp(record.created, timezone.utc),
             "level": record.levelname,
             "name": record.name,
             "message": self.format(record)
         }
-        loop.create_task(_async_insert_log(log_doc))
+        try:
+            self._queue.put_nowait(log_doc)
+        except asyncio.QueueFull:
+            pass
+
 
 mongo_handler = MongoLogHandler()
 mongo_handler.setLevel(logging.INFO)
@@ -75,16 +103,40 @@ async def block_browser_api(request: Request):
         base = _get_base_path(request)
         raise HTTPException(status_code=303, headers={"Location": f"{base}/profile"})
 
-# Define global application and attach CORS globally to avoid missing headers in container mode
-app = FastAPI(title="netlazy")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await connect_to_mongo()
+    mongo_handler.start_worker()
+    logging.getLogger().addHandler(mongo_handler)
+
+    synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
+    logging.info(f"Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
+    yield
+    logging.getLogger().removeHandler(mongo_handler)
+    await mongo_handler.stop_worker()
+    await close_mongo_connection()
+
+
+app = FastAPI(title="netlazy", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Next-Anchor"]
 )
+
+
+@app.middleware("http")
+async def chain_ratchet_middleware(request: Request, call_next):
+    response: Response = await call_next(request)
+    if hasattr(request.state, "next_anchor") and request.state.next_anchor:
+        response.headers["X-Next-Anchor"] = request.state.next_anchor
+    return response
+
 
 router = APIRouter()
 api_deps = [Depends(block_browser_api)]
@@ -96,14 +148,15 @@ router.include_router(feed_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(inbox_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(security_router.router, prefix="/api", dependencies=api_deps)
 
-
 _cached_version = None
 _cached_time = 0
+
 
 def fetch_gh_version():
     req = urllib.request.Request("https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk")
     with urllib.request.urlopen(req, timeout=5) as res:
         return json.loads(res.read())
+
 
 @router.get("/api/app-version")
 async def get_app_version():
@@ -115,27 +168,16 @@ async def get_app_version():
                 if f["name"].endswith(".apk") and f["name"].startswith("netlazy-"):
                     match = re.search(r'netlazy-v?([\d\.]+)\.apk', f["name"])
                     if match:
-                        _cached_version = {"version": match.group(1), "url": f"https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/{f['name']}"}
+                        _cached_version = {
+                            "version": match.group(1),
+                            "url": f"https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/{f['name']}"
+                        }
                         _cached_time = time.time()
                         break
         except Exception:
             pass
     return _cached_version or {"version": "0.0.1", "url": ""}
 
-
-@router.on_event("startup")
-async def startup_event():
-    await connect_to_mongo()
-    logging.getLogger().addHandler(mongo_handler)
-
-    synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
-    logging.info(f"Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
-
-
-@router.on_event("shutdown")
-async def shutdown_clients():
-    logging.getLogger().removeHandler(mongo_handler)
-    await close_mongo_connection()
 
 @router.get("/api/health")
 def health_check():
@@ -147,6 +189,7 @@ async def root_redirect(request: Request):
     base = _get_base_path(request)
     return RedirectResponse(url=f"{base}/profile", status_code=303)
 
+
 @router.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(request: Request, full_path: str = ""):
     if full_path.startswith("api/") or full_path == "api":
@@ -155,15 +198,16 @@ async def serve_spa(request: Request, full_path: str = ""):
             base = _get_base_path(request)
             return RedirectResponse(url=f"{base}/profile", status_code=303)
         raise HTTPException(status_code=404)
-    
+
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    
+
     return HTMLResponse(
         content="<html><body><h1>Frontend Not Built Yet</h1></body></html>",
         status_code=200
     )
+
 
 app.include_router(router)
 if (BASE_DIR / 'static').exists():

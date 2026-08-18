@@ -111,6 +111,10 @@ def _get_client_footprint(request: Request) -> tuple:
     return ip, fingerprint
 
 
+def _normalize_path(path: str) -> str:
+    return "/" + path.strip("/").split("?")[0]
+
+
 async def verify_request_signature(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -123,11 +127,12 @@ async def verify_request_signature(
     x_signature_mldsa: str = Header(None),
     x_signed_path: str = Header(None),
 ) -> User:
-    
     if not all([x_user_id, x_timestamp, x_nonce, x_body_hash, x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path]):
         raise AUTH_ERROR
 
-    if not x_signed_path.endswith(request.url.path):
+    norm_signed = _normalize_path(x_signed_path)
+    norm_req = _normalize_path(request.url.path)
+    if not norm_signed.endswith(norm_req):
         raise AUTH_ERROR
 
     ip, fingerprint = _get_client_footprint(request)
@@ -137,7 +142,6 @@ async def verify_request_signature(
     except BannedError:
         raise BANNED_ERROR
 
-    # FIX: Streaming body read to prevent Out-of-Memory (OOM) via Chunked Transfer attacks
     body_accumulator = bytearray()
     try:
         async for chunk in request.stream():
@@ -148,7 +152,7 @@ async def verify_request_signature(
         raise HTTPException(status_code=400, detail="Client disconnected")
 
     body_bytes = bytes(body_accumulator)
-    request.state.body_bytes = body_bytes  # Expose safely loaded bytes to endpoint routes
+    request.state.body_bytes = body_bytes
 
     actual_body_hash = hashlib.sha256(body_bytes).hexdigest()
     if actual_body_hash != x_body_hash:
@@ -197,8 +201,6 @@ async def verify_request_signature(
 
     request.state.next_anchor = next_anchor
 
-    # FIX: Dispatch risk evaluation BEFORE footprint update to repair Geo-Velocity check
-    # BackgroundTasks guarantees strict sequential execution of added tasks.
     security_service.dispatch_risk_evaluation(background_tasks, x_user_id, ip, body_bytes)
     background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
 

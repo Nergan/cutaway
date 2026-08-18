@@ -62,13 +62,15 @@ class ProfileService:
 
     async def get_or_create_profile(self, user_id: str) -> Profile:
         profile = await self._profile_repo.get_by_user_id(user_id)
-        if profile: return profile
+        if profile:
+            return profile
         return Profile(user_id=user_id, media_id=user_id)
 
     async def update_profile(self, user_id: str, bio: str, tags: List[str], contacts: List[Contact]) -> Profile:
         valid_names = set(await self._tag_repo.get_all_names())
         unknown = [t for t in tags if t not in valid_names]
-        if unknown: raise InvalidTagError(unknown)
+        if unknown:
+            raise InvalidTagError(unknown)
 
         async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
@@ -89,7 +91,7 @@ class ProfileService:
 
             def _compute_hash(data: bytes, m_id: str) -> str:
                 return hashlib.sha256(data + m_id.encode('utf-8')).hexdigest()
-            
+
             file_hash = await asyncio.to_thread(_compute_hash, raw_bytes, profile.media_id)
 
             existing_media = await self._profile_repo.find_media_by_hash(file_hash)
@@ -98,9 +100,9 @@ class ProfileService:
                     raise MediaLimitExceededError(f"Maximum of {self._max_media_items} media items reached")
 
                 item = MediaItem(
-                    url=existing_media.url, 
-                    media_type=existing_media.media_type, 
-                    blur=blur, 
+                    url=existing_media.url,
+                    media_type=existing_media.media_type,
+                    blur=blur,
                     file_hash=file_hash,
                     public_id=existing_media.public_id,
                     resource_type=existing_media.resource_type
@@ -109,59 +111,64 @@ class ProfileService:
                     profile.audio = item
                 else:
                     profile.media.append(item)
-                
+
                 profile.updated_at = datetime.now(timezone.utc)
                 await self._profile_repo.upsert(profile)
                 return profile
 
-        mime_type = self._media_processor.sniff_mime_type(raw_bytes)
-        media_type = self._media_processor.classify_media_type(mime_type)
+            mime_type = self._media_processor.sniff_mime_type(raw_bytes)
+            media_type = self._media_processor.classify_media_type(mime_type)
 
-        if media_type == "image":
-            processed = await self._media_processor.process_image(raw_bytes, self._image_max_dimension, profile.media_id)
-        elif media_type == "video":
-            processed = await self._media_processor.process_video(raw_bytes, self._image_max_dimension, profile.media_id)
-        elif media_type == "audio":
-            processed = await self._media_processor.process_audio(raw_bytes, self._audio_bitrate, profile.media_id)
-        else:
-            processed = raw_bytes
-
-        ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
-        ext = ext_map.get(media_type, "bin")
-        public_id_hint = f"{profile.media_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
-        
-        try:
-            upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)
-        except Exception as e:
-            raise MediaProcessingError(f"CDN Upload failed: {str(e)}")
-
-        item = MediaItem(
-            url=upload_res["url"], 
-            media_type=media_type, 
-            blur=blur, 
-            file_hash=file_hash,
-            public_id=upload_res.get("public_id"),
-            resource_type=upload_res.get("resource_type")
-        )
-
-        async with self._locks.acquire(user_id):
-            profile = await self.get_or_create_profile(user_id)
             if media_type in ("image", "video") and len(profile.media) >= self._max_media_items:
                 raise MediaLimitExceededError(f"Maximum of {self._max_media_items} media items reached")
-                
-            if media_type == "audio":
-                profile.audio = item
-            else:
-                profile.media.append(item)
 
-            profile.updated_at = datetime.now(timezone.utc)
-            await self._profile_repo.upsert(profile)
-            return profile
+            if media_type == "image":
+                processed = await self._media_processor.process_image(raw_bytes, self._image_max_dimension, profile.media_id)
+            elif media_type == "video":
+                processed = await self._media_processor.process_video(raw_bytes, self._image_max_dimension, profile.media_id)
+            elif media_type == "audio":
+                processed = await self._media_processor.process_audio(raw_bytes, self._audio_bitrate, profile.media_id)
+            else:
+                processed = raw_bytes
+
+            ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
+            ext = ext_map.get(media_type, "bin")
+            public_id_hint = f"{profile.media_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
+
+            upload_res = None
+            try:
+                upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)
+                item = MediaItem(
+                    url=upload_res["url"],
+                    media_type=media_type,
+                    blur=blur,
+                    file_hash=file_hash,
+                    public_id=upload_res.get("public_id"),
+                    resource_type=upload_res.get("resource_type")
+                )
+
+                if media_type == "audio":
+                    profile.audio = item
+                else:
+                    profile.media.append(item)
+
+                profile.updated_at = datetime.now(timezone.utc)
+                await self._profile_repo.upsert(profile)
+                return profile
+            except Exception as e:
+                if upload_res and upload_res.get("url"):
+                    try:
+                        await self._media_storage.delete(upload_res["url"], upload_res.get("public_id"), upload_res.get("resource_type"))
+                    except Exception:
+                        pass
+                if isinstance(e, (MediaLimitExceededError, UnsupportedMediaTypeError, MediaProcessingError)):
+                    raise
+                raise MediaProcessingError(f"Upload failed: {str(e)}")
 
     async def remove_media(self, user_id: str, media_url: str, index: int = None) -> Profile:
         async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
-            
+
             target = None
             if index is not None and 0 <= index < len(profile.media) and profile.media[index].url == media_url:
                 target = profile.media.pop(index)
@@ -171,7 +178,7 @@ class ProfileService:
                         target = m
                         profile.media.pop(i)
                         break
-            
+
             if not target:
                 raise MediaNotFoundError(f"No media item with url {media_url}")
 
@@ -207,7 +214,7 @@ class ProfileService:
         async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             found = False
-            
+
             if index is not None and 0 <= index < len(profile.media) and profile.media[index].url == media_url:
                 profile.media[index].blur = blur
                 found = True
@@ -220,7 +227,7 @@ class ProfileService:
                 if not found and profile.audio and profile.audio.url == media_url:
                     profile.audio.blur = blur
                     found = True
-                    
+
             if not found:
                 raise MediaNotFoundError(f"No media item with url {media_url}")
 
@@ -232,7 +239,7 @@ class ProfileService:
         async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             current_urls = {m.url for m in profile.media}
-            
+
             if set(ordered_urls) != current_urls or len(ordered_urls) != len(profile.media):
                 raise ValueError("Payload must contain the exact current URLs for reordering")
 
@@ -248,7 +255,7 @@ class ProfileService:
             if profile:
                 media_items = profile.media + ([profile.audio] if profile.audio else [])
                 await self._profile_repo.delete(user_id)
-                
+
                 for m in media_items:
                     if m.file_hash:
                         count = await self._profile_repo.count_media_usage(m.file_hash)

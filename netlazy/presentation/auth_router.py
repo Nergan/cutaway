@@ -14,7 +14,8 @@ from netlazy.presentation.dependencies import (
     verify_pow, 
     verify_request_signature,
     profile_repo,
-    handshake_repo
+    handshake_repo,
+    _normalize_path
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -117,7 +118,9 @@ async def get_current_anchor(
     x_signature_mldsa: str = Header(..., alias="X-Signature-MLDSA"),
     x_signed_path: str = Header(..., alias="X-Signed-Path"),
 ):
-    if not x_signed_path.endswith(request.url.path):
+    norm_signed = _normalize_path(x_signed_path)
+    norm_req = _normalize_path(request.url.path)
+    if not norm_signed.endswith(norm_req):
         raise HTTPException(status_code=401, detail="Path mismatch")
 
     try:
@@ -135,7 +138,7 @@ async def get_current_anchor(
             pq_sig=pq_sig
         )
         return {"current_anchor": current_anchor}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid identity signature")
 
 
