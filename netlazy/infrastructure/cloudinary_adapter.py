@@ -11,6 +11,7 @@ cloudinary.config(
     api_key=settings.cloudinary_api_key,
     api_secret=settings.cloudinary_api_secret,
     secure=True,
+    timeout=15,
     urllib3_kwargs={'maxsize': 10}
 )
 

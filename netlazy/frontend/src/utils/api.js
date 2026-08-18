@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { signPayload, getFingerprint, hashBody, solvePoW } from './crypto.js';
+import { signHybridPayload, signIdentityPayload, getFingerprint, hashBody, solvePoW } from './crypto.js';
 import { useStore } from '../store/state.js';
 import { Capacitor } from '@capacitor/core';
 
@@ -17,7 +17,6 @@ function uuidv4() {
     );
 }
 
-// Global request interceptor to inject cryptographic headers
 api.interceptors.request.use(async (config) => {
     const store = useStore();
 
@@ -39,65 +38,117 @@ api.interceptors.request.use(async (config) => {
 
     config.headers['X-Fingerprint'] = fingerprint;
 
-    if (store.state.keyPair && store.state.userId) {
-        const method = config.method.toUpperCase();
+    const rawUrl = config.url || '';
+    const qIndex = rawUrl.indexOf('?');
+    const urlPath = qIndex === -1 ? rawUrl : rawUrl.slice(0, qIndex);
+    let queryStr = qIndex === -1 ? '' : rawUrl.slice(qIndex + 1);
 
-        const rawUrl = config.url || '';
-        const qIndex = rawUrl.indexOf('?');
-        const urlPath = qIndex === -1 ? rawUrl : rawUrl.slice(0, qIndex);
-        let queryStr = qIndex === -1 ? '' : rawUrl.slice(qIndex + 1);
+    if (config.params) {
+        const paramsStr = new URLSearchParams(config.params).toString();
+        queryStr = queryStr ? `${queryStr}&${paramsStr}` : paramsStr;
+    }
 
-        if (config.params) {
-            const paramsStr = new URLSearchParams(config.params).toString();
-            queryStr = queryStr ? `${queryStr}&${paramsStr}` : paramsStr;
+    let path = `${config.baseURL || ''}${urlPath}`;
+    if (path.includes('://')) {
+        try {
+            const parsedUrl = new URL(path);
+            path = parsedUrl.pathname;
+        } catch (e) {}
+    }
+
+    const method = config.method.toUpperCase();
+    const isAnchorEndpoint = path.endsWith('/auth/anchor');
+    const isMigrateEndpoint = path.endsWith('/auth/migrate');
+    const isRegisterEndpoint = path.endsWith('/auth/register');
+
+    config.headers['X-Signed-Path'] = path; // Reverse Proxy resync hook
+
+    if (store.state.isRegistered && !isMigrateEndpoint && !isRegisterEndpoint) {
+        let edSig, pqSig;
+
+        if (isAnchorEndpoint) {
+            const sigs = await signIdentityPayload(method, path, timestamp, nonce, bodyHash);
+            edSig = sigs.edSig;
+            pqSig = sigs.pqSig;
+        } else {
+            const prevAnchor = store.state.currentAnchor || '';
+            const canonicalPayload = `PQDA-v1\n${method}\n${path}\n${queryStr}\n${timestamp}\n${nonce}\n${bodyHash}\n${prevAnchor}`;
+            const sigs = await signHybridPayload(canonicalPayload);
+            edSig = sigs.edSig;
+            pqSig = sigs.pqSig;
+            config.headers['X-Chain-Anchor'] = prevAnchor;
         }
-
-        // Normalize URL to path only (removes scheme/domain to align signature checks with FastAPI)
-        let path = `${config.baseURL || ''}${urlPath}`;
-        if (path.includes('://')) {
-            try {
-                const parsedUrl = new URL(path);
-                path = parsedUrl.pathname;
-            } catch (e) {
-                // Fallback to standard raw path
-            }
-        }
-
-        const canonicalPayload = `${method}\n${path}\n${queryStr}\n${timestamp}\n${nonce}\n${bodyHash}`;
-        const signatureBase64 = await signPayload(store.state.keyPair.privateKey, canonicalPayload);
 
         config.headers['X-User-Id'] = store.state.userId;
         config.headers['X-Timestamp'] = timestamp;
         config.headers['X-Nonce'] = nonce;
-        config.headers['X-Signature'] = signatureBase64;
+        config.headers['X-Body-Hash'] = bodyHash;
+        config.headers['X-Signature-Ed25519'] = edSig;
+        config.headers['X-Signature-MLDSA'] = pqSig;
     }
 
     return config;
 }, error => Promise.reject(error));
 
 
-// Global response interceptor to handle auto-logout on cascade ban or key rotation
+let isResyncing = false;
+let resyncQueue = [];
+
 api.interceptors.response.use(response => {
     const store = useStore();
+    if (response.headers['x-next-anchor']) {
+        store.state.currentAnchor = response.headers['x-next-anchor'];
+    }
     if (store && store.state.authErrorNotified) {
         store.state.authErrorNotified = false;
     }
     return response;
-}, error => {
+}, async error => {
+    const store = useStore();
     if (error.response && [401, 403].includes(error.response.status)) {
-        const store = useStore();
+        
+        if (error.response.status === 403) {
+            store.state.isBanned = true;
+            return Promise.reject(error);
+        }
+
+        const detail = error.response.data?.detail || '';
+        if (detail === "Unknown user") {
+            store.logout();
+            return Promise.reject(error);
+        }
+
         if (store.state.isRegistered) {
-            if (error.response.status === 403) {
-                store.state.isBanned = true;
-            } else {
-                if (error.response.data && error.response.data.detail === "Unknown user") {
-                    store.logout();
-                } else {
+            const originalRequest = error.config;
+            if (!originalRequest._retry && !originalRequest.url.endsWith('/auth/anchor')) {
+                originalRequest._retry = true;
+                
+                if (isResyncing) {
+                    return new Promise((resolve, reject) => {
+                        resyncQueue.push({ resolve: () => resolve(api(originalRequest)), reject });
+                    });
+                }
+                
+                isResyncing = true;
+                try {
+                    const anchorRes = await api.get('/auth/anchor');
+                    store.state.currentAnchor = anchorRes.data.current_anchor;
+                    isResyncing = false;
+                    
+                    resyncQueue.forEach(cb => cb.resolve());
+                    resyncQueue = [];
+                    
+                    return api(originalRequest);
+                } catch (err) {
+                    isResyncing = false;
+                    const queue = resyncQueue;
+                    resyncQueue = [];
                     if (!store.state.authErrorNotified) {
-                        store.addToast("Authentication Failed. Check your device clock.", "bi-exclamation-triangle");
+                        store.addToast("Chain desynced. Please reload.", "bi-exclamation-triangle");
                         store.state.authErrorNotified = true;
                     }
-                    // Intentionally removed store.logout() to prevent auto-deleting the user's keys on temporary 401s
+                    queue.forEach(cb => cb.reject(err));
+                    return Promise.reject(err);
                 }
             }
         }

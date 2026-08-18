@@ -17,6 +17,9 @@ SUPPORTED_TYPE_PREFIXES = {
 }
 
 class FFmpegMediaProcessor(MediaProcessorPort):
+    def __init__(self, timeout_seconds: float = 60.0):
+        self.timeout_seconds = timeout_seconds
+
     def sniff_mime_type(self, data: bytes) -> str:
         return magic.from_buffer(data, mime=True)
 
@@ -44,7 +47,17 @@ class FFmpegMediaProcessor(MediaProcessorPort):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await proc.communicate()
+        try:
+            # FIX: Introduce execution timeout to prevent infinite transcoder hanging (Issue 10)
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=self.timeout_seconds)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+            logging.error("ffmpeg process timed out and was killed.")
+            raise MediaProcessingError("Media processing timed out")
+
         if proc.returncode != 0:
             logging.error(f"ffmpeg failed: {stderr.decode(errors='ignore')}")
             raise MediaProcessingError("Media processing failed")
@@ -64,7 +77,6 @@ class FFmpegMediaProcessor(MediaProcessorPort):
         async with self._temp_workspace(data, "output.webp") as (in_path, out_path):
             out_cover = in_path + "_cover.webp"
             
-            # Heavy pixelation -> upscale nearest neighbor -> extreme blur -> saturation boost
             cover_vf = "scale=16:16,scale=320:320:flags=neighbor,gblur=sigma=20,eq=saturation=1.5"
             await self._run_ffmpeg(["-y", "-i", in_path, "-vf", cover_vf, "-vframes", "1", "-quality", "50", out_cover])
             
@@ -89,7 +101,6 @@ class FFmpegMediaProcessor(MediaProcessorPort):
             
             payload_vf = f"scale='min({max_dimension},iw)':'min({max_dimension},ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2"
             
-            # Removed hardcoded audio bitrate (-b:a) allowing ffmpeg to gracefully skip it for audio-less files (like GIFs)
             await self._run_ffmpeg([
                 "-y", "-i", in_path, 
                 "-vf", payload_vf, 

@@ -64,7 +64,7 @@
           <input :type="importKeyVisible ? 'text' : 'password'" 
                  class="seamless-input import-input" 
                  v-model="importKeyInput" 
-                 :placeholder="store.t('import_key_prompt')" 
+                 :placeholder="store.t('import_legacy_prompt')" 
                  @keyup.enter="handleImport">
           <button class="eye-btn" @click="importKeyVisible = !importKeyVisible" tabindex="-1">
             <i class="bi" :class="importKeyVisible ? 'bi-eye-slash' : 'bi-eye'"></i>
@@ -164,9 +164,6 @@
                  <div style="margin-bottom: 2rem; color:var(--text-muted);" v-html="store.state.isUserFriendlyInterface ? store.t('vault_desc_uf') : store.t('vault_desc')"></div>
                  
                  <div style="display:flex; gap:1rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                    <button class="footer-action" @click="copyKey">
-                      <i class="bi bi-clipboard"></i> <span class="animated-underline">{{ store.t('copy_raw') }}</span>
-                    </button>
                     <button class="footer-action" style="color: var(--accent-earth);" @click="store.logout">
                       <i class="bi bi-box-arrow-right"></i> <span class="animated-underline">{{ store.t('log_out') }}</span>
                     </button>
@@ -178,8 +175,9 @@
                     </button>
                  </div>
                  
-                 <div class="code-block" :style="{filter: keyVisible ? 'none' : 'blur(5px)'}" @click="keyVisible = !keyVisible" :title="store.t('click_to_reveal')">
-                   {{ displayPrivateKey }}
+                 <div class="code-block" style="text-align: center; color: var(--accent-moss);">
+                   <i class="bi bi-shield-lock-fill" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                   {{ store.t('keys_hardware_bound') }}
                  </div>
 
                  <div style="margin-top: 3rem; border-top: 1px solid var(--border-subtle); padding-top: 1.5rem;">
@@ -352,7 +350,6 @@ import { Capacitor } from '@capacitor/core';
 
 const store = useStore()
 const importKeyInput = ref('')
-const keyVisible = ref(false)
 const importKeyVisible = ref(false)
 
 const ptrOffset = ref(-60)
@@ -388,10 +385,9 @@ function toggleLangMenu(e) {
         
         let x = rect.left + rect.width / 2;
         if (!store.state.isSidebarCollapsed && !isMobile.value) {
-            // Position over the main view content area when sidebar is open so backdrop blur has page content to process
             x = Math.max(x, 240);
         } else {
-            if (x < 100) x = 100; // clamp to prevent off-screen left
+            if (x < 100) x = 100;
         }
         
         langMenu.value = {
@@ -566,9 +562,7 @@ async function fetchLatestReleaseData() {
             }
         }
     }
-  } catch (e) {
-    console.warn("GitHub API check failed", e);
-  }
+  } catch (e) {}
   return null;
 }
 
@@ -645,7 +639,6 @@ onMounted(() => {
       }
     });
   } else {
-    // Web browser popstate sync for client-side routing illusion
     window.addEventListener('popstate', (e) => {
         store.syncUrlToView();
     });
@@ -667,15 +660,6 @@ function reloadPage() {
 
 const pendingInboxCount = computed(() => {
   return store.state.inbox.filter(r => r.status === 'pending' && !r.is_sender).length
-})
-
-const displayPrivateKey = computed(() => {
-  if (!store.state.privateKeyPem) return '';
-  return store.state.privateKeyPem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
-    .replace(/\r?\n|\r/g, '')
-    .trim();
 })
 
 const validPrivateContacts = computed(() => 
@@ -738,7 +722,7 @@ async function submitGlobalHandshake() {
 }
 
 async function checkBanStatus() {
-  if (!store.state.userId || !store.state.keyPair) {
+  if (!store.state.userId) {
     store.state.isBanned = false
     store.logout()
     return
@@ -763,11 +747,6 @@ function handleImport() {
     store.loginWithKey(importKeyInput.value.trim())
     importKeyInput.value = ''
   }
-}
-
-async function copyKey() {
-  await navigator.clipboard.writeText(displayPrivateKey.value)
-  store.addToast(store.t('copied'), "bi-check2")
 }
 
 function rotateIdentityKey() {

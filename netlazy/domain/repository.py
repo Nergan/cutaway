@@ -1,20 +1,45 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import List, Optional, Any, Callable
+from typing import List, Optional, Any, Callable, Tuple
 from netlazy.domain.models import Handshake, PoWChallenge, Profile, Tag, User, MediaItem
 
 class InvalidPublicKeyError(Exception): pass
 class SignatureVerificationError(Exception): pass
 class UnsupportedMediaTypeError(Exception): pass
 class MediaProcessingError(Exception): pass
+class HashChainDesyncError(Exception): pass
 
-class CryptoPort(ABC):
+class HybridCryptoPort(ABC):
     @abstractmethod
-    def derive_user_id(self, public_key_pem: str) -> str:
+    def derive_user_id(self, ed25519_public_pem: str, mldsa_public_hex: str) -> str:
         ...
 
     @abstractmethod
-    def verify_signature(self, public_key_pem: str, payload: bytes, signature: bytes) -> None:
+    def verify_hybrid_signature(
+        self, 
+        ed25519_public_pem: str, 
+        mldsa_public_hex: str, 
+        payload: bytes, 
+        ed25519_sig: bytes, 
+        mldsa_sig: bytes
+    ) -> None:
+        ...
+
+class ChainRepository(ABC):
+    @abstractmethod
+    async def get_recent_anchors(self, user_id: str) -> List[str]:
+        ...
+
+    @abstractmethod
+    async def push_anchor(self, user_id: str, anchor: str, window_size: int = 5, session: Any = None) -> None:
+        ...
+
+    @abstractmethod
+    async def delete_for_user(self, user_id: str, session: Any = None) -> None:
+        ...
+
+class RiskEventDispatcherPort(ABC):
+    @abstractmethod
+    def dispatch_risk_evaluation(self, user_id: str, ip: str, payload: bytes, timestamp: int) -> None:
         ...
 
 class MediaProcessorPort(ABC):
@@ -59,6 +84,15 @@ class UserRepository(ABC):
 
     @abstractmethod
     async def log_footprint(self, user_id: str, ip: str, fingerprint: str) -> None:
+        ...
+        
+    @abstractmethod
+    async def get_last_activity(self, user_id: str) -> Tuple[Optional[str], Optional[int]]:
+        """Retrieves user's last known IP and the timestamp of that specific request."""
+        ...
+
+    @abstractmethod
+    async def increment_risk_score(self, user_id: str, score_delta: float) -> float:
         ...
 
     @abstractmethod

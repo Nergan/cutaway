@@ -1,3 +1,4 @@
+import random
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -5,11 +6,13 @@ from typing import List, Optional
 @dataclass
 class User:
     user_id: str
-    public_key_pem: str
+    ed25519_public_pem: str
+    mldsa_public_hex: str
     created_at: datetime
     known_ips: List[str] = field(default_factory=list)
     known_fingerprints: List[str] = field(default_factory=list)
     is_banned: bool = False
+    risk_score: float = 0.0
 
 class UserAlreadyExistsError(Exception):
     pass
@@ -39,6 +42,7 @@ class Contact:
 @dataclass
 class Profile:
     user_id: str
+    media_id: str = ""
     bio: str = ""
     tags: List[str] = field(default_factory=list)
     media: List[MediaItem] = field(default_factory=list)
@@ -47,6 +51,11 @@ class Profile:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     score: int = 0
+    random_index: float = field(default_factory=random.random)
+
+    def __post_init__(self):
+        if not self.media_id:
+            self.media_id = self.user_id
 
 @dataclass
 class Handshake:

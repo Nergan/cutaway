@@ -1,6 +1,6 @@
 import asyncio
 import hashlib
-from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List
 from netlazy.domain.models import Contact, MediaItem, Profile
@@ -16,6 +16,25 @@ class InvalidTagError(Exception):
 
 class MediaLimitExceededError(Exception): pass
 class MediaNotFoundError(Exception): pass
+
+class _LockManager:
+    def __init__(self):
+        self._locks = {}
+
+    @asynccontextmanager
+    async def acquire(self, key: str):
+        if key not in self._locks:
+            self._locks[key] = [asyncio.Lock(), 0]
+        
+        lock_info = self._locks[key]
+        lock_info[1] += 1
+        try:
+            async with lock_info[0]:
+                yield
+        finally:
+            lock_info[1] -= 1
+            if lock_info[1] == 0:
+                self._locks.pop(key, None)
 
 class ProfileService:
     def __init__(
@@ -39,19 +58,19 @@ class ProfileService:
         self._max_upload_bytes = max_upload_bytes
         self._image_max_dimension = image_max_dimension
         self._audio_bitrate = audio_bitrate
-        self._locks = defaultdict(asyncio.Lock)
+        self._locks = _LockManager()
 
     async def get_or_create_profile(self, user_id: str) -> Profile:
         profile = await self._profile_repo.get_by_user_id(user_id)
         if profile: return profile
-        return Profile(user_id=user_id)
+        return Profile(user_id=user_id, media_id=user_id)
 
     async def update_profile(self, user_id: str, bio: str, tags: List[str], contacts: List[Contact]) -> Profile:
         valid_names = set(await self._tag_repo.get_all_names())
         unknown = [t for t in tags if t not in valid_names]
         if unknown: raise InvalidTagError(unknown)
 
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             profile.bio = bio[: self._max_bio_length]
             profile.tags = tags
@@ -65,13 +84,14 @@ class ProfileService:
         if len(raw_bytes) > self._max_upload_bytes:
             raise MediaProcessingError("File exceeds maximum upload size")
 
-        def _compute_hash(data: bytes) -> str:
-            return hashlib.sha256(data).hexdigest()
-            
-        file_hash = await asyncio.to_thread(_compute_hash, raw_bytes)
-        
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
+
+            def _compute_hash(data: bytes, m_id: str) -> str:
+                return hashlib.sha256(data + m_id.encode('utf-8')).hexdigest()
+            
+            file_hash = await asyncio.to_thread(_compute_hash, raw_bytes, profile.media_id)
+
             existing_media = await self._profile_repo.find_media_by_hash(file_hash)
             if existing_media:
                 if existing_media.media_type in ("image", "video") and len(profile.media) >= self._max_media_items:
@@ -98,17 +118,17 @@ class ProfileService:
         media_type = self._media_processor.classify_media_type(mime_type)
 
         if media_type == "image":
-            processed = await self._media_processor.process_image(raw_bytes, self._image_max_dimension, user_id)
+            processed = await self._media_processor.process_image(raw_bytes, self._image_max_dimension, profile.media_id)
         elif media_type == "video":
-            processed = await self._media_processor.process_video(raw_bytes, self._image_max_dimension, user_id)
+            processed = await self._media_processor.process_video(raw_bytes, self._image_max_dimension, profile.media_id)
         elif media_type == "audio":
-            processed = await self._media_processor.process_audio(raw_bytes, self._audio_bitrate, user_id)
+            processed = await self._media_processor.process_audio(raw_bytes, self._audio_bitrate, profile.media_id)
         else:
             processed = raw_bytes
 
         ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
         ext = ext_map.get(media_type, "bin")
-        public_id_hint = f"{user_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
+        public_id_hint = f"{profile.media_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
         
         try:
             upload_res = await self._media_storage.upload(processed, media_type, public_id_hint)
@@ -124,7 +144,7 @@ class ProfileService:
             resource_type=upload_res.get("resource_type")
         )
 
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             if media_type in ("image", "video") and len(profile.media) >= self._max_media_items:
                 raise MediaLimitExceededError(f"Maximum of {self._max_media_items} media items reached")
@@ -139,7 +159,7 @@ class ProfileService:
             return profile
 
     async def remove_media(self, user_id: str, media_url: str, index: int = None) -> Profile:
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             
             target = None
@@ -166,7 +186,7 @@ class ProfileService:
             return profile
 
     async def clear_audio(self, user_id: str) -> Profile:
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             if not profile.audio:
                 return profile
@@ -184,7 +204,7 @@ class ProfileService:
             return profile
 
     async def set_media_blur(self, user_id: str, media_url: str, blur: bool, index: int = None) -> Profile:
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             found = False
             
@@ -209,7 +229,7 @@ class ProfileService:
             return profile
 
     async def reorder_media(self, user_id: str, ordered_urls: List[str]) -> Profile:
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
             current_urls = {m.url for m in profile.media}
             
@@ -223,7 +243,7 @@ class ProfileService:
             return profile
 
     async def delete_profile(self, user_id: str) -> None:
-        async with self._locks[user_id]:
+        async with self._locks.acquire(user_id):
             profile = await self._profile_repo.get_by_user_id(user_id)
             if profile:
                 media_items = profile.media + ([profile.audio] if profile.audio else [])

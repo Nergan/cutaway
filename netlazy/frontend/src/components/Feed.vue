@@ -174,13 +174,13 @@
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
         <div class="card" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
           
-          <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.user_id)">
+          <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.media_id)">
             <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
             <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
           </div>
 
           <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
-            <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.user_id)">
+            <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.media_id)">
                <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
                <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -626,15 +626,14 @@ function handleTagScroll(e) {
     
     const isMarquee = !hasActiveFilters.value;
 
-    // Handle seamless infinite manual scrolling during marquee mode
     if (isMarquee) {
         const groupEl = el.querySelector('.marquee-group');
         if (groupEl) {
-            const groupWidth = groupEl.offsetWidth + 8; // Width + 0.5rem gap (8px)
+            const groupWidth = groupEl.offsetWidth + 8;
             if (el.scrollLeft >= groupWidth * 2) {
-                el.scrollLeft -= groupWidth; // Seamless looping forward
+                el.scrollLeft -= groupWidth;
             } else if (el.scrollLeft <= 0) {
-                el.scrollLeft += groupWidth; // Seamless looping backward
+                el.scrollLeft += groupWidth;
             }
         }
     }
@@ -644,7 +643,7 @@ watch(hasActiveFilters, () => {
     nextTick(() => {
         const area = document.querySelector('.tag-scroll-area');
         if (area) {
-            area.scrollLeft = 0; // Reset scroll position when filter mode changes
+            area.scrollLeft = 0;
             handleTagScroll({ currentTarget: area });
         }
     });
@@ -687,7 +686,6 @@ function getTagStateIcon(state) {
 }
 
 function handleWheel(e) {
-  // Use horizontal smooth scroll translating vertical wheel ticks
   if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
     e.preventDefault();
     e.currentTarget.scrollBy({ left: e.deltaY > 0 ? 250 : -250, behavior: 'smooth' });

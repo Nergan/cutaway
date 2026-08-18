@@ -1,9 +1,11 @@
 import base64
 import hashlib
 import logging
-from fastapi import Request, Header, HTTPException
+from fastapi import Request, Header, HTTPException, BackgroundTasks
 from starlette.requests import ClientDisconnect
+
 from netlazy.application.auth_service import AuthService, AuthenticationError
+from netlazy.application.migration_service import MigrationService
 from netlazy.application.profile_service import ProfileService
 from netlazy.application.tag_service import TagService
 from netlazy.application.feed_service import FeedService
@@ -11,11 +13,15 @@ from netlazy.application.inbox_service import InboxService
 from netlazy.application.security_service import SecurityService, BannedError, ProofOfWorkError
 from netlazy.config import settings
 from netlazy.domain.models import User
+from netlazy.domain.chain import build_request_payload
+from netlazy.domain.risk import RiskThresholds
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
-from netlazy.infrastructure.crypto_adapter import PyCryptoAdapter
+from netlazy.infrastructure.crypto_adapter import CryptographyHybridAdapter
+from netlazy.infrastructure.legacy_migration import LegacyCryptographyAdapter, MongoLegacyUserLookup
 from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
 from netlazy.infrastructure.yaml_loader import YamlTagLoader
 from netlazy.infrastructure.mongo_repo import (
+    MongoChainRepository,
     MongoHandshakeRepository,
     MongoNonceRepository,
     MongoProfileRepository,
@@ -30,6 +36,7 @@ BANNED_ERROR = HTTPException(status_code=403, detail="banned")
 POW_ERROR = HTTPException(status_code=400, detail="Invalid or missing Proof of Work")
 
 user_repo = MongoUserRepository()
+chain_repo = MongoChainRepository()
 nonce_repo = MongoNonceRepository()
 tag_repo = MongoTagRepository()
 profile_repo = MongoProfileRepository()
@@ -37,15 +44,31 @@ handshake_repo = MongoHandshakeRepository()
 security_repo = MongoSecurityRepository()
 media_storage = CloudinaryMediaStorage()
 
-crypto_adapter = PyCryptoAdapter()
+hybrid_crypto = CryptographyHybridAdapter()
+legacy_crypto = LegacyCryptographyAdapter()
+legacy_lookup = MongoLegacyUserLookup()
+
 media_processor = FFmpegMediaProcessor()
 tag_loader = YamlTagLoader()
 transaction_manager = MongoTransactionManager()
 
 auth_service = AuthService(
-    user_repo=user_repo, 
+    user_repo=user_repo,
+    chain_repo=chain_repo,
     nonce_repo=nonce_repo, 
-    crypto_port=crypto_adapter, 
+    crypto_port=hybrid_crypto, 
+    transaction_manager=transaction_manager
+)
+
+migration_service = MigrationService(
+    legacy_lookup=legacy_lookup,
+    legacy_crypto=legacy_crypto,
+    user_repo=user_repo,
+    chain_repo=chain_repo,
+    profile_repo=profile_repo,
+    handshake_repo=handshake_repo,
+    nonce_repo=nonce_repo,
+    hybrid_crypto=hybrid_crypto,
     transaction_manager=transaction_manager
 )
 
@@ -77,7 +100,8 @@ inbox_service = InboxService(
 security_service = SecurityService(
     security_repo=security_repo,
     user_repo=user_repo,
-    difficulty=settings.pow_difficulty
+    difficulty=settings.pow_difficulty,
+    risk_thresholds=RiskThresholds()
 )
 
 
@@ -89,17 +113,21 @@ def _get_client_footprint(request: Request) -> tuple:
 
 async def verify_request_signature(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_user_id: str = Header(None),
     x_timestamp: int = Header(None),
     x_nonce: str = Header(None),
-    x_signature: str = Header(None),
+    x_body_hash: str = Header(None),
+    x_chain_anchor: str = Header(None),
+    x_signature_ed25519: str = Header(None),
+    x_signature_mldsa: str = Header(None),
+    x_signed_path: str = Header(None),
 ) -> User:
     
-    content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="Payload Too Large")
+    if not all([x_user_id, x_timestamp, x_nonce, x_body_hash, x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path]):
+        raise AUTH_ERROR
 
-    if not all([x_user_id, x_timestamp, x_nonce, x_signature]):
+    if not x_signed_path.endswith(request.url.path):
         raise AUTH_ERROR
 
     ip, fingerprint = _get_client_footprint(request)
@@ -109,31 +137,52 @@ async def verify_request_signature(
     except BannedError:
         raise BANNED_ERROR
 
+    # FIX: Streaming body read to prevent Out-of-Memory (OOM) via Chunked Transfer attacks
+    body_accumulator = bytearray()
     try:
-        body_bytes = await request.body()
+        async for chunk in request.stream():
+            body_accumulator.extend(chunk)
+            if len(body_accumulator) > settings.max_upload_bytes:
+                raise HTTPException(status_code=413, detail="Payload Too Large")
     except ClientDisconnect:
         raise HTTPException(status_code=400, detail="Client disconnected")
 
-    body_hash = hashlib.sha256(body_bytes).hexdigest()
-    query_string = request.url.query
+    body_bytes = bytes(body_accumulator)
+    request.state.body_bytes = body_bytes  # Expose safely loaded bytes to endpoint routes
 
-    canonical_payload = (
-        f"{request.method}\n{request.url.path}\n{query_string}\n"
-        f"{x_timestamp}\n{x_nonce}\n{body_hash}"
-    ).encode('utf-8')
+    actual_body_hash = hashlib.sha256(body_bytes).hexdigest()
+    if actual_body_hash != x_body_hash:
+        raise AUTH_ERROR
+
+    query_string = request.url.query
+    canonical_payload = build_request_payload(
+        method=request.method,
+        path=x_signed_path,
+        query=query_string,
+        timestamp=x_timestamp,
+        nonce=x_nonce,
+        body_hash=x_body_hash,
+        prev_anchor=x_chain_anchor
+    )
 
     try:
-        signature_bytes = base64.b64decode(x_signature)
+        ed_sig_bytes = base64.b64decode(x_signature_ed25519)
+        mldsa_sig_bytes = base64.b64decode(x_signature_mldsa)
     except Exception:
         raise AUTH_ERROR
 
     try:
-        user = await auth_service.authenticate_request(
+        user, next_anchor = await auth_service.authenticate_request(
             user_id=x_user_id,
+            method=request.method,
+            path=x_signed_path,
             timestamp=x_timestamp,
             nonce=x_nonce,
-            signature=signature_bytes,
+            body_hash=x_body_hash,
+            prev_anchor=x_chain_anchor,
             canonical_payload=canonical_payload,
+            ed25519_signature=ed_sig_bytes,
+            mldsa_signature=mldsa_sig_bytes,
         )
     except AuthenticationError as e:
         if str(e) == "Unknown user":
@@ -146,7 +195,12 @@ async def verify_request_signature(
     if user.is_banned:
         raise BANNED_ERROR
 
-    await user_repo.log_footprint(x_user_id, ip, fingerprint)
+    request.state.next_anchor = next_anchor
+
+    # FIX: Dispatch risk evaluation BEFORE footprint update to repair Geo-Velocity check
+    # BackgroundTasks guarantees strict sequential execution of added tasks.
+    security_service.dispatch_risk_evaluation(background_tasks, x_user_id, ip, body_bytes)
+    background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
 
     return user
 

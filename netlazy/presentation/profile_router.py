@@ -41,6 +41,7 @@ class ContactResponse(BaseModel):
 
 class ProfileResponse(BaseModel):
     user_id: str
+    media_id: str
     bio: str
     tags: List[str]
     media: List[MediaItemResponse]
@@ -52,6 +53,7 @@ class ProfileResponse(BaseModel):
 def _to_response(profile: Profile) -> ProfileResponse:
     return ProfileResponse(
         user_id=profile.user_id,
+        media_id=profile.media_id,
         bio=profile.bio,
         tags=profile.tags,
         media=[MediaItemResponse(url=m.url, media_type=m.media_type, blur=m.blur) for m in profile.media],
@@ -99,7 +101,8 @@ async def upload_media(
     blur: bool = False,
     user: User = Depends(verify_request_signature),
 ):
-    raw_bytes = await request.body()
+    # Using request.state.body_bytes which was asynchronously buffered with safety limit
+    raw_bytes = request.state.body_bytes
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty body")
 

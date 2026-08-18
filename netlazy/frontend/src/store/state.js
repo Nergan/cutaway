@@ -1,6 +1,6 @@
 import { reactive, watch, computed } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
-import { generateIdentity, loadPrivateKey } from '../utils/crypto.js';
+import { generateIdentity, signLegacyMigration, clearIdentity, hasHybridKeys } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
 import { Preferences } from '@capacitor/preferences';
@@ -20,9 +20,8 @@ const defaultState = {
     isUserFriendlyInterface: true,
     
     userId: null,
-    privateKeyPem: null,
-    publicKeyPem: null,
-    keyPair: null, 
+    currentAnchor: null,
+    privateKeyPem: null, 
 
     isSidebarCollapsed: window.innerWidth <= 768,
     workspaceWidth: 500,
@@ -56,13 +55,7 @@ const defaultState = {
     isFeedLoading: false,
     isInboxLoading: false,
 
-    myProfile: {
-        bio: "",
-        tags: [],
-        contacts: [],
-        media: [],
-        audio: null
-    },
+    myProfile: { bio: "", tags: [], contacts: [], media: [], audio: null, media_id: "" },
     
     availableSearchTags: [],
     feedTagSearch: "",
@@ -79,7 +72,6 @@ export function useStore() {
     const state = reactive({ ...defaultState });
     let pollInterval = null;
 
-    // Cache localized tags avoiding massive loops during feed layout
     const tagLocalesCache = computed(() => {
         const cache = new Map();
         const lang = state.lang || 'en';
@@ -97,24 +89,21 @@ export function useStore() {
                 if (state.currentView !== 'editor') {
                     fetchMyProfile(true);
                 }
-                fetchTags(); // Silently sync tags to catch new additions from admins
+                fetchTags();
             }
         }, 10000);
     }
 
     function syncUrlToView() {
         if (Capacitor.isNativePlatform()) return;
-        
         const path = window.location.pathname;
         let view = 'editor';
-        
         if (path.match(/\/search(\/.*)?$/)) view = 'feed';
         else if (path.match(/\/inbox(\/.*)?$/)) view = 'inbox';
         else if (path.match(/\/privacy(\/.*)?$/)) view = 'vault';
         else if (path.match(/\/profile(\/.*)?$/)) view = 'editor';
         
         state.currentView = view;
-        
         if (state.currentView === 'feed') {
             const params = new URLSearchParams(window.location.search);
             if (params.has('tags')) {
@@ -127,9 +116,7 @@ export function useStore() {
 
     function syncViewToUrl(replace = false) {
         if (Capacitor.isNativePlatform()) return;
-        
         const viewMap = { feed: 'search', editor: 'profile', inbox: 'inbox', vault: 'privacy' };
-        
         const segments = window.location.pathname.split('/');
         if (segments[segments.length - 1] === '') segments.pop();
         
@@ -138,15 +125,12 @@ export function useStore() {
         }
         
         let newUrl = segments.join('/') + '/' + (viewMap[state.currentView] || 'profile');
-        
         if (state.currentView === 'feed') {
             const activeTags = state.availableSearchTags
                 .filter(t => t.state !== 'neutral')
                 .map(t => `${encodeURIComponent(t.name)}:${t.state}`)
                 .join(',');
-            if (activeTags) {
-                newUrl += `?tags=${activeTags}`;
-            }
+            if (activeTags) newUrl += `?tags=${activeTags}`;
         }
         
         if (window.location.pathname + window.location.search !== newUrl) {
@@ -157,23 +141,18 @@ export function useStore() {
 
     function applyPendingUrlTags() {
         if (!state.pendingUrlTags || state.availableSearchTags.length === 0) return;
-        
         const tagPairs = state.pendingUrlTags.split(',');
         const validStates = ['require', 'exclude', 'bonus', 'abonus'];
         
         state.availableSearchTags.forEach(t => t.state = 'neutral');
-        
         tagPairs.forEach(pair => {
             const [rawName, tState] = pair.split(':');
             if (rawName && tState && validStates.includes(tState)) {
                 const decodedName = decodeURIComponent(rawName);
                 const tagObj = state.availableSearchTags.find(t => t.name === decodedName);
-                if (tagObj) {
-                    tagObj.state = tState;
-                }
+                if (tagObj) tagObj.state = tState;
             }
         });
-        
         state.pendingUrlTags = null;
     }
 
@@ -186,37 +165,29 @@ export function useStore() {
                 ['theme', 'lang', 'isUserFriendlyInterface', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
+                
+                ['isRegistered', 'isBanned', 'currentView', 'userId', 'currentAnchor'].forEach(k => {
+                    if (parsed[k] !== undefined) state[k] = parsed[k];
+                });
 
-                if (parsed.isRegistered && parsed.privateKeyPem) {
-                    try {
-                        const keys = await loadPrivateKey(parsed.privateKeyPem);
-                        state.keyPair = keys.keyPair;
-                        
-                        ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
-                            if (parsed[k] !== undefined) state[k] = parsed[k];
-                        });
-                        
-                        syncUrlToView();
+                const vaultReady = await hasHybridKeys();
 
-                        if (!state.isBanned) {
-                            fetchTags(); 
-                            fetchMyProfile();
-                            fetchInbox();
-                            startPolling();
-                        }
-                    } catch (keyErr) {
-                        console.warn("Failed to load private key, logging out:", keyErr);
-                        state.isRegistered = false;
-                        state.isBanned = false;
-                        state.privateKeyPem = null;
-                        state.publicKeyPem = null;
-                        state.userId = null;
+                if (parsed.isRegistered) {
+                    if (!vaultReady && parsed.privateKeyPem) {
+                        const success = await migrateLegacyKey(parsed.privateKeyPem);
+                        if (!success) state.isRegistered = false;
+                    } else if (!vaultReady) {
+                        state.isRegistered = false; 
                     }
-                } else {
-                    ['isRegistered', 'isBanned', 'currentView', 'userId', 'privateKeyPem', 'publicKeyPem'].forEach(k => {
-                        if (parsed[k] !== undefined) state[k] = parsed[k];
-                    });
-                    syncUrlToView();
+                }
+
+                syncUrlToView();
+
+                if (state.isRegistered && !state.isBanned) {
+                    fetchTags(); 
+                    fetchMyProfile();
+                    fetchInbox();
+                    startPolling();
                 }
             } else {
                 syncUrlToView();
@@ -224,16 +195,12 @@ export function useStore() {
         } catch (e) {
             console.warn("could not read preferences state:", e);
         } finally {
-            if (state.theme === 'light') {
-                document.body.classList.add('light-theme');
-            } else {
-                document.body.classList.remove('light-theme');
-            }
-            if (state.isUserFriendlyInterface) {
-                document.body.classList.add('uf-mode');
-            } else {
-                document.body.classList.remove('uf-mode');
-            }
+            if (state.theme === 'light') document.body.classList.add('light-theme');
+            else document.body.classList.remove('light-theme');
+            
+            if (state.isUserFriendlyInterface) document.body.classList.add('uf-mode');
+            else document.body.classList.remove('uf-mode');
+            
             state.isInitialized = true;
         }
     }
@@ -246,7 +213,7 @@ export function useStore() {
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
         state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
-        state.userId, state.privateKeyPem, state.publicKeyPem
+        state.userId, state.currentAnchor, state.privateKeyPem
     ], async () => {
         if (!state.isInitialized) return;
         try {
@@ -255,7 +222,7 @@ export function useStore() {
                 theme: state.theme, lang: state.lang, isUserFriendlyInterface: state.isUserFriendlyInterface,
                 workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
-                userId: state.userId, privateKeyPem: state.privateKeyPem, publicKeyPem: state.publicKeyPem
+                userId: state.userId, currentAnchor: state.currentAnchor, privateKeyPem: state.privateKeyPem
             };
             await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(saveObj) });
         } catch (e) {}
@@ -282,7 +249,6 @@ export function useStore() {
             const langs = ['en', 'ru', 'pt', 'zh', 'ja', 'ko'];
             const currentIdx = langs.indexOf(state.lang);
             state.lang = langs[(currentIdx + 1) % langs.length];
-            
             setTimeout(() => document.body.classList.remove('is-translating'), 50);
         }, 150);
     }
@@ -314,15 +280,17 @@ export function useStore() {
     }
 
     async function createAccount() {
-        addToast("Generating Identity... Solving PoW...", "bi-hourglass-split");
+        addToast("Generating Hardware-Bound Identity...", "bi-hourglass-split");
         try {
             const keys = await generateIdentity();
-            await apiWithPoW('post', '/auth/register', { public_key: keys.publicKeyPem });
+            const res = await apiWithPoW('post', '/auth/register', { 
+                ed25519_public_pem: keys.edPubPem,
+                mldsa_public_hex: keys.mldsaPubHex
+            });
             
-            state.privateKeyPem = keys.privateKeyPem;
-            state.publicKeyPem = keys.publicKeyPem;
             state.userId = keys.userId;
-            state.keyPair = keys.keyPair;
+            state.currentAnchor = res.data.genesis_anchor;
+            state.privateKeyPem = null; 
             state.isRegistered = true;
             state.currentView = 'vault';
             
@@ -338,33 +306,62 @@ export function useStore() {
     }
 
     async function loginWithKey(rawPrivateKey) {
-        try {
-            const keys = await loadPrivateKey(rawPrivateKey);
-            state.privateKeyPem = keys.privateKeyPem;
-            state.publicKeyPem = keys.publicKeyPem;
-            state.userId = keys.userId;
-            state.keyPair = keys.keyPair;
+        if (!rawPrivateKey.includes("PRIVATE KEY")) {
+            addToast("Only legacy RSA keys can be imported during the migration window.", "bi-exclamation-triangle");
+            return;
+        }
+        addToast("Migrating legacy identity to Hybrid PQ...", "bi-hourglass-split");
+        const success = await migrateLegacyKey(rawPrivateKey);
+        if (success) {
             state.isRegistered = true;
-            
+            state.currentView = 'editor';
             fetchTags();
             fetchMyProfile();
             fetchInbox();
             startPolling();
             addToast(t('key_imported'), "bi-shield-check");
+        } else {
+            addToast("Migration failed. Invalid key.", "bi-exclamation-triangle");
+        }
+    }
+
+    async function migrateLegacyKey(legacyPem) {
+        try {
+            const keys = await generateIdentity();
+            const timestamp = Math.floor(Date.now() / 1000);
+            const sigData = await signLegacyMigration(legacyPem, keys.edPubPem, keys.mldsaPubHex, timestamp);
+            
+            const res = await api.post('/auth/migrate', {
+                legacy_public_pem: sigData.publicPem,
+                new_ed25519_public_pem: keys.edPubPem,
+                new_mldsa_public_hex: keys.mldsaPubHex,
+                timestamp: timestamp,
+                signature_base64: sigData.signature
+            });
+            
+            state.userId = res.data.new_user_id;
+            state.privateKeyPem = null; 
+            
+            const anchorRes = await api.get('/auth/anchor');
+            state.currentAnchor = anchorRes.data.current_anchor;
+            return true;
         } catch (e) {
-            addToast("Invalid Private Key format.", "bi-exclamation-triangle");
+            console.error("Migration failed:", e);
+            return false;
         }
     }
 
     async function rotateKey() {
         try {
             const keys = await generateIdentity();
-            const res = await api.post('/auth/rotate', { new_public_key: keys.publicKeyPem });
+            const res = await api.post('/auth/rotate', { 
+                new_ed25519_public_pem: keys.edPubPem,
+                new_mldsa_public_hex: keys.mldsaPubHex
+            });
             
-            state.privateKeyPem = keys.privateKeyPem;
-            state.publicKeyPem = keys.publicKeyPem;
             state.userId = res.data.new_user_id;
-            state.keyPair = keys.keyPair;
+            state.currentAnchor = res.data.new_anchor;
+            state.privateKeyPem = null; 
             
             fetchMyProfile();
             fetchInbox();
@@ -376,17 +373,17 @@ export function useStore() {
         }
     }
 
-    function logout() {
+    async function logout() {
         state.isRegistered = false;
         state.isBanned = false;
         state.authErrorNotified = false;
         state.userId = null;
+        state.currentAnchor = null;
         state.privateKeyPem = null;
-        state.publicKeyPem = null;
-        state.keyPair = null;
         state.myProfile = { ...defaultState.myProfile };
         state.inbox = [];
         state.feed = [];
+        await clearIdentity();
         if (pollInterval) clearInterval(pollInterval);
     }
 
@@ -409,9 +406,9 @@ export function useStore() {
         );
     }
 
-    async function loadDecryptedMedia(mediaItem, userId) {
+    async function loadDecryptedMedia(mediaItem, mediaId) {
         if (!mediaItem || mediaItem.blobUrl || mediaItem.isUploading) return;
-        const res = await fetchAndDecryptMedia(mediaItem.url, userId, mediaItem.media_type);
+        const res = await fetchAndDecryptMedia(mediaItem.url, mediaId, mediaItem.media_type);
         if (res) {
             mediaItem.blobUrl = res.blobUrl;
             mediaItem.isLegacy = res.isLegacy;
@@ -448,7 +445,6 @@ export function useStore() {
             state.myProfile = data;
             
         } catch (e) {
-            console.error("Profile sync failed");
         } finally {
             if (!isSilent) state.isProfileLoading = false;
         }

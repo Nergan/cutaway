@@ -1,5 +1,6 @@
+import random
 from datetime import datetime, timezone
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne, ReadPreference
 from netlazy.database import db_instance
@@ -22,43 +23,63 @@ class MongoUserRepository(UserRepository):
         try:
             await db_instance.users_collection.insert_one({
                 "user_id": user.user_id,
-                "public_key": user.public_key_pem,
+                "ed25519_public_pem": user.ed25519_public_pem,
+                "mldsa_public_hex": user.mldsa_public_hex,
                 "created_at": user.created_at,
                 "known_ips": user.known_ips,
                 "known_fingerprints": user.known_fingerprints,
                 "is_banned": user.is_banned,
+                "risk_score": user.risk_score
             }, session=session)
         except DuplicateKeyError:
             raise UserAlreadyExistsError(f"User {user.user_id} already registered")
 
     async def get_by_id(self, user_id: str, session: Any = None) -> Optional[User]:
         doc = await db_instance.users_collection.find_one({"user_id": user_id}, session=session)
-        if not doc: return None
+        if not doc or "ed25519_public_pem" not in doc:
+            return None 
         return self._to_domain(doc)
 
     def _to_domain(self, doc: dict) -> User:
         return User(
             user_id=doc["user_id"],
-            public_key_pem=doc["public_key"],
+            ed25519_public_pem=doc["ed25519_public_pem"],
+            mldsa_public_hex=doc["mldsa_public_hex"],
             created_at=_force_utc(doc["created_at"]),
             known_ips=doc.get("known_ips", []),
             known_fingerprints=doc.get("known_fingerprints", []),
-            is_banned=doc.get("is_banned", False)
+            is_banned=doc.get("is_banned", False),
+            risk_score=doc.get("risk_score", 0.0)
         )
 
     async def log_footprint(self, user_id: str, ip: str, fingerprint: str) -> None:
         if not ip and not fingerprint: return
-        
         updates = {}
         trusted_ips = [t.strip() for t in settings.trusted_bot_ips.split(",") if t.strip()]
-        
-        if ip and ip not in trusted_ips: 
-            updates["known_ips"] = ip
-        if fingerprint: 
-            updates["known_fingerprints"] = fingerprint
-            
+        if ip and ip not in trusted_ips: updates["known_ips"] = ip
+        if fingerprint: updates["known_fingerprints"] = fingerprint
         if updates:
-            await db_instance.users_collection.update_one({"user_id": user_id}, {"$addToSet": updates})
+            await db_instance.users_collection.update_one(
+                {"user_id": user_id},
+                {"$addToSet": updates, "$set": {"last_ip": ip, "last_active": datetime.now(timezone.utc)}}
+            )
+
+    async def get_last_activity(self, user_id: str) -> Tuple[Optional[str], Optional[int]]:
+        doc = await db_instance.users_collection.find_one({"user_id": user_id}, {"last_ip": 1, "last_active": 1})
+        if not doc: 
+            return None, None
+        last_active = doc.get("last_active")
+        ts = int(last_active.timestamp()) if last_active else None
+        return doc.get("last_ip"), ts
+
+    async def increment_risk_score(self, user_id: str, score_delta: float) -> float:
+        if score_delta <= 0: return 0.0
+        doc = await db_instance.users_collection.find_one_and_update(
+            {"user_id": user_id},
+            {"$inc": {"risk_score": score_delta}},
+            return_document=True
+        )
+        return doc.get("risk_score", 0.0) if doc else 0.0
 
     async def delete(self, user_id: str, session: Any = None) -> None:
         await db_instance.users_collection.delete_one({"user_id": user_id}, session=session)
@@ -134,7 +155,6 @@ class MongoSecurityRepository(SecurityRepository):
 
 class MongoTagRepository(TagRepository):
     async def sync(self, tags: List[Tag], file_hash: Optional[str] = None) -> bool:
-        # Check against cached file hash to prevent redundant syncing
         if file_hash:
             meta = await db_instance.tags_collection.find_one({"name": "__sync_hash__"})
             if meta and meta.get("hash") == file_hash:
@@ -150,7 +170,6 @@ class MongoTagRepository(TagRepository):
             for tag in tags
         ]
 
-        # Register the new hash signature alongside the data
         if file_hash:
             operations.append(
                 UpdateOne(
@@ -164,13 +183,11 @@ class MongoTagRepository(TagRepository):
         if operations:
             await db_instance.tags_collection.bulk_write(operations)
 
-        # Cleanup ghosted tags
         if valid_names:
             await db_instance.tags_collection.delete_many({"name": {"$nin": valid_names}})
         else:
             await db_instance.tags_collection.delete_many({})
 
-        # Cascading removal from user profiles
         profile_valid_names = [t.name for t in tags]
         if profile_valid_names:
             await db_instance.profiles_collection.update_many({}, {"$pull": {"tags": {"$nin": profile_valid_names}}})
@@ -245,12 +262,12 @@ class MongoProfileRepository(ProfileRepository):
         banned_ids = [u["user_id"] async for u in banned_users_cursor]
 
         ignored = exclude_ids + [viewer_id] + banned_ids
-        match = {"user_id": {"$nin": ignored}}
+        base_match = {"user_id": {"$nin": ignored}}
 
-        if requires: match["tags"] = {"$all": requires}
-        if excludes: match.setdefault("tags", {})["$nin"] = excludes
+        if requires: base_match["tags"] = {"$all": requires}
+        if excludes: base_match.setdefault("tags", {})["$nin"] = excludes
 
-        match["$or"] = [
+        base_match["$or"] = [
             {"bio": {"$nin": ["", None]}},
             {"tags.0": {"$exists": True}},
             {"media.0": {"$exists": True}},
@@ -258,31 +275,56 @@ class MongoProfileRepository(ProfileRepository):
             {"contacts": {"$elemMatch": {"is_private": False, "type": {"$ne": "unknown"}, "value": {"$nin": ["", None]}}}}
         ]
 
-        pipeline = [{"$match": match}]
+        rand_val = random.random()
+        fetch_limit = limit * 10
 
-        if bonus or abonus:
-            pipeline.append({"$addFields": {"safe_tags": {"$ifNull": ["$tags", []]}}})
-            add_scores = {}
-            if bonus:
-                add_scores["bonus_score"] = {"$size": {"$setIntersection": ["$safe_tags", bonus]}}
-            else:
-                add_scores["bonus_score"] = 0
-            if abonus:
-                add_scores["abonus_score"] = {"$size": {"$setIntersection": ["$safe_tags", abonus]}}
-            else:
-                add_scores["abonus_score"] = 0
+        async def fetch_profiles(direction_match):
+            pipeline = [{"$match": {**base_match, **direction_match}}]
+            pipeline.append({"$sort": {"random_index": 1}})
+            pipeline.append({"$limit": fetch_limit})
+            db_cursor = db_instance.profiles_collection.aggregate(pipeline)
+            docs = [self._to_domain(doc) async for doc in db_cursor]
+            
+            for p in docs:
+                if bonus or abonus:
+                    bonus_score = len(set(p.tags) & set(bonus))
+                    abonus_score = len(set(p.tags) & set(abonus))
+                    p.score = bonus_score - abonus_score
+                else:
+                    p.score = 0
+                    
+            docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
+            return docs[:limit]
 
-            pipeline.append({"$addFields": add_scores})
-            pipeline.append({"$addFields": {"score": {"$subtract": ["$bonus_score", "$abonus_score"]}}})
-        else:
-            pipeline.append({"$addFields": {"score": 0}})
+        results = await fetch_profiles({"random_index": {"$gte": rand_val}})
+        
+        if len(results) < limit:
+            needed = limit - len(results)
+            found_ids = [r.user_id for r in results]
+            
+            wrap_match = {"random_index": {"$lt": rand_val}}
+            wrap_base_match = base_match.copy()
+            wrap_base_match["user_id"] = {"$nin": ignored + found_ids}
 
-        pipeline.append({"$addFields": {"random_val": {"$rand": {}}}})
-        pipeline.append({"$sort": {"score": -1, "random_val": -1}})
-        pipeline.append({"$limit": limit})
+            pipeline = [{"$match": {**wrap_base_match, **wrap_match}}]
+            pipeline.append({"$sort": {"random_index": 1}})
+            pipeline.append({"$limit": needed * 10})
 
-        db_cursor = db_instance.profiles_collection.aggregate(pipeline)
-        return [self._to_domain(doc) async for doc in db_cursor]
+            wrap_cursor = db_instance.profiles_collection.aggregate(pipeline)
+            wrap_docs = [self._to_domain(doc) async for doc in wrap_cursor]
+            
+            for p in wrap_docs:
+                if bonus or abonus:
+                    bonus_score = len(set(p.tags) & set(bonus))
+                    abonus_score = len(set(p.tags) & set(abonus))
+                    p.score = bonus_score - abonus_score
+                else:
+                    p.score = 0
+            
+            wrap_docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
+            results.extend(wrap_docs[:needed])
+
+        return results
 
     async def delete(self, user_id: str, session: Any = None) -> None:
         await db_instance.profiles_collection.delete_one({"user_id": user_id}, session=session)
@@ -315,22 +357,24 @@ class MongoProfileRepository(ProfileRepository):
 
     def _to_doc(self, profile: Profile) -> dict:
         return {
-            "user_id": profile.user_id, "bio": profile.bio, "tags": profile.tags,
+            "user_id": profile.user_id, "media_id": profile.media_id, "bio": profile.bio, "tags": profile.tags,
             "media": [self._media_to_doc(m) for m in profile.media],
             "audio": self._media_to_doc(profile.audio) if profile.audio else None,
             "contacts": [self._contact_to_doc(c) for c in profile.contacts],
             "created_at": profile.created_at, "updated_at": profile.updated_at,
+            "random_index": profile.random_index
         }
 
     def _to_domain(self, doc: dict) -> Profile:
         return Profile(
-            user_id=doc["user_id"], bio=doc.get("bio", ""), tags=doc.get("tags", []),
+            user_id=doc["user_id"], media_id=doc.get("media_id", doc["user_id"]), bio=doc.get("bio", ""), tags=doc.get("tags", []),
             media=[self._media_from_doc(m) for m in doc.get("media", [])],
             audio=self._media_from_doc(doc["audio"]) if doc.get("audio") else None,
             contacts=[self._contact_from_doc(c) for c in doc.get("contacts", [])],
             created_at=_force_utc(doc.get("created_at")) or datetime.now(timezone.utc),
             updated_at=_force_utc(doc.get("updated_at")),
-            score=doc.get("score", 0)
+            score=doc.get("score", 0),
+            random_index=doc.get("random_index", random.random())
         )
 
     def _media_to_doc(self, m: MediaItem) -> dict: 
@@ -417,3 +461,24 @@ class MongoTransactionManager(TransactionManager):
     async def execute_in_transaction(self, callback: Any) -> Any:
         async with await db_instance.client.start_session() as session:
             return await session.with_transaction(callback, read_preference=ReadPreference.PRIMARY)
+
+class MongoChainRepository(ChainRepository):
+    async def get_recent_anchors(self, user_id: str) -> List[str]:
+        doc = await db_instance.chains_collection.find_one({"user_id": user_id})
+        return doc.get("anchors", []) if doc else []
+
+    async def push_anchor(self, user_id: str, anchor: str, window_size: int = 5, session: Any = None) -> None:
+        await db_instance.chains_collection.update_one(
+            {"user_id": user_id},
+            {"$push": {
+                "anchors": {
+                    "$each": [anchor],
+                    "$slice": -window_size
+                }
+            }},
+            upsert=True,
+            session=session
+        )
+
+    async def delete_for_user(self, user_id: str, session: Any = None) -> None:
+        await db_instance.chains_collection.delete_one({"user_id": user_id}, session=session)

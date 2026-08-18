@@ -1,47 +1,53 @@
 import hashlib
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.exceptions import InvalidSignature
-from netlazy.domain.repository import CryptoPort, InvalidPublicKeyError, SignatureVerificationError
 
-class PyCryptoAdapter(CryptoPort):
-    def _get_canonical_key_bytes(self, public_key_pem: str) -> bytes:
-        """Parses the PEM and returns canonical DER format bytes. Enforces RSA >= 2048."""
+# cryptography>=46 native ML-DSA support
+from cryptography.hazmat.primitives.asymmetric.mldsa import MLDSA65PublicKey
+
+from netlazy.domain.repository import HybridCryptoPort, InvalidPublicKeyError, SignatureVerificationError
+
+
+class CryptographyHybridAdapter(HybridCryptoPort):
+    def _get_ed25519_der(self, pem: str) -> bytes:
         try:
-            key = load_pem_public_key(public_key_pem.encode('utf-8'))
-        except Exception as e:
-            raise InvalidPublicKeyError("Invalid public key format") from e
-
-        if not isinstance(key, rsa.RSAPublicKey):
-            raise InvalidPublicKeyError("Only RSA public keys are supported")
-        if key.key_size < 2048:
-            raise InvalidPublicKeyError("RSA key size must be >= 2048 bits")
-
-        return key.public_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-
-    def derive_user_id(self, public_key_pem: str) -> str:
-        """Hashes the strict DER bytes, not the raw fragile PEM string."""
-        der_bytes = self._get_canonical_key_bytes(public_key_pem)
-        return hashlib.sha256(der_bytes).hexdigest()
-
-    def verify_signature(self, public_key_pem: str, payload: bytes, signature: bytes) -> None:
-        """Verifies an RSA-PSS/SHA256 signature over payload. Raises
-        SignatureVerificationError on any failure (mismatch, malformed key/signature)."""
-        try:
-            public_key = load_pem_public_key(public_key_pem.encode('utf-8'))
-            public_key.verify(
-                signature,
-                payload,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.AUTO
-                ),
-                hashes.SHA256()
+            key = load_pem_public_key(pem.encode('utf-8'))
+            return key.public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
+        except Exception as e:
+            raise InvalidPublicKeyError("Invalid Ed25519 public key format") from e
+
+    def derive_user_id(self, ed25519_public_pem: str, mldsa_public_hex: str) -> str:
+        ed25519_der = self._get_ed25519_der(ed25519_public_pem)
+        try:
+            mldsa_raw = bytes.fromhex(mldsa_public_hex)
+        except ValueError:
+            raise InvalidPublicKeyError("ML-DSA public key must be valid hex")
+
+        return hashlib.sha256(ed25519_der + mldsa_raw).hexdigest()
+
+    def verify_hybrid_signature(
+        self,
+        ed25519_public_pem: str,
+        mldsa_public_hex: str,
+        payload: bytes,
+        ed25519_sig: bytes,
+        mldsa_sig: bytes
+    ) -> None:
+        try:
+            ed_key = load_pem_public_key(ed25519_public_pem.encode('utf-8'))
+            pq_key = MLDSA65PublicKey.from_public_bytes(bytes.fromhex(mldsa_public_hex))
+            
+            # 1. Classical Ed25519 Verification
+            ed_key.verify(ed25519_sig, payload)
+            
+            # 2. Post-Quantum ML-DSA-65 Verification
+            pq_key.verify(mldsa_sig, payload)
+            
         except InvalidSignature as e:
             raise SignatureVerificationError("Signature mismatch") from e
         except (ValueError, TypeError) as e:

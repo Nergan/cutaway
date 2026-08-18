@@ -2,19 +2,23 @@ import sys
 import logging
 import mimetypes
 import asyncio
+import re
+import time
+import urllib.request
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from netlazy.config import settings
 from netlazy.database import connect_to_mongo, close_mongo_connection, db_instance
 from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
 from netlazy.presentation.dependencies import tag_service
 
-# Windows registry fix: explicitly map module files to correct types
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 
@@ -34,7 +38,6 @@ class SensitiveRouteFilter(logging.Filter):
 logging.getLogger("uvicorn.access").addFilter(SensitiveRouteFilter())
 
 async def _async_insert_log(log_doc):
-    """Helper coroutine to safely execute the asynchronous write operation to MongoDB."""
     try:
         await db_instance.logs_collection.insert_one(log_doc)
     except Exception:
@@ -63,19 +66,26 @@ mongo_handler.setFormatter(logging.Formatter('%(message)s'))
 
 
 def _get_base_path(request: Request) -> str:
-    """Helper to detect if netlazy is hosted under a URL prefix like /netlazy."""
     return "/netlazy" if request.url.path.startswith("/netlazy") else ""
 
 
-# We add a dependency that prevents browsers from accessing raw API data, redirecting them to the SPA instead.
 async def block_browser_api(request: Request):
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         base = _get_base_path(request)
         raise HTTPException(status_code=303, headers={"Location": f"{base}/profile"})
 
+# Define global application and attach CORS globally to avoid missing headers in container mode
+app = FastAPI(title="netlazy")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Next-Anchor"]
+)
 
-# Standard API routing interface with the browser-block dependency applied
 router = APIRouter()
 api_deps = [Depends(block_browser_api)]
 
@@ -86,6 +96,33 @@ router.include_router(feed_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(inbox_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(security_router.router, prefix="/api", dependencies=api_deps)
 
+
+_cached_version = None
+_cached_time = 0
+
+def fetch_gh_version():
+    req = urllib.request.Request("https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk")
+    with urllib.request.urlopen(req, timeout=5) as res:
+        return json.loads(res.read())
+
+@router.get("/api/app-version")
+async def get_app_version():
+    global _cached_version, _cached_time
+    if time.time() - _cached_time > 3600:
+        try:
+            files = await asyncio.to_thread(fetch_gh_version)
+            for f in files:
+                if f["name"].endswith(".apk") and f["name"].startswith("netlazy-"):
+                    match = re.search(r'netlazy-v?([\d\.]+)\.apk', f["name"])
+                    if match:
+                        _cached_version = {"version": match.group(1), "url": f"https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/{f['name']}"}
+                        _cached_time = time.time()
+                        break
+        except Exception:
+            pass
+    return _cached_version or {"version": "0.0.1", "url": ""}
+
+
 @router.on_event("startup")
 async def startup_event():
     await connect_to_mongo()
@@ -94,6 +131,8 @@ async def startup_event():
     synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
     logging.info(f"Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
 
+
+@router.on_event("shutdown")
 async def shutdown_clients():
     logging.getLogger().removeHandler(mongo_handler)
     await close_mongo_connection()
@@ -102,16 +141,7 @@ async def shutdown_clients():
 def health_check():
     return {"status": "ok", "auth_type": "per-request-signature"}
 
-@router.get("/welcome", response_class=FileResponse)
-@router.get("/welcome/", response_class=FileResponse, include_in_schema=False)
-async def serve_welcome():
-    welcome_file = BASE_DIR / "welcome.html"
-    if welcome_file.exists():
-        return FileResponse(welcome_file)
-    raise HTTPException(status_code=404, detail="Welcome page not found")
 
-
-# Root routing and Client-Side Routing illusion for the SPA
 @router.get("/")
 async def root_redirect(request: Request):
     base = _get_base_path(request)
@@ -119,7 +149,6 @@ async def root_redirect(request: Request):
 
 @router.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(request: Request, full_path: str = ""):
-    # Catch direct API browser requests that missed router prefix matching
     if full_path.startswith("api/") or full_path == "api":
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
@@ -127,50 +156,23 @@ async def serve_spa(request: Request, full_path: str = ""):
             return RedirectResponse(url=f"{base}/profile", status_code=303)
         raise HTTPException(status_code=404)
     
-    # Serve index.html for known frontend routes, letting the client-side router take over.
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
     
-    # HTML fallback info during local development
     return HTMLResponse(
-        content="""
-        <html>
-        <head><title>netlazy - Development Fallback</title></head>
-        <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #000000; color: #ffffff; margin: 0; padding: 1.5rem; box-sizing: border-box;">
-            <h1 style="color: #8da970; font-weight: 600; margin-bottom: 0.5rem;">Frontend Not Built Yet</h1>
-            <p style="color: #a3a3a3; max-width: 480px; text-align: center; margin-bottom: 1.5rem; line-height: 1.5;">The compiled static assets were not found. To build and run the frontend, navigate into the project directory and build the assets.</p>
-            <div style="background: #0a0a0a; border: 1px solid #222222; padding: 1.25rem 2rem; border-radius: 8px; font-family: monospace; color: #dbc49a;">
-                cd netlazy && npm run build
-            </div>
-        </body>
-        </html>
-        """,
+        content="<html><body><h1>Frontend Not Built Yet</h1></body></html>",
         status_code=200
     )
 
-# Dual-Boot Support Hook
+app.include_router(router)
+if (BASE_DIR / 'static').exists():
+    app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='netlazy_static')
+
 if __name__ == '__main__':
     if "--web" in sys.argv:
         import uvicorn
-        from fastapi import FastAPI
-        from fastapi.middleware.cors import CORSMiddleware
-        
-        standalone_app = FastAPI(title="netlazy standalone")
-        
-        standalone_app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-            expose_headers=["*"]
-        )
-        
-        if (BASE_DIR / 'static').exists():
-            standalone_app.mount('/netlazy/static', StaticFiles(directory=BASE_DIR / 'static'), name='netlazy_static')
-        standalone_app.include_router(router, prefix='/netlazy')
-        uvicorn.run(standalone_app, host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
     else:
         try:
             import eel

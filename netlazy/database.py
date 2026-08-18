@@ -15,6 +15,7 @@ class Database:
     challenges_collection = None
     bans_collection = None
     logs_collection = None
+    chains_collection = None
 
 db_instance = Database()
 
@@ -92,6 +93,7 @@ async def connect_to_mongo():
     db_instance.challenges_collection = db_instance.db.challenges
     db_instance.bans_collection = db_instance.db.bans
     db_instance.logs_collection = db_instance.db.logs
+    db_instance.chains_collection = db_instance.db.chains
 
     definitions = {
         db_instance.users_collection: [
@@ -106,7 +108,8 @@ async def connect_to_mongo():
         ],
         db_instance.profiles_collection: [
             ("user_id", {"unique": True}),
-            ("created_at", {})
+            ("created_at", {}),
+            ("random_index", {})
         ],
         db_instance.handshakes_collection: [
             ("sender_id", {}),
@@ -120,6 +123,9 @@ async def connect_to_mongo():
         ],
         db_instance.logs_collection: [
             ("timestamp", {"expireAfterSeconds": 30 * 24 * 60 * 60})
+        ],
+        db_instance.chains_collection: [
+            ("user_id", {"unique": True})
         ]
     }
 

@@ -66,7 +66,7 @@
                 <i class="bi bi-image" style="font-size: 1.5rem;"></i><br>{{ store.t('add_media_placeholder') }}
               </div>
               
-              <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.userId)">
+              <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.myProfile.media_id)">
                  <template v-if="store.state.myProfile.audio.isUploading">
                    <div style="position:relative; overflow:hidden; flex-grow:1; height: 32px; background: var(--bg-elevated); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
                      <div class="progress-bar-fill-horizontal" :style="{width: (store.state.myProfile.audio.uploadProgress || 0) + '%', height: '100%'}"></div>
@@ -92,7 +92,7 @@
                      @drop="!m.isUploading && drop(idx)" 
                      @dragend="dragEnd"
                      @click="!m.isUploading && openLightbox(m)"
-                     v-intersect="() => store.loadDecryptedMedia(m, store.state.userId)">
+                     v-intersect="() => store.loadDecryptedMedia(m, store.state.myProfile.media_id)">
                   
                   <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
                   <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(store.state.myProfile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
@@ -408,7 +408,7 @@ async function processFiles(files) {
         } else {
           newItem.blobUrl = null;
           newItem.isLoaded = false;
-          store.loadDecryptedMedia(newItem, store.state.userId);
+          store.loadDecryptedMedia(newItem, store.state.myProfile.media_id);
         }
       }
 

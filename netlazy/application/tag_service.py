@@ -1,6 +1,5 @@
 import os
 import hashlib
-import inspect
 from typing import List
 from netlazy.domain.models import Tag
 from netlazy.domain.repository import TagRepository, TagLoaderPort
@@ -18,12 +17,8 @@ class TagService:
 
         tags = self._tag_loader.load_tags(yaml_path)
         
-        # Dynamically check if the repository supports the optimized file_hash check
-        sig = inspect.signature(self._tag_repo.sync)
-        if 'file_hash' in sig.parameters:
-            await self._tag_repo.sync(tags, file_hash=file_hash)
-        else:
-            await self._tag_repo.sync(tags)
+        # FIX: Directly invoke the standard interface without brittle reflection heuristics (Issue 12)
+        await self._tag_repo.sync(tags, file_hash=file_hash)
             
         return len(tags)
 

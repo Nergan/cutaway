@@ -1,6 +1,60 @@
 /**
- * Core cryptography & identity utilities using WebCrypto API.
+ * Core cryptography & identity utilities.
+ * Hybrid PQ (Ed25519 + ML-DSA-65). Keys are device-bound in IndexedDB.
  */
+
+const DB_NAME = 'netlazy_pq_vault';
+const STORE_NAME = 'keys';
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        try {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                e.target.result.createObjectStore(STORE_NAME);
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+async function setItem(key, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function getItem(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const req = tx.objectStore(STORE_NAME).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+export async function clearIdentity() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+export async function hasHybridKeys() {
+    const pub = await getItem("ed25519_pub");
+    return !!pub;
+}
 
 function arrayBufferToBase64(buffer) {
     let binary = '';
@@ -20,6 +74,10 @@ function base64ToArrayBuffer(base64) {
     return bytes.buffer;
 }
 
+function bufferToHex(buffer) {
+    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function formatPEM(base64, type) {
     const lines = base64.match(/.{1,64}/g).join('\n');
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
@@ -31,100 +89,182 @@ function stripPEM(pem) {
               .replace(/\s+/g, '');
 }
 
+function extractSpkiFromPkcs8(derBytes) {
+    const bytes = new Uint8Array(derBytes);
+    for (let i = 0; i < bytes.length - 10; i++) {
+        if (bytes[i] === 0x02 && bytes[i+1] === 0x01 && bytes[i+2] === 0x00 && bytes[i+3] === 0x02 && bytes[i+4] === 0x82) {
+            const nLen = (bytes[i+5] << 8) | bytes[i+6];
+            const eTag = i + 7 + nLen;
+            if (bytes[eTag] === 0x02) {
+                const eLen = bytes[eTag+1];
+                const n = bytes.slice(i+3, eTag);
+                const e = bytes.slice(eTag, eTag+2+eLen);
+                
+                const rsaPubLen = n.length + e.length;
+                const rsaPubSeq = new Uint8Array(4 + rsaPubLen);
+                rsaPubSeq.set([0x30, 0x82, (rsaPubLen>>8)&0xFF, rsaPubLen&0xFF], 0);
+                rsaPubSeq.set(n, 4);
+                rsaPubSeq.set(e, 4 + n.length);
+                
+                const algoId = new Uint8Array([0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00]);
+                const bitStringLen = rsaPubSeq.length + 1;
+                const bitString = new Uint8Array(4 + bitStringLen);
+                bitString.set([0x03, 0x82, (bitStringLen>>8)&0xFF, bitStringLen&0xFF, 0x00], 0);
+                bitString.set(rsaPubSeq, 5);
+                
+                const spkiLen = algoId.length + bitString.length;
+                const spkiSeq = new Uint8Array(4 + spkiLen);
+                spkiSeq.set([0x30, 0x82, (spkiLen>>8)&0xFF, spkiLen&0xFF], 0);
+                spkiSeq.set(algoId, 4);
+                spkiSeq.set(bitString, 4 + algoId.length);
+                return spkiSeq.buffer;
+            }
+        }
+    }
+    throw new Error("Invalid RSA PKCS#8 key format");
+}
+
 async function sha256Hex(buffer) {
     const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return bufferToHex(hashBuffer);
+}
+
+async function deriveUserId(edPubBuffer, mldsaPubRaw) {
+    const combined = new Uint8Array(edPubBuffer.byteLength + mldsaPubRaw.byteLength);
+    combined.set(new Uint8Array(edPubBuffer), 0);
+    combined.set(new Uint8Array(mldsaPubRaw), edPubBuffer.byteLength);
+    
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', combined.buffer);
+    return bufferToHex(hashBuffer);
 }
 
 export async function generateIdentity() {
-    const keyPair = await window.crypto.subtle.generateKey(
-        {
-            name: "RSA-PSS",
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: "SHA-256",
-        },
-        true,
-        ["sign", "verify"]
+    const edKeyPair = await window.crypto.subtle.generateKey(
+        "Ed25519", false, ["sign", "verify"]
+    );
+    const edPubBuffer = await window.crypto.subtle.exportKey("spki", edKeyPair.publicKey);
+    const edPubPem = formatPEM(arrayBufferToBase64(edPubBuffer), "PUBLIC KEY");
+
+    const wrapKey = await window.crypto.subtle.generateKey(
+        { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
     );
 
-    const publicKeyBuffer = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
-    const privateKeyBuffer = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+    const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa');
+    const seed = window.crypto.getRandomValues(new Uint8Array(32));
+    const mldsaKeys = ml_dsa65.keygen(seed);
+    const mldsaPubHex = bufferToHex(mldsaKeys.publicKey);
 
-    const publicKeyPem = formatPEM(arrayBufferToBase64(publicKeyBuffer), "PUBLIC KEY");
-    const privateKeyPem = formatPEM(arrayBufferToBase64(privateKeyBuffer), "PRIVATE KEY");
-    
-    // Derive deterministic User ID (SHA256 of Canonical SPKI DER)
-    const userId = await sha256Hex(publicKeyBuffer);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const mldsaPrivEnc = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv }, wrapKey, mldsaKeys.secretKey
+    );
 
-    return { publicKeyPem, privateKeyPem, userId, keyPair };
+    await setItem("ed25519_priv", edKeyPair.privateKey);
+    await setItem("ed25519_pub", edPubPem);
+    await setItem("aes_wrap_key", wrapKey);
+    await setItem("mldsa_iv", iv);
+    await setItem("mldsa_priv_enc", mldsaPrivEnc);
+    await setItem("mldsa_pub", mldsaPubHex);
+
+    const userId = await deriveUserId(edPubBuffer, mldsaKeys.publicKey);
+
+    mldsaKeys.secretKey.fill(0);
+
+    return { userId, edPubPem, mldsaPubHex };
 }
 
-export async function loadPrivateKey(privateKeyPem) {
-    const base64 = stripPEM(privateKeyPem);
+export async function signHybridPayload(payloadString) {
+    const edPriv = await getItem("ed25519_priv");
+    const wrapKey = await getItem("aes_wrap_key");
+    const mldsaIv = await getItem("mldsa_iv");
+    const mldsaPrivEnc = await getItem("mldsa_priv_enc");
+
+    if (!edPriv || !wrapKey || !mldsaIv || !mldsaPrivEnc) {
+        throw new Error("Missing keys in vault");
+    }
+
+    const data = new TextEncoder().encode(payloadString);
+
+    const edSigBuffer = await window.crypto.subtle.sign("Ed25519", edPriv, data);
+    const edSig = arrayBufferToBase64(edSigBuffer);
+
+    const mldsaPrivRaw = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: mldsaIv }, wrapKey, mldsaPrivEnc);
+    const mldsaPriv = new Uint8Array(mldsaPrivRaw);
+    
+    const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa');
+    const pqSigBuffer = ml_dsa65.sign(mldsaPriv, data);
+    const pqSig = arrayBufferToBase64(pqSigBuffer);
+    
+    mldsaPriv.fill(0);
+
+    return { edSig, pqSig };
+}
+
+export async function signIdentityPayload(method, path, timestamp, nonce, bodyHash) {
+    const canonical = `PQDA-ANCHOR-v1\n${method}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}`;
+    return await signHybridPayload(canonical);
+}
+
+export async function signLegacyMigration(legacyPem, newEdPubPem, newMldsaHex, timestamp) {
+    const payload = `MIGRATE\n${newEdPubPem}\n${newMldsaHex}\n${timestamp}`;
+    
+    const base64 = stripPEM(legacyPem);
     const buffer = base64ToArrayBuffer(base64);
+    
+    const spkiBuffer = extractSpkiFromPkcs8(buffer);
+    const spkiPem = formatPEM(arrayBufferToBase64(spkiBuffer), "PUBLIC KEY");
 
     const privateKey = await window.crypto.subtle.importKey(
-        "pkcs8",
-        buffer,
-        { name: "RSA-PSS", hash: "SHA-256" },
-        true,
-        ["sign"]
+        "pkcs8", buffer, { name: "RSA-PSS", hash: "SHA-256" }, true, ["sign"]
     );
 
-    // To derive user_id we must extract the public key. WebCrypto doesn't allow 
-    // deriving public from private natively, but we can do a standard Jwk export/import mapping
-    // if needed. However, we assume we have both or can fetch it. For now, we will require the user
-    // to just generate a fresh one if lost, or we implement a Jwk converter. 
-    // Since plan.md states "Client extracts public key", we use an RSASSA-PKCS1-v1_5 trick via JWK:
-    
-    const jwk = await window.crypto.subtle.exportKey("jwk", privateKey);
-    delete jwk.d; delete jwk.dp; delete jwk.dq; delete jwk.p; delete jwk.q; delete jwk.qi;
-    jwk.key_ops = ["verify"];
-    
-    const publicKey = await window.crypto.subtle.importKey(
-        "jwk", jwk, { name: "RSA-PSS", hash: "SHA-256" }, true, ["verify"]
-    );
-
-    const publicKeyBuffer = await window.crypto.subtle.exportKey("spki", publicKey);
-    const publicKeyPem = formatPEM(arrayBufferToBase64(publicKeyBuffer), "PUBLIC KEY");
-    const userId = await sha256Hex(publicKeyBuffer);
-
-    return { publicKeyPem, privateKeyPem, userId, keyPair: { privateKey, publicKey } };
-}
-
-export async function signPayload(privateKey, payloadString) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(payloadString);
-    
-    // Using saltLength: 32 which matches SHA-256 digest length.
-    // Python backend verifies with MAX_LENGTH which dynamically adapts to this salt.
+    const data = new TextEncoder().encode(payload);
     const signatureBuffer = await window.crypto.subtle.sign(
-        { name: "RSA-PSS", saltLength: 32 },
-        privateKey,
-        data
+        { name: "RSA-PSS", saltLength: 32 }, privateKey, data
     );
-    return arrayBufferToBase64(signatureBuffer);
+    
+    return { 
+        signature: arrayBufferToBase64(signatureBuffer),
+        publicPem: spkiPem
+    };
 }
 
-export async function solvePoW(challengeId, difficulty) {
-    const prefix = "0".repeat(difficulty);
-    let nonce = 0;
-    const encoder = new TextEncoder();
-    
-    while (true) {
-        const data = encoder.encode(challengeId + nonce.toString());
-        const hash = await sha256Hex(data);
-        if (hash.startsWith(prefix)) {
-            return nonce.toString();
-        }
-        nonce++;
-        if (nonce % 10000 === 0) {
-            // Yield to main thread to prevent UI freezing
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
+export function solvePoW(challengeId, difficulty) {
+    return new Promise((resolve, reject) => {
+        const workerCode = `
+            async function sha256Hex(buffer) {
+                const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                const arr = Array.from(new Uint8Array(hashBuffer));
+                return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            self.onmessage = async (e) => {
+                const { challengeId, difficulty } = e.data;
+                const prefix = "0".repeat(difficulty);
+                let nonce = 0;
+                const encoder = new TextEncoder();
+                while (true) {
+                    const data = encoder.encode(challengeId + nonce.toString());
+                    const hash = await sha256Hex(data);
+                    if (hash.startsWith(prefix)) {
+                        self.postMessage(nonce.toString());
+                        return;
+                    }
+                    nonce++;
+                }
+            };
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+        worker.onmessage = (e) => {
+            worker.terminate();
+            resolve(e.data);
+        };
+        worker.onerror = (e) => {
+            worker.terminate();
+            reject(e);
+        };
+        worker.postMessage({ challengeId, difficulty });
+    });
 }
 
 let cachedFingerprint = null;
@@ -132,15 +272,10 @@ export async function getFingerprint() {
     if (cachedFingerprint) return cachedFingerprint;
 
     const components = [];
-    
-    // 1. Timezone & Locale
     components.push(Intl.DateTimeFormat().resolvedOptions().timeZone);
     components.push(navigator.language);
-    
-    // 2. Screen Resolution
     components.push(`${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`);
     
-    // 3. Canvas Hash
     try {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
