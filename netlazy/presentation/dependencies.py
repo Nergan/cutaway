@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import logging
 from fastapi import Request, Header, HTTPException, BackgroundTasks
@@ -12,6 +13,7 @@ from netlazy.application.feed_service import FeedService
 from netlazy.application.inbox_service import InboxService
 from netlazy.application.security_service import SecurityService, BannedError, ProofOfWorkError
 from netlazy.config import settings
+from netlazy.database import DatabaseUnavailableError
 from netlazy.domain.models import User
 from netlazy.domain.chain import build_request_payload
 from netlazy.domain.risk import RiskThresholds
@@ -139,6 +141,8 @@ async def verify_request_signature(
     
     try:
         await security_service.verify_not_banned(ip, fingerprint, x_user_id)
+    except DatabaseUnavailableError:
+        raise
     except BannedError:
         raise BANNED_ERROR
 
@@ -172,7 +176,7 @@ async def verify_request_signature(
     try:
         ed_sig_bytes = base64.b64decode(x_signature_ed25519)
         mldsa_sig_bytes = base64.b64decode(x_signature_mldsa)
-    except Exception:
+    except binascii.Error:
         raise AUTH_ERROR
 
     try:
@@ -188,6 +192,8 @@ async def verify_request_signature(
             ed25519_signature=ed_sig_bytes,
             mldsa_signature=mldsa_sig_bytes,
         )
+    except DatabaseUnavailableError:
+        raise
     except AuthenticationError as e:
         if str(e) == "Unknown user":
             raise HTTPException(status_code=401, detail="Unknown user")
@@ -219,6 +225,8 @@ async def verify_pow(
     try:
         await security_service.verify_not_banned(ip, fingerprint)
         await security_service.verify_pow(x_challenge_id, x_pow_nonce)
+    except DatabaseUnavailableError:
+        raise
     except BannedError:
         raise BANNED_ERROR
     except ProofOfWorkError:

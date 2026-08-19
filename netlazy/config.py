@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent
@@ -29,6 +29,8 @@ class Settings(BaseSettings):
 
     admin_api_key: str = ""
     trusted_bot_ips: str = ""  # Comma-separated static IPs for trusted bots
+
+    environment: Literal["development", "staging", "production"] = "production"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

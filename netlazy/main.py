@@ -11,12 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Response
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from netlazy.config import settings
-from netlazy.database import connect_to_mongo, close_mongo_connection, db_instance
+from netlazy.database import connect_to_mongo, close_mongo_connection, db_instance, DatabaseUnavailableError
 from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
 from netlazy.presentation.dependencies import tag_service
 
@@ -44,11 +44,15 @@ logging.getLogger("uvicorn.access").addFilter(SensitiveRouteFilter())
 class MongoLogHandler(logging.Handler):
     def __init__(self, maxsize: int = 1000):
         super().__init__()
-        self._queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
+        self._maxsize = maxsize
+        self._queue: asyncio.Queue | None = None
         self._worker_task: asyncio.Task | None = None
         self._running = False
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     def start_worker(self):
+        self._loop = asyncio.get_running_loop()
+        self._queue = asyncio.Queue(maxsize=self._maxsize)
         self._running = True
         self._worker_task = asyncio.create_task(self._process_logs())
 
@@ -62,34 +66,49 @@ class MongoLogHandler(logging.Handler):
                 pass
 
     async def _process_logs(self):
-        while self._running:
+        while self._running and self._queue is not None:
             try:
                 doc = await self._queue.get()
-                if db_instance.logs_collection is not None:
+                if getattr(db_instance, 'logs_collection', None) is not None:
                     await db_instance.logs_collection.insert_one(doc)
                 self._queue.task_done()
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Failed to insert application log into MongoDB: {e}", file=sys.stderr)
 
     def emit(self, record):
-        if not self._running or db_instance.logs_collection is None:
+        if not self._running or not self._loop or self._loop.is_closed():
             return
+            
+        try:
+            if getattr(db_instance, 'logs_collection', None) is None:
+                return
+        except DatabaseUnavailableError:
+            return
+
         log_doc = {
             "timestamp": datetime.fromtimestamp(record.created, timezone.utc),
             "level": record.levelname,
             "name": record.name,
             "message": self.format(record)
         }
+
+        def _put():
+            if self._queue is not None:
+                try:
+                    self._queue.put_nowait(log_doc)
+                except asyncio.QueueFull:
+                    pass
+
         try:
-            self._queue.put_nowait(log_doc)
-        except asyncio.QueueFull:
+            self._loop.call_soon_threadsafe(_put)
+        except RuntimeError:
             pass
 
 
 mongo_handler = MongoLogHandler()
-mongo_handler.setLevel(logging.INFO)
+mongo_handler.setLevel(logging.WARNING)
 mongo_handler.setFormatter(logging.Formatter('%(message)s'))
 
 
@@ -118,7 +137,13 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 
-app = FastAPI(title="netlazy", lifespan=lifespan)
+app = FastAPI(
+    title="netlazy", 
+    lifespan=lifespan,
+    docs_url=None if settings.environment == "production" else "/docs",
+    redoc_url=None if settings.environment == "production" else "/redoc",
+    openapi_url=None if settings.environment == "production" else "/openapi.json"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,6 +153,14 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Next-Anchor"]
 )
+
+
+@app.exception_handler(DatabaseUnavailableError)
+async def database_unavailable_handler(request: Request, exc: DatabaseUnavailableError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service temporarily unavailable. Database connection failed."},
+    )
 
 
 @app.middleware("http")
@@ -180,8 +213,13 @@ async def get_app_version():
 
 
 @router.get("/api/health")
-def health_check():
-    return {"status": "ok", "auth_type": "per-request-signature"}
+async def health_check():
+    try:
+        await db_instance.client.admin.command('ping')
+        return {"status": "ok", "auth_type": "per-request-signature", "database": "connected"}
+    except Exception as e:
+        logging.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 
 @router.get("/")

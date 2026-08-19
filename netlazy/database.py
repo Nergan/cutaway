@@ -1,8 +1,12 @@
+import asyncio
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING
 from pymongo.errors import OperationFailure
 from netlazy.config import settings
+
+class DatabaseUnavailableError(AttributeError):
+    pass
 
 class Database:
     client: AsyncIOMotorClient = None
@@ -16,6 +20,12 @@ class Database:
     bans_collection = None
     logs_collection = None
     chains_collection = None
+
+    def __getattribute__(self, name):
+        val = super().__getattribute__(name)
+        if val is None and (name.endswith('_collection') or name in ('client', 'db')):
+            raise DatabaseUnavailableError(f"Database property '{name}' is not initialized")
+        return val
 
 db_instance = Database()
 
@@ -82,7 +92,27 @@ async def connect_to_mongo():
     if settings.mongo_tls_allow_invalid_certificates:
         kwargs["tlsAllowInvalidCertificates"] = True
 
-    db_instance.client = AsyncIOMotorClient(settings.mongodb_uri, readPreference="primaryPreferred", **kwargs)
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            client = AsyncIOMotorClient(
+                settings.mongodb_uri, 
+                readPreference="primaryPreferred", 
+                serverSelectionTimeoutMS=10000,
+                **kwargs
+            )
+            await client.admin.command('ping')
+            db_instance.client = client
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                logging.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                await asyncio.sleep(wait_time)
+            else:
+                logging.critical(f"MongoDB connection failed definitively during startup: {e}")
+                raise DatabaseUnavailableError("Failed to initialize database connection") from e
+
     db_instance.db = db_instance.client.netlazy
 
     db_instance.users_collection = db_instance.db.users
@@ -135,5 +165,5 @@ async def connect_to_mongo():
     logging.info("Connected to netlazy MongoDB successfully.")
 
 async def close_mongo_connection():
-    if db_instance.client:
+    if getattr(db_instance, 'client', None):
         db_instance.client.close()
