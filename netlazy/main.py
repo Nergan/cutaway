@@ -69,22 +69,22 @@ class MongoLogHandler(logging.Handler):
         while self._running and self._queue is not None:
             try:
                 doc = await self._queue.get()
-                if getattr(db_instance, 'logs_collection', None) is not None:
-                    await db_instance.logs_collection.insert_one(doc)
-                self._queue.task_done()
+                try:
+                    logs_col = getattr(db_instance, 'logs_collection', None)
+                    if logs_col is not None:
+                        await logs_col.insert_one(doc)
+                except Exception as e:
+                    print(f"Failed to insert application log into MongoDB: {e}", file=sys.stderr)
+                finally:
+                    self._queue.task_done()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                print(f"Failed to insert application log into MongoDB: {e}", file=sys.stderr)
 
     def emit(self, record):
         if not self._running or not self._loop or self._loop.is_closed():
             return
             
-        try:
-            if getattr(db_instance, 'logs_collection', None) is None:
-                return
-        except DatabaseUnavailableError:
+        if getattr(db_instance, 'logs_collection', None) is None:
             return
 
         log_doc = {

@@ -17,6 +17,7 @@ class ChallengeResponse(BaseModel):
 @router.get("/challenge", response_model=ChallengeResponse)
 async def get_challenge():
     await asyncio.sleep(settings.bot_protection_delay)
+    # DatabaseUnavailableError will cleanly propagate directly to the 503 handler
     data = await security_service.generate_challenge()
     return ChallengeResponse(**data)
 

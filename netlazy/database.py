@@ -6,6 +6,11 @@ from pymongo.errors import OperationFailure
 from netlazy.config import settings
 
 class DatabaseUnavailableError(AttributeError):
+    """Raised when an uninitialized DB client/collection is accessed.
+    
+    Subclasses AttributeError so standard getattr/hasattr defaults work cleanly.
+    Care should be taken not to swallow this in broad AttributeError catch blocks.
+    """
     pass
 
 class Database:
@@ -94,6 +99,7 @@ async def connect_to_mongo():
 
     max_retries = 5
     for attempt in range(max_retries):
+        client = None
         try:
             client = AsyncIOMotorClient(
                 settings.mongodb_uri, 
@@ -105,6 +111,8 @@ async def connect_to_mongo():
             db_instance.client = client
             break
         except Exception as e:
+            if client is not None:
+                client.close()  # Prevent background thread and socket leak on retry
             if attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 logging.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")

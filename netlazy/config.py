@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     admin_api_key: str = ""
     trusted_bot_ips: str = ""  # Comma-separated static IPs for trusted bots
+    trusted_proxy_ips: str = "127.0.0.1,::1"  # Comma-separated IPs of trusted reverse proxies
 
     environment: Literal["development", "staging", "production"] = "production"
 

@@ -33,9 +33,14 @@ from netlazy.infrastructure.mongo_repo import (
     MongoTransactionManager,
 )
 
-AUTH_ERROR = HTTPException(status_code=401, detail="Invalid authentication credentials")
-BANNED_ERROR = HTTPException(status_code=403, detail="banned")
-POW_ERROR = HTTPException(status_code=400, detail="Invalid or missing Proof of Work")
+def create_auth_error() -> HTTPException:
+    return HTTPException(status_code=401, detail="Invalid authentication credentials")
+
+def create_banned_error() -> HTTPException:
+    return HTTPException(status_code=403, detail="banned")
+
+def create_pow_error() -> HTTPException:
+    return HTTPException(status_code=400, detail="Invalid or missing Proof of Work")
 
 user_repo = MongoUserRepository()
 chain_repo = MongoChainRepository()
@@ -108,7 +113,22 @@ security_service = SecurityService(
 
 
 def _get_client_footprint(request: Request) -> tuple:
-    ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1").split(",")[0].strip()
+    direct_peer = request.client.host if request.client else "127.0.0.1"
+    trusted_proxies = {ip.strip() for ip in settings.trusted_proxy_ips.split(",") if ip.strip()}
+    
+    # Only respect forwarded headers if request came directly from a verified reverse proxy
+    if direct_peer in trusted_proxies:
+        forwarded = request.headers.get("X-Forwarded-For")
+        real_ip = request.headers.get("X-Real-IP")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+        elif real_ip:
+            ip = real_ip.strip()
+        else:
+            ip = direct_peer
+    else:
+        ip = direct_peer
+
     fingerprint = request.headers.get("X-Fingerprint", "unknown")
     return ip, fingerprint
 
@@ -129,13 +149,18 @@ async def verify_request_signature(
     x_signature_mldsa: str = Header(None),
     x_signed_path: str = Header(None),
 ) -> User:
-    if not all([x_user_id, x_timestamp, x_nonce, x_body_hash, x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path]):
-        raise AUTH_ERROR
+    # Explicit None checks to prevent legitimate 0-values from failing falsy checks
+    required_headers = [
+        x_user_id, x_timestamp, x_nonce, x_body_hash,
+        x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path
+    ]
+    if any(h is None for h in required_headers):
+        raise create_auth_error()
 
     norm_signed = _normalize_path(x_signed_path)
     norm_req = _normalize_path(request.url.path)
     if not norm_signed.endswith(norm_req):
-        raise AUTH_ERROR
+        raise create_auth_error()
 
     ip, fingerprint = _get_client_footprint(request)
     
@@ -144,7 +169,7 @@ async def verify_request_signature(
     except DatabaseUnavailableError:
         raise
     except BannedError:
-        raise BANNED_ERROR
+        raise create_banned_error()
 
     body_accumulator = bytearray()
     try:
@@ -160,7 +185,7 @@ async def verify_request_signature(
 
     actual_body_hash = hashlib.sha256(body_bytes).hexdigest()
     if actual_body_hash != x_body_hash:
-        raise AUTH_ERROR
+        raise create_auth_error()
 
     query_string = request.url.query
     canonical_payload = build_request_payload(
@@ -176,8 +201,8 @@ async def verify_request_signature(
     try:
         ed_sig_bytes = base64.b64decode(x_signature_ed25519)
         mldsa_sig_bytes = base64.b64decode(x_signature_mldsa)
-    except binascii.Error:
-        raise AUTH_ERROR
+    except (binascii.Error, ValueError):
+        raise create_auth_error()
 
     try:
         user, next_anchor = await auth_service.authenticate_request(
@@ -197,13 +222,13 @@ async def verify_request_signature(
     except AuthenticationError as e:
         if str(e) == "Unknown user":
             raise HTTPException(status_code=401, detail="Unknown user")
-        raise AUTH_ERROR
+        raise create_auth_error()
     except Exception as e:
         logging.error(f"Unexpected error during signature verification: {e}")
-        raise AUTH_ERROR
+        raise create_auth_error()
 
     if user.is_banned:
-        raise BANNED_ERROR
+        raise create_banned_error()
 
     request.state.next_anchor = next_anchor
 
@@ -219,7 +244,7 @@ async def verify_pow(
     x_pow_nonce: str = Header(None),
 ) -> None:
     if not x_challenge_id or not x_pow_nonce:
-        raise POW_ERROR
+        raise create_pow_error()
 
     ip, fingerprint = _get_client_footprint(request)
     try:
@@ -228,6 +253,6 @@ async def verify_pow(
     except DatabaseUnavailableError:
         raise
     except BannedError:
-        raise BANNED_ERROR
+        raise create_banned_error()
     except ProofOfWorkError:
-        raise POW_ERROR
+        raise create_pow_error()
