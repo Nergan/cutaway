@@ -137,6 +137,8 @@ async def rotate_key_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
     except UserAlreadyExistsError:
         raise HTTPException(status_code=400, detail="Public keys already registered")
+    except HashChainDesyncError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)

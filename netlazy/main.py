@@ -1,3 +1,25 @@
+"""
+netlazy — Main FastAPI Application Entrypoint.
+
+IMPORTANT MONOREPO INTEGRATION NOTE:
+When netlazy is mounted as a sub-application within the parent 'cutaway' monorepo
+(e.g., `parent_app.mount("/netlazy", netlazy_app)`), Starlette/FastAPI DOES NOT
+automatically execute sub-application `lifespan` context managers.
+
+To ensure MongoDB connects, log handlers start, and tags sync properly in production,
+the parent monorepo's root lifespan MUST explicitly invoke netlazy's lifecycle:
+
+    # In cutaway parent main.py:
+    from contextlib import asynccontextmanager
+    from netlazy.database import connect_to_mongo, close_mongo_connection
+    from netlazy.main import lifespan as netlazy_lifespan
+
+    @asynccontextmanager
+    async def parent_lifespan(app: FastAPI):
+        async with netlazy_lifespan(netlazy_app):
+            yield
+"""
+
 import sys
 import logging
 import mimetypes
@@ -125,13 +147,17 @@ async def block_browser_api(request: Request):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logging.info("[netlazy] Lifespan START: Initializing database and services...")
     await connect_to_mongo()
     mongo_handler.start_worker()
     logging.getLogger().addHandler(mongo_handler)
 
     synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
-    logging.info(f"Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
+    logging.info(f"[netlazy] Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
+    
     yield
+    
+    logging.info("[netlazy] Lifespan SHUTDOWN: Closing database connection...")
     logging.getLogger().removeHandler(mongo_handler)
     await mongo_handler.stop_worker()
     await close_mongo_connection()

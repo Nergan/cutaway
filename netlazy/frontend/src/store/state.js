@@ -293,7 +293,14 @@ export function useStore() {
             
             addToast(t('new_identity_loaded'), "bi-person-plus");
         } catch (e) {
-            addToast("Failed to create account.", "bi-exclamation-octagon");
+            const detail = e.response?.data?.detail;
+            if (e.response?.status === 503) {
+                addToast("Service temporarily unavailable. Please try again shortly.", "bi-exclamation-triangle");
+            } else if (detail) {
+                addToast(`Registration failed: ${detail}`, "bi-exclamation-octagon");
+            } else {
+                addToast("Failed to create account.", "bi-exclamation-octagon");
+            }
         }
     }
 
