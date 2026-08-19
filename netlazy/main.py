@@ -195,6 +195,7 @@ router.include_router(security_router.router, prefix="/api", dependencies=api_de
 
 _cached_version = None
 _cached_time = 0
+_version_lock = asyncio.Lock()
 
 
 def fetch_gh_version():
@@ -207,20 +208,22 @@ def fetch_gh_version():
 async def get_app_version():
     global _cached_version, _cached_time
     if time.time() - _cached_time > 3600:
-        try:
-            files = await asyncio.to_thread(fetch_gh_version)
-            for f in files:
-                if f["name"].endswith(".apk") and f["name"].startswith("netlazy-"):
-                    match = re.search(r'netlazy-v?([\d\.]+)\.apk', f["name"])
-                    if match:
-                        _cached_version = {
-                            "version": match.group(1),
-                            "url": f"https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/{f['name']}"
-                        }
-                        _cached_time = time.time()
-                        break
-        except Exception:
-            pass
+        async with _version_lock:
+            if time.time() - _cached_time > 3600:
+                try:
+                    files = await asyncio.to_thread(fetch_gh_version)
+                    for f in files:
+                        if f["name"].endswith(".apk") and f["name"].startswith("netlazy-"):
+                            match = re.search(r'netlazy-v?([\d\.]+)\.apk', f["name"])
+                            if match:
+                                _cached_version = {
+                                    "version": match.group(1),
+                                    "url": f"https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/apk/{f['name']}"
+                                }
+                                _cached_time = time.time()
+                                break
+                except Exception:
+                    pass
     return _cached_version or {"version": "0.0.1", "url": ""}
 
 

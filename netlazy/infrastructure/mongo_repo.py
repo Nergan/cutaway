@@ -291,10 +291,7 @@ class MongoProfileRepository(ProfileRepository):
         self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str],
         bonus: List[str], abonus: List[str], limit: int
     ) -> List[Profile]:
-        banned_users_cursor = db_instance.users_collection.find({"is_banned": True}, {"user_id": 1})
-        banned_ids = [u["user_id"] async for u in banned_users_cursor]
-
-        ignored = exclude_ids + [viewer_id] + banned_ids
+        ignored = exclude_ids + [viewer_id]
         base_match = {"user_id": {"$nin": ignored}}
 
         if requires:
@@ -316,6 +313,13 @@ class MongoProfileRepository(ProfileRepository):
         async def fetch_profiles(direction_match):
             pipeline = [
                 {"$match": {**base_match, **direction_match}},
+                {"$lookup": {
+                    "from": "users",
+                    "localField": "user_id",
+                    "foreignField": "user_id",
+                    "as": "user_info"
+                }},
+                {"$match": {"user_info.is_banned": {"$ne": True}}},
                 {"$sort": {"random_index": 1}},
                 {"$limit": fetch_limit}
             ]
@@ -345,6 +349,13 @@ class MongoProfileRepository(ProfileRepository):
 
             pipeline = [
                 {"$match": {**wrap_base_match, **wrap_match}},
+                {"$lookup": {
+                    "from": "users",
+                    "localField": "user_id",
+                    "foreignField": "user_id",
+                    "as": "user_info"
+                }},
+                {"$match": {"user_info.is_banned": {"$ne": True}}},
                 {"$sort": {"random_index": 1}},
                 {"$limit": needed * 10}
             ]

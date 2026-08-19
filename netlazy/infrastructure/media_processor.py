@@ -42,8 +42,9 @@ class FFmpegMediaProcessor(MediaProcessorPort):
             yield in_path, out_path
 
     async def _run_ffmpeg(self, args: list) -> None:
+        safe_args = ["-protocol_whitelist", "file,crypto,data"] + args
         proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", *args,
+            "ffmpeg", *safe_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

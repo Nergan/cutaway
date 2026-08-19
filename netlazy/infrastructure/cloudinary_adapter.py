@@ -1,5 +1,6 @@
 import asyncio
 import re
+import io
 from typing import Optional
 import cloudinary
 import cloudinary.uploader
@@ -21,10 +22,11 @@ _RESOURCE_TYPE_MAP = {"image": "raw", "video": "raw", "audio": "raw"}
 class CloudinaryMediaStorage(MediaStorage):
     async def upload(self, file_bytes: bytes, media_type: str, public_id_hint: str) -> dict:
         resource_type = _RESOURCE_TYPE_MAP.get(media_type, "raw")
+        file_obj = io.BytesIO(file_bytes)
         
         result = await asyncio.to_thread(
             cloudinary.uploader.upload,
-            file_bytes,
+            file_obj,
             resource_type=resource_type,
             public_id=public_id_hint,
             overwrite=True,

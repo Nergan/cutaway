@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 import logging
+import time
 from fastapi import Request, Header, HTTPException, BackgroundTasks
 from starlette.requests import ClientDisconnect
 
@@ -16,6 +17,7 @@ from netlazy.database import DatabaseUnavailableError
 from netlazy.domain.models import User
 from netlazy.domain.chain import build_request_payload
 from netlazy.domain.risk import RiskThresholds
+from netlazy.domain.repository import RiskEventDispatcherPort
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
 from netlazy.infrastructure.crypto_adapter import CryptographyHybridAdapter
 from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
@@ -95,6 +97,15 @@ security_service = SecurityService(
 )
 
 
+class FastAPIBackgroundRiskDispatcher(RiskEventDispatcherPort):
+    def __init__(self, background_tasks: BackgroundTasks, security_service: SecurityService):
+        self._background_tasks = background_tasks
+        self._security_service = security_service
+
+    def dispatch_risk_evaluation(self, user_id: str, ip: str, payload: bytes, timestamp: int) -> None:
+        self._background_tasks.add_task(self._security_service.evaluate_risk, user_id, ip, payload, timestamp)
+
+
 def _get_client_footprint(request: Request) -> tuple:
     direct_peer = request.client.host if request.client else "127.0.0.1"
     trusted_proxies = {ip.strip() for ip in settings.trusted_proxy_ips.split(",") if ip.strip()}
@@ -152,16 +163,13 @@ async def verify_request_signature(
     except BannedError:
         raise create_banned_error()
 
-    body_accumulator = bytearray()
     try:
-        async for chunk in request.stream():
-            body_accumulator.extend(chunk)
-            if len(body_accumulator) > settings.max_upload_bytes:
-                raise HTTPException(status_code=413, detail="Payload Too Large")
+        body_bytes = await request.body()
+        if len(body_bytes) > settings.max_upload_bytes:
+            raise HTTPException(status_code=413, detail="Payload Too Large")
     except ClientDisconnect:
         raise HTTPException(status_code=400, detail="Client disconnected")
 
-    body_bytes = bytes(body_accumulator)
     request.state.body_bytes = body_bytes
 
     actual_body_hash = hashlib.sha256(body_bytes).hexdigest()
@@ -213,7 +221,8 @@ async def verify_request_signature(
 
     request.state.next_anchor = next_anchor
 
-    security_service.dispatch_risk_evaluation(background_tasks, x_user_id, ip, body_bytes)
+    dispatcher = FastAPIBackgroundRiskDispatcher(background_tasks, security_service)
+    dispatcher.dispatch_risk_evaluation(x_user_id, ip, body_bytes, int(time.time()))
     background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
 
     return user

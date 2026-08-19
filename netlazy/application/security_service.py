@@ -3,7 +3,6 @@ import hashlib
 import uuid
 import time
 from typing import Optional
-from fastapi import BackgroundTasks
 
 from netlazy.domain.models import PoWChallenge
 from netlazy.domain.repository import SecurityRepository, UserRepository
@@ -50,11 +49,6 @@ class SecurityService:
             if user_id:
                 user = await self._user_repo.get_by_id(user_id)
                 if user and not user.is_banned:
-                    await self._security_repo.remove_bans(
-                        ips=user.known_ips + ([ip] if ip else []),
-                        fingerprints=user.known_fingerprints + ([fingerprint] if fingerprint else []),
-                        user_id=user.user_id
-                    )
                     return
             raise BannedError("Access denied by security policy.")
 
@@ -69,10 +63,7 @@ class SecurityService:
             user_id=user.user_id
         )
 
-    def dispatch_risk_evaluation(self, background_tasks: BackgroundTasks, user_id: str, ip: str, payload: bytes):
-        background_tasks.add_task(self._evaluate_risk, user_id, ip, payload, int(time.time()))
-
-    async def _evaluate_risk(self, user_id: str, ip: str, payload: bytes, current_time: int) -> None:
+    async def evaluate_risk(self, user_id: str, ip: str, payload: bytes, current_time: int) -> None:
         user = await self._user_repo.get_by_id(user_id)
         if not user or user.is_banned:
             return
@@ -80,7 +71,8 @@ class SecurityService:
         total_penalty = 0.0
 
         if payload:
-            ratio = await asyncio.to_thread(shannon_entropy_ratio, payload)
+            sampled_payload = payload[:8192]
+            ratio = await asyncio.to_thread(shannon_entropy_ratio, sampled_payload)
             total_penalty += score_entropy(ratio, self._thresholds)
 
         if total_penalty > 0:
