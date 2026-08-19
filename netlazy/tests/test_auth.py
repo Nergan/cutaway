@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from netlazy.application.auth_service import AuthService, AuthenticationError
-from netlazy.domain.models import User, UserAlreadyExistsError
+from netlazy.domain.models import User
 from netlazy.domain.repository import (
     SignatureVerificationError,
     HashChainDesyncError
@@ -84,7 +84,7 @@ async def test_authenticate_request_invalid_timestamp(auth_service):
             user_id="id1",
             method="POST",
             path="/",
-            timestamp=0,  # Expired timestamp
+            timestamp=0,
             nonce="nonce_val",
             body_hash="hash",
             prev_anchor="prev",
@@ -143,7 +143,7 @@ async def test_rotate_key_transaction(auth_service, auth_deps):
     handshake_repo = AsyncMock()
 
     auth_deps["crypto_port"].derive_user_id.return_value = "new_user_id"
-    auth_deps["user_repo"].get_by_id.return_value = None  # No conflict
+    auth_deps["user_repo"].get_by_id.return_value = None
 
     async def mock_execute(cb):
         return await cb(session=None)

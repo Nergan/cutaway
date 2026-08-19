@@ -6,7 +6,6 @@ from fastapi import Request, Header, HTTPException, BackgroundTasks
 from starlette.requests import ClientDisconnect
 
 from netlazy.application.auth_service import AuthService, AuthenticationError
-from netlazy.application.migration_service import MigrationService
 from netlazy.application.profile_service import ProfileService
 from netlazy.application.tag_service import TagService
 from netlazy.application.feed_service import FeedService
@@ -19,7 +18,6 @@ from netlazy.domain.chain import build_request_payload
 from netlazy.domain.risk import RiskThresholds
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
 from netlazy.infrastructure.crypto_adapter import CryptographyHybridAdapter
-from netlazy.infrastructure.legacy_migration import LegacyCryptographyAdapter, MongoLegacyUserLookup
 from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
 from netlazy.infrastructure.yaml_loader import YamlTagLoader
 from netlazy.infrastructure.mongo_repo import (
@@ -52,9 +50,6 @@ security_repo = MongoSecurityRepository()
 media_storage = CloudinaryMediaStorage()
 
 hybrid_crypto = CryptographyHybridAdapter()
-legacy_crypto = LegacyCryptographyAdapter()
-legacy_lookup = MongoLegacyUserLookup()
-
 media_processor = FFmpegMediaProcessor()
 tag_loader = YamlTagLoader()
 transaction_manager = MongoTransactionManager()
@@ -64,18 +59,6 @@ auth_service = AuthService(
     chain_repo=chain_repo,
     nonce_repo=nonce_repo, 
     crypto_port=hybrid_crypto, 
-    transaction_manager=transaction_manager
-)
-
-migration_service = MigrationService(
-    legacy_lookup=legacy_lookup,
-    legacy_crypto=legacy_crypto,
-    user_repo=user_repo,
-    chain_repo=chain_repo,
-    profile_repo=profile_repo,
-    handshake_repo=handshake_repo,
-    nonce_repo=nonce_repo,
-    hybrid_crypto=hybrid_crypto,
     transaction_manager=transaction_manager
 )
 
@@ -116,7 +99,6 @@ def _get_client_footprint(request: Request) -> tuple:
     direct_peer = request.client.host if request.client else "127.0.0.1"
     trusted_proxies = {ip.strip() for ip in settings.trusted_proxy_ips.split(",") if ip.strip()}
     
-    # Only respect forwarded headers if request came directly from a verified reverse proxy
     if direct_peer in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
         real_ip = request.headers.get("X-Real-IP")
@@ -149,7 +131,6 @@ async def verify_request_signature(
     x_signature_mldsa: str = Header(None),
     x_signed_path: str = Header(None),
 ) -> User:
-    # Explicit None checks to prevent legitimate 0-values from failing falsy checks
     required_headers = [
         x_user_id, x_timestamp, x_nonce, x_body_hash,
         x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path

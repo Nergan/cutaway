@@ -1,6 +1,6 @@
 import { reactive, watch, computed } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
-import { generateIdentity, signLegacyMigration, clearIdentity, hasHybridKeys } from '../utils/crypto.js';
+import { generateIdentity, clearIdentity, hasHybridKeys } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
 import { Preferences } from '@capacitor/preferences';
@@ -21,7 +21,6 @@ const defaultState = {
     
     userId: null,
     currentAnchor: null,
-    privateKeyPem: null, 
 
     isSidebarCollapsed: window.innerWidth <= 768,
     workspaceWidth: 500,
@@ -171,14 +170,8 @@ export function useStore() {
                 });
 
                 const vaultReady = await hasHybridKeys();
-
-                if (parsed.isRegistered) {
-                    if (!vaultReady && parsed.privateKeyPem) {
-                        const success = await migrateLegacyKey(parsed.privateKeyPem);
-                        if (!success) state.isRegistered = false;
-                    } else if (!vaultReady) {
-                        state.isRegistered = false; 
-                    }
+                if (parsed.isRegistered && !vaultReady) {
+                    state.isRegistered = false; 
                 }
 
                 syncUrlToView();
@@ -213,7 +206,7 @@ export function useStore() {
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
         state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
-        state.userId, state.currentAnchor, state.privateKeyPem
+        state.userId, state.currentAnchor
     ], async () => {
         if (!state.isInitialized) return;
         try {
@@ -222,7 +215,7 @@ export function useStore() {
                 theme: state.theme, lang: state.lang, isUserFriendlyInterface: state.isUserFriendlyInterface,
                 workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
-                userId: state.userId, currentAnchor: state.currentAnchor, privateKeyPem: state.privateKeyPem
+                userId: state.userId, currentAnchor: state.currentAnchor
             };
             await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(saveObj) });
         } catch (e) {}
@@ -290,7 +283,6 @@ export function useStore() {
             
             state.userId = keys.userId;
             state.currentAnchor = res.data.genesis_anchor;
-            state.privateKeyPem = null; 
             state.isRegistered = true;
             state.currentView = 'vault';
             
@@ -305,52 +297,6 @@ export function useStore() {
         }
     }
 
-    async function loginWithKey(rawPrivateKey) {
-        if (!rawPrivateKey.includes("PRIVATE KEY")) {
-            addToast("Only legacy RSA keys can be imported during the migration window.", "bi-exclamation-triangle");
-            return;
-        }
-        addToast("Migrating legacy identity to Hybrid PQ...", "bi-hourglass-split");
-        const success = await migrateLegacyKey(rawPrivateKey);
-        if (success) {
-            state.isRegistered = true;
-            state.currentView = 'editor';
-            fetchTags();
-            fetchMyProfile();
-            fetchInbox();
-            startPolling();
-            addToast(t('key_imported'), "bi-shield-check");
-        } else {
-            addToast("Migration failed. Invalid key.", "bi-exclamation-triangle");
-        }
-    }
-
-    async function migrateLegacyKey(legacyPem) {
-        try {
-            const keys = await generateIdentity();
-            const timestamp = Math.floor(Date.now() / 1000);
-            const sigData = await signLegacyMigration(legacyPem, keys.edPubPem, keys.mldsaPubHex, timestamp);
-            
-            const res = await api.post('/auth/migrate', {
-                legacy_public_pem: sigData.publicPem,
-                new_ed25519_public_pem: keys.edPubPem,
-                new_mldsa_public_hex: keys.mldsaPubHex,
-                timestamp: timestamp,
-                signature_base64: sigData.signature
-            });
-            
-            state.userId = res.data.new_user_id;
-            state.privateKeyPem = null; 
-            
-            const anchorRes = await api.get('/auth/anchor');
-            state.currentAnchor = anchorRes.data.current_anchor;
-            return true;
-        } catch (e) {
-            console.error("Migration failed:", e);
-            return false;
-        }
-    }
-
     async function rotateKey() {
         try {
             const keys = await generateIdentity();
@@ -361,7 +307,6 @@ export function useStore() {
             
             state.userId = res.data.new_user_id;
             state.currentAnchor = res.data.new_anchor;
-            state.privateKeyPem = null; 
             
             fetchMyProfile();
             fetchInbox();
@@ -379,7 +324,6 @@ export function useStore() {
         state.authErrorNotified = false;
         state.userId = null;
         state.currentAnchor = null;
-        state.privateKeyPem = null;
         state.myProfile = { ...defaultState.myProfile };
         state.inbox = [];
         state.feed = [];
@@ -551,7 +495,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags
     };
     return instance;
 }

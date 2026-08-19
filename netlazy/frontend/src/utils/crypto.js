@@ -65,15 +65,6 @@ function arrayBufferToBase64(buffer) {
     return window.btoa(binary);
 }
 
-function base64ToArrayBuffer(base64) {
-    const binary = window.atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
-}
-
 function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -81,52 +72,6 @@ function bufferToHex(buffer) {
 function formatPEM(base64, type) {
     const lines = base64.match(/.{1,64}/g).join('\n');
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
-}
-
-function stripPEM(pem) {
-    return pem.replace(/-----BEGIN [^-]+-----/g, '')
-              .replace(/-----END [^-]+-----/g, '')
-              .replace(/\s+/g, '');
-}
-
-function extractSpkiFromPkcs8(derBytes) {
-    const bytes = new Uint8Array(derBytes);
-    for (let i = 0; i < bytes.length - 10; i++) {
-        if (bytes[i] === 0x02 && bytes[i+1] === 0x01 && bytes[i+2] === 0x00 && bytes[i+3] === 0x02 && bytes[i+4] === 0x82) {
-            const nLen = (bytes[i+5] << 8) | bytes[i+6];
-            const eTag = i + 7 + nLen;
-            if (bytes[eTag] === 0x02) {
-                const eLen = bytes[eTag+1];
-                const n = bytes.slice(i+3, eTag);
-                const e = bytes.slice(eTag, eTag+2+eLen);
-                
-                const rsaPubLen = n.length + e.length;
-                const rsaPubSeq = new Uint8Array(4 + rsaPubLen);
-                rsaPubSeq.set([0x30, 0x82, (rsaPubLen>>8)&0xFF, rsaPubLen&0xFF], 0);
-                rsaPubSeq.set(n, 4);
-                rsaPubSeq.set(e, 4 + n.length);
-                
-                const algoId = new Uint8Array([0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00]);
-                const bitStringLen = rsaPubSeq.length + 1;
-                const bitString = new Uint8Array(4 + bitStringLen);
-                bitString.set([0x03, 0x82, (bitStringLen>>8)&0xFF, bitStringLen&0xFF, 0x00], 0);
-                bitString.set(rsaPubSeq, 5);
-                
-                const spkiLen = algoId.length + bitString.length;
-                const spkiSeq = new Uint8Array(4 + spkiLen);
-                spkiSeq.set([0x30, 0x82, (spkiLen>>8)&0xFF, spkiLen&0xFF], 0);
-                spkiSeq.set(algoId, 4);
-                spkiSeq.set(bitString, 4 + algoId.length);
-                return spkiSeq.buffer;
-            }
-        }
-    }
-    throw new Error("Invalid RSA PKCS#8 key format");
-}
-
-async function sha256Hex(buffer) {
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
-    return bufferToHex(hashBuffer);
 }
 
 async function deriveUserId(edPubBuffer, mldsaPubRaw) {
@@ -205,30 +150,6 @@ export async function signIdentityPayload(method, path, timestamp, nonce, bodyHa
     return await signHybridPayload(canonical);
 }
 
-export async function signLegacyMigration(legacyPem, newEdPubPem, newMldsaHex, timestamp) {
-    const payload = `MIGRATE\n${newEdPubPem}\n${newMldsaHex}\n${timestamp}`;
-    
-    const base64 = stripPEM(legacyPem);
-    const buffer = base64ToArrayBuffer(base64);
-    
-    const spkiBuffer = extractSpkiFromPkcs8(buffer);
-    const spkiPem = formatPEM(arrayBufferToBase64(spkiBuffer), "PUBLIC KEY");
-
-    const privateKey = await window.crypto.subtle.importKey(
-        "pkcs8", buffer, { name: "RSA-PSS", hash: "SHA-256" }, true, ["sign"]
-    );
-
-    const data = new TextEncoder().encode(payload);
-    const signatureBuffer = await window.crypto.subtle.sign(
-        { name: "RSA-PSS", saltLength: 32 }, privateKey, data
-    );
-    
-    return { 
-        signature: arrayBufferToBase64(signatureBuffer),
-        publicPem: spkiPem
-    };
-}
-
 export function solvePoW(challengeId, difficulty) {
     return new Promise((resolve, reject) => {
         const workerCode = `
@@ -295,12 +216,17 @@ export async function getFingerprint() {
 
     const encoder = new TextEncoder();
     const data = encoder.encode(components.join("||"));
-    cachedFingerprint = await sha256Hex(data);
+    cachedFingerprint = await deriveHexHash(data);
     return cachedFingerprint;
+}
+
+async function deriveHexHash(data) {
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    return bufferToHex(hashBuffer);
 }
 
 export async function hashBody(bodyStringOrBuffer) {
     const encoder = new TextEncoder();
     const data = typeof bodyStringOrBuffer === 'string' ? encoder.encode(bodyStringOrBuffer) : bodyStringOrBuffer;
-    return await sha256Hex(data);
+    return await deriveHexHash(data);
 }

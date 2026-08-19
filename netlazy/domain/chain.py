@@ -48,7 +48,3 @@ def build_identity_payload(method: str, path: str, timestamp: int, nonce: str, b
     Deliberately a different tag/shape than build_request_payload so a signature
     over one can never be replayed as the other."""
     return "\n".join([_IDENTITY_TAG, method, path, str(timestamp), nonce, body_hash]).encode("utf-8")
-
-
-def build_migration_payload(new_ed25519_pub: bytes, new_mldsa_pub: bytes, timestamp: int) -> bytes:
-    return b"MIGRATE\n" + new_ed25519_pub + b"\n" + new_mldsa_pub + b"\n" + str(timestamp).encode("utf-8")

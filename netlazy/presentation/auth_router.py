@@ -1,17 +1,13 @@
 import base64
-import logging
 import binascii
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Header
 from pydantic import BaseModel, Field
 
-from netlazy.domain.chain import build_identity_payload
-from netlazy.domain.legacy import LegacyMigrationExpiredError
 from netlazy.domain.repository import InvalidPublicKeyError, HashChainDesyncError, SignatureVerificationError
 from netlazy.domain.models import UserAlreadyExistsError, User
 from netlazy.database import DatabaseUnavailableError
 from netlazy.presentation.dependencies import (
     auth_service,
-    migration_service,
     profile_service, 
     inbox_service, 
     verify_pow, 
@@ -40,17 +36,6 @@ class UserRotateRequest(BaseModel):
 class UserRotateResponse(BaseModel):
     new_user_id: str
     new_anchor: str
-    message: str
-
-class LegacyMigrationRequest(BaseModel):
-    legacy_public_pem: str
-    new_ed25519_public_pem: str
-    new_mldsa_public_hex: str
-    timestamp: int
-    signature_base64: str
-
-class LegacyMigrationResponse(BaseModel):
-    new_user_id: str
     message: str
 
 
@@ -90,39 +75,6 @@ async def register(request: Request, user_data: UserRegisterRequest):
     return UserRegisterResponse(user_id=user.user_id, genesis_anchor=genesis_anchor, message="Registration successful")
 
 
-@router.post("/migrate", response_model=LegacyMigrationResponse)
-async def migrate_legacy_user(body: LegacyMigrationRequest):
-    try:
-        sig_bytes = base64.b64decode(body.signature_base64)
-    except binascii.Error as e:
-        logging.warning(f"Malformed base64 signature in migration: {e}")
-        raise HTTPException(status_code=400, detail="Malformed base64 signature")
-
-    try:
-        new_id = await migration_service.migrate_user(
-            legacy_public_pem=body.legacy_public_pem,
-            new_ed25519_pem=body.new_ed25519_public_pem,
-            new_mldsa_hex=body.new_mldsa_public_hex,
-            timestamp=body.timestamp,
-            signature=sig_bytes
-        )
-        return LegacyMigrationResponse(new_user_id=new_id, message="Migration successful")
-    except DatabaseUnavailableError:
-        raise
-    except LegacyMigrationExpiredError as e:
-        logging.warning(f"Migration expired: {e}")
-        raise HTTPException(status_code=410, detail=str(e))
-    except ValueError as e:
-        logging.warning(f"Migration validation error: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
-    except (InvalidPublicKeyError, SignatureVerificationError) as e:
-        logging.warning(f"Migration crypto error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logging.error(f"Migration failed unexpectedly: {e}")
-        raise HTTPException(status_code=400, detail="Unexpected migration error")
-
-
 @router.get("/anchor")
 async def get_current_anchor(
     request: Request,
@@ -142,7 +94,7 @@ async def get_current_anchor(
     try:
         ed_sig = base64.b64decode(x_signature_ed25519)
         pq_sig = base64.b64decode(x_signature_mldsa)
-    except binascii.Error:
+    except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="Malformed base64 signature encoding")
         
     try:
