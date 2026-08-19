@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from netlazy.domain.repository import InvalidPublicKeyError, HashChainDesyncError, SignatureVerificationError
 from netlazy.domain.models import UserAlreadyExistsError, User
 from netlazy.database import DatabaseUnavailableError
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import (
     auth_service,
     profile_service, 
@@ -17,7 +18,7 @@ from netlazy.presentation.dependencies import (
     _normalize_path
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"], route_class=NetlazyRoute)
 
 
 class UserRegisterRequest(BaseModel):

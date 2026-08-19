@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from netlazy.domain.models import User
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import inbox_service, profile_service, verify_request_signature, verify_pow, handshake_repo
 from netlazy.presentation.profile_router import ProfileResponse, _to_response as profile_to_response
 from netlazy.application.inbox_service import HandshakeNotFoundError, UnauthorizedHandshakeActionError, InvalidHandshakeStateError, OtherUserNotFoundError, OtherUserBannedError
 
-router = APIRouter(prefix="/inbox", tags=["Inbox"])
+router = APIRouter(prefix="/inbox", tags=["Inbox"], route_class=NetlazyRoute)
 
 class HandshakeCreateRequest(BaseModel):
     receiver_id: str

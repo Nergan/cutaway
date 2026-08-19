@@ -1,23 +1,8 @@
 """
 netlazy — Main FastAPI Application Entrypoint.
 
-IMPORTANT MONOREPO INTEGRATION NOTE:
-When netlazy is mounted as a sub-application within the parent 'cutaway' monorepo
-(e.g., `parent_app.mount("/netlazy", netlazy_app)`), Starlette/FastAPI DOES NOT
-automatically execute sub-application `lifespan` context managers.
-
-To ensure MongoDB connects, log handlers start, and tags sync properly in production,
-the parent monorepo's root lifespan MUST explicitly invoke netlazy's lifecycle:
-
-    # In cutaway parent main.py:
-    from contextlib import asynccontextmanager
-    from netlazy.database import connect_to_mongo, close_mongo_connection
-    from netlazy.main import lifespan as netlazy_lifespan
-
-    @asynccontextmanager
-    async def parent_lifespan(app: FastAPI):
-        async with netlazy_lifespan(netlazy_app):
-            yield
+Supports both standalone execution and monorepo plugin mounting (cutaway).
+Exposes explicit `startup_clients` and `shutdown_clients` lifecycle hooks.
 """
 
 import sys
@@ -39,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from netlazy.config import settings
 from netlazy.database import connect_to_mongo, close_mongo_connection, db_instance, DatabaseUnavailableError
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
 from netlazy.presentation.dependencies import tag_service
 
@@ -134,6 +120,25 @@ mongo_handler.setLevel(logging.WARNING)
 mongo_handler.setFormatter(logging.Formatter('%(message)s'))
 
 
+async def startup_clients():
+    """Explicit startup hook called by monorepo loaders and internal lifespan."""
+    logging.info("[netlazy] Running startup hooks: connecting MongoDB and syncing registries...")
+    await connect_to_mongo()
+    mongo_handler.start_worker()
+    logging.getLogger().addHandler(mongo_handler)
+
+    synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
+    logging.info(f"[netlazy] Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
+
+
+async def shutdown_clients():
+    """Explicit shutdown hook called by monorepo loaders and internal lifespan."""
+    logging.info("[netlazy] Running shutdown hooks: closing connections...")
+    logging.getLogger().removeHandler(mongo_handler)
+    await mongo_handler.stop_worker()
+    await close_mongo_connection()
+
+
 def _get_base_path(request: Request) -> str:
     return "/netlazy" if request.url.path.startswith("/netlazy") else ""
 
@@ -147,20 +152,9 @@ async def block_browser_api(request: Request):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logging.info("[netlazy] Lifespan START: Initializing database and services...")
-    await connect_to_mongo()
-    mongo_handler.start_worker()
-    logging.getLogger().addHandler(mongo_handler)
-
-    synced_count = await tag_service.sync_from_yaml(settings.tags_yaml_path)
-    logging.info(f"[netlazy] Tag registry synced: {synced_count} tags loaded from {settings.tags_yaml_path}")
-    
+    await startup_clients()
     yield
-    
-    logging.info("[netlazy] Lifespan SHUTDOWN: Closing database connection...")
-    logging.getLogger().removeHandler(mongo_handler)
-    await mongo_handler.stop_worker()
-    await close_mongo_connection()
+    await shutdown_clients()
 
 
 app = FastAPI(
@@ -189,15 +183,7 @@ async def database_unavailable_handler(request: Request, exc: DatabaseUnavailabl
     )
 
 
-@app.middleware("http")
-async def chain_ratchet_middleware(request: Request, call_next):
-    response: Response = await call_next(request)
-    if hasattr(request.state, "next_anchor") and request.state.next_anchor:
-        response.headers["X-Next-Anchor"] = request.state.next_anchor
-    return response
-
-
-router = APIRouter()
+router = APIRouter(route_class=NetlazyRoute)
 api_deps = [Depends(block_browser_api)]
 
 router.include_router(auth_router.router, prefix="/api", dependencies=api_deps)

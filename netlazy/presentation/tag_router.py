@@ -1,9 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import tag_service
 
-router = APIRouter(prefix="/tags", tags=["Tags"])
+router = APIRouter(prefix="/tags", tags=["Tags"], route_class=NetlazyRoute)
 
 class TagResponse(BaseModel):
     name: str

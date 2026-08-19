@@ -2,10 +2,11 @@ from typing import List
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from netlazy.domain.models import User
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import feed_service, verify_request_signature
 from netlazy.presentation.profile_router import ProfileResponse, _to_response as profile_to_response
 
-router = APIRouter(prefix="/feed", tags=["Feed"])
+router = APIRouter(prefix="/feed", tags=["Feed"], route_class=NetlazyRoute)
 
 class FeedSearchRequest(BaseModel):
     seen_ids: List[str] = []

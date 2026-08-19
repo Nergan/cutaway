@@ -12,9 +12,10 @@ from netlazy.application.profile_service import (
     MediaNotFoundError,
 )
 from netlazy.domain.models import Contact, Profile, User
+from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import profile_service, verify_request_signature
 
-router = APIRouter(prefix="/profile", tags=["Profile"])
+router = APIRouter(prefix="/profile", tags=["Profile"], route_class=NetlazyRoute)
 
 class ContactRequest(BaseModel):
     type: str = Field(..., pattern="^(email|link|phone|unknown)$")
@@ -101,7 +102,6 @@ async def upload_media(
     blur: bool = False,
     user: User = Depends(verify_request_signature),
 ):
-    # Using request.state.body_bytes which was asynchronously buffered with safety limit
     raw_bytes = request.state.body_bytes
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty body")
