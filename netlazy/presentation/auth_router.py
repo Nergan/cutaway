@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from netlazy.domain.repository import InvalidPublicKeyError, HashChainDesyncError, SignatureVerificationError
 from netlazy.domain.models import UserAlreadyExistsError, User
+from netlazy.application.auth_service import AuthenticationError
 from netlazy.database import DatabaseUnavailableError
 from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import (
@@ -112,6 +113,8 @@ async def get_current_anchor(
         return {"current_anchor": current_anchor}
     except DatabaseUnavailableError:
         raise
+    except SignatureVerificationError:
+        raise HTTPException(status_code=401, detail="Invalid identity signature")
     except AuthenticationError as e:
         if str(e) == "Unknown user":
             raise HTTPException(status_code=401, detail="Unknown user")

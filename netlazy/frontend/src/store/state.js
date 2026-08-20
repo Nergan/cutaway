@@ -395,6 +395,8 @@ export function useStore() {
                 return;
             }
 
+            if (pollInterval) clearInterval(pollInterval);
+
             const res = await api.post('/auth/rotate', { 
                 new_ed25519_public_pem: identity.edPubPem,
                 new_mldsa_public_hex: identity.mldsaPubHex
@@ -405,11 +407,12 @@ export function useStore() {
             state.userId = res.data.new_user_id;
             state.currentAnchor = res.data.new_anchor;
             
+            startPolling();
             fetchMyProfile();
             fetchInbox();
             
-            addToast(t('identity_rotated'), "bi-check2-circle");
         } catch (e) {
+            startPolling();
             addToast("Failed to rotate identity key", "bi-x-octagon");
             throw e;
         }

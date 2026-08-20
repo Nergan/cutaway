@@ -80,7 +80,7 @@
                  <i class="bi contact-action danger" :class="store.state.myProfile.audio.isDeleting ? 'bi-hourglass-split spin' : 'bi-x-circle-fill'" style="font-size:1.2rem; cursor: pointer;" @click="!store.state.myProfile.audio.isDeleting && removeAudio()"></i>
               </div>
               
-              <transition-group name="media-list" tag="div" class="feed-media-stack" :data-count="validMedia.length + (validMedia.length < 10 ? 1 : 0)" v-if="validMedia.length > 0">
+              <transition-group name="media-list" tag="div" class="feed-media-stack" :data-count="validMedia.length" v-if="validMedia.length > 0">
                 <div class="feed-media-item" 
                      v-for="(m, idx) in validMedia" 
                      :key="m.blobUrl || m.url" 
@@ -109,11 +109,11 @@
                     <i class="bi" :class="m.isUpdatingBlur ? 'bi-hourglass-split spin' : (m.blur ? 'bi-eye-slash' : 'bi-eye')"></i>
                   </div>
                 </div>
-                
-                <div class="feed-media-item mini-add" key="mini-add" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length < 10">
-                  <i class="bi bi-plus-lg"></i>
-                </div>
               </transition-group>
+
+              <div class="mini-add-banner" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length > 0 && validMedia.length < 10">
+                <i class="bi bi-plus-lg" style="margin-right: 0.4rem;"></i> {{ store.t('add_media_placeholder') }}
+              </div>
             </div>
           </transition>
           
