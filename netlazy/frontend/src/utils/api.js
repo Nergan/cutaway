@@ -165,16 +165,11 @@ api.interceptors.response.use(response => {
                     queue.forEach(cb => cb.reject(err));
                     return Promise.reject(err);
                 }
-            } else if (isAnchorUrl && detail === "Unknown user") {
-                await store.logout();
-            }
-        }
-    }
+                } else if (isAnchorUrl && detail === "Unknown user") {
                     await store.logout();
                 }
             }
         }
-    }
     return Promise.reject(error);
 });
 

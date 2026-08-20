@@ -182,14 +182,6 @@ async function deriveIdentityFromSeed(masterSeed) {
         { name: "AES-GCM", iv: mldsaIv }, wrapKey, mldsaKeys.secretKey
     );
 
-    await setItem("aes_wrap_key", wrapKey);
-    await setItem("ed25519_iv", edIv);
-    await setItem("ed25519_priv_enc", edPrivEnc);
-    await setItem("ed25519_pub", edPubPem);
-    await setItem("mldsa_iv", mldsaIv);
-    await setItem("mldsa_priv_enc", mldsaPrivEnc);
-    await setItem("mldsa_pub", mldsaPubHex);
-
     const userId = await deriveUserId(edPubSpki, mldsaKeys.publicKey);
     const secretKey = bytesToBase58(masterSeed);
 
