@@ -289,6 +289,13 @@
       </div>
     </transition>
 
+    <IdentityBackupModal
+      :open="store.state.identityBackup.open"
+      :phrase="store.state.identityBackup.phrase"
+      @confirm="store.confirmIdentityBackup"
+      @cancel="store.cancelIdentityBackup"
+    />
+
     <!-- Language Selection Bottom Sheet (Mobile Only) -->
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="langMenu.open && isMobile" @click="langMenu.open = false">
@@ -345,6 +352,7 @@ import Lightbox from './components/Lightbox.vue'
 import Editor from './components/Editor.vue'
 import Feed from './components/Feed.vue'
 import Inbox from './components/Inbox.vue'
+import IdentityBackupModal from './components/IdentityBackupModal.vue'
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 

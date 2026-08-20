@@ -40,6 +40,12 @@ const defaultState = {
         onConfirm: null,
         isDanger: false
     },
+
+    identityBackup: {
+        open: false,
+        phrase: '',
+        purpose: null
+    },
     
     contactSelect: {
         open: false,
@@ -272,10 +278,50 @@ export function useStore() {
         state.confirmModal.open = true;
     }
 
+    // Gates identity finalization behind an explicit, user-confirmed
+    // one-time reveal of the recovery phrase. Resolves once the user has
+    // acknowledged saving it; rejects if they cancel, in which case the
+    // caller wipes the just-generated, not-yet-registered keys.
+    let backupResolver = null;
+
+    function requestIdentityBackupConfirmation(phrase, purpose) {
+        return new Promise((resolve, reject) => {
+            state.identityBackup.phrase = phrase;
+            state.identityBackup.purpose = purpose;
+            state.identityBackup.open = true;
+            backupResolver = { resolve, reject };
+        });
+    }
+
+    function confirmIdentityBackup() {
+        if (backupResolver) {
+            backupResolver.resolve();
+            backupResolver = null;
+        }
+        state.identityBackup = { open: false, phrase: '', purpose: null };
+    }
+
+    function cancelIdentityBackup() {
+        if (backupResolver) {
+            backupResolver.reject(new Error("Identity backup not confirmed"));
+            backupResolver = null;
+        }
+        state.identityBackup = { open: false, phrase: '', purpose: null };
+    }
+
     async function createAccount() {
         addToast("Generating Hardware-Bound Identity...", "bi-hourglass-split");
         try {
             const keys = await generateIdentity();
+
+            try {
+                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'register');
+            } catch (e) {
+                await clearIdentity();
+                addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
+                return;
+            }
+
             const res = await apiWithPoW('post', '/auth/register', { 
                 ed25519_public_pem: keys.edPubPem,
                 mldsa_public_hex: keys.mldsaPubHex
@@ -307,6 +353,15 @@ export function useStore() {
     async function rotateKey() {
         try {
             const keys = await generateIdentity();
+
+            try {
+                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'rotate');
+            } catch (e) {
+                await clearIdentity();
+                addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
+                return;
+            }
+
             const res = await api.post('/auth/rotate', { 
                 new_ed25519_public_pem: keys.edPubPem,
                 new_mldsa_public_hex: keys.mldsaPubHex
@@ -502,7 +557,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup
     };
     return instance;
 }

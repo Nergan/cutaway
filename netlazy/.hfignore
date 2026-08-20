@@ -5,3 +5,4 @@ android/
 *.jks
 *.keystore
 node_modules/
+*.bak

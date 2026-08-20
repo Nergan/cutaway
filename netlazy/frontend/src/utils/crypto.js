@@ -1,7 +1,16 @@
 /**
  * Core cryptography & identity utilities.
- * Hybrid PQ (Ed25519 + ML-DSA-65). Keys are device-bound in IndexedDB.
+ * Hybrid PQ (Ed25519 + ML-DSA-65). Both private keys are derived from a
+ * single random master seed and kept encrypted-at-rest in IndexedDB under
+ * a non-extractable AES-GCM wrapping key. The master seed itself is never
+ * persisted anywhere: it lives in memory only long enough to derive the
+ * two sub-keys and to be shown to the user once, as a BIP-39 recovery
+ * phrase, immediately after generation.
  */
+
+import { ed25519 } from '@noble/curves/ed25519';
+import { entropyToMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
 
 const DB_NAME = 'netlazy_pq_vault';
 const STORE_NAME = 'keys';
@@ -74,6 +83,27 @@ function formatPEM(base64, type) {
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
 }
 
+/**
+ * HKDF-SHA256 sub-seed derivation with domain separation, so the Ed25519
+ * and ML-DSA keys never consume the same raw entropy directly even though
+ * they both trace back to one master seed / recovery phrase.
+ */
+async function deriveSubSeed(masterSeed, label) {
+    const ikm = await window.crypto.subtle.importKey('raw', masterSeed, 'HKDF', false, ['deriveBits']);
+    const bits = await window.crypto.subtle.deriveBits(
+        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode(label) },
+        ikm,
+        256
+    );
+    return new Uint8Array(bits);
+}
+
+/** Wraps a raw 32-byte Ed25519 public key into a DER SPKI ArrayBuffer via WebCrypto. */
+async function ed25519PublicKeyToSpki(pubRaw) {
+    const key = await window.crypto.subtle.importKey('raw', pubRaw, 'Ed25519', true, ['verify']);
+    return window.crypto.subtle.exportKey('spki', key);
+}
+
 async function deriveUserId(edPubBuffer, mldsaPubRaw) {
     const combined = new Uint8Array(edPubBuffer.byteLength + mldsaPubRaw.byteLength);
     combined.set(new Uint8Array(edPubBuffer), 0);
@@ -84,54 +114,75 @@ async function deriveUserId(edPubBuffer, mldsaPubRaw) {
 }
 
 export async function generateIdentity() {
-    const edKeyPair = await window.crypto.subtle.generateKey(
-        "Ed25519", false, ["sign", "verify"]
-    );
-    const edPubBuffer = await window.crypto.subtle.exportKey("spki", edKeyPair.publicKey);
-    const edPubPem = formatPEM(arrayBufferToBase64(edPubBuffer), "PUBLIC KEY");
+    // Single 256-bit root of trust. Never written to disk - lives only in
+    // this function's scope until it is wiped at the very end.
+    const masterSeed = window.crypto.getRandomValues(new Uint8Array(32));
+
+    const edSeed = await deriveSubSeed(masterSeed, 'netlazy-ed25519-v1');
+    const mldsaSeed = await deriveSubSeed(masterSeed, 'netlazy-mldsa65-v1');
+
+    const edPubRaw = ed25519.getPublicKey(edSeed);
+    const edPubSpki = await ed25519PublicKeyToSpki(edPubRaw);
+    const edPubPem = formatPEM(arrayBufferToBase64(edPubSpki), "PUBLIC KEY");
+
+    const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa');
+    const mldsaKeys = ml_dsa65.keygen(mldsaSeed);
+    const mldsaPubHex = bufferToHex(mldsaKeys.publicKey);
 
     const wrapKey = await window.crypto.subtle.generateKey(
         { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
     );
 
-    const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa');
-    const seed = window.crypto.getRandomValues(new Uint8Array(32));
-    const mldsaKeys = ml_dsa65.keygen(seed);
-    const mldsaPubHex = bufferToHex(mldsaKeys.publicKey);
-
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const mldsaPrivEnc = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv }, wrapKey, mldsaKeys.secretKey
+    const edIv = window.crypto.getRandomValues(new Uint8Array(12));
+    const edPrivEnc = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: edIv }, wrapKey, edSeed
     );
 
-    await setItem("ed25519_priv", edKeyPair.privateKey);
-    await setItem("ed25519_pub", edPubPem);
+    const mldsaIv = window.crypto.getRandomValues(new Uint8Array(12));
+    const mldsaPrivEnc = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: mldsaIv }, wrapKey, mldsaKeys.secretKey
+    );
+
     await setItem("aes_wrap_key", wrapKey);
-    await setItem("mldsa_iv", iv);
+    await setItem("ed25519_iv", edIv);
+    await setItem("ed25519_priv_enc", edPrivEnc);
+    await setItem("ed25519_pub", edPubPem);
+    await setItem("mldsa_iv", mldsaIv);
     await setItem("mldsa_priv_enc", mldsaPrivEnc);
     await setItem("mldsa_pub", mldsaPubHex);
 
-    const userId = await deriveUserId(edPubBuffer, mldsaKeys.publicKey);
+    const userId = await deriveUserId(edPubSpki, mldsaKeys.publicKey);
 
+    // Human-readable, checksummed, one-time-reveal backup of masterSeed.
+    // The caller is responsible for displaying it exactly once and never
+    // persisting it (see IdentityBackupModal.vue).
+    const recoveryPhrase = entropyToMnemonic(masterSeed, wordlist);
+
+    edSeed.fill(0);
+    mldsaSeed.fill(0);
     mldsaKeys.secretKey.fill(0);
+    masterSeed.fill(0);
 
-    return { userId, edPubPem, mldsaPubHex };
+    return { userId, edPubPem, mldsaPubHex, recoveryPhrase };
 }
 
 export async function signHybridPayload(payloadString) {
-    const edPriv = await getItem("ed25519_priv");
     const wrapKey = await getItem("aes_wrap_key");
+    const edIv = await getItem("ed25519_iv");
+    const edPrivEnc = await getItem("ed25519_priv_enc");
     const mldsaIv = await getItem("mldsa_iv");
     const mldsaPrivEnc = await getItem("mldsa_priv_enc");
 
-    if (!edPriv || !wrapKey || !mldsaIv || !mldsaPrivEnc) {
+    if (!wrapKey || !edIv || !edPrivEnc || !mldsaIv || !mldsaPrivEnc) {
         throw new Error("Missing keys in vault");
     }
 
     const data = new TextEncoder().encode(payloadString);
 
-    const edSigBuffer = await window.crypto.subtle.sign("Ed25519", edPriv, data);
-    const edSig = arrayBufferToBase64(edSigBuffer);
+    const edPrivRaw = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: edIv }, wrapKey, edPrivEnc);
+    const edSeed = new Uint8Array(edPrivRaw);
+    const edSig = arrayBufferToBase64(ed25519.sign(data, edSeed));
+    edSeed.fill(0);
 
     const mldsaPrivRaw = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: mldsaIv }, wrapKey, mldsaPrivEnc);
     const mldsaPriv = new Uint8Array(mldsaPrivRaw);
