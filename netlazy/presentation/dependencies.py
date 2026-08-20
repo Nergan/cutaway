@@ -17,7 +17,7 @@ from netlazy.database import DatabaseUnavailableError
 from netlazy.domain.models import User
 from netlazy.domain.chain import build_request_payload
 from netlazy.domain.risk import RiskThresholds
-from netlazy.domain.repository import RiskEventDispatcherPort
+from netlazy.domain.repository import RiskEventDispatcherPort, HashChainDesyncError
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
 from netlazy.infrastructure.crypto_adapter import CryptographyHybridAdapter
 from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
@@ -213,6 +213,8 @@ async def verify_request_signature(
         )
     except DatabaseUnavailableError:
         raise
+    except HashChainDesyncError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except AuthenticationError as e:
         if str(e) == "Unknown user":
             raise HTTPException(status_code=401, detail="Unknown user")

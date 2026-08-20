@@ -417,6 +417,7 @@ export function useStore() {
             fetchMyProfile();
             fetchInbox();
             
+            addToast(t('identity_rotated'), "bi-check2-circle");
         } catch (e) {
             startPolling();
             addToast("Failed to rotate identity key", "bi-x-octagon");

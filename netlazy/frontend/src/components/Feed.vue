@@ -323,14 +323,15 @@ const masonryColumns = computed(() => {
   const heights = Array.from({length: columnsCount.value}, () => 0);
   
   store.state.feed.forEach(profile => {
-    let h = 100;
-    if (profile.audio) h += 50;
+    let h = 80;
+    if (profile.audio) h += 40;
     if (profile.media && profile.media.length > 0) {
-      h += Math.min(profile.media.length, 3) * 250;
+      h += profile.media.length === 1 ? 340 : 250;
     }
     if (profile.tags && profile.tags.length > 0) h += 30;
-    if (profile.bio) h += profile.bio.length * 0.5;
-    if (profile.contacts && profile.contacts.length > 0) h += profile.contacts.length * 30;
+    if (profile.bio) h += Math.min(profile.bio.length * 0.4, 80);
+    if (profile.contacts && profile.contacts.length > 0) h += profile.contacts.filter(c => !c.is_private && c.type !== 'unknown').length * 28;
+    h += 50;
     
     let minIdx = 0;
     let minH = heights[0];

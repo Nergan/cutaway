@@ -114,7 +114,7 @@ api.interceptors.response.use(response => {
     return response;
 }, async error => {
     const store = useStore();
-    if (error.response && [401, 403].includes(error.response.status)) {
+    if (error.response && [401, 403, 409].includes(error.response.status)) {
         
         if (error.response.status === 403) {
             store.state.isBanned = true;
@@ -122,14 +122,16 @@ api.interceptors.response.use(response => {
         }
 
         const detail = error.response.data?.detail || '';
-        if (detail === "Unknown user" || (error.response.status === 401 && !store.state.isRegistered)) {
+        if (detail === "Unknown user") {
             await store.logout();
             return Promise.reject(error);
         }
 
         if (store.state.isRegistered) {
             const originalRequest = error.config;
-            if (!originalRequest._retry && !originalRequest.url.endsWith('/auth/anchor')) {
+            const isAnchorUrl = originalRequest.url && originalRequest.url.endsWith('/auth/anchor');
+
+            if (!originalRequest._retry && !isAnchorUrl) {
                 originalRequest._retry = true;
                 
                 if (isResyncing) {
@@ -144,16 +146,16 @@ api.interceptors.response.use(response => {
                     store.state.currentAnchor = anchorRes.data.current_anchor;
                     isResyncing = false;
                     
-                    resyncQueue.forEach(cb => cb.resolve());
+                    const queue = resyncQueue;
                     resyncQueue = [];
+                    queue.forEach(cb => cb.resolve());
                     
                     return api(originalRequest);
                 } catch (err) {
-                    isResyncing = false;
                     const queue = resyncQueue;
                     resyncQueue = [];
                     const errDetail = err.response?.data?.detail;
-                    if (errDetail === "Unknown user" || err.response?.status === 401) {
+                    if (errDetail === "Unknown user") {
                         await store.logout();
                         store.addToast("Account not found. Logged out.", "bi-box-arrow-right");
                     } else if (!store.state.authErrorNotified) {
@@ -163,8 +165,11 @@ api.interceptors.response.use(response => {
                     queue.forEach(cb => cb.reject(err));
                     return Promise.reject(err);
                 }
-            } else if (originalRequest.url && originalRequest.url.endsWith('/auth/anchor')) {
-                if (detail === "Unknown user" || error.response.status === 401) {
+            } else if (isAnchorUrl && detail === "Unknown user") {
+                await store.logout();
+            }
+        }
+    }
                     await store.logout();
                 }
             }
