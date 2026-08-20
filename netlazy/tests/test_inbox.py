@@ -11,10 +11,12 @@ from netlazy.domain.models import Handshake, User
 
 @pytest.fixture
 def inbox_deps():
+    user_repo = AsyncMock()
+    user_repo.get_by_id.side_effect = lambda uid: User(uid, "ed", "pq", None, is_banned=False)
     return {
         "handshake_repo": AsyncMock(),
         "profile_repo": AsyncMock(),
-        "user_repo": AsyncMock()
+        "user_repo": user_repo
     }
 
 

@@ -34,10 +34,23 @@ class InboxService:
         if getattr(receiver, "is_banned", False):
             raise OtherUserBannedError("Recipient user is banned")
 
+        if sender_id == receiver_id:
+            raise ValueError("Cannot send handshake to self")
+
         if handshake_type in ("share", "exchange", "mutual") and not offered_contact:
             raise ValueError(f"offered_contact is required for handshake type '{handshake_type}'")
         if handshake_type == "demand" and offered_contact:
             raise ValueError("offered_contact must be empty for handshake type 'demand'")
+
+        sender = await self._user_repo.get_by_id(sender_id)
+        if not sender or getattr(sender, "is_banned", False):
+            raise UnauthorizedHandshakeActionError("Sender account is invalid or banned")
+
+        receiver = await self._user_repo.get_by_id(receiver_id)
+        if not receiver:
+            raise OtherUserNotFoundError("Recipient user not found")
+        if getattr(receiver, "is_banned", False):
+            raise OtherUserBannedError("Recipient user is banned")
 
         existing = await self._handshake_repo.get_between_users(sender_id, receiver_id)
         if existing:
