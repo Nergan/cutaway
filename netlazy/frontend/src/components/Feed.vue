@@ -181,7 +181,7 @@
 
           <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
             <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.media_id)">
-               <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0; min-height: 200px;"></div>
+               <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
                <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
             </div>

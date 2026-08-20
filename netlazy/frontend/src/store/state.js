@@ -386,16 +386,22 @@ export function useStore() {
     }
 
     async function rotateKey() {
+        if (pollInterval) clearInterval(pollInterval);
         try {
             const identity = await generateUncommittedIdentity();
 
             try {
                 await requestIdentityBackupConfirmation(identity.secretKey, 'rotate');
             } catch (e) {
+                startPolling();
                 return;
             }
 
-            if (pollInterval) clearInterval(pollInterval);
+            // Resync current anchor immediately before rotate to guarantee fresh chain continuity
+            try {
+                const anchorRes = await api.get('/auth/anchor');
+                state.currentAnchor = anchorRes.data.current_anchor;
+            } catch (anchorErr) {}
 
             const res = await api.post('/auth/rotate', { 
                 new_ed25519_public_pem: identity.edPubPem,
