@@ -1,14 +1,19 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export default defineConfig(() => {
   const isMobile = process.env.CAPACITOR_BUILD === 'true';
   return {
     plugins: [vue()],
-    root: 'frontend',
+    root: path.resolve(__dirname, 'frontend'),
     base: isMobile ? './' : '/netlazy/static/',
     build: {
-      outDir: '../static',
+      outDir: path.resolve(__dirname, 'static'),
       emptyOutDir: true,
     }
   }
