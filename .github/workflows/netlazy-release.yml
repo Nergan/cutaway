@@ -115,6 +115,7 @@ jobs:
       - name: Build and Sign APK
         working-directory: netlazy/android
         run: |
+          sed -i 's/gradle-8.2.1-all.zip/gradle-8.7-all.zip/g' gradle/wrapper/gradle-wrapper.properties || true
           chmod +x gradlew
           ./gradlew clean assembleRelease
 
