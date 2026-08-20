@@ -103,7 +103,7 @@ jobs:
           cat << EOF > gradle.properties
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.useAndroidX=true
-          android.enableJetifier=true
+          android.enableJetifier=false
           
           # CI Signing Configuration
           RELEASE_STORE_FILE=../keystore.jks
