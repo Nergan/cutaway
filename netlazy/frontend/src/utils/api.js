@@ -61,7 +61,7 @@ api.interceptors.request.use(async (config) => {
     const isAnchorEndpoint = path.endsWith('/auth/anchor');
     const isRegisterEndpoint = path.endsWith('/auth/register');
 
-    config.headers['X-Signed-Path'] = path; // Reverse Proxy resync hook
+    config.headers['X-Signed-Path'] = path;
 
     const shouldSign = (store.state.isRegistered || isAnchorEndpoint) && store.state.userId && !isRegisterEndpoint;
 

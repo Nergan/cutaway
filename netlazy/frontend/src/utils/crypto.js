@@ -1,10 +1,3 @@
-/**
- * Core cryptography & identity utilities.
- * Hybrid PQ (Ed25519 + ML-DSA-65). Both private keys are derived from a
- * single random master seed token and kept encrypted-at-rest in IndexedDB under
- * a non-extractable AES-GCM wrapping key.
- */
-
 import { ed25519 } from '@noble/curves/ed25519';
 
 const DB_NAME = 'netlazy_pq_vault';
@@ -126,11 +119,6 @@ function formatPEM(base64, type) {
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
 }
 
-/**
- * HKDF-SHA256 sub-seed derivation with domain separation, so the Ed25519
- * and ML-DSA keys never consume the same raw entropy directly even though
- * they both trace back to one master seed / recovery phrase.
- */
 async function deriveSubSeed(masterSeed, label) {
     const ikm = await window.crypto.subtle.importKey('raw', masterSeed, 'HKDF', false, ['deriveBits']);
     const bits = await window.crypto.subtle.deriveBits(
@@ -141,7 +129,6 @@ async function deriveSubSeed(masterSeed, label) {
     return new Uint8Array(bits);
 }
 
-/** Wraps a raw 32-byte Ed25519 public key into a DER SPKI ArrayBuffer via WebCrypto. */
 async function ed25519PublicKeyToSpki(pubRaw) {
     const key = await window.crypto.subtle.importKey('raw', pubRaw, 'Ed25519', true, ['verify']);
     return window.crypto.subtle.exportKey('spki', key);

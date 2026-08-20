@@ -2,10 +2,6 @@ export const mediaBlobCache = new Map();
 const blobKeys = [];
 const MAX_BLOBS = 60;
 
-/**
- * Downloads polyglot media, attempts AES-256-GCM decryption if the magical payload separator is found.
- * Falls back to legacy parsing logic if missing.
- */
 export async function fetchAndDecryptMedia(url, userId, mediaType) {
     if (mediaBlobCache.has(url)) return mediaBlobCache.get(url);
     try {
@@ -82,12 +78,10 @@ export async function fetchAndDecryptMedia(url, userId, mediaType) {
     }
 }
 
-// Lightweight AudioBuffer to WAV encoder for legacy un-reversed audio
 async function getRestoredAudioBlobUrl(arrayBuffer) {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-        // Fast in-place reverse leveraging native Float32Array method
         audioBuffer.getChannelData(i).reverse();
     }
     const wavBlob = audioBufferToWav(audioBuffer);

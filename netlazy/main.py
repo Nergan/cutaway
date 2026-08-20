@@ -1,10 +1,3 @@
-"""
-netlazy — Main FastAPI Application Entrypoint.
-
-Supports both standalone execution and monorepo plugin mounting (cutaway).
-Exposes explicit `startup_clients` and `shutdown_clients` lifecycle hooks.
-"""
-
 import sys
 import logging
 import mimetypes

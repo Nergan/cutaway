@@ -371,7 +371,6 @@
       </div>
     </div>
     
-    <!-- Minimalist Global Sliding Bottom Sheet Overlay for Handshake Contact Selection (Mobile) -->
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="mobileSelectReq" @click="mobileSelectReq = null">
         <div class="bottom-sheet-box" @click.stop>

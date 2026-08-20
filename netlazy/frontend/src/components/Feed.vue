@@ -237,7 +237,6 @@
               </button>
             </div>
 
-            <!-- Desktop Popover for Handshakes -->
             <transition name="dropdown-fade">
               <div class="glass-menu" 
                    v-if="!isMobile && profile.showContactSelect" 

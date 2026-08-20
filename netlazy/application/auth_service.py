@@ -5,7 +5,7 @@ from typing import Tuple
 from netlazy.domain.models import User, UserAlreadyExistsError
 from netlazy.domain.repository import (
     ChainRepository, NonceRepository, UserRepository, ProfileRepository, HandshakeRepository, HybridCryptoPort,
-    TransactionManager, InvalidPublicKeyError, SignatureVerificationError, HashChainDesyncError
+    TransactionManager, SignatureVerificationError, HashChainDesyncError
 )
 from netlazy.domain.chain import compute_genesis_anchor, compute_next_anchor, build_identity_payload
 

@@ -1,7 +1,6 @@
 <template>
   <div id="app-container">
     
-    <!-- Native Mobile Pull To Refresh Visual Indicator -->
     <div class="ptr-indicator" :style="{ transform: `translateY(${ptrOffset}px)`, opacity: ptrOffset > -60 ? 1 : 0 }">
       <div class="ptr-icon">
         <i class="bi bi-arrow-repeat" 
@@ -10,7 +9,6 @@
       </div>
     </div>
 
-    <!-- Neutral app-wide splash screen to block structural pop-in during async hydration -->
     <div v-if="!store.state.isInitialized" class="welcome-container" style="justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; gap: 1.5rem;">
       <h1 class="welcome-brand" style="cursor: default;">netlazy</h1>
       <i class="bi bi-arrow-repeat spin" style="font-size: 2.2rem; color: var(--accent-moss);"></i>
@@ -120,7 +118,6 @@
         </div>
       </nav>
       
-      <!-- Native Mobile App Bottom Navigation -->
       <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
         <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
           <i class="bi bi-compass"></i>
@@ -185,7 +182,6 @@
                      {{ store.t('uf_settings') }}
                    </h3>
 
-                   <!-- Mobile Only Update App Button -->
                    <button v-if="Capacitor.isNativePlatform()" 
                            class="footer-action" 
                            style="color: var(--accent-moss); margin-bottom: 1rem; width: max-content; display: flex; align-items: center;" 
@@ -203,7 +199,6 @@
                    </div>
                  </div>
 
-                 <!-- In-App Version Label (Injected by CI, Mobile Only) -->
                  <div v-if="Capacitor.isNativePlatform()" style="margin-top: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-family: monospace;">
                     netlazy v{{ CURRENT_VERSION }}
                  </div>
@@ -217,7 +212,6 @@
 
     <Lightbox />
 
-    <!-- Minimalist Global Sliding Bottom Sheet Overlay for Handshake Contact Selection (Mobile) -->
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="store.state.contactSelect.open" @click="store.state.contactSelect.open = false">
         <div class="bottom-sheet-box" @click.stop>
@@ -296,7 +290,6 @@
       @cancel="store.cancelIdentityBackup"
     />
 
-    <!-- Language Selection Bottom Sheet (Mobile Only) -->
     <transition name="sheet-fade">
       <div class="bottom-sheet-backdrop" v-if="langMenu.open && isMobile" @click="langMenu.open = false">
         <div class="bottom-sheet-box" @click.stop>
@@ -309,7 +302,6 @@
       </div>
     </transition>
 
-    <!-- Language Selection Popover (Desktop Only) -->
     <Teleport to="body">
       <transition name="popover-fade">
         <div v-if="langMenu.open && !isMobile" 
@@ -330,7 +322,6 @@
       </transition>
     </Teleport>
 
-    <!-- Invisible Global Hardware Decoder for Media Obfuscation -->
     <svg style="width:0; height:0; position:absolute;" aria-hidden="true" focusable="false">
       <filter id="channel-restore">
         <feColorMatrix type="matrix" values="
@@ -534,9 +525,9 @@ function handleGlobalTouchCancel() {
   canPullToRefresh = false;
   ptrOffset.value = -60;
   ptrRotation.value = 0;
+  canPullToRefresh = false;
 }
 
-// CAPACITOR AUTO-UPDATE MECHANISM
 const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION || "0.0.1";
 const updateAvailable = ref(false);
 const updateData = ref(null);

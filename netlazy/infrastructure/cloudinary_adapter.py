@@ -49,4 +49,4 @@ class CloudinaryMediaStorage(MediaStorage):
                     rtype = "image" if "image" in url else "video"
                     await asyncio.to_thread(cloudinary.uploader.destroy, pid, resource_type=rtype)
         except Exception:
-            pass # Suppress Cloudinary 404s if the file is already gone to prevent false failure cascades
+            pass

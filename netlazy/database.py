@@ -112,7 +112,7 @@ async def connect_to_mongo():
             break
         except Exception as e:
             if client is not None:
-                client.close()  # Prevent background thread and socket leak on retry
+                client.close()
             if attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 logging.warning(f"MongoDB connection attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")

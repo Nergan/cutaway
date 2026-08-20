@@ -49,7 +49,6 @@ class FFmpegMediaProcessor(MediaProcessorPort):
             stderr=asyncio.subprocess.PIPE,
         )
         try:
-            # FIX: Introduce execution timeout to prevent infinite transcoder hanging (Issue 10)
             _, stderr = await asyncio.wait_for(proc.communicate(), timeout=self.timeout_seconds)
         except asyncio.TimeoutError:
             try:

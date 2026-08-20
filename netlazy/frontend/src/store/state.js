@@ -278,10 +278,6 @@ export function useStore() {
         state.confirmModal.open = true;
     }
 
-    // Gates identity finalization behind an explicit, user-confirmed
-    // one-time reveal of the recovery phrase. Resolves once the user has
-    // acknowledged saving it; rejects if they cancel, in which case the
-    // caller wipes the just-generated, not-yet-registered keys.
     let backupResolver = null;
 
     function requestIdentityBackupConfirmation(phrase, purpose) {

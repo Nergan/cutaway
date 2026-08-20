@@ -1,15 +1,3 @@
-"""
-Server-anchored hash chain.
-
-Deliberately NOT a client-computed ratchet: the client only ever carries
-forward the anchor the server last gave it. The server is the single writer
-that observes true request order, so it — not the client — is the only
-party that can correctly serialize a chain when requests arrive concurrently
-(this app polls 3 endpoints in parallel every 10s) or after a dropped
-connection. ChainRepository accepts a small sliding window of recent anchors
-(see infrastructure/mongo_repo.py::MongoChainRepository) rather than a single
-slot, which is what makes both of those cases non-fatal.
-"""
 import hashlib
 
 _CHAIN_TAG = b"PQDA-CHAIN-v1"

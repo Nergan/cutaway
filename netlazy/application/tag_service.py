@@ -17,7 +17,6 @@ class TagService:
 
         tags = self._tag_loader.load_tags(yaml_path)
         
-        # FIX: Directly invoke the standard interface without brittle reflection heuristics (Issue 12)
         await self._tag_repo.sync(tags, file_hash=file_hash)
             
         return len(tags)

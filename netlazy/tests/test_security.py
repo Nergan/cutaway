@@ -9,8 +9,7 @@ from netlazy.domain.models import PoWChallenge, User
 from netlazy.domain.risk import (
     RiskThresholds,
     score_entropy,
-    shannon_entropy_ratio,
-    score_geo_velocity
+    shannon_entropy_ratio
 )
 
 

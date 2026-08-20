@@ -37,7 +37,6 @@ async def test_get_feed_excludes_interacted(feed_service, feed_deps):
     assert len(profiles) == 1
     assert profiles[0].user_id == "u4"
     
-    # Assert excluded IDs merged seen_ids + interacted_ids
     called_kwargs = feed_deps["profile_repo"].get_feed.call_args.kwargs
     assert set(called_kwargs["exclude_ids"]) == {"u2", "u3", "u5"}
     assert called_kwargs["requires"] == ["tech"]
