@@ -1,4 +1,5 @@
 import asyncio
+import secrets
 from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from netlazy.config import settings
@@ -8,7 +9,7 @@ from netlazy.presentation.dependencies import security_service
 router = APIRouter(prefix="/security", tags=["Security"], route_class=NetlazyRoute)
 
 async def verify_admin(x_admin_key: str = Header(None)):
-    if not settings.admin_api_key or x_admin_key != settings.admin_api_key:
+    if not settings.admin_api_key or not x_admin_key or not secrets.compare_digest(x_admin_key, settings.admin_api_key):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 class ChallengeResponse(BaseModel):

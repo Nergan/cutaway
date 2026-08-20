@@ -20,21 +20,25 @@ class MediaNotFoundError(Exception): pass
 class _LockManager:
     def __init__(self):
         self._locks = {}
+        self._master_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def acquire(self, key: str):
-        if key not in self._locks:
-            self._locks[key] = [asyncio.Lock(), 0]
-        
-        lock_info = self._locks[key]
-        lock_info[1] += 1
+        async with self._master_lock:
+            if key not in self._locks:
+                self._locks[key] = [asyncio.Lock(), 0]
+            lock_info = self._locks[key]
+            lock_info[1] += 1
+            lock = lock_info[0]
+
         try:
-            async with lock_info[0]:
+            async with lock:
                 yield
         finally:
-            lock_info[1] -= 1
-            if lock_info[1] == 0:
-                self._locks.pop(key, None)
+            async with self._master_lock:
+                lock_info[1] -= 1
+                if lock_info[1] == 0:
+                    self._locks.pop(key, None)
 
 class ProfileService:
     def __init__(

@@ -54,7 +54,8 @@ class FFmpegMediaProcessor(MediaProcessorPort):
         except asyncio.TimeoutError:
             try:
                 proc.kill()
-            except ProcessLookupError:
+                await proc.communicate()
+            except (ProcessLookupError, Exception):
                 pass
             logging.error("ffmpeg process timed out and was killed.")
             raise MediaProcessingError("Media processing timed out")

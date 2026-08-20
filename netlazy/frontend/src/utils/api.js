@@ -66,6 +66,13 @@ api.interceptors.request.use(async (config) => {
     if (store.state.isRegistered && !isMigrateEndpoint && !isRegisterEndpoint) {
         let edSig, pqSig;
 
+        delete config.headers['X-Chain-Anchor'];
+        delete config.headers['X-Timestamp'];
+        delete config.headers['X-Nonce'];
+        delete config.headers['X-Body-Hash'];
+        delete config.headers['X-Signature-Ed25519'];
+        delete config.headers['X-Signature-MLDSA'];
+
         if (isAnchorEndpoint) {
             const sigs = await signIdentityPayload(method, path, timestamp, nonce, bodyHash);
             edSig = sigs.edSig;

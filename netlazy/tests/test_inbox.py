@@ -51,6 +51,7 @@ async def test_send_handshake_already_accepted(inbox_service, inbox_deps):
         id="h1", sender_id="s1", receiver_id="r1",
         handshake_type="exchange", status="accepted"
     )
+    inbox_deps["user_repo"].get_by_id.side_effect = lambda uid: User(uid, "ed", "pq", None, is_banned=False)
     inbox_deps["handshake_repo"].get_between_users.return_value = existing
 
     with pytest.raises(InvalidHandshakeStateError, match="Handshake already accepted"):
@@ -64,6 +65,7 @@ async def test_send_handshake_already_accepted(inbox_service, inbox_deps):
 
 @pytest.mark.asyncio
 async def test_send_handshake_success(inbox_service, inbox_deps):
+    inbox_deps["user_repo"].get_by_id.side_effect = lambda uid: User(uid, "ed", "pq", None, is_banned=False)
     inbox_deps["handshake_repo"].get_between_users.return_value = None
 
     h = await inbox_service.send_handshake(

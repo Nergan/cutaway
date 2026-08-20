@@ -1,6 +1,6 @@
 import hashlib
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.exceptions import InvalidSignature
 
@@ -14,16 +14,23 @@ class CryptographyHybridAdapter(HybridCryptoPort):
     def _get_ed25519_der(self, pem: str) -> bytes:
         try:
             key = load_pem_public_key(pem.encode('utf-8'))
+            if not isinstance(key, ed25519.Ed25519PublicKey):
+                raise InvalidPublicKeyError("Expected Ed25519 public key")
             return key.public_bytes(
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             )
+        except InvalidPublicKeyError:
+            raise
         except Exception as e:
             raise InvalidPublicKeyError("Invalid Ed25519 public key format") from e
 
     def derive_user_id(self, ed25519_public_pem: str, mldsa_public_hex: str) -> str:
         ed25519_der = self._get_ed25519_der(ed25519_public_pem)
         try:
+            mldsa_raw = bytes.fromhex(mldsa_public_hex)
+            if len(mldsa_raw) != 1952:
+                raise InvalidPublicKeyError("ML-DSA-65 public key must be exactly 1952 bytes")
             mldsa_raw = bytes.fromhex(mldsa_public_hex)
         except ValueError:
             raise InvalidPublicKeyError("ML-DSA public key must be valid hex")

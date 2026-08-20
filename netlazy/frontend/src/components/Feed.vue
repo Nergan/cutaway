@@ -540,13 +540,8 @@ function reloadFeed() {
 async function handleMediaError(profile, m) {
     if (m.isErrorHandled) return;
     m.isErrorHandled = true;
-    const realIdx = profile.media.findIndex(x => x.url === m.url);
-    if (realIdx !== -1) profile.media.splice(realIdx, 1);
-    if (profile.audio && profile.audio.url === m.url) profile.audio = null;
-    
-    if (profile.user_id === store.state.userId) {
-        try { await api.delete(`/profile/me/media?url=${encodeURIComponent(m.url)}`); } catch(e){}
-    }
+    m.isLoaded = false;
+    m.blobUrl = null;
 }
 
 async function fetchFeed(reset = false) {

@@ -77,6 +77,7 @@ async def test_risk_evaluation_cascade_ban_on_low_entropy(security_service, secu
     security_deps["user_repo"].get_by_id.return_value = user
     security_deps["user_repo"].increment_risk_score.return_value = 150.0
 
-    await security_service.evaluate_risk("u1", "2.2.2.2", b"AAAAAAAAAAAAAAAA", int(time.time()))
+    low_entropy_payload = b"A" * 300
+    await security_service.evaluate_risk("u1", "2.2.2.2", low_entropy_payload, int(time.time()))
 
     security_deps["security_repo"].apply_bans.assert_called_once()
