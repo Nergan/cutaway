@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
 
 export default defineConfig(() => {
   const isMobile = process.env.CAPACITOR_BUILD === 'true';
@@ -11,11 +10,6 @@ export default defineConfig(() => {
     build: {
       outDir: '../static',
       emptyOutDir: true,
-    },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './frontend/src')
-      }
     }
   }
 })

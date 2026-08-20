@@ -350,6 +350,54 @@ export function useStore() {
         }
     }
 
+    async function loginWithKey(legacyPrivPem) {
+        addToast("Migrating legacy identity...", "bi-hourglass-split");
+        try {
+            const keys = await generateIdentity();
+
+            try {
+                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'migrate');
+            } catch (e) {
+                await clearIdentity();
+                addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
+                return;
+            }
+
+            const timestamp = Math.floor(Date.now() / 1000);
+            const { signMigrationPayload } = await import('../utils/crypto.js');
+            const { signatureB64, pubPem } = await signMigrationPayload(legacyPrivPem, keys.edPubPem, keys.mldsaPubHex, timestamp);
+
+            const payload = {
+                legacy_public_pem: pubPem,
+                new_ed25519_pem: keys.edPubPem,
+                new_mldsa_hex: keys.mldsaPubHex,
+                timestamp: timestamp,
+                signature: signatureB64
+            };
+
+            const res = await api.post('/auth/migrate', payload);
+            
+            state.userId = res.data.new_user_id;
+            state.currentAnchor = res.data.new_anchor;
+            state.isRegistered = true;
+            state.currentView = 'vault';
+            
+            fetchTags();
+            fetchMyProfile();
+            fetchInbox();
+            startPolling();
+            
+            addToast(t('key_imported'), "bi-person-plus");
+        } catch (e) {
+            const detail = e.response?.data?.detail;
+            if (detail) {
+                addToast(`Migration failed: ${detail}`, "bi-exclamation-octagon");
+            } else {
+                addToast("Failed to migrate legacy identity.", "bi-exclamation-octagon");
+            }
+        }
+    }
+
     async function rotateKey() {
         try {
             const keys = await generateIdentity();
@@ -557,7 +605,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup
     };
     return instance;
 }

@@ -166,6 +166,44 @@ export async function generateIdentity() {
     return { userId, edPubPem, mldsaPubHex, recoveryPhrase };
 }
 
+export async function signMigrationPayload(legacyPrivPem, newEdPem, newMldsaHex, timestamp) {
+    const pemHeader = "-----BEGIN PRIVATE KEY-----";
+    const pemFooter = "-----END PRIVATE KEY-----";
+    const rsaHeader = "-----BEGIN RSA PRIVATE KEY-----";
+    const rsaFooter = "-----END RSA PRIVATE KEY-----";
+    
+    let b64 = legacyPrivPem;
+    if (b64.includes(pemHeader)) {
+        b64 = b64.replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+    } else {
+        b64 = b64.replace(rsaHeader, "").replace(rsaFooter, "").replace(/\s/g, "");
+    }
+    
+    const binaryDer = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    
+    const key = await window.crypto.subtle.importKey(
+        "pkcs8",
+        binaryDer.buffer,
+        { name: "RSA-PSS", hash: "SHA-256" },
+        true,
+        ["sign"]
+    );
+    
+    const spki = await window.crypto.subtle.exportKey("spki", key);
+    const pubB64 = arrayBufferToBase64(spki);
+    const pubPem = `-----BEGIN PUBLIC KEY-----\n${pubB64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+    
+    const payloadStr = `PQDA-MIGRATE-v1\n${newEdPem}\n${newMldsaHex}\n${timestamp}`;
+    const payload = new TextEncoder().encode(payloadStr);
+    
+    const signature = await window.crypto.subtle.sign({ name: "RSA-PSS", saltLength: 32 }, key, payload);
+    
+    return {
+        signatureB64: arrayBufferToBase64(signature),
+        pubPem: pubPem
+    };
+}
+
 export async function signHybridPayload(payloadString) {
     const wrapKey = await getItem("aes_wrap_key");
     const edIv = await getItem("ed25519_iv");

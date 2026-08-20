@@ -12,6 +12,7 @@ from netlazy.application.tag_service import TagService
 from netlazy.application.feed_service import FeedService
 from netlazy.application.inbox_service import InboxService
 from netlazy.application.security_service import SecurityService, BannedError, ProofOfWorkError
+from netlazy.application.migration_service import MigrationService
 from netlazy.config import settings
 from netlazy.database import DatabaseUnavailableError
 from netlazy.domain.models import User
@@ -22,6 +23,7 @@ from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
 from netlazy.infrastructure.crypto_adapter import CryptographyHybridAdapter
 from netlazy.infrastructure.media_processor import FFmpegMediaProcessor
 from netlazy.infrastructure.yaml_loader import YamlTagLoader
+from netlazy.infrastructure.legacy_migration import LegacyCryptographyAdapter, MongoLegacyUserLookup
 from netlazy.infrastructure.mongo_repo import (
     MongoChainRepository,
     MongoHandshakeRepository,
@@ -55,6 +57,21 @@ hybrid_crypto = CryptographyHybridAdapter()
 media_processor = FFmpegMediaProcessor()
 tag_loader = YamlTagLoader()
 transaction_manager = MongoTransactionManager()
+
+legacy_crypto = LegacyCryptographyAdapter()
+legacy_lookup = MongoLegacyUserLookup()
+
+migration_service = MigrationService(
+    legacy_lookup=legacy_lookup,
+    legacy_crypto=legacy_crypto,
+    user_repo=user_repo,
+    chain_repo=chain_repo,
+    profile_repo=profile_repo,
+    handshake_repo=handshake_repo,
+    nonce_repo=nonce_repo,
+    hybrid_crypto=hybrid_crypto,
+    transaction_manager=transaction_manager
+)
 
 auth_service = AuthService(
     user_repo=user_repo,

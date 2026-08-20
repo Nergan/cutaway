@@ -1,5 +1,6 @@
 import logging
 from datetime import date, datetime, timezone
+from typing import Tuple
 
 from netlazy.domain.legacy import LegacyCryptoPort, LegacyUserLookupPort, MIGRATION_DEADLINE, LegacyMigrationExpiredError
 from netlazy.domain.models import User, UserAlreadyExistsError
@@ -39,7 +40,7 @@ class MigrationService:
         new_mldsa_hex: str,
         timestamp: int,
         signature: bytes
-    ) -> str:
+    ) -> Tuple[str, str]:
         """Proves ownership of the old RSA key and transfers data to the new Hybrid ID."""
         if date.today() > MIGRATION_DEADLINE:
             raise LegacyMigrationExpiredError("RSA migration period has ended.")
@@ -88,7 +89,7 @@ class MigrationService:
             await self._nonce_repo.delete_for_user(legacy_user_id, session=session)
             await self._legacy_lookup.delete_legacy_user(legacy_user_id, session=session)
 
-            return new_user_id
+            return new_user_id, genesis_anchor
 
         logging.info(f"Migrating RSA user {legacy_user_id} -> Hybrid PQ {new_user_id}")
         return await self._transaction_manager.execute_in_transaction(_transaction_callback)
