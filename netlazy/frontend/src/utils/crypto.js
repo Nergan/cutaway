@@ -264,13 +264,16 @@ export function solvePoW(challengeId, difficulty) {
             };
         `;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const worker = new Worker(URL.createObjectURL(blob));
+        const objectUrl = URL.createObjectURL(blob);
+        const worker = new Worker(objectUrl);
         worker.onmessage = (e) => {
             worker.terminate();
+            URL.revokeObjectURL(objectUrl);
             resolve(e.data);
         };
         worker.onerror = (e) => {
             worker.terminate();
+            URL.revokeObjectURL(objectUrl);
             reject(e);
         };
         worker.postMessage({ challengeId, difficulty });

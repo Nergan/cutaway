@@ -139,12 +139,17 @@ def _get_client_footprint(request: Request) -> tuple:
     else:
         ip = direct_peer
 
-    fingerprint = request.headers.get("X-Fingerprint", "unknown")
+    fingerprint = request.headers.get("X-Fingerprint")
+    if fingerprint in ("unknown", "", None):
+        fingerprint = None
     return ip, fingerprint
 
 
 def _normalize_path(path: str) -> str:
-    return "/" + path.strip("/").split("?")[0]
+    cleaned = "/" + path.strip("/").split("?")[0]
+    if cleaned.startswith("/netlazy/"):
+        cleaned = cleaned[len("/netlazy"):]
+    return cleaned
 
 
 async def verify_request_signature(
@@ -168,7 +173,7 @@ async def verify_request_signature(
 
     norm_signed = _normalize_path(x_signed_path)
     norm_req = _normalize_path(request.url.path)
-    if not norm_signed.endswith(norm_req):
+    if norm_signed != norm_req:
         raise create_auth_error()
 
     ip, fingerprint = _get_client_footprint(request)

@@ -91,7 +91,7 @@ async def get_current_anchor(
 ):
     norm_signed = _normalize_path(x_signed_path)
     norm_req = _normalize_path(request.url.path)
-    if not norm_signed.endswith(norm_req):
+    if norm_signed != norm_req:
         raise HTTPException(status_code=401, detail="Path mismatch")
 
     try:
@@ -133,8 +133,9 @@ async def rotate_key_endpoint(
             profile_repo=profile_repo,
             handshake_repo=handshake_repo
         )
-        if request and hasattr(request.state, "next_anchor"):
-            response.headers["X-Next-Anchor"] = request.state.next_anchor
+        if request and hasattr(request, "state"):
+            request.state.next_anchor = new_anchor
+        response.headers["X-Next-Anchor"] = new_anchor
         return UserRotateResponse(new_user_id=new_id, new_anchor=new_anchor, message="Rotation successful")
     except InvalidPublicKeyError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -167,6 +168,9 @@ class UserMigrateResponse(BaseModel):
 async def migrate_account(body: UserMigrateRequest):
     try:
         sig_bytes = base64.b64decode(body.signature)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="Malformed base64 signature encoding")
+    try:
         new_id, new_anchor = await migration_service.migrate_user(
             legacy_public_pem=body.legacy_public_pem,
             new_ed25519_pem=body.new_ed25519_pem,

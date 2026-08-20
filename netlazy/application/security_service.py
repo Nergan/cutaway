@@ -73,7 +73,8 @@ class SecurityService:
         if payload and len(payload) >= 256:
             sampled_payload = payload[:8192]
             ratio = await asyncio.to_thread(shannon_entropy_ratio, sampled_payload)
-            total_penalty += score_entropy(ratio, self._thresholds)
+            if ratio < 0.05:
+                total_penalty += score_entropy(ratio, self._thresholds)
 
         if total_penalty > 0:
             new_score = await self._user_repo.increment_risk_score(user_id, total_penalty)

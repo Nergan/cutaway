@@ -179,6 +179,9 @@ class MongoSecurityRepository(SecurityRepository):
 
 class MongoTagRepository(TagRepository):
     async def sync(self, tags: List[Tag], file_hash: Optional[str] = None) -> bool:
+        if not tags:
+            return False
+
         if file_hash:
             meta = await db_instance.tags_collection.find_one({"name": "__sync_hash__"})
             if meta and meta.get("hash") == file_hash:

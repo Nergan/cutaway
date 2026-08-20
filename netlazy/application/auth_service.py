@@ -157,6 +157,9 @@ class AuthService:
         user = await self._user_repo.get_by_id(user_id)
         if not user:
             raise AuthenticationError("Unknown user")
+            
+        if user.is_banned:
+            raise AuthenticationError("User is banned")
 
         is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)
         if not is_fresh:

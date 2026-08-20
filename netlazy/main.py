@@ -199,7 +199,10 @@ _version_lock = asyncio.Lock()
 
 
 def fetch_gh_version():
-    req = urllib.request.Request("https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk")
+    req = urllib.request.Request(
+        "https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk",
+        headers={"User-Agent": "netlazy-app/1.0"}
+    )
     with urllib.request.urlopen(req, timeout=5) as res:
         return json.loads(res.read())
 
