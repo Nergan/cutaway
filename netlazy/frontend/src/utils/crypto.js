@@ -156,7 +156,7 @@ async function deriveUserId(edPubBuffer, mldsaPubRaw) {
     return bufferToHex(hashBuffer);
 }
 
-async function initializeVaultFromSeed(masterSeed) {
+async function deriveIdentityFromSeed(masterSeed) {
     const edSeed = await deriveSubSeed(masterSeed, 'netlazy-ed25519-v1');
     const mldsaSeed = await deriveSubSeed(masterSeed, 'netlazy-mldsa65-v1');
 
@@ -196,14 +196,36 @@ async function initializeVaultFromSeed(masterSeed) {
     edSeed.fill(0);
     mldsaSeed.fill(0);
     mldsaKeys.secretKey.fill(0);
-    masterSeed.fill(0);
 
-    return { userId, edPubPem, mldsaPubHex, secretKey };
+    return {
+        userId, edPubPem, mldsaPubHex, secretKey,
+        vault: { wrapKey, edIv, edPrivEnc, edPubPem, mldsaIv, mldsaPrivEnc, mldsaPubHex }
+    };
+}
+
+export async function commitIdentityVault(vault) {
+    await setItem("aes_wrap_key", vault.wrapKey);
+    await setItem("ed25519_iv", vault.edIv);
+    await setItem("ed25519_priv_enc", vault.edPrivEnc);
+    await setItem("ed25519_pub", vault.edPubPem);
+    await setItem("mldsa_iv", vault.mldsaIv);
+    await setItem("mldsa_priv_enc", vault.mldsaPrivEnc);
+    await setItem("mldsa_pub", vault.mldsaPubHex);
 }
 
 export async function generateIdentity() {
     const masterSeed = window.crypto.getRandomValues(new Uint8Array(32));
-    return await initializeVaultFromSeed(masterSeed);
+    const identity = await deriveIdentityFromSeed(masterSeed);
+    masterSeed.fill(0);
+    await commitIdentityVault(identity.vault);
+    return identity;
+}
+
+export async function generateUncommittedIdentity() {
+    const masterSeed = window.crypto.getRandomValues(new Uint8Array(32));
+    const identity = await deriveIdentityFromSeed(masterSeed);
+    masterSeed.fill(0);
+    return identity;
 }
 
 export async function importIdentityFromKey(keyString) {
@@ -217,7 +239,10 @@ export async function importIdentityFromKey(keyString) {
     if (!seed || seed.length !== 32) {
         throw new Error("Invalid secret key (must decode to 32 bytes)");
     }
-    return await initializeVaultFromSeed(seed);
+    const identity = await deriveIdentityFromSeed(seed);
+    seed.fill(0);
+    await commitIdentityVault(identity.vault);
+    return identity;
 }
 
 export async function signHybridPayload(payloadString) {

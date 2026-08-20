@@ -1,6 +1,6 @@
 import { reactive, watch, computed } from 'vue';
 import api, { apiWithPoW } from '../utils/api.js';
-import { generateIdentity, clearIdentity, hasHybridKeys } from '../utils/crypto.js';
+import { generateIdentity, clearIdentity, hasHybridKeys, generateUncommittedIdentity, commitIdentityVault } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
 import { Preferences } from '@capacitor/preferences';
@@ -387,21 +387,21 @@ export function useStore() {
 
     async function rotateKey() {
         try {
-            const keys = await generateIdentity();
+            const identity = await generateUncommittedIdentity();
 
             try {
-                await requestIdentityBackupConfirmation(keys.secretKey, 'rotate');
+                await requestIdentityBackupConfirmation(identity.secretKey, 'rotate');
             } catch (e) {
-                await clearIdentity();
-                addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
                 return;
             }
 
             const res = await api.post('/auth/rotate', { 
-                new_ed25519_public_pem: keys.edPubPem,
-                new_mldsa_public_hex: keys.mldsaPubHex
+                new_ed25519_public_pem: identity.edPubPem,
+                new_mldsa_public_hex: identity.mldsaPubHex
             });
             
+            await commitIdentityVault(identity.vault);
+
             state.userId = res.data.new_user_id;
             state.currentAnchor = res.data.new_anchor;
             
