@@ -12,10 +12,18 @@
             {{ store.t('backup_phrase_warning') }}
           </p>
 
-          <div class="code-block" @click="copyPhrase" style="user-select: all; word-break: break-all; font-size: 0.9rem; padding: 1rem; position: relative; cursor: pointer;">
-            {{ phrase }}
-            <div style="margin-top: 0.5rem; text-align: right; font-size: 0.75rem; color: var(--accent-moss);">
-              <i class="bi bi-copy"></i> {{ store.t('copy') }}
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.2rem; margin: 1rem 0;">
+            <div style="font-family: monospace; font-size: 0.95rem; word-break: break-all; color: var(--text-main); line-height: 1.6; user-select: text; text-align: center; letter-spacing: 0.5px;">
+              {{ phrase }}
+            </div>
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+              <button class="footer-action" 
+                      type="button"
+                      @click.stop="copyPhrase" 
+                      style="color: var(--accent-moss); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem; border-radius: var(--radius-pill); background: rgba(141, 169, 112, 0.1); border: 1px solid rgba(141, 169, 112, 0.25); user-select: none;">
+                <i class="bi" :class="isCopied ? 'bi-check2' : 'bi-copy'"></i>
+                <span>{{ isCopied ? store.t('copied') : store.t('copy') }}</span>
+              </button>
             </div>
           </div>
 
@@ -63,16 +71,23 @@ const props = defineProps({
 const emit = defineEmits(['confirm', 'cancel']);
 const store = useStore();
 const isConfirmed = ref(false);
+const isCopied = ref(false);
+let copyTimeout = null;
 
-// Сбрасываем чекбокс при каждом открытии модального окна
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     isConfirmed.value = false;
+    isCopied.value = false;
   }
 });
 
-async function copyPhrase() {
+async function copyPhrase(e) {
+  if (e) {
+    e.preventDefault?.();
+    e.stopPropagation?.();
+  }
   if (!props.phrase) return;
+
   let copied = false;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     try {
@@ -85,17 +100,27 @@ async function copyPhrase() {
       const el = document.createElement('textarea');
       el.value = props.phrase;
       el.setAttribute('readonly', '');
-      el.style.position = 'absolute';
-      el.style.left = '-9999px';
+      el.style.position = 'fixed';
+      el.style.top = '0';
+      el.style.left = '0';
+      el.style.opacity = '0';
       document.body.appendChild(el);
+      el.focus();
       el.select();
-      document.execCommand('copy');
+      copied = document.execCommand('copy');
       document.body.removeChild(el);
-      copied = true;
     } catch (e) {}
   }
+
+  window.getSelection()?.removeAllRanges();
+
   if (copied) {
+    isCopied.value = true;
     store.addToast(store.t('copied'), 'bi-check2');
+    if (copyTimeout) clearTimeout(copyTimeout);
+    copyTimeout = setTimeout(() => {
+      isCopied.value = false;
+    }, 2500);
   } else {
     store.addToast("Failed to copy key", 'bi-x-circle');
   }
