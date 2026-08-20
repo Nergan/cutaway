@@ -12,7 +12,7 @@
             {{ store.t('backup_phrase_warning') }}
           </p>
 
-          <div class="code-block" @click="copyPhrase" style="user-select: all; word-break: break-word; font-size: 0.9rem; padding: 1rem; position: relative;">
+          <div class="code-block" @click="copyPhrase" style="user-select: all; word-break: break-all; font-size: 0.9rem; padding: 1rem; position: relative; cursor: pointer;">
             {{ phrase }}
             <div style="margin-top: 0.5rem; text-align: right; font-size: 0.75rem; color: var(--accent-moss);">
               <i class="bi bi-copy"></i> {{ store.t('copy') }}
@@ -72,9 +72,32 @@ watch(() => props.open, (isOpen) => {
 });
 
 async function copyPhrase() {
-  if (props.phrase) {
-    await navigator.clipboard.writeText(props.phrase);
+  if (!props.phrase) return;
+  let copied = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(props.phrase);
+      copied = true;
+    } catch (e) {}
+  }
+  if (!copied) {
+    try {
+      const el = document.createElement('textarea');
+      el.value = props.phrase;
+      el.setAttribute('readonly', '');
+      el.style.position = 'absolute';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      copied = true;
+    } catch (e) {}
+  }
+  if (copied) {
     store.addToast(store.t('copied'), 'bi-check2');
+  } else {
+    store.addToast("Failed to copy key", 'bi-x-circle');
   }
 }
 

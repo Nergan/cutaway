@@ -315,7 +315,7 @@ export function useStore() {
             const keys = await generateIdentity();
 
             try {
-                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'register');
+                await requestIdentityBackupConfirmation(keys.secretKey, 'register');
             } catch (e) {
                 await clearIdentity();
                 addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
@@ -350,37 +350,18 @@ export function useStore() {
         }
     }
 
-    async function loginWithKey(legacyPrivPem) {
-        addToast("Migrating legacy identity...", "bi-hourglass-split");
+    async function loginWithKey(secretKey) {
+        addToast("Restoring identity...", "bi-hourglass-split");
         try {
-            const keys = await generateIdentity();
+            const { importIdentityFromKey } = await import('../utils/crypto.js');
+            const keys = await importIdentityFromKey(secretKey);
 
-            try {
-                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'migrate');
-            } catch (e) {
-                await clearIdentity();
-                addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
-                return;
-            }
-
-            const timestamp = Math.floor(Date.now() / 1000);
-            const { signMigrationPayload } = await import('../utils/crypto.js');
-            const { signatureB64, pubPem } = await signMigrationPayload(legacyPrivPem, keys.edPubPem, keys.mldsaPubHex, timestamp);
-
-            const payload = {
-                legacy_public_pem: pubPem,
-                new_ed25519_pem: keys.edPubPem,
-                new_mldsa_hex: keys.mldsaPubHex,
-                timestamp: timestamp,
-                signature: signatureB64
-            };
-
-            const res = await api.post('/auth/migrate', payload);
+            state.userId = keys.userId;
             
-            state.userId = res.data.new_user_id;
-            state.currentAnchor = res.data.new_anchor;
+            const anchorRes = await api.get('/auth/anchor');
+            state.currentAnchor = anchorRes.data.current_anchor;
             state.isRegistered = true;
-            state.currentView = 'vault';
+            state.currentView = 'feed';
             
             fetchTags();
             fetchMyProfile();
@@ -389,11 +370,17 @@ export function useStore() {
             
             addToast(t('key_imported'), "bi-person-plus");
         } catch (e) {
+            await clearIdentity();
+            state.userId = null;
+            state.currentAnchor = null;
+            state.isRegistered = false;
             const detail = e.response?.data?.detail;
-            if (detail) {
-                addToast(`Migration failed: ${detail}`, "bi-exclamation-octagon");
+            if (detail === "Unknown user") {
+                addToast("Account not found for this key.", "bi-x-octagon");
+            } else if (detail) {
+                addToast(`Login failed: ${detail}`, "bi-exclamation-octagon");
             } else {
-                addToast("Failed to migrate legacy identity.", "bi-exclamation-octagon");
+                addToast(e.message || "Invalid secret key.", "bi-x-octagon");
             }
         }
     }
@@ -403,7 +390,7 @@ export function useStore() {
             const keys = await generateIdentity();
 
             try {
-                await requestIdentityBackupConfirmation(keys.recoveryPhrase, 'rotate');
+                await requestIdentityBackupConfirmation(keys.secretKey, 'rotate');
             } catch (e) {
                 await clearIdentity();
                 addToast(t('backup_not_confirmed'), "bi-exclamation-triangle");
@@ -499,6 +486,9 @@ export function useStore() {
             state.myProfile = data;
             
         } catch (e) {
+            if (e.response?.status === 401 && e.response?.data?.detail === "Unknown user") {
+                await logout();
+            }
         } finally {
             if (!isSilent) state.isProfileLoading = false;
         }

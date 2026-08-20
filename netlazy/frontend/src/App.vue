@@ -64,7 +64,7 @@
           <input :type="importKeyVisible ? 'text' : 'password'" 
                  class="seamless-input import-input" 
                  v-model="importKeyInput" 
-                 :placeholder="store.t('import_legacy_prompt')" 
+                 :placeholder="store.t('paste_key_prompt')" 
                  @keyup.enter="handleImport">
           <button class="eye-btn" @click="importKeyVisible = !importKeyVisible" tabindex="-1">
             <i class="bi" :class="importKeyVisible ? 'bi-eye-slash' : 'bi-eye'"></i>

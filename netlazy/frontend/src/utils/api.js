@@ -56,14 +56,13 @@ api.interceptors.request.use(async (config) => {
         } catch (e) {}
     }
 
+
     const method = config.method.toUpperCase();
     const isAnchorEndpoint = path.endsWith('/auth/anchor');
-    const isMigrateEndpoint = path.endsWith('/auth/migrate');
     const isRegisterEndpoint = path.endsWith('/auth/register');
 
     config.headers['X-Signed-Path'] = path; // Reverse Proxy resync hook
-
-    if (store.state.isRegistered && !isMigrateEndpoint && !isRegisterEndpoint) {
+    if (store.state.isRegistered && !isRegisterEndpoint) {
         let edSig, pqSig;
 
         delete config.headers['X-Chain-Anchor'];
@@ -120,8 +119,8 @@ api.interceptors.response.use(response => {
         }
 
         const detail = error.response.data?.detail || '';
-        if (detail === "Unknown user") {
-            store.logout();
+        if (detail === "Unknown user" || (error.response.status === 401 && !store.state.isRegistered)) {
+            await store.logout();
             return Promise.reject(error);
         }
 
@@ -150,12 +149,20 @@ api.interceptors.response.use(response => {
                     isResyncing = false;
                     const queue = resyncQueue;
                     resyncQueue = [];
-                    if (!store.state.authErrorNotified) {
+                    const errDetail = err.response?.data?.detail;
+                    if (errDetail === "Unknown user" || err.response?.status === 401) {
+                        await store.logout();
+                        store.addToast("Account not found. Logged out.", "bi-box-arrow-right");
+                    } else if (!store.state.authErrorNotified) {
                         store.addToast("Chain desynced. Please reload.", "bi-exclamation-triangle");
                         store.state.authErrorNotified = true;
                     }
                     queue.forEach(cb => cb.reject(err));
                     return Promise.reject(err);
+                }
+            } else if (originalRequest.url && originalRequest.url.endsWith('/auth/anchor')) {
+                if (detail === "Unknown user" || error.response.status === 401) {
+                    await store.logout();
                 }
             }
         }

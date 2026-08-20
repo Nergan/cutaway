@@ -147,7 +147,9 @@ async def connect_to_mongo():
         db_instance.profiles_collection: [
             ("user_id", {"unique": True}),
             ("created_at", {}),
-            ("random_index", {})
+            ("random_index", {}),
+            ("media.file_hash", {}),
+            ("audio.file_hash", {})
         ],
         db_instance.handshakes_collection: [
             ("sender_id", {}),

@@ -1,16 +1,11 @@
 /**
  * Core cryptography & identity utilities.
  * Hybrid PQ (Ed25519 + ML-DSA-65). Both private keys are derived from a
- * single random master seed and kept encrypted-at-rest in IndexedDB under
- * a non-extractable AES-GCM wrapping key. The master seed itself is never
- * persisted anywhere: it lives in memory only long enough to derive the
- * two sub-keys and to be shown to the user once, as a BIP-39 recovery
- * phrase, immediately after generation.
+ * single random master seed token and kept encrypted-at-rest in IndexedDB under
+ * a non-extractable AES-GCM wrapping key.
  */
 
 import { ed25519 } from '@noble/curves/ed25519';
-import { entropyToMnemonic } from '@scure/bip39';
-import { wordlist } from '@scure/bip39/wordlists/english';
 
 const DB_NAME = 'netlazy_pq_vault';
 const STORE_NAME = 'keys';
@@ -78,6 +73,54 @@ function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+const B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+export function bytesToBase58(bytes) {
+    const digits = [];
+    for (let i = 0; i < bytes.length; i++) {
+        let carry = bytes[i];
+        for (let j = 0; j < digits.length; j++) {
+            carry += digits[j] << 8;
+            digits[j] = carry % 58;
+            carry = (carry / 58) | 0;
+        }
+        while (carry > 0) {
+            digits.push(carry % 58);
+            carry = (carry / 58) | 0;
+        }
+    }
+    let str = '';
+    for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+        str += '1';
+    }
+    for (let i = digits.length - 1; i >= 0; i--) {
+        str += B58_ALPHABET[digits[i]];
+    }
+    return str;
+}
+
+export function base58ToBytes(str) {
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) {
+        const charIndex = B58_ALPHABET.indexOf(str[i]);
+        if (charIndex === -1) throw new Error('Invalid character in secret key');
+        let carry = charIndex;
+        for (let j = 0; j < bytes.length; j++) {
+            carry += bytes[j] * 58;
+            bytes[j] = carry & 0xff;
+            carry >>= 8;
+        }
+        while (carry > 0) {
+            bytes.push(carry & 0xff);
+            carry >>= 8;
+        }
+    }
+    for (let i = 0; i < str.length && str[i] === '1'; i++) {
+        bytes.push(0);
+    }
+    return new Uint8Array(bytes.reverse());
+}
+
 function formatPEM(base64, type) {
     const lines = base64.match(/.{1,64}/g).join('\n');
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
@@ -113,11 +156,7 @@ async function deriveUserId(edPubBuffer, mldsaPubRaw) {
     return bufferToHex(hashBuffer);
 }
 
-export async function generateIdentity() {
-    // Single 256-bit root of trust. Never written to disk - lives only in
-    // this function's scope until it is wiped at the very end.
-    const masterSeed = window.crypto.getRandomValues(new Uint8Array(32));
-
+async function initializeVaultFromSeed(masterSeed) {
     const edSeed = await deriveSubSeed(masterSeed, 'netlazy-ed25519-v1');
     const mldsaSeed = await deriveSubSeed(masterSeed, 'netlazy-mldsa65-v1');
 
@@ -152,56 +191,33 @@ export async function generateIdentity() {
     await setItem("mldsa_pub", mldsaPubHex);
 
     const userId = await deriveUserId(edPubSpki, mldsaKeys.publicKey);
-
-    // Human-readable, checksummed, one-time-reveal backup of masterSeed.
-    // The caller is responsible for displaying it exactly once and never
-    // persisting it (see IdentityBackupModal.vue).
-    const recoveryPhrase = entropyToMnemonic(masterSeed, wordlist);
+    const secretKey = bytesToBase58(masterSeed);
 
     edSeed.fill(0);
     mldsaSeed.fill(0);
     mldsaKeys.secretKey.fill(0);
     masterSeed.fill(0);
 
-    return { userId, edPubPem, mldsaPubHex, recoveryPhrase };
+    return { userId, edPubPem, mldsaPubHex, secretKey };
 }
 
-export async function signMigrationPayload(legacyPrivPem, newEdPem, newMldsaHex, timestamp) {
-    const pemHeader = "-----BEGIN PRIVATE KEY-----";
-    const pemFooter = "-----END PRIVATE KEY-----";
-    const rsaHeader = "-----BEGIN RSA PRIVATE KEY-----";
-    const rsaFooter = "-----END RSA PRIVATE KEY-----";
-    
-    let b64 = legacyPrivPem;
-    if (b64.includes(pemHeader)) {
-        b64 = b64.replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+export async function generateIdentity() {
+    const masterSeed = window.crypto.getRandomValues(new Uint8Array(32));
+    return await initializeVaultFromSeed(masterSeed);
+}
+
+export async function importIdentityFromKey(keyString) {
+    const trimmed = (keyString || '').trim();
+    let seed;
+    if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+        seed = new Uint8Array(trimmed.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     } else {
-        b64 = b64.replace(rsaHeader, "").replace(rsaFooter, "").replace(/\s/g, "");
+        seed = base58ToBytes(trimmed);
     }
-    
-    const binaryDer = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    
-    const key = await window.crypto.subtle.importKey(
-        "pkcs8",
-        binaryDer.buffer,
-        { name: "RSA-PSS", hash: "SHA-256" },
-        true,
-        ["sign"]
-    );
-    
-    const spki = await window.crypto.subtle.exportKey("spki", key);
-    const pubB64 = arrayBufferToBase64(spki);
-    const pubPem = `-----BEGIN PUBLIC KEY-----\n${pubB64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
-    
-    const payloadStr = `PQDA-MIGRATE-v1\n${newEdPem}\n${newMldsaHex}\n${timestamp}`;
-    const payload = new TextEncoder().encode(payloadStr);
-    
-    const signature = await window.crypto.subtle.sign({ name: "RSA-PSS", saltLength: 32 }, key, payload);
-    
-    return {
-        signatureB64: arrayBufferToBase64(signature),
-        pubPem: pubPem
-    };
+    if (!seed || seed.length !== 32) {
+        throw new Error("Invalid secret key (must decode to 32 bytes)");
+    }
+    return await initializeVaultFromSeed(seed);
 }
 
 export async function signHybridPayload(payloadString) {

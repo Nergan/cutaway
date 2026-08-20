@@ -105,27 +105,28 @@
 
   .feed-search-bar {
     flex: unset !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0.65rem 1.2rem !important;
-    border-top: 1px solid var(--border-subtle) !important;
-    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3) !important;
+    border-radius: var(--radius-pill) !important;
+    margin: 0 1rem 0.5rem 1rem !important;
+    padding: 0.5rem 1rem !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 60%, rgba(255, 255, 255, 0.1) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 
+                inset 0 -1px 2px rgba(0, 0, 0, 0.3), 
+                0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     position: relative;
     z-index: 1;
   }
-  .feed-search-bar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: rgba(20, 20, 20, 0.4);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    pointer-events: none;
+  body.light-theme .feed-search-bar {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 240, 230, 0.55) 60%, rgba(255, 255, 255, 0.7) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 
+                inset 0 -1px 2px rgba(0, 0, 0, 0.06), 
+                0 4px 12px rgba(0, 0, 0, 0.08) !important;
   }
-  body.light-theme .feed-search-bar::before {
-    background: rgba(250, 246, 238, 0.4);
+  .feed-search-bar::before {
+    display: none !important;
   }
   
   .tag-scroll-area {

@@ -15,10 +15,8 @@ from netlazy.presentation.dependencies import (
     verify_request_signature,
     profile_repo,
     handshake_repo,
-    migration_service,
     _normalize_path
 )
-from netlazy.application.migration_service import LegacyMigrationExpiredError
 
 router = APIRouter(prefix="/auth", tags=["Authentication"], route_class=NetlazyRoute)
 
@@ -114,6 +112,10 @@ async def get_current_anchor(
         return {"current_anchor": current_anchor}
     except DatabaseUnavailableError:
         raise
+    except AuthenticationError as e:
+        if str(e) == "Unknown user":
+            raise HTTPException(status_code=401, detail="Unknown user")
+        raise HTTPException(status_code=401, detail=str(e))
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid identity signature")
 
@@ -150,40 +152,3 @@ async def delete_account(user: User = Depends(verify_request_signature)):
     await profile_service.delete_profile(user.user_id)
     await auth_service.delete_user(user.user_id)
     await inbox_service.delete_user_handshakes(user.user_id)
-
-
-class UserMigrateRequest(BaseModel):
-    legacy_public_pem: str
-    new_ed25519_pem: str
-    new_mldsa_hex: str
-    timestamp: int
-    signature: str
-
-class UserMigrateResponse(BaseModel):
-    new_user_id: str
-    new_anchor: str
-    message: str
-
-@router.post("/migrate", response_model=UserMigrateResponse)
-async def migrate_account(body: UserMigrateRequest):
-    try:
-        sig_bytes = base64.b64decode(body.signature)
-    except (binascii.Error, ValueError):
-        raise HTTPException(status_code=400, detail="Malformed base64 signature encoding")
-    try:
-        new_id, new_anchor = await migration_service.migrate_user(
-            legacy_public_pem=body.legacy_public_pem,
-            new_ed25519_pem=body.new_ed25519_pem,
-            new_mldsa_hex=body.new_mldsa_hex,
-            timestamp=body.timestamp,
-            signature=sig_bytes
-        )
-        return UserMigrateResponse(new_user_id=new_id, new_anchor=new_anchor, message="Migration successful")
-    except LegacyMigrationExpiredError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except SignatureVerificationError:
-        raise HTTPException(status_code=401, detail="Invalid legacy signature")
-    except UserAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Public keys already registered")

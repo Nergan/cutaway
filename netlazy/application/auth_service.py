@@ -102,12 +102,16 @@ class AuthService:
         self, user_id: str, timestamp: int, nonce: str, body_hash: str, method: str, path: str, ed_sig: bytes, pq_sig: bytes
     ) -> str:
         """Lightweight non-mutating check used to resync clients with the current chain head."""
-        user = await self._validate_basics(user_id, timestamp, nonce)
+        user = await self._validate_basics(user_id, timestamp)
         payload = build_identity_payload(method, path, timestamp, nonce, body_hash)
         
         self._crypto_port.verify_hybrid_signature(
             user.ed25519_public_pem, user.mldsa_public_hex, payload, ed_sig, pq_sig
         )
+
+        is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)
+        if not is_fresh:
+            raise AuthenticationError("Nonce already used")
         
         anchors = await self._chain_repo.get_recent_anchors(user_id)
         if not anchors:
@@ -128,7 +132,7 @@ class AuthService:
         mldsa_signature: bytes,
     ) -> Tuple[User, str]:
         """Stateful/mutating request check that enforces and advances the hash chain."""
-        user = await self._validate_basics(user_id, timestamp, nonce)
+        user = await self._validate_basics(user_id, timestamp)
 
         # 1. Verify Hybrid Signature
         try:
@@ -138,7 +142,12 @@ class AuthService:
         except SignatureVerificationError:
             raise AuthenticationError("Hybrid signature verification failed")
 
-        # 2. Trace Continuity
+        # 2. Consume Nonce post-signature
+        is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)
+        if not is_fresh:
+            raise AuthenticationError("Nonce already used")
+
+        # 3. Trace Continuity
         recent_anchors = await self._chain_repo.get_recent_anchors(user_id)
         if prev_anchor not in recent_anchors:
             raise HashChainDesyncError("Execution trace broken or outdated")
@@ -149,7 +158,7 @@ class AuthService:
 
         return user, next_anchor
 
-    async def _validate_basics(self, user_id: str, timestamp: int, nonce: str) -> User:
+    async def _validate_basics(self, user_id: str, timestamp: int) -> User:
         current_time = int(time.time())
         if abs(current_time - timestamp) > TIMESTAMP_TOLERANCE_SECONDS:
             raise AuthenticationError("Timestamp out of tolerance window")
@@ -160,10 +169,6 @@ class AuthService:
             
         if user.is_banned:
             raise AuthenticationError("User is banned")
-
-        is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)
-        if not is_fresh:
-            raise AuthenticationError("Nonce already used")
             
         return user
 
