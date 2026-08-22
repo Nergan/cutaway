@@ -16,19 +16,14 @@
             <div style="font-family: monospace; font-size: 0.95rem; word-break: break-all; color: var(--text-main); line-height: 1.6; user-select: text; text-align: center; letter-spacing: 0.5px;">
               {{ phrase }}
             </div>
-            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-              <button class="footer-action" 
-                      type="button"
-                      @click.stop="copyPhrase" 
-                      style="color: var(--accent-moss); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem; border-radius: var(--radius-pill); background: rgba(141, 169, 112, 0.1); border: 1px solid rgba(141, 169, 112, 0.25); user-select: none;">
-                <i class="bi" :class="isCopied ? 'bi-check2' : 'bi-copy'"></i>
-                <span>{{ isCopied ? store.t('copied') : store.t('copy') }}</span>
-              </button>
-            </div>
+
           </div>
 
-          <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; margin-top: 1rem; font-size: 0.85rem; color: var(--text-main);">
-            <input type="checkbox" v-model="isConfirmed" style="accent-color: var(--accent-moss); width: 16px; height: 16px;">
+          <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-main); user-select: none;">
+            <div style="width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border-focus); display: flex; align-items: center; justify-content: center; transition: all 0.2s;" :style="isConfirmed ? 'background: var(--accent-moss); border-color: var(--accent-moss);' : 'background: rgba(128,128,128,0.1);'">
+              <i class="bi bi-check2" style="color: #000; font-size: 1rem;" v-if="isConfirmed"></i>
+            </div>
+            <input type="checkbox" v-model="isConfirmed" style="display: none;">
             <span>{{ store.t('backup_phrase_confirm_checkbox') }}</span>
           </label>
         </div>
@@ -45,7 +40,7 @@
                     cursor: isConfirmed ? 'pointer' : 'not-allowed'
                   }" 
                   @click="handleConfirm">
-            <i class="bi bi-check2"></i> {{ store.t('backup_phrase_confirm_btn') }}
+            <i class="bi" :class="isCopied ? 'bi-check2-all' : 'bi-files'"></i> {{ isCopied ? store.t('copied') : store.t('copy_and_continue') }}
           </button>
         </div>
       </div>

@@ -9,8 +9,22 @@
   will-change: width; 
   z-index: 1; 
   width: 220px; /* Explicit numeric width for smooth CSS transitions */
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Smooth collapse/expand animation */
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s; /* Smooth collapse/expand animation */
   overflow: hidden;
+}
+
+body:not(.uf-mode) .sidebar.non-uf {
+  cursor: pointer;
+}
+body:not(.uf-mode) .sidebar.non-uf:hover {
+  background: var(--bg-elevated);
+}
+body:not(.uf-mode) .sidebar.non-uf * {
+  cursor: default;
+}
+body:not(.uf-mode) .sidebar.non-uf a, 
+body:not(.uf-mode) .sidebar.non-uf button {
+  cursor: pointer;
 }
 
 .sidebar-content { 

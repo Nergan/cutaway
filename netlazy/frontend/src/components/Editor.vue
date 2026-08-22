@@ -33,10 +33,10 @@
       </div>
     </div>
 
-    <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste">
+    <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste" @click="handleWorkspaceClick">
       <div class="resizer-v left" @mousedown="startResize" v-show="!store.state.isWorkspaceCollapsed"></div>
       
-      <button class="workspace-toggle-btn" @click="store.state.isWorkspaceCollapsed = !store.state.isWorkspaceCollapsed" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
+      <button class="workspace-toggle-btn" v-if="store.state.isUserFriendlyInterface || store.state.isWorkspaceCollapsed" @click.stop="store.state.isWorkspaceCollapsed = false" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
         <i class="bi" :class="store.state.isWorkspaceCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
       </button>
       
@@ -63,7 +63,9 @@
           <transition name="collapse">
             <div v-show="showMedia" class="mobile-collapse-content">
               <div v-if="validMedia.length === 0 && !store.state.myProfile.audio" class="media-zone" @click="$refs.fileInput.click()">
-                <i class="bi bi-image" style="font-size: 1.5rem;"></i><br>{{ store.t('add_media_placeholder') }}
+                <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-image' : 'bi-plus-lg'" style="font-size: 1.5rem;"></i>
+                <br v-if="store.state.isUserFriendlyInterface">
+                <span v-if="store.state.isUserFriendlyInterface">{{ store.t('add_media_placeholder') }}</span>
               </div>
               
               <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.myProfile.media_id)">
@@ -231,7 +233,7 @@ onActivated(() => {
 
 function handleWorkspaceClick(e) {
   if (!store.state.isUserFriendlyInterface) {
-    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone')) {
+    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone') && !e.target.closest('.contact-row')) {
       store.state.isWorkspaceCollapsed = true;
     }
   }

@@ -72,11 +72,11 @@
     </div>
 
     <template v-else>
-      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed }">
+      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" @click="handleSidebarClick">
         <div class="sidebar-content">
-          <div class="brand-row">
-            <div class="brand" v-if="!store.state.isSidebarCollapsed" @click="reloadPage">netlazy</div>
-            <button class="collapse-btn" @click="store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed">
+          <div class="brand-row" v-if="store.state.isUserFriendlyInterface">
+            <div class="brand" v-if="!store.state.isSidebarCollapsed" @click.stop="reloadPage">netlazy</div>
+            <button class="collapse-btn" @click.stop="store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed">
               <i class="bi" :class="store.state.isSidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i>
             </button>
           </div>
@@ -365,9 +365,9 @@ const isMobile = ref(window.innerWidth <= 768);
 function handleResize() { isMobile.value = window.innerWidth <= 768; }
 
 function handleSidebarClick(e) {
-  if (!store.state.isUserFriendlyInterface && !store.state.isSidebarCollapsed) {
+  if (!store.state.isUserFriendlyInterface) {
     if (!e.target.closest('.nav-item') && !e.target.closest('.sidebar-footer') && !e.target.closest('.brand-row')) {
-      store.state.isSidebarCollapsed = true;
+      store.state.isSidebarCollapsed = !store.state.isSidebarCollapsed;
     }
   }
 }

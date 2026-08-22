@@ -25,7 +25,7 @@ const defaultState = {
     isSidebarCollapsed: window.innerWidth <= 768,
     workspaceWidth: 500,
     isWorkspaceCollapsed: false,
-    inboxSplit: 50,
+    isInboxSidebarCollapsed: window.innerWidth <= 768,
     toasts: [],
     tagSearchQuery: '',
     lastProfileEditTimestamp: 0,
@@ -103,10 +103,11 @@ export function useStore() {
         if (Capacitor.isNativePlatform()) return;
         const path = window.location.pathname;
         let view = 'editor';
-        if (path.match(/\/search(\/.*)?$/)) view = 'feed';
+        if (path.match(/\/feed(\/.*)?$/)) view = 'feed';
         else if (path.match(/\/inbox(\/.*)?$/)) view = 'inbox';
         else if (path.match(/\/privacy(\/.*)?$/)) view = 'vault';
         else if (path.match(/\/profile(\/.*)?$/)) view = 'editor';
+        else if (path.endsWith('/netlazy') || path.endsWith('/netlazy/')) view = 'editor';
         
         state.currentView = view;
         if (state.currentView === 'feed') {
@@ -121,11 +122,11 @@ export function useStore() {
 
     function syncViewToUrl(replace = false) {
         if (Capacitor.isNativePlatform()) return;
-        const viewMap = { feed: 'search', editor: 'profile', inbox: 'inbox', vault: 'privacy' };
+        const viewMap = { feed: 'feed', editor: 'profile', inbox: 'inbox', vault: 'privacy' };
         const segments = window.location.pathname.split('/');
         if (segments[segments.length - 1] === '') segments.pop();
         
-        while (segments.length > 0 && ['search', 'profile', 'inbox', 'privacy', 'config'].includes(segments[segments.length - 1])) {
+        while (segments.length > 0 && ['feed', 'profile', 'inbox', 'privacy', 'config'].includes(segments[segments.length - 1])) {
             segments.pop();
         }
         
@@ -167,7 +168,7 @@ export function useStore() {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 
-                ['theme', 'lang', 'isUserFriendlyInterface', 'workspaceWidth', 'isWorkspaceCollapsed', 'inboxSplit'].forEach(k => {
+                ['theme', 'lang', 'isUserFriendlyInterface', 'workspaceWidth', 'isWorkspaceCollapsed', 'isInboxSidebarCollapsed'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
                 
@@ -211,7 +212,7 @@ export function useStore() {
 
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
-        state.workspaceWidth, state.isWorkspaceCollapsed, state.inboxSplit,
+        state.workspaceWidth, state.isWorkspaceCollapsed, state.isInboxSidebarCollapsed,
         state.userId, state.currentAnchor
     ], async () => {
         if (!state.isInitialized) return;
@@ -220,7 +221,7 @@ export function useStore() {
                 isRegistered: state.isRegistered, isBanned: state.isBanned, currentView: state.currentView,
                 theme: state.theme, lang: state.lang, isUserFriendlyInterface: state.isUserFriendlyInterface,
                 workspaceWidth: state.workspaceWidth,
-                isWorkspaceCollapsed: state.isWorkspaceCollapsed, inboxSplit: state.inboxSplit,
+                isWorkspaceCollapsed: state.isWorkspaceCollapsed, isInboxSidebarCollapsed: state.isInboxSidebarCollapsed,
                 userId: state.userId, currentAnchor: state.currentAnchor
             };
             await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(saveObj) });
