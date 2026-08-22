@@ -621,6 +621,15 @@ export default {
     tooltip_exclude: "이 태그가 포함되어서는 안 됩니다",
     tooltip_bonus: "점수에 포인트를 더합니다",
     tooltip_abonus: "점수에서 포인트를 뺍니다",
+    no_message: "메시지 없음",
+    select_chat_prompt: "채팅을 선택하세요...",
+    no_chats: "채팅 없음...",
+    back: "뒤로",
+    matched_label: "매치됨",
+    accepted: "수락됨",
+    handshake_updated: "요청이 {status}",
+    failed_resolve_handshake: "요청 처리 실패",
+    failed_delete_chat: "채팅 삭제 실패",
     update_app: "앱 업데이트"
   }
 };

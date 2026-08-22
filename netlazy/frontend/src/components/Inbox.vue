@@ -358,7 +358,7 @@ async function deleteMatch(req) {
     if (selectedChat.value?.id === req.id) selectedChat.value = null;
     store.addToast(store.t('match_deleted'), "bi-trash")
   } catch (e) {
-    store.addToast("Failed to delete chat", "bi-x-circle")
+    store.addToast(store.t('failed_delete_chat'), "bi-x-circle")
   }
 }
 
