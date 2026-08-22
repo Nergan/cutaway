@@ -377,6 +377,8 @@ async function copyText(txt) {
   position: relative;
   overflow-y: auto;
   padding: 1.5rem;
+}
+
 .inbox-sidebar {
   width: 320px;
   flex-shrink: 0;
