@@ -364,6 +364,14 @@ let canPullToRefresh = false;
 const isMobile = ref(window.innerWidth <= 768);
 function handleResize() { isMobile.value = window.innerWidth <= 768; }
 
+function handleSidebarClick(e) {
+  if (!store.state.isUserFriendlyInterface && !store.state.isSidebarCollapsed) {
+    if (!e.target.closest('.nav-item') && !e.target.closest('.sidebar-footer') && !e.target.closest('.brand-row')) {
+      store.state.isSidebarCollapsed = true;
+    }
+  }
+}
+
 // Language Menu Logic
 const langMenu = ref({ open: false, x: 0, y: 0, isBelow: false });
 const availableLangs = [

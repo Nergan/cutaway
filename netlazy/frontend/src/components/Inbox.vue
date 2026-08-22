@@ -414,6 +414,19 @@ const showDeclined = ref(true)
 
 const isMobile = ref(window.innerWidth <= 768)
 
+async function markAsRead(req) {
+  if (req.is_read) return;
+  if ((req.status === 'pending' && !req.is_sender) || 
+      (req.status !== 'pending' && req.is_sender)) {
+    req.is_read = true;
+    try {
+      await api.post(`/inbox/handshakes/${req.id}/read`);
+    } catch (e) {
+      req.is_read = false;
+    }
+  }
+}
+
 function handleResize() {
   isMobile.value = window.innerWidth <= 768
 }

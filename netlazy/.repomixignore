@@ -5,7 +5,7 @@ kanban.json
 plan.md
 README*.md
 tags.yaml
-welcome.html
+# welcome.html
 LICENSE
 
 # Папки и сборщики

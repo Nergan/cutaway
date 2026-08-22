@@ -109,6 +109,22 @@ class InboxService:
         await self._handshake_repo.update(h)
         return h
 
+    async def mark_as_read(self, user_id: str, handshake_id: str) -> Handshake:
+        h = await self._handshake_repo.get_by_id(handshake_id)
+        if not h:
+            raise HandshakeNotFoundError("Handshake not found")
+        if h.receiver_id != user_id and h.sender_id != user_id:
+            raise UnauthorizedHandshakeActionError("Only participants can read this handshake")
+            
+        if h.status == "pending" and h.receiver_id == user_id:
+            h.is_read = True
+        elif h.status in ("accepted", "declined") and h.sender_id == user_id:
+            h.is_read = True
+            
+        h.updated_at = datetime.now(timezone.utc)
+        await self._handshake_repo.update(h)
+        return h
+
     async def get_inbox(self, user_id: str) -> List[Tuple[Handshake, Profile]]:
         handshakes = await self._handshake_repo.get_for_user(user_id)
         if not handshakes:

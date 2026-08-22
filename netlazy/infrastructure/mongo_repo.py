@@ -518,6 +518,7 @@ class MongoHandshakeRepository(HandshakeRepository):
             "offered_contact": h.offered_contact, "returned_contact": h.returned_contact,
             "message": h.message,
             "sender_deleted": h.sender_deleted, "receiver_deleted": h.receiver_deleted,
+            "is_read": h.is_read,
             "created_at": h.created_at, "updated_at": h.updated_at
         }
 
@@ -528,6 +529,7 @@ class MongoHandshakeRepository(HandshakeRepository):
             offered_contact=doc.get("offered_contact"), returned_contact=doc.get("returned_contact"),
             message=doc.get("message"),
             sender_deleted=doc.get("sender_deleted", False), receiver_deleted=doc.get("receiver_deleted", False),
+            is_read=doc.get("is_read", False),
             created_at=_force_utc(doc["created_at"]), updated_at=_force_utc(doc.get("updated_at"))
         )
 

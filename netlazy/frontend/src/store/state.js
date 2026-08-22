@@ -586,6 +586,7 @@ export function useStore() {
                 }
                 return {
                     ...r, 
+                    is_read: r.is_read,
                     selectedContacts: oldR ? oldR.selectedContacts : [], 
                     openDropdown: oldR ? oldR.openDropdown : false, 
                     resolving: oldR ? oldR.resolving : false, 

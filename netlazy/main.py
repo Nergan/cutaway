@@ -158,10 +158,14 @@ app = FastAPI(
     openapi_url=None if settings.environment == "production" else "/openapi.json"
 )
 
+_cors_origins = settings.cors_origins
+if "*" in _cors_origins and settings.cors_allow_credentials:
+    _cors_origins = [origin for origin in _cors_origins if origin != "*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=settings.cors_allow_credentials,
+    allow_origins=_cors_origins if _cors_origins else ["*"],
+    allow_credentials=False if "*" in settings.cors_origins else settings.cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Next-Anchor"]

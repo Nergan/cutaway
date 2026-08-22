@@ -148,6 +148,13 @@ body.light-theme .tag-library-header.blurred-header::before {
 .inbox-item { margin-bottom: 1.5rem; transition: all 0.3s ease; width: 100%; }
 .inbox-item.resolving { opacity: 0; transform: scale(0.95); }
 .inbox-item.error-deleted { opacity: 0; transform: scale(0.95); background-color: rgba(189, 106, 94, 0.1); border-color: var(--accent-danger); }
+.inbox-item.unread { position: relative; }
+.inbox-item.unread::before {
+  content: ''; position: absolute; top: 1.5rem; right: -0.5rem; width: 10px; height: 10px; border-radius: 50%; background-color: var(--accent-moss); box-shadow: 0 0 8px var(--accent-moss);
+}
+@media (max-width: 768px) {
+  .inbox-item.unread::before { top: -0.2rem; right: -0.2rem; }
+}
 
 .inbox-list-move, .inbox-list-enter-active, .inbox-list-leave-active { transition: all 0.4s ease; }
 .inbox-list-enter-from, .inbox-list-leave-to { opacity: 0; transform: scale(0.95); }

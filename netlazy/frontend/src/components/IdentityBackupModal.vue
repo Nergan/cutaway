@@ -126,8 +126,9 @@ async function copyPhrase(e) {
   }
 }
 
-function handleConfirm() {
+async function handleConfirm() {
   if (isConfirmed.value) {
+    await copyPhrase();
     emit('confirm');
   }
 }

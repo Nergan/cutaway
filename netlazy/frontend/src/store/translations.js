@@ -522,7 +522,7 @@ export default {
     create_account: "원클릭 계정 생성",
     light_mode: "라이트 모드",
     dark_mode: "다크 모드",
-    search_profiles: "프로필 검색",
+    search_profiles: "피드",
     my_profile: "내 프로필",
     inbox: "수신함",
     identity_vault: "내 키",

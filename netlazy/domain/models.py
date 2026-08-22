@@ -69,6 +69,7 @@ class Handshake:
     message: Optional[str] = None
     sender_deleted: bool = False
     receiver_deleted: bool = False
+    is_read: bool = False
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 

@@ -110,7 +110,7 @@ async def get_inbox(user: User = Depends(verify_request_signature)):
     return [
         InboxItemResponse(
             id=h.id, type=h.handshake_type, status=h.status,
-            is_sender=(h.sender_id == user.user_id),
+            is_sender=(h.sender_id == user.user_id), is_read=h.is_read,
             offered_contact=h.offered_contact, returned_contact=h.returned_contact,
             message=h.message,
             created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),

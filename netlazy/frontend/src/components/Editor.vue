@@ -229,6 +229,14 @@ onActivated(() => {
   }
 })
 
+function handleWorkspaceClick(e) {
+  if (!store.state.isUserFriendlyInterface) {
+    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone')) {
+      store.state.isWorkspaceCollapsed = true;
+    }
+  }
+}
+
 function triggerAutosave() {
   store.state.lastProfileEditTimestamp = Date.now();
   if (store.state.myProfile.bio.length > 200) {
