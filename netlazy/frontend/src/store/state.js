@@ -126,7 +126,7 @@ export function useStore() {
         const segments = window.location.pathname.split('/');
         if (segments[segments.length - 1] === '') segments.pop();
         
-        while (segments.length > 0 && ['feed', 'profile', 'inbox', 'privacy', 'config'].includes(segments[segments.length - 1])) {
+        while (segments.length > 0 && ['feed', 'profile', 'inbox', 'privacy', 'config', 'welcome'].includes(segments[segments.length - 1])) {
             segments.pop();
         }
         

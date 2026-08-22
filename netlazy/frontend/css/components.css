@@ -108,59 +108,35 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.15) !important; color: var(--accent-earth) !important; border-color: var(--accent-earth) !important; }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Volumetric Matte Glass Pills for Search Profiles & My Profile Tags */
+/* Simple unified flat tags with exactly 0.25 opacity */
 .tag-scroll-area .chip,
 #lib-tags-zone .chip,
 #active-tags-zone .chip {
   font-size: 0.85rem;
   padding: 0.35rem 0.95rem;
   border-radius: var(--radius-pill);
-  color: rgba(255, 255, 255, 0.9);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.25) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 
-              inset 0 -1px 2px rgba(0, 0, 0, 0.3), 
-              0 4px 12px rgba(0, 0, 0, 0.25) !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color: var(--text-main) !important;
+  background: rgba(128, 128, 128, 0.25) !important;
+  border: 1px solid rgba(128, 128, 128, 0.3) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s, transform 0.15s, border-color 0.2s;
 }
+
 body.light-theme .tag-scroll-area .chip,
 body.light-theme #lib-tags-zone .chip,
 body.light-theme #active-tags-zone .chip {
-  color: rgba(30, 30, 30, 0.9);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(245, 240, 230, 0.55) 60%, rgba(255, 255, 255, 0.7) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 
-              inset 0 -1px 2px rgba(0, 0, 0, 0.06), 
-              0 4px 12px rgba(0, 0, 0, 0.08) !important;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(128, 128, 128, 0.25) !important;
+  border: 1px solid rgba(128, 128, 128, 0.4) !important;
 }
 
 .tag-scroll-area .chip:hover,
 #lib-tags-zone .chip:hover,
 #active-tags-zone .chip:hover {
-  border-color: var(--accent-moss) !important;
+  border-color: var(--border-focus) !important;
   transform: translateY(-2px) scale(1.02);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 
-              inset 0 -1px 2px rgba(0, 0, 0, 0.3), 
-              0 6px 16px rgba(0, 0, 0, 0.35) !important;
-}
-
-body.light-theme .tag-scroll-area .chip:hover,
-body.light-theme #lib-tags-zone .chip:hover,
-body.light-theme #active-tags-zone .chip:hover {
-  border-color: var(--accent-moss) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), 
-              inset 0 -1px 2px rgba(0, 0, 0, 0.06), 
-              0 6px 16px rgba(0, 0, 0, 0.12) !important;
 }
 
 .tag-scroll-area .chip:active,
@@ -171,77 +147,33 @@ body.light-theme #active-tags-zone .chip:hover {
 
 #lib-tags-zone .chip i,
 #active-tags-zone .chip i {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 #lib-tags-zone .chip:hover i,
 #active-tags-zone .chip:hover i {
   transform: scale(1.2);
 }
 
-/* Volumetric Color Accent Fills for Active States */
-.tag-scroll-area .chip.require,
-#lib-tags-zone .chip.require,
-#active-tags-zone .chip.require {
-  color: #c9e8a9 !important;
-  background: linear-gradient(135deg, rgba(141, 169, 112, 0.55) 0%, rgba(141, 169, 112, 0.25) 100%) !important;
-  border-color: rgba(141, 169, 112, 0.85) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 4px 12px rgba(141, 169, 112, 0.35) !important;
+/* Unified Color Accent Fills for Active States at 0.25 opacity */
+.tag-scroll-area .chip.require, #lib-tags-zone .chip.require, #active-tags-zone .chip.require {
+  background: rgba(141, 169, 112, 0.25) !important;
+  border-color: rgba(141, 169, 112, 0.6) !important;
+  color: var(--accent-moss) !important;
 }
-body.light-theme .tag-scroll-area .chip.require,
-body.light-theme #lib-tags-zone .chip.require,
-body.light-theme #active-tags-zone .chip.require {
-  color: #3b5921 !important;
-  background: linear-gradient(135deg, rgba(104, 133, 76, 0.35) 0%, rgba(104, 133, 76, 0.15) 100%) !important;
-  border-color: rgba(104, 133, 76, 0.7) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 4px 12px rgba(104, 133, 76, 0.2) !important;
+.tag-scroll-area .chip.exclude, #lib-tags-zone .chip.exclude, #active-tags-zone .chip.exclude {
+  background: rgba(189, 106, 94, 0.25) !important;
+  border-color: rgba(189, 106, 94, 0.6) !important;
+  color: var(--accent-danger) !important;
 }
-.tag-scroll-area .chip.exclude,
-#lib-tags-zone .chip.exclude,
-#active-tags-zone .chip.exclude {
-  color: #f7b5ab !important;
-  background: linear-gradient(135deg, rgba(189, 106, 94, 0.55) 0%, rgba(189, 106, 94, 0.25) 100%) !important;
-  border-color: rgba(189, 106, 94, 0.85) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 4px 12px rgba(189, 106, 94, 0.35) !important;
+.tag-scroll-area .chip.bonus, #lib-tags-zone .chip.bonus, #active-tags-zone .chip.bonus {
+  background: rgba(110, 157, 174, 0.25) !important;
+  border-color: rgba(110, 157, 174, 0.6) !important;
+  color: var(--accent-info) !important;
 }
-body.light-theme .tag-scroll-area .chip.exclude,
-body.light-theme #lib-tags-zone .chip.exclude,
-body.light-theme #active-tags-zone .chip.exclude {
-  color: #7d291e !important;
-  background: linear-gradient(135deg, rgba(163, 72, 59, 0.35) 0%, rgba(163, 72, 59, 0.15) 100%) !important;
-  border-color: rgba(163, 72, 59, 0.7) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 4px 12px rgba(163, 72, 59, 0.2) !important;
-}
-.tag-scroll-area .chip.bonus,
-#lib-tags-zone .chip.bonus,
-#active-tags-zone .chip.bonus {
-  color: #b3dded !important;
-  background: linear-gradient(135deg, rgba(110, 157, 174, 0.55) 0%, rgba(110, 157, 174, 0.25) 100%) !important;
-  border-color: rgba(110, 157, 174, 0.85) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 4px 12px rgba(110, 157, 174, 0.35) !important;
-}
-body.light-theme .tag-scroll-area .chip.bonus,
-body.light-theme #lib-tags-zone .chip.bonus,
-body.light-theme #active-tags-zone .chip.bonus {
-  color: #295566 !important;
-  background: linear-gradient(135deg, rgba(74, 119, 135, 0.35) 0%, rgba(74, 119, 135, 0.15) 100%) !important;
-  border-color: rgba(74, 119, 135, 0.7) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 4px 12px rgba(74, 119, 135, 0.2) !important;
-}
-.tag-scroll-area .chip.abonus,
-#lib-tags-zone .chip.abonus,
-#active-tags-zone .chip.abonus {
-  color: #ebdcb8 !important;
-  background: linear-gradient(135deg, rgba(199, 179, 138, 0.55) 0%, rgba(199, 179, 138, 0.25) 100%) !important;
-  border-color: rgba(199, 179, 138, 0.85) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 4px 12px rgba(199, 179, 138, 0.35) !important;
-}
-body.light-theme .tag-scroll-area .chip.abonus,
-body.light-theme #lib-tags-zone .chip.abonus,
-body.light-theme #active-tags-zone .chip.abonus {
-  color: #63502d !important;
-  background: linear-gradient(135deg, rgba(156, 133, 90, 0.35) 0%, rgba(156, 133, 90, 0.15) 100%) !important;
-  border-color: rgba(156, 133, 90, 0.7) !important;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 4px 12px rgba(156, 133, 90, 0.2) !important;
+.tag-scroll-area .chip.abonus, #lib-tags-zone .chip.abonus, #active-tags-zone .chip.abonus {
+  background: rgba(199, 179, 138, 0.25) !important;
+  border-color: rgba(199, 179, 138, 0.6) !important;
+  color: var(--accent-earth) !important;
 }
 
 /* Tag Scroll Area with True Mask Diffusion */

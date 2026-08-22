@@ -4,35 +4,29 @@
 .tag-library-header { padding: 1rem 1.5rem; display: flex; align-items: center; margin-bottom: 0.5rem; }
 
 .tag-library-header.blurred-header::before {
-  background: rgba(0, 0, 0, 0.25) !important;
+  background: rgba(128, 128, 128, 0.25) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
+  z-index: -1;
 }
 body.light-theme .tag-library-header.blurred-header::before {
-  background: rgba(254, 252, 245, 0.25) !important;
+  background: rgba(128, 128, 128, 0.25) !important;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile-workspace-pane { flex-shrink: 0; position: relative; background: var(--bg-base); outline: none; border-left: 1px solid var(--border-subtle); }
 .profile-workspace-pane:not(.is-resizing) { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s; }
 
-body:not(.uf-mode) .profile-workspace-pane {
+body:not(.uf-mode) .profile-workspace-pane,
+body:not(.uf-mode) .profile-workspace-pane * {
   cursor: pointer;
 }
 body:not(.uf-mode) .profile-workspace-pane:hover {
   background: var(--bg-elevated);
 }
-body:not(.uf-mode) .profile-workspace-pane * {
-  cursor: auto;
-}
-body:not(.uf-mode) .profile-workspace-pane a, 
-body:not(.uf-mode) .profile-workspace-pane button,
 body:not(.uf-mode) .profile-workspace-pane input,
-body:not(.uf-mode) .profile-workspace-pane textarea,
-body:not(.uf-mode) .profile-workspace-pane .chip,
-body:not(.uf-mode) .profile-workspace-pane .feed-media-item,
-body:not(.uf-mode) .profile-workspace-pane .contact-row {
-  cursor: pointer;
+body:not(.uf-mode) .profile-workspace-pane textarea {
+  cursor: text;
 }
 .profile-workspace-pane.collapsed { border: none; }
 .workspace-scroll-area { height: 100%; width: 100%; min-width: 350px; overflow-y: auto; overflow-x: hidden; padding: 2.5rem; position: relative; transition: background 0.2s; }

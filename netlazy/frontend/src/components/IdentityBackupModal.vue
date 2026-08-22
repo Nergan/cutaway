@@ -19,12 +19,12 @@
 
           </div>
 
-          <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-main); user-select: none;">
-            <div style="width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border-focus); display: flex; align-items: center; justify-content: center; transition: all 0.2s;" :style="isConfirmed ? 'background: var(--accent-moss); border-color: var(--accent-moss);' : 'background: rgba(128,128,128,0.1);'">
-              <i class="bi bi-check2" style="color: #000; font-size: 1rem;" v-if="isConfirmed"></i>
+          <label class="custom-checkbox-row" style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer; margin-top: 2rem; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-elevated); transition: border-color 0.2s;">
+            <div style="width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border-focus); display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;" :style="isConfirmed ? 'background: var(--accent-moss); border-color: var(--accent-moss);' : 'background: transparent;'">
+              <i class="bi bi-check" style="color: #000; font-size: 1.2rem; line-height: 1; margin-top: 2px;" v-if="isConfirmed"></i>
             </div>
             <input type="checkbox" v-model="isConfirmed" style="display: none;">
-            <span>{{ store.t('backup_phrase_confirm_checkbox') }}</span>
+            <span style="font-size: 0.85rem; color: var(--text-main); user-select: none; line-height: 1.4;">{{ store.t('backup_phrase_confirm_checkbox') }}</span>
           </label>
         </div>
 

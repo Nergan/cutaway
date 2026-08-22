@@ -1,5 +1,5 @@
 <template>
-  <div class="inbox-layout">
+  <div style="display: flex; height: 100%; width: 100%; overflow: hidden;" ref="inboxRoot">
     <div class="inbox-main-pane" v-show="!isMobile || selectedChat">
       <div v-if="isMobile && selectedChat" style="padding-bottom: 1rem;">
         <button class="footer-action icon-btn" @click="selectedChat = null"><i class="bi bi-chevron-left"></i> back</button>
@@ -84,7 +84,7 @@
           </div>
         </div>
       </div>
-      <div v-else class="empty-state" style="height: 100%;">
+      <div v-else class="empty-state">
         <i class="bi bi-chat-dots empty-icon"></i>
         <h3>select a chat...</h3>
       </div>
@@ -92,9 +92,13 @@
 
     <!-- RIGHT SIDEBAR -->
     <div class="inbox-sidebar" :class="{ 'collapsed': store.state.isInboxSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" @click="handleInboxBgClick" v-show="!isMobile || !selectedChat">
-      <button class="inbox-toggle-btn workspace-toggle-btn" v-if="store.state.isUserFriendlyInterface || store.state.isInboxSidebarCollapsed" @click.stop="store.state.isInboxSidebarCollapsed = !store.state.isInboxSidebarCollapsed" style="left: -34px; top: 1.65rem; border-right: none; border-radius: 25px 0 0 25px; box-shadow: -2px 2px 8px rgba(0,0,0,0.2); background: var(--bg-surface); border: 1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; width:34px; height:50px; outline:none;">
-        <i class="bi" :class="store.state.isInboxSidebarCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
-      </button>
+      
+      <div class="brand-row" v-if="store.state.isUserFriendlyInterface" style="padding: 1.5rem 1rem; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; min-height: 70px;">
+        <div class="brand" v-if="!store.state.isInboxSidebarCollapsed" style="font-size: 1.1rem; cursor: default;">{{ store.t('inbox') }}</div>
+        <button class="collapse-btn" @click.stop="store.state.isInboxSidebarCollapsed = !store.state.isInboxSidebarCollapsed" :style="store.state.isInboxSidebarCollapsed ? 'margin: 0 auto;' : 'margin: 0;'">
+          <i class="bi" :class="store.state.isInboxSidebarCollapsed ? 'bi-chat-left-dots' : 'bi-chevron-right'"></i>
+        </button>
+      </div>
 
       <div class="inbox-filters" v-show="!store.state.isInboxSidebarCollapsed" :class="{ 'mobile-bottom': isMobile }" @click.stop>
         <div class="filter-group">
@@ -368,22 +372,13 @@ async function copyText(txt) {
 </script>
 
 <style scoped>
-.inbox-layout {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  overflow: hidden;
-}
 .inbox-main-pane {
   flex-grow: 1;
   position: relative;
   overflow-y: auto;
   padding: 1.5rem;
-}
 .inbox-sidebar {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
   border-left: 1px solid var(--border-subtle);
   background: var(--bg-surface);
@@ -394,10 +389,25 @@ async function copyText(txt) {
   z-index: 10;
 }
 .inbox-sidebar.collapsed { width: 80px; }
-body:not(.uf-mode) .inbox-sidebar.non-uf { cursor: pointer; }
-body:not(.uf-mode) .inbox-sidebar.non-uf:hover { background: var(--bg-elevated); }
-body:not(.uf-mode) .inbox-sidebar.non-uf * { cursor: auto; }
-body:not(.uf-mode) .inbox-sidebar.non-uf .chat-preview { cursor: pointer; }
+
+/* Force pointer on everything in non-UF mode inbox sidebar to indicate clickability */
+body:not(.uf-mode) .inbox-sidebar.non-uf,
+body:not(.uf-mode) .inbox-sidebar.non-uf * { 
+  cursor: pointer; 
+}
+body:not(.uf-mode) .inbox-sidebar.non-uf:hover { 
+  background: var(--bg-elevated); 
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  color: var(--text-muted);
+}
 
 .inbox-filters {
   padding: 1rem;

@@ -254,14 +254,15 @@ async def serve_spa(request: Request, full_path: str = ""):
             return RedirectResponse(url=f"{base}/profile", status_code=303)
         raise HTTPException(status_code=404)
 
-    if full_path == "welcome":
+    # Explicitly catch welcome route and serve the static HTML directly
+    if full_path in ("welcome", "welcome/"):
         welcome_file = BASE_DIR / "static" / "welcome.html"
         if not welcome_file.exists():
             welcome_file = BASE_DIR / "welcome.html"
         if welcome_file.exists():
             return FileResponse(welcome_file)
 
-    allowed_paths = {"", "feed", "profile", "inbox", "privacy"}
+    allowed_paths = {"", "feed", "feed/", "profile", "profile/", "inbox", "inbox/", "privacy", "privacy/"}
     if full_path not in allowed_paths:
         base = _get_base_path(request)
         return RedirectResponse(url=f"{base}/profile", status_code=303)

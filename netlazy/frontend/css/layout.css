@@ -13,18 +13,14 @@
   overflow: hidden;
 }
 
-body:not(.uf-mode) .sidebar.non-uf {
+/* Force pointer on everything in non-UF mode sidebars/workspaces to indicate clickability */
+body:not(.uf-mode) .sidebar.non-uf,
+body:not(.uf-mode) .sidebar.non-uf * {
   cursor: pointer;
 }
+
 body:not(.uf-mode) .sidebar.non-uf:hover {
   background: var(--bg-elevated);
-}
-body:not(.uf-mode) .sidebar.non-uf * {
-  cursor: default;
-}
-body:not(.uf-mode) .sidebar.non-uf a, 
-body:not(.uf-mode) .sidebar.non-uf button {
-  cursor: pointer;
 }
 
 .sidebar-content { 
