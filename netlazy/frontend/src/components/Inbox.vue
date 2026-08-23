@@ -2,7 +2,7 @@
   <div style="display: flex; height: 100%; width: 100%; overflow: hidden;" ref="inboxRoot">
     <div class="inbox-main-pane" v-show="!isMobile || selectedChat">
       <div v-if="isMobile && selectedChat" style="padding-bottom: 1rem;">
-        <button class="footer-action icon-btn" @click="selectedChat = null"><i class="bi bi-chevron-left"></i> back</button>
+        <button class="footer-action icon-btn" @click="selectedChatId = null"><i class="bi bi-chevron-left"></i> back</button>
       </div>
       <div v-if="selectedChat" class="inbox-chat-detail">
         <div class="card">
@@ -70,15 +70,23 @@
             <div class="chat-actions" style="display:flex; gap:1rem; margin-top: 1rem; justify-content: flex-end;">
               <template v-if="selectedChat.chatState === 'received'">
                 <template v-if="selectedChat.type === 'share'">
-                   <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click="deleteMatch(selectedChat)"><i class="bi bi-trash3"></i></button>
+                   <button class="footer-action icon-btn" style="color: var(--accent-danger);" :disabled="isBusy(selectedChat)" @click="deleteMatch(selectedChat)">
+                     <i class="bi" :class="actionIcon(selectedChat, 'delete', 'bi-trash3')"></i>
+                   </button>
                 </template>
                 <template v-else-if="selectedChat.type === 'exchange' || selectedChat.type === 'demand'">
-                   <button class="footer-action" style="color: var(--accent-danger);" @click="resolveRequest(selectedChat, 'declined')"><i class="bi bi-x-lg"></i> {{ store.t('decline') }}</button>
-                   <button class="footer-action" style="color: var(--accent-moss);" @click="openResolveModal(selectedChat)"><i class="bi bi-check-lg"></i> {{ selectedChat.type === 'exchange' ? store.t('uf_action_exchange') : store.t('send') }}</button>
+                   <button class="footer-action" style="color: var(--accent-danger);" :disabled="isBusy(selectedChat)" @click="resolveRequest(selectedChat, 'declined')">
+                     <i class="bi" :class="actionIcon(selectedChat, 'decline', 'bi-x-lg')"></i> {{ store.t('decline') }}
+                   </button>
+                   <button class="footer-action" style="color: var(--accent-moss);" :disabled="isBusy(selectedChat)" @click="openResolveModal(selectedChat)">
+                     <i class="bi" :class="actionIcon(selectedChat, 'accept', 'bi-check-lg')"></i> {{ selectedChat.type === 'exchange' ? store.t('uf_action_exchange') : store.t('send') }}
+                   </button>
                 </template>
               </template>
-              <template v-else-if="['matched', 'declined'].includes(selectedChat.chatState)">
-                 <button class="footer-action icon-btn" style="color: var(--accent-danger);" @click="deleteMatch(selectedChat)"><i class="bi bi-trash3"></i></button>
+              <template v-else-if="selectedChat.chatState === 'sent' || ['matched', 'declined'].includes(selectedChat.chatState)">
+                 <button class="footer-action icon-btn" style="color: var(--accent-danger);" :disabled="isBusy(selectedChat)" @click="deleteMatch(selectedChat)">
+                   <i class="bi" :class="actionIcon(selectedChat, 'delete', 'bi-trash3')"></i>
+                 </button>
               </template>
             </div>
           </div>
@@ -91,16 +99,16 @@
     </div>
 
     <!-- RIGHT SIDEBAR -->
-    <div class="inbox-sidebar" :class="{ 'collapsed': store.state.isInboxSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" @click="handleInboxBgClick" v-show="!isMobile || !selectedChat">
+    <div class="inbox-sidebar" :class="{ 'collapsed': isSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" v-show="!isMobile || !selectedChat">
       
-      <div class="brand-row" v-if="store.state.isUserFriendlyInterface" style="padding: 1.5rem 1rem; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; min-height: 70px;">
-        <div class="brand" v-if="!store.state.isInboxSidebarCollapsed" style="font-size: 1.1rem; cursor: default;">{{ store.t('inbox') }}</div>
-        <button class="collapse-btn" @click.stop="store.state.isInboxSidebarCollapsed = !store.state.isInboxSidebarCollapsed" :style="store.state.isInboxSidebarCollapsed ? 'margin: 0 auto;' : 'margin: 0;'">
-          <i class="bi" :class="store.state.isInboxSidebarCollapsed ? 'bi-chat-left-dots' : 'bi-chevron-right'"></i>
+      <div class="inbox-brand-row" v-if="store.state.isUserFriendlyInterface">
+        <div class="brand" v-if="!isSidebarCollapsed">{{ store.t('inbox') }}</div>
+        <button class="collapse-btn" @click.stop="store.state.isInboxSidebarCollapsed = !store.state.isInboxSidebarCollapsed">
+          <i class="bi" :class="isSidebarCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
         </button>
       </div>
 
-      <div class="inbox-filters" v-show="!store.state.isInboxSidebarCollapsed" :class="{ 'mobile-bottom': isMobile }" @click.stop>
+      <div class="inbox-filters" v-show="!isSidebarCollapsed" @click.stop>
         <div class="filter-group">
           <i class="bi bi-envelope-arrow-down filter-icon" :class="{active: filters.state.received}" @click="filters.state.received = !filters.state.received"></i>
           <i class="bi bi-envelope-arrow-up filter-icon" :class="{active: filters.state.sent}" @click="filters.state.sent = !filters.state.sent"></i>
@@ -114,38 +122,39 @@
         </div>
       </div>
 
-      <div class="inbox-chat-list scrollable-content" style="padding: 0; flex-grow: 1;">
-        <div class="chat-preview" v-for="chat in filteredChats" :key="chat.id" @click.stop="selectChat(chat)" :class="{ unread: isUnread(chat), active: selectedChat?.id === chat.id, 'uf-unread': store.state.isUserFriendlyInterface, 'nonuf-unread': !store.state.isUserFriendlyInterface }">
-          <div class="chat-avatar-container">
-            <template v-if="chat.avatarUrl">
-               <img v-if="chat.avatarType === 'image'" :src="chat.avatarUrl" class="chat-avatar" />
-               <video v-else-if="chat.avatarType === 'video'" :src="chat.avatarUrl" class="chat-avatar" muted autoplay loop playsinline></video>
-            </template>
-            <i v-else class="bi bi-person chat-avatar-icon"></i>
-            
-            <div class="chat-icons-badge" v-if="store.state.isInboxSidebarCollapsed">
-               <i class="bi" :class="getStateIcon(chat)"></i>
-               <i class="bi" :class="getTypeIcon(chat)" :style="{ color: getTypeColor(chat.type) }"></i>
-               <div class="unread-dot" v-if="isUnread(chat)"></div>
+      <div class="inbox-chat-list scrollable-content">
+        <transition-group name="chat-item" tag="div" class="inbox-chat-list-inner">
+          <div class="chat-preview" v-for="chat in filteredChats" :key="chat.id" @click.stop="selectChat(chat)" :class="{ unread: isUnread(chat), active: selectedChat?.id === chat.id, 'uf-unread': store.state.isUserFriendlyInterface, 'nonuf-unread': !store.state.isUserFriendlyInterface }">
+            <div class="chat-avatar-container" v-intersect="() => loadChatAvatar(chat)">
+              <template v-if="chat.avatarUrl">
+                 <img v-if="chat.avatarType === 'image'" :src="chat.avatarUrl" class="chat-avatar" />
+                 <video v-else-if="chat.avatarType === 'video'" :src="chat.avatarUrl" class="chat-avatar" muted autoplay loop playsinline></video>
+              </template>
+              <i v-else class="bi bi-person chat-avatar-icon"></i>
+              
+              <div class="chat-icons-badge" v-if="isSidebarCollapsed">
+                 <i class="bi" :class="getStateIcon(chat)"></i>
+                 <i class="bi" :class="getTypeIcon(chat)" :style="{ color: getTypeColor(chat.type) }"></i>
+                 <div class="unread-dot" v-if="isUnread(chat)"></div>
+              </div>
             </div>
-          </div>
-          
-          <div class="chat-preview-content" v-if="!store.state.isInboxSidebarCollapsed">
-             <div class="chat-preview-header">
-               <div style="display:flex; align-items:center; gap: 0.3rem;">
-                 <i class="bi" :class="getStateIcon(chat)" style="font-size: 0.75rem; color: var(--text-muted);"></i>
-                 <i class="bi" :class="getTypeIcon(chat)" :style="{ color: getTypeColor(chat.type), fontSize: '0.75rem' }"></i>
+            
+            <div class="chat-preview-content" v-if="!isSidebarCollapsed">
+               <div class="chat-preview-header">
+                 <div class="chat-preview-icons">
+                   <i class="bi" :class="getStateIcon(chat)"></i>
+                   <i class="bi" :class="getTypeIcon(chat)" :style="{ color: getTypeColor(chat.type) }"></i>
+                 </div>
                </div>
-               <span class="chat-time">{{ formatTime(chat.updated_at) }}</span>
-             </div>
-             <div class="chat-preview-message" :class="{'italic-muted': !chat.message}">
-               {{ chat.message || (store.state.isUserFriendlyInterface ? 'no message' : '') }}
-             </div>
+               <div class="chat-preview-message" :class="{'italic-muted': !chat.message}">
+                 {{ chat.message || (store.state.isUserFriendlyInterface ? 'no message' : '') }}
+               </div>
+            </div>
+            <div class="unread-dot" v-if="isUnread(chat) && !isSidebarCollapsed && store.state.isUserFriendlyInterface"></div>
           </div>
-          <div class="unread-dot" v-if="isUnread(chat) && !store.state.isInboxSidebarCollapsed && store.state.isUserFriendlyInterface"></div>
-        </div>
+        </transition-group>
         
-        <div v-if="filteredChats.length === 0" style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+        <div v-if="filteredChats.length === 0 && !isSidebarCollapsed" class="inbox-empty-label">
           no chats...
         </div>
       </div>
@@ -167,8 +176,8 @@
             </div>
           </div>
           <div class="bottom-sheet-footer" v-if="validPrivateContacts.length > 0">
-            <button class="footer-action icon-btn" @click="confirmResolve(resolveReq)" style="font-size: 1.5rem; color: var(--accent-moss);">
-              <i class="bi bi-send-fill"></i>
+            <button class="footer-action icon-btn" @click="confirmResolve(resolveReq)" :disabled="!!pendingAction" style="font-size: 1.5rem; color: var(--accent-moss);">
+              <i class="bi" :class="pendingAction && pendingAction.type === 'accept' ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
             </button>
           </div>
         </div>
@@ -178,7 +187,7 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted, onUnmounted, onActivated } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { useStore } from '../store/state.js'
 import api from '../utils/api.js'
 
@@ -186,8 +195,9 @@ const store = useStore()
 const inboxRoot = ref(null)
 
 const isMobile = ref(window.innerWidth <= 768)
-const selectedChat = ref(null)
+const selectedChatId = ref(null)
 const resolveReq = ref(null)
+const pendingAction = ref(null)
 
 const filters = reactive({
   state: { received: true, sent: true, matched: true, declined: true },
@@ -217,11 +227,29 @@ const filteredChats = computed(() => {
   return chats.value.filter(c => filters.state[c.chatState] && filters.type[c.type]);
 });
 
-function handleInboxBgClick(e) {
-  if (!store.state.isUserFriendlyInterface && !store.state.isInboxSidebarCollapsed) {
-    if (e.target.classList.contains('inbox-sidebar') || e.target.classList.contains('inbox-chat-list')) {
-      store.state.isInboxSidebarCollapsed = true;
-    }
+const selectedChat = computed(() => chats.value.find(c => c.id === selectedChatId.value) || null)
+const isSidebarCollapsed = computed(() => store.state.isInboxSidebarCollapsed && !isMobile.value)
+
+function patchInbox(id, patch) {
+  const item = store.state.inbox.find(r => r.id === id)
+  if (item) Object.assign(item, patch)
+}
+
+function isBusy(chat) {
+  return !!(pendingAction.value && pendingAction.value.id === chat.id)
+}
+
+function actionIcon(chat, type, idleIcon) {
+  if (pendingAction.value && pendingAction.value.id === chat.id && pendingAction.value.type === type) {
+    return 'bi-hourglass-split spin'
+  }
+  return idleIcon
+}
+
+function loadChatAvatar(chat) {
+  const media = chat.profile?.media?.[0]
+  if (media && chat.profile?.media_id) {
+    store.loadDecryptedMedia(media, chat.profile.media_id)
   }
 }
 
@@ -249,30 +277,24 @@ function getChatStateLabel(state) {
 }
 
 function isUnread(chat) {
-  return !chat.is_read;
+  if (chat.status === 'pending' && !chat.is_sender) return !chat.is_read
+  if (chat.status !== 'pending' && chat.is_sender) return !chat.is_read
+  return false
 }
 
 async function markAsRead(req) {
-  if (req.is_read) return;
-  if ((req.status === 'pending' && !req.is_sender) || 
-      (req.status !== 'pending' && req.is_sender)) {
-    req.is_read = true;
-    try {
-      await api.post(`/inbox/handshakes/${req.id}/read`);
-    } catch (e) {
-      req.is_read = false;
-    }
+  if (!isUnread(req)) return
+  patchInbox(req.id, { is_read: true })
+  try {
+    await api.post(`/inbox/handshakes/${req.id}/read`)
+  } catch (e) {
+    patchInbox(req.id, { is_read: false })
   }
 }
 
 function selectChat(chat) {
-  selectedChat.value = chat;
-  markAsRead(chat);
-}
-
-function formatTime(isoString) {
-  const d = new Date(isoString);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  selectedChatId.value = chat.id
+  markAsRead(chat)
 }
 
 function handleResize() {
@@ -281,8 +303,12 @@ function handleResize() {
 
 const validPrivateContacts = computed(() => store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== ''))
 
+watch(filteredChats, (list) => {
+  list.forEach(loadChatAvatar)
+}, { immediate: true })
+
 onMounted(() => {
-  if (store.state.inbox.length === 0) store.fetchInbox()
+  store.fetchInbox(store.state.inbox.length > 0)
   window.addEventListener('resize', handleResize)
 })
 onUnmounted(() => {
@@ -327,38 +353,50 @@ function toggleReqContact(req, val) {
 }
 
 async function confirmResolve(req) {
-  if (req.selectedContacts.length === 0) return;
-  await resolveRequest(selectedChat.value, 'accepted', req.selectedContacts.join(', '));
-  resolveReq.value = null;
+  if (!req.selectedContacts || req.selectedContacts.length === 0) return
+  const target = selectedChat.value
+  if (!target) return
+  const ok = await resolveRequest(target, 'accepted', req.selectedContacts.join(', '))
+  if (ok) resolveReq.value = null
 }
 
 async function resolveRequest(req, status, returned_contact = null) {
+  if (pendingAction.value) return false
+  pendingAction.value = { id: req.id, type: status === 'accepted' ? 'accept' : 'decline' }
   try {
-    const payload = { status, returned_contact };
-    await api.post(`/inbox/handshakes/${req.id}/resolve`, payload);
-    
-    req.status = status;
-    if (status === 'accepted') req.returned_contact = returned_contact;
-    store.addToast(`Handshake ${status}`, "bi-check2");
-    
-    await store.fetchInbox(true);
-    const updated = store.state.inbox.find(c => c.id === req.id);
-    if (updated) {
-        selectedChat.value = chats.value.find(c => c.id === req.id) || null;
+    const payload = { status, returned_contact }
+    await api.post(`/inbox/handshakes/${req.id}/resolve`, payload)
+
+    if (status === 'declined') {
+      store.state.inbox = store.state.inbox.filter(r => r.id !== req.id)
+      if (selectedChatId.value === req.id) selectedChatId.value = null
+    } else {
+      patchInbox(req.id, { status, returned_contact, is_read: true })
     }
+    store.addToast(`Handshake ${status}`, "bi-check2")
+    await store.fetchInbox(true)
+    return true
   } catch (e) {
-    store.addToast("Failed to resolve handshake", "bi-x-circle");
+    const detail = e.response && e.response.data && e.response.data.detail
+    store.addToast(detail || "Failed to resolve handshake", "bi-x-circle")
+    return false
+  } finally {
+    pendingAction.value = null
   }
 }
 
 async function deleteMatch(req) {
+  if (pendingAction.value) return
+  pendingAction.value = { id: req.id, type: 'delete' }
   try {
     await api.delete(`/inbox/handshakes/${req.id}`)
     store.state.inbox = store.state.inbox.filter(r => r.id !== req.id)
-    if (selectedChat.value?.id === req.id) selectedChat.value = null;
+    if (selectedChatId.value === req.id) selectedChatId.value = null
     store.addToast(store.t('match_deleted'), "bi-trash")
   } catch (e) {
     store.addToast(store.t('failed_delete_chat'), "bi-x-circle")
+  } finally {
+    pendingAction.value = null
   }
 }
 
@@ -389,16 +427,38 @@ async function copyText(txt) {
   transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s;
   position: relative;
   z-index: 10;
+  overflow-x: hidden;
 }
-.inbox-sidebar.collapsed { width: 80px; }
+.inbox-sidebar.collapsed {
+  width: 60px;
+  overflow-x: hidden;
+}
+.inbox-sidebar.collapsed .inbox-chat-list,
+.inbox-sidebar.collapsed .inbox-chat-list-inner,
+.inbox-sidebar.collapsed .chat-preview {
+  overflow-x: hidden;
+  max-width: 100%;
+}
 
-/* Force pointer on everything in non-UF mode inbox sidebar to indicate clickability */
-body:not(.uf-mode) .inbox-sidebar.non-uf,
-body:not(.uf-mode) .inbox-sidebar.non-uf * { 
-  cursor: pointer; 
+.inbox-brand-row {
+  padding: 1rem 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  flex-shrink: 0;
 }
-body:not(.uf-mode) .inbox-sidebar.non-uf:hover { 
-  background: var(--bg-elevated); 
+.inbox-brand-row .brand {
+  font-size: 1.05rem;
+  cursor: default;
+}
+.inbox-sidebar.collapsed .inbox-brand-row {
+  padding: 1rem 0;
+  justify-content: center;
+}
+.inbox-sidebar.collapsed .inbox-brand-row .collapse-btn {
+  margin: 0 auto;
 }
 
 .empty-state {
@@ -412,27 +472,24 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
 }
 
 .inbox-filters {
-  padding: 1rem;
+  padding: 0.35rem 0.5rem;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-.inbox-filters.mobile-bottom {
-  order: 3;
-  border-bottom: none;
-  border-top: 1px solid var(--border-subtle);
+  gap: 0.1rem;
+  flex-shrink: 0;
 }
 .filter-group {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
+  gap: 0.2rem;
 }
 .filter-icon {
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s, transform 0.2s;
-  padding: 0.2rem;
+  padding: 0.15rem 0.28rem;
 }
 .filter-icon:hover { transform: scale(1.1); }
 .filter-icon.active { color: var(--accent-moss); }
@@ -443,17 +500,24 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
 .chat-preview {
   display: flex;
   align-items: center;
-  padding: 0.8rem 1rem;
-  gap: 1rem;
+  padding: 0.45rem 0.65rem;
+  gap: 0.55rem;
   border-bottom: 1px solid var(--border-subtle);
   transition: background 0.2s;
   cursor: pointer;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.inbox-sidebar.collapsed .chat-preview {
+  padding: 0.4rem 0;
+  justify-content: center;
+  gap: 0;
 }
 .chat-preview:hover, .chat-preview.active { background: rgba(128,128,128,0.05); }
 .chat-preview.unread.nonuf-unread { background: rgba(141, 169, 112, 0.1); }
 
 .chat-avatar-container {
-  width: 45px; height: 45px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: var(--bg-elevated);
   display: flex;
@@ -464,7 +528,7 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   overflow: hidden;
 }
 .chat-avatar { width: 100%; height: 100%; object-fit: cover; }
-.chat-avatar-icon { font-size: 1.5rem; color: var(--text-muted); }
+.chat-avatar-icon { font-size: 1.2rem; color: var(--text-muted); }
 .chat-icons-badge {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -473,9 +537,9 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.05rem;
   color: white;
-  font-size: 0.65rem;
+  font-size: 0.58rem;
 }
 
 .chat-preview-content {
@@ -483,16 +547,21 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.12rem;
 }
 .chat-preview-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
-.chat-time { font-size: 0.7rem; color: var(--text-muted); }
+.chat-preview-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
 .chat-preview-message {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
@@ -503,7 +572,7 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   color: var(--text-muted);
 }
 .unread-dot {
-  width: 10px; height: 10px;
+  width: 8px; height: 8px;
   background: var(--accent-moss);
   border-radius: 50%;
   box-shadow: 0 0 8px var(--accent-moss);
@@ -513,9 +582,23 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
 .inbox-chat-list {
   position: relative;
   overflow-x: hidden;
+  flex-grow: 1;
+  padding: 0;
+  min-width: 0;
+}
+.inbox-chat-list-inner {
+  position: relative;
+  overflow-x: hidden;
+  min-width: 0;
+}
+.inbox-empty-label {
+  padding: 1rem 0.6rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
-/* Chat appear/disappear animation */
 .chat-item-enter-active,
 .chat-item-leave-active {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -538,11 +621,21 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   .inbox-sidebar.collapsed {
     width: 100% !important;
   }
-  .inbox-filters.mobile-bottom {
-    padding-bottom: calc(0.6rem + 65px + env(safe-area-inset-bottom));
+  .inbox-filters {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    gap: 0.5rem;
   }
+  .filter-group {
+    flex: 1;
+    justify-content: space-evenly;
+    gap: 0.15rem;
+  }
+  .inbox-brand-row .collapse-btn { display: none; }
   .inbox-chat-list {
-    padding-bottom: calc(65px + env(safe-area-inset-bottom));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
 </style>

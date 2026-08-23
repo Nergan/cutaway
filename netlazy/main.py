@@ -239,10 +239,8 @@ async def health_check():
 
 @router.get("/")
 async def root_redirect(request: Request):
-    index_file = BASE_DIR / "static" / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return HTMLResponse(content="<html><body><h1>Frontend Not Built Yet</h1></body></html>", status_code=200)
+    base = _get_base_path(request)
+    return RedirectResponse(url=f"{base}/profile", status_code=303)
 
 
 @router.get("/{full_path:path}", include_in_schema=False)
@@ -262,7 +260,7 @@ async def serve_spa(request: Request, full_path: str = ""):
         if welcome_file.exists():
             return FileResponse(welcome_file)
 
-    allowed_paths = {"", "feed", "feed/", "profile", "profile/", "inbox", "inbox/", "privacy", "privacy/"}
+    allowed_paths = {"feed", "feed/", "profile", "profile/", "inbox", "inbox/", "privacy", "privacy/"}
     if full_path not in allowed_paths:
         base = _get_base_path(request)
         return RedirectResponse(url=f"{base}/profile", status_code=303)

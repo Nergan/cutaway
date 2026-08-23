@@ -58,6 +58,7 @@ class InboxService:
             existing.message = message
             existing.sender_deleted = False
             existing.receiver_deleted = False
+            existing.is_read = False
             existing.updated_at = datetime.now(timezone.utc)
             await self._handshake_repo.update(existing)
             return existing
@@ -105,6 +106,7 @@ class InboxService:
         if status == "declined":
             h.receiver_deleted = True
 
+        h.is_read = False
         h.updated_at = datetime.now(timezone.utc)
         await self._handshake_repo.update(h)
         return h
@@ -115,14 +117,15 @@ class InboxService:
             raise HandshakeNotFoundError("Handshake not found")
         if h.receiver_id != user_id and h.sender_id != user_id:
             raise UnauthorizedHandshakeActionError("Only participants can read this handshake")
-            
-        if h.status == "pending" and h.receiver_id == user_id:
+
+        should_mark = (
+            (h.status == "pending" and h.receiver_id == user_id) or
+            (h.status in ("accepted", "declined") and h.sender_id == user_id)
+        )
+        if should_mark and not h.is_read:
             h.is_read = True
-        elif h.status in ("accepted", "declined") and h.sender_id == user_id:
-            h.is_read = True
-            
-        h.updated_at = datetime.now(timezone.utc)
-        await self._handshake_repo.update(h)
+            h.updated_at = datetime.now(timezone.utc)
+            await self._handshake_repo.update(h)
         return h
 
     async def get_inbox(self, user_id: str) -> List[Tuple[Handshake, Profile]]:

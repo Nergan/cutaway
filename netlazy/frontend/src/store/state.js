@@ -99,15 +99,20 @@ export function useStore() {
         }, 10000);
     }
 
+    function isBareAppPath(path) {
+        const normalized = (path || '/').replace(/\/+$/, '') || '/';
+        return normalized === '/' || normalized === '/netlazy';
+    }
+
     function syncUrlToView() {
         if (Capacitor.isNativePlatform()) return;
         const path = window.location.pathname;
         let view = 'editor';
-        if (path.match(/\/feed(\/.*)?$/)) view = 'feed';
+        if (isBareAppPath(path)) view = 'editor';
+        else if (path.match(/\/feed(\/.*)?$/)) view = 'feed';
         else if (path.match(/\/inbox(\/.*)?$/)) view = 'inbox';
         else if (path.match(/\/privacy(\/.*)?$/)) view = 'vault';
         else if (path.match(/\/profile(\/.*)?$/)) view = 'editor';
-        else if (path.endsWith('/netlazy') || path.endsWith('/netlazy/')) view = 'editor';
         
         state.currentView = view;
         if (state.currentView === 'feed') {
@@ -172,7 +177,7 @@ export function useStore() {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
                 
-                ['isRegistered', 'isBanned', 'currentView', 'userId', 'currentAnchor'].forEach(k => {
+                ['isRegistered', 'isBanned', 'userId', 'currentAnchor'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
 

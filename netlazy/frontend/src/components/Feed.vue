@@ -756,7 +756,7 @@ async function sendRequest(profile, type, contactValue = null) {
     const payload = {
       receiver_id: profile.user_id,
       type: type,
-      offered_contact: contactValue,
+      offered_contact: type === 'demand' ? null : contactValue,
       message: profile.pendingMessage ? profile.pendingMessage.trim() : null
     }
     
@@ -765,6 +765,7 @@ async function sendRequest(profile, type, contactValue = null) {
     profile.sent = true
     profile.sentType = type
     store.addToast(store.t('sent', { type }), 'bi-send-check')
+    store.fetchInbox(true)
     
   } catch (e) {
     if (e.response && e.response.data && e.response.data.detail) {

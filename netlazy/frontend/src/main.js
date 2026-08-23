@@ -28,6 +28,9 @@ app.directive('intersect', {
     intersectionCallbacks.set(el, binding.value);
     getSharedObserver().observe(el);
   },
+  updated(el, binding) {
+    intersectionCallbacks.set(el, binding.value);
+  },
   unmounted(el) {
     intersectionCallbacks.delete(el);
     if (sharedObserver) {

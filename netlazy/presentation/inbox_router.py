@@ -24,12 +24,30 @@ class InboxItemResponse(BaseModel):
     type: str
     status: str
     is_sender: bool
+    is_read: bool = False
     offered_contact: Optional[str]
     returned_contact: Optional[str]
     message: Optional[str]
     created_at: str
     updated_at: str
     profile: ProfileResponse
+
+
+def _to_inbox_item(h, profile, is_sender: bool) -> InboxItemResponse:
+    updated_at = h.updated_at or h.created_at
+    return InboxItemResponse(
+        id=h.id,
+        type=h.handshake_type,
+        status=h.status,
+        is_sender=is_sender,
+        is_read=h.is_read,
+        offered_contact=h.offered_contact,
+        returned_contact=h.returned_contact,
+        message=h.message,
+        created_at=h.created_at.isoformat(),
+        updated_at=updated_at.isoformat(),
+        profile=profile_to_response(profile),
+    )
 
 @router.post("/handshakes", response_model=InboxItemResponse, dependencies=[Depends(verify_pow)])
 async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(verify_request_signature)):
@@ -45,15 +63,15 @@ async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(veri
         raise HTTPException(status_code=400, detail=str(e))
     except InvalidHandshakeStateError as e:
         raise HTTPException(status_code=403, detail=str(e))
+    except UnauthorizedHandshakeActionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except OtherUserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except OtherUserBannedError as e:
+        raise HTTPException(status_code=404, detail=str(e))
         
     receiver_profile = await profile_service.get_or_create_profile(body.receiver_id)
-    return InboxItemResponse(
-        id=h.id, type=h.handshake_type, status=h.status,
-        is_sender=True, offered_contact=h.offered_contact, returned_contact=h.returned_contact,
-        message=h.message,
-        created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
-        profile=profile_to_response(receiver_profile)
-    )
+    return _to_inbox_item(h, receiver_profile, is_sender=True)
 
 @router.post("/handshakes/{handshake_id}/resolve", response_model=InboxItemResponse)
 async def resolve_handshake(handshake_id: str, body: HandshakeResolveRequest, user: User = Depends(verify_request_signature)):
@@ -78,13 +96,20 @@ async def resolve_handshake(handshake_id: str, body: HandshakeResolveRequest, us
         raise HTTPException(status_code=400, detail=str(e))
 
     sender_profile = await profile_service.get_or_create_profile(h.sender_id)
-    return InboxItemResponse(
-        id=h.id, type=h.handshake_type, status=h.status,
-        is_sender=False, offered_contact=h.offered_contact, returned_contact=h.returned_contact,
-        message=h.message,
-        created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
-        profile=profile_to_response(sender_profile)
-    )
+    return _to_inbox_item(h, sender_profile, is_sender=False)
+
+@router.post("/handshakes/{handshake_id}/read", response_model=InboxItemResponse)
+async def mark_handshake_read(handshake_id: str, user: User = Depends(verify_request_signature)):
+    try:
+        h = await inbox_service.mark_as_read(user.user_id, handshake_id)
+    except HandshakeNotFoundError:
+        raise HTTPException(status_code=404, detail="Handshake not found")
+    except UnauthorizedHandshakeActionError:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    other_id = h.receiver_id if h.sender_id == user.user_id else h.sender_id
+    other_profile = await profile_service.get_or_create_profile(other_id)
+    return _to_inbox_item(h, other_profile, is_sender=(h.sender_id == user.user_id))
 
 @router.delete("/handshakes/{handshake_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_handshake(handshake_id: str, user: User = Depends(verify_request_signature)):
@@ -108,12 +133,6 @@ async def delete_handshake(handshake_id: str, user: User = Depends(verify_reques
 async def get_inbox(user: User = Depends(verify_request_signature)):
     items = await inbox_service.get_inbox(user.user_id)
     return [
-        InboxItemResponse(
-            id=h.id, type=h.handshake_type, status=h.status,
-            is_sender=(h.sender_id == user.user_id), is_read=h.is_read,
-            offered_contact=h.offered_contact, returned_contact=h.returned_contact,
-            message=h.message,
-            created_at=h.created_at.isoformat(), updated_at=h.updated_at.isoformat(),
-            profile=profile_to_response(p)
-        ) for h, p in items
+        _to_inbox_item(h, p, is_sender=(h.sender_id == user.user_id))
+        for h, p in items
     ]

@@ -694,7 +694,7 @@ async function submitGlobalHandshake() {
     const payload = {
       receiver_id: cs.profile.user_id,
       type: cs.type,
-      offered_contact: contactValue,
+      offered_contact: cs.type === 'demand' ? null : contactValue,
       message: cs.message ? cs.message.trim() : null
     };
     
@@ -711,6 +711,7 @@ async function submitGlobalHandshake() {
     }
     
     store.addToast(store.t('sent', { type: cs.type }), 'bi-send-check');
+    store.fetchInbox(true);
     cs.open = false;
     cs.message = ''; 
   } catch (e) {

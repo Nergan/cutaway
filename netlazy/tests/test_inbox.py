@@ -125,4 +125,41 @@ async def test_resolve_handshake_accept_exchange(inbox_service, inbox_deps):
 
     assert resolved.status == "accepted"
     assert resolved.returned_contact == "phone:456"
+    assert resolved.is_read is False
     inbox_deps["handshake_repo"].update.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_mark_as_read_receiver_pending(inbox_service, inbox_deps):
+    mock_handshake = Handshake(
+        id="h1",
+        sender_id="s1",
+        receiver_id="r1",
+        handshake_type="exchange",
+        status="pending",
+        is_read=False,
+    )
+    inbox_deps["handshake_repo"].get_by_id.return_value = mock_handshake
+
+    marked = await inbox_service.mark_as_read("r1", "h1")
+
+    assert marked.is_read is True
+    inbox_deps["handshake_repo"].update.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_mark_as_read_sender_pending_does_not_consume_flag(inbox_service, inbox_deps):
+    mock_handshake = Handshake(
+        id="h1",
+        sender_id="s1",
+        receiver_id="r1",
+        handshake_type="share",
+        status="pending",
+        is_read=False,
+    )
+    inbox_deps["handshake_repo"].get_by_id.return_value = mock_handshake
+
+    marked = await inbox_service.mark_as_read("s1", "h1")
+
+    assert marked.is_read is False
+    inbox_deps["handshake_repo"].update.assert_not_called()

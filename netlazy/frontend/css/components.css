@@ -108,7 +108,7 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
 .chip.abonus { background: rgba(199, 179, 138, 0.15) !important; color: var(--accent-earth) !important; border-color: var(--accent-earth) !important; }
 #active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
 
-/* Simple unified flat tags with exactly 0.25 opacity */
+/* Tags match the feed tag-search bar glass treatment */
 .tag-scroll-area .chip,
 #lib-tags-zone .chip,
 #active-tags-zone .chip {
@@ -116,20 +116,25 @@ body .editor-bio:focus, body .editor-bio:focus-visible {
   padding: 0.35rem 0.95rem;
   border-radius: var(--radius-pill);
   color: var(--text-main) !important;
-  background: rgba(128, 128, 128, 0.25) !important;
-  border: 1px solid rgba(128, 128, 128, 0.3) !important;
-  box-shadow: none !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.2) 60%, rgba(255, 255, 255, 0.3) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.3),
+              0 2px 8px rgba(0, 0, 0, 0.2) !important;
   text-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  transition: background-color 0.2s, transform 0.15s, border-color 0.2s;
+  transition: background-color 0.2s, transform 0.15s, border-color 0.2s, box-shadow 0.2s;
 }
 
 body.light-theme .tag-scroll-area .chip,
 body.light-theme #lib-tags-zone .chip,
 body.light-theme #active-tags-zone .chip {
-  background: rgba(128, 128, 128, 0.25) !important;
-  border: 1px solid rgba(128, 128, 128, 0.4) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(245, 240, 230, 0.72) 60%, rgba(255, 255, 255, 0.84) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.92) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.06),
+              0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
 .tag-scroll-area .chip:hover,
@@ -261,8 +266,16 @@ body.light-theme .audio-minimal { filter: none; }
 /* Dynamic Full-Scale Media Layout */
 .feed-media-stack { display: grid; gap: 4px; margin-bottom: 0.5rem; position: relative; border-radius: var(--radius-sm); overflow: hidden; width: 100%; }
 .feed-media-stack[data-count="1"] { grid-template-columns: 1fr; aspect-ratio: 4 / 5; max-height: 520px; }
+.inbox-chat-detail .feed-media-stack,
+.editor-layout .feed-media-stack {
+  max-width: 360px;
+}
 .inbox-chat-detail .feed-media-stack[data-count="1"],
-.editor-layout .feed-media-stack[data-count="1"] { max-height: 280px; }
+.editor-layout .feed-media-stack[data-count="1"] {
+  width: min(220px, 100%);
+  max-height: 275px;
+  aspect-ratio: 4 / 5;
+}
 .feed-media-stack[data-count="2"] { grid-template-columns: 1fr 1fr; aspect-ratio: 16 / 10; }
 .feed-media-stack[data-count="3"] { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: "left tr" "left br"; aspect-ratio: 16 / 11; }
 .feed-media-stack[data-count="3"] .feed-media-item:nth-child(1) { grid-area: left; }
@@ -335,6 +348,7 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 
 .mini-add-banner { display: flex; align-items: center; justify-content: center; border: 1px dashed var(--border-focus); border-radius: var(--radius-sm); padding: 0.6rem 1rem; color: var(--text-muted); font-size: 0.85rem; cursor: pointer; transition: all 0.2s; margin-top: 0.4rem; margin-bottom: 0.5rem; }
 .mini-add-banner:hover { color: var(--text-main); border-color: var(--accent-moss); background: rgba(141, 169, 112, 0.05); }
+body.uf-mode .mini-add-banner { padding: 0.45rem; }
 
 /* SMART CONTACTS */
 .contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--border-subtle); }
