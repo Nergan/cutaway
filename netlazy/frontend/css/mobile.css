@@ -56,17 +56,18 @@
     color: var(--accent-moss);
   }
 
-  .editor-layout { flex-direction: column; overflow-y: auto; height: 100%; }
+  .editor-layout { flex-direction: column; overflow-y: auto; height: 100%; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .tag-library-pane {
     width: 100% !important;
     flex-shrink: 0;
     min-height: auto;
-    height: 66vh;
+    height: 38vh;
+    max-height: 38vh;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
   }
   .profile-workspace-pane { width: 100% !important; border-left: none; flex-grow: 1; }
-  .workspace-scroll-area { height: auto !important; overflow-y: visible !important; overflow-x: visible !important; padding: 1.5rem; min-width: unset; padding-bottom: 120px !important; }
+  .workspace-scroll-area { height: auto !important; overflow-y: visible !important; overflow-x: visible !important; padding: 1.5rem; min-width: unset; padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important; }
   .workspace-toggle-btn { display: none !important; }
   .editor-layout .resizer-v { display: none !important; }
 
@@ -108,11 +109,11 @@
     border-radius: var(--radius-pill) !important;
     margin: 0 1rem 0.5rem 1rem !important;
     padding: 0.5rem 1rem !important;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.2) 60%, rgba(255, 255, 255, 0.3) 100%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 
-                inset 0 -1px 2px rgba(0, 0, 0, 0.3), 
-                0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(12, 12, 12, 0.55) 55%, rgba(8, 8, 8, 0.42) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 
+                inset 0 -1px 2px rgba(0, 0, 0, 0.45), 
+                0 4px 12px rgba(0, 0, 0, 0.28) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     position: relative;

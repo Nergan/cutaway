@@ -104,6 +104,11 @@ export default {
     tooltip_exclude: "Must NOT have this tag",
     tooltip_bonus: "Adds points to score",
     tooltip_abonus: "Subtracts points from score",
+    no_message: "no message",
+    select_chat_prompt: "select a chat...",
+    no_chats: "no chats...",
+    back: "back",
+    matched_label: "matched",
     update_app: "update app"
   },
   ru: {
@@ -211,6 +216,11 @@ export default {
     tooltip_exclude: "Не должно быть этого тега",
     tooltip_bonus: "Добавляет баллы к рейтингу",
     tooltip_abonus: "Отнимает баллы от рейтинга",
+    no_message: "нет сообщения",
+    select_chat_prompt: "выберите чат...",
+    no_chats: "нет чатов...",
+    back: "назад",
+    matched_label: "совпадение",
     update_app: "обновить приложение"
   },
   pt: {
@@ -318,6 +328,11 @@ export default {
     tooltip_exclude: "NÃO deve ter esta tag",
     tooltip_bonus: "Adiciona pontos à pontuação",
     tooltip_abonus: "Subtrai pontos da pontuação",
+    no_message: "sem mensagem",
+    select_chat_prompt: "selecione um chat...",
+    no_chats: "nenhum chat...",
+    back: "voltar",
+    matched_label: "combinado",
     update_app: "atualizar aplicativo"
   },
   zh: {
@@ -418,6 +433,11 @@ export default {
     tooltip_exclude: "不得包含此標籤",
     tooltip_bonus: "為評分增加分數",
     tooltip_abonus: "從評分中扣除分數",
+    no_message: "沒有訊息",
+    select_chat_prompt: "選擇一個聊天...",
+    no_chats: "沒有聊天...",
+    back: "返回",
+    matched_label: "已配對",
     update_app: "更新應用程式",
     backup_phrase_confirm_btn: "我已經儲存，繼續"
   },
@@ -520,6 +540,11 @@ export default {
     tooltip_exclude: "このタグを含めてはいけません",
     tooltip_bonus: "スコアにポイントを追加します",
     tooltip_abonus: "スコアからポイントを減算します",
+    no_message: "メッセージなし",
+    select_chat_prompt: "チャットを選択...",
+    no_chats: "チャットがありません...",
+    back: "戻る",
+    matched_label: "マッチ",
     update_app: "アプリを更新"
   },
   ko: {
