@@ -554,30 +554,28 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   font-size: 0.9rem;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.12rem 0.16rem;
-  border: none;
+  padding: 0.1rem 0.14rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: none;
-  position: relative;
+  box-sizing: border-box;
   transition:
     color var(--motion-normal) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
+    transform var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-normal) var(--motion-ease);
 }
 .filter-icon:hover { transform: scale(var(--motion-hover-scale)); }
 .filter-icon:active { transform: scale(var(--motion-press-scale)); }
 .filter-icon.active {
-  color: var(--text-main);
+  border-color: currentColor;
 }
-.filter-icon.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: currentColor;
-}
+.filter-icon.filter-match.active { color: #fff; }
+.filter-icon.filter-nomatch.active { color: #fff; }
+body.light-theme .filter-icon.filter-match.active,
+body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
+.filter-icon.type-share.active { color: var(--accent-info); }
+.filter-icon.type-exchange.active { color: var(--accent-moss); }
+.filter-icon.type-demand.active { color: var(--accent-danger); }
 
 .chat-actions {
   display: flex;

@@ -70,13 +70,18 @@ class TestInboxUiContracts:
         assert "bi-envelope-arrow-down filter-icon" not in markup
         assert "bi-envelope-arrow-up filter-icon" not in markup
 
-    def test_active_filter_uses_minimal_shape_marker(self):
+    def test_active_filter_uses_outline_and_accent_colors(self):
         css = extract_vue_scoped_css("frontend/src/components/Inbox.vue")
         active_block = css_rule_block(css, ".filter-icon.active")
+        base_block = css_rule_block(css, ".filter-icon")
+
+        assert "border-color: currentColor" in active_block
         assert "background:" not in active_block
-        assert "border" not in active_block
-        assert ".filter-icon.active::after" in css
-        assert "border-radius: 50%" in css_rule_block(css, ".filter-icon.active::after")
+        assert "border-radius" in base_block
+        assert ".filter-icon.active::after" not in css
+        assert "type-share.active { color: var(--accent-info)" in css
+        assert "type-exchange.active { color: var(--accent-moss)" in css
+        assert "type-demand.active { color: var(--accent-danger)" in css
 
     def test_inbox_or_filter_logic(self):
         inbox = read_text("frontend/src/components/Inbox.vue")
