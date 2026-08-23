@@ -548,26 +548,40 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   gap: 0;
 }
 .filter-icon {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.1rem 0.14rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  border: none;
   background: none;
   box-sizing: border-box;
   transition:
     color var(--motion-normal) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-normal) var(--motion-ease);
+    transform var(--motion-fast) var(--motion-ease);
+}
+.filter-icon::before {
+  display: block;
+  line-height: 1;
 }
 .filter-icon:hover { transform: scale(var(--motion-hover-scale)); }
 .filter-icon:active { transform: scale(var(--motion-press-scale)); }
-.filter-icon.active {
-  border-color: currentColor;
+.filter-icon.active::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
 }
 .filter-icon.filter-match.active { color: #fff; }
 .filter-icon.filter-nomatch.active { color: #fff; }
