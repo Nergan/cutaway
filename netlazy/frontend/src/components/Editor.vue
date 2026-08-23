@@ -46,7 +46,7 @@
       </button>
       
       <div class="workspace-scroll-area"
-           v-show="!isMobile && !store.state.isWorkspaceCollapsed"
+           v-show="isMobile || !store.state.isWorkspaceCollapsed"
            :class="{
              'mobile-profile-body': isMobile,
              'is-body-collapsed': isMobile && isMobileProfileCollapsed,

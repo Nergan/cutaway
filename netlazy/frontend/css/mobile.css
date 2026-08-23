@@ -84,20 +84,20 @@
     flex: 0 0 auto;
     --mobile-profile-expanded: calc((100vh - 65px - env(safe-area-inset-bottom)) * 0.75);
     --mobile-profile-collapsed: 3.15rem;
-    max-height: var(--mobile-profile-expanded);
+    height: var(--mobile-profile-expanded);
     border-left: none;
     border-top: 1px solid var(--border-subtle);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: max-height 0.35s var(--motion-ease), box-shadow 0.35s var(--motion-ease);
+    transition: height 0.35s var(--motion-ease), box-shadow 0.35s var(--motion-ease);
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
   }
   body.light-theme .profile-workspace-pane {
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   }
   .editor-layout.mobile-profile-collapsed .profile-workspace-pane {
-    max-height: var(--mobile-profile-collapsed);
+    height: var(--mobile-profile-collapsed);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
   }
   .workspace-scroll-area {
@@ -105,7 +105,7 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding: 0.9rem 1.2rem 1.2rem;
-    min-width: unset;
+    min-width: unset !important;
     flex: 1 1 auto;
     min-height: 0;
   }
