@@ -23,6 +23,15 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
   --glow-accent: 0 0 15px rgba(141, 169, 112, 0.15);
+
+  /* Unified motion tokens */
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --motion-fast: 0.15s;
+  --motion-normal: 0.25s;
+  --motion-press-scale: 0.96;
+  --motion-hover-scale: 1.04;
+  --motion-disabled-opacity: 0.35;
 }
 
 body.light-theme {

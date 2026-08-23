@@ -248,11 +248,7 @@
                     :disabled="(store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0) || store.state.contactSelect.isSending" 
                     @click="submitGlobalHandshake" 
                     style="font-size: 1.5rem;"
-                    :style="{ 
-                      color: store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : (store.state.contactSelect.type === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
-                      opacity: (store.state.contactSelect.isSending || (store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0)) ? 0.4 : 1,
-                      cursor: (store.state.contactSelect.isSending || (store.state.contactSelect.type !== 'demand' && store.state.contactSelect.selectedContacts.length === 0)) ? 'not-allowed' : 'pointer'
-                    }">
+                    :style="{ color: store.state.contactSelect.type === 'share' ? 'var(--accent-info)' : (store.state.contactSelect.type === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)') }">
               <i class="bi" :class="store.state.contactSelect.isSending ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>
             </button>
           </div>

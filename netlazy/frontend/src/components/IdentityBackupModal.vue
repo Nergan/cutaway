@@ -34,11 +34,7 @@
           </button>
           <button class="footer-action" 
                   :disabled="!isConfirmed"
-                  :style="{ 
-                    color: isConfirmed ? 'var(--accent-moss)' : 'var(--text-muted)',
-                    opacity: isConfirmed ? 1 : 0.4,
-                    cursor: isConfirmed ? 'pointer' : 'not-allowed'
-                  }" 
+                  :style="{ color: isConfirmed ? 'var(--accent-moss)' : 'var(--text-muted)' }" 
                   @click="handleConfirm">
             <i class="bi" :class="isCopied ? 'bi-check2-all' : 'bi-files'"></i> {{ isCopied ? store.t('copied') : store.t('copy_and_continue') }}
           </button>

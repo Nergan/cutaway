@@ -207,8 +207,8 @@
               <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
                   <button class="footer-action icon-btn" 
+                    style="color: var(--accent-info);"
                     :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
-                    :style="{ color: 'var(--accent-info)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                     @click.stop="handleContactButtonClick(profile, 'share', $event)">
                     <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                   </button>
@@ -216,8 +216,8 @@
                 </span>
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
                   <button class="footer-action icon-btn" 
+                    style="color: var(--accent-moss);"
                     :disabled="validPrivateContacts.length === 0 || profile.isSendingReq"
-                    :style="{ color: 'var(--accent-moss)', opacity: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 0.3 : 1, cursor: (validPrivateContacts.length === 0 || profile.isSendingReq) ? 'not-allowed' : 'pointer' }"
                     @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
                     <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                   </button>
@@ -260,11 +260,7 @@
                 <div style="padding: 0.5rem 1rem; text-align: right;">
                   <button class="icon-btn" 
                     style="background: none; border: none;" 
-                    :style="{ 
-                      color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : (profile.pendingReqType === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)'),
-                      opacity: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 0.35 : 1,
-                      cursor: (profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq ? 'not-allowed' : 'pointer'
-                    }" 
+                    :style="{ color: profile.pendingReqType === 'share' ? 'var(--accent-info)' : (profile.pendingReqType === 'demand' ? 'var(--accent-danger)' : 'var(--accent-moss)') }" 
                     @click.stop="sendRequest(profile, profile.pendingReqType)" 
                     :disabled="(profile.pendingReqType !== 'demand' && (!profile.selectedContacts || profile.selectedContacts.length === 0)) || profile.isSendingReq">
                     <i class="bi" :class="profile.isSendingReq === profile.pendingReqType ? 'bi-hourglass-split spin' : 'bi-send-fill'"></i>

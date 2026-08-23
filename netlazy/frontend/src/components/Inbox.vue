@@ -79,8 +79,8 @@
                      <i class="bi" :class="actionIcon(selectedChat, 'decline', 'bi-x-lg')"></i> {{ store.t('decline') }}
                    </button>
                    <button class="footer-action"
+                           style="color: var(--accent-moss);"
                            :disabled="isBusy(selectedChat) || validPrivateContacts.length === 0"
-                           :style="{ color: 'var(--accent-moss)', opacity: (isBusy(selectedChat) || validPrivateContacts.length === 0) ? 0.35 : 1, cursor: (isBusy(selectedChat) || validPrivateContacts.length === 0) ? 'not-allowed' : 'pointer' }"
                            @click.stop="openResolveModal(selectedChat)">
                      <i class="bi" :class="actionIcon(selectedChat, 'accept', 'bi-check-lg')"></i> {{ selectedChat.type === 'exchange' ? store.t('uf_action_exchange') : store.t('send') }}
                    </button>
@@ -553,7 +553,8 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   border: none;
   background: none;
 }
-.filter-icon:hover { transform: scale(1.1); }
+.filter-icon:hover { transform: scale(var(--motion-hover-scale)); }
+.filter-icon:active { transform: scale(var(--motion-press-scale)); }
 .filter-icon.active { color: var(--accent-moss); }
 .filter-icon.filter-match.active,
 .filter-icon.filter-nomatch.active { color: #fff; }
@@ -586,7 +587,10 @@ body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
   padding: 0.75rem 0.9rem;
   gap: 0.7rem;
   border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.2s;
+  transition:
+    background var(--motion-normal) var(--motion-ease),
+    box-shadow var(--motion-normal) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
   cursor: pointer;
   max-width: 100%;
   box-sizing: border-box;
@@ -596,8 +600,22 @@ body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
   justify-content: center;
   gap: 0;
 }
-.chat-preview:hover, .chat-preview.active { background: rgba(128,128,128,0.05); }
-.chat-preview.unread.nonuf-unread { background: rgba(141, 169, 112, 0.1); }
+.chat-preview:hover:not(.active) { background: rgba(128, 128, 128, 0.06); }
+.chat-preview.active {
+  background: rgba(141, 169, 112, 0.24) !important;
+  box-shadow: inset 3px 0 0 var(--accent-moss);
+}
+body.light-theme .chat-preview.active {
+  background: rgba(104, 133, 76, 0.18) !important;
+}
+.chat-preview.active.unread.nonuf-unread {
+  background: rgba(141, 169, 112, 0.3) !important;
+}
+.chat-preview.unread.nonuf-unread:not(.active) { background: rgba(141, 169, 112, 0.1); }
+
+@media (hover: hover) and (pointer: fine) {
+  .chat-preview:active { transform: scale(0.995); }
+}
 
 .chat-avatar-container {
   width: 48px; height: 48px;
@@ -725,6 +743,13 @@ body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
     padding-top: 0;
     padding-left: 1.2rem;
     padding-right: 1.2rem;
+  }
+  .inbox-chat-detail .card {
+    padding-top: 0.6rem !important;
+  }
+  .inbox-chat-detail .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
   }
   .inbox-back-bar {
     position: sticky;

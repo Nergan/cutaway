@@ -54,7 +54,6 @@ body:not(.uf-mode) .sidebar.non-uf:hover {
   color: var(--text-muted); 
   cursor: pointer; 
   font-size: 1.2rem; 
-  transition: color 0.2s; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,7 +147,6 @@ body:not(.uf-mode) .sidebar.non-uf:hover {
   .collapse-btn:hover { color: var(--text-main); }
   .nav-item:hover { color: var(--text-main); }
   .footer-action:hover { color: var(--text-main); }
-  .icon-btn:hover { transform: scale(1.1); }
 }
 
 /* COLLAPSED STATE SPECIFICS */
