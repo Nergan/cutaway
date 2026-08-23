@@ -63,9 +63,7 @@
           <transition name="collapse">
             <div v-show="showMedia" class="mobile-collapse-content">
               <div v-if="validMedia.length === 0 && !store.state.myProfile.audio" class="media-zone" @click="$refs.fileInput.click()">
-                <i class="bi" :class="store.state.isUserFriendlyInterface ? 'bi-image' : 'bi-plus-lg'" style="font-size: 1.5rem;"></i>
-                <br v-if="store.state.isUserFriendlyInterface">
-                <span v-if="store.state.isUserFriendlyInterface">{{ store.t('add_media_placeholder') }}</span>
+                <i class="bi bi-plus-lg" style="font-size: 1.5rem;"></i>
               </div>
               
               <div v-if="store.state.myProfile.audio" class="audio-player-zone" style="display:flex; align-items:center; gap:1rem; padding-bottom: 0.5rem;" v-intersect="() => store.loadDecryptedMedia(store.state.myProfile.audio, store.state.myProfile.media_id)">

@@ -261,6 +261,8 @@ body.light-theme .audio-minimal { filter: none; }
 /* Dynamic Full-Scale Media Layout */
 .feed-media-stack { display: grid; gap: 4px; margin-bottom: 0.5rem; position: relative; border-radius: var(--radius-sm); overflow: hidden; width: 100%; }
 .feed-media-stack[data-count="1"] { grid-template-columns: 1fr; aspect-ratio: 4 / 5; max-height: 520px; }
+.inbox-chat-detail .feed-media-stack[data-count="1"],
+.editor-layout .feed-media-stack[data-count="1"] { max-height: 280px; }
 .feed-media-stack[data-count="2"] { grid-template-columns: 1fr 1fr; aspect-ratio: 16 / 10; }
 .feed-media-stack[data-count="3"] { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: "left tr" "left br"; aspect-ratio: 16 / 11; }
 .feed-media-stack[data-count="3"] .feed-media-item:nth-child(1) { grid-area: left; }

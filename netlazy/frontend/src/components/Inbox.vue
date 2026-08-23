@@ -509,4 +509,40 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   box-shadow: 0 0 8px var(--accent-moss);
   flex-shrink: 0;
 }
+
+.inbox-chat-list {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Chat appear/disappear animation */
+.chat-item-enter-active,
+.chat-item-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chat-item-enter-from,
+.chat-item-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+.chat-item-leave-active {
+  position: absolute;
+  width: 100%;
+}
+.chat-item-move {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 768px) {
+  .inbox-sidebar,
+  .inbox-sidebar.collapsed {
+    width: 100% !important;
+  }
+  .inbox-filters.mobile-bottom {
+    padding-bottom: calc(0.6rem + 65px + env(safe-area-inset-bottom));
+  }
+  .inbox-chat-list {
+    padding-bottom: calc(65px + env(safe-area-inset-bottom));
+  }
+}
 </style>
