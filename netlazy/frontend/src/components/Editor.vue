@@ -112,8 +112,8 @@
               </transition-group>
 
               <div class="mini-add-banner" @click="$refs.fileInput.click()" data-tooltip="add media" v-if="validMedia.length > 0 && validMedia.length < 10">
-                <i class="bi bi-plus-lg" :style="store.state.isUserFriendlyInterface ? '' : 'margin-right: 0.4rem;'"></i>
-                <span v-if="!store.state.isUserFriendlyInterface">{{ store.t('add_media_placeholder') }}</span>
+                <i class="bi bi-plus-lg" :style="store.state.isUserFriendlyInterface ? 'margin-right: 0.4rem;' : ''"></i>
+                <span v-if="store.state.isUserFriendlyInterface">{{ store.t('add_media_placeholder') }}</span>
               </div>
             </div>
           </transition>

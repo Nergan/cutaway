@@ -1,8 +1,8 @@
 <template>
   <div style="display: flex; height: 100%; width: 100%; overflow: hidden;" ref="inboxRoot">
     <div class="inbox-main-pane" v-show="!isMobile || selectedChat">
-      <div v-if="isMobile && selectedChat" style="padding-bottom: 1rem;">
-        <button class="footer-action icon-btn" @click="selectedChatId = null"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
+      <div v-if="isMobile && selectedChat" class="inbox-back-bar">
+        <button class="footer-action inbox-back-btn" @click="selectedChatId = null"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
       </div>
       <div v-if="selectedChat" class="inbox-chat-detail">
         <div class="card">
@@ -78,7 +78,10 @@
                    <button class="footer-action" style="color: var(--accent-danger);" :disabled="isBusy(selectedChat)" @click="resolveRequest(selectedChat, 'declined')">
                      <i class="bi" :class="actionIcon(selectedChat, 'decline', 'bi-x-lg')"></i> {{ store.t('decline') }}
                    </button>
-                   <button class="footer-action" style="color: var(--accent-moss);" :disabled="isBusy(selectedChat)" @click.stop="openResolveModal(selectedChat, $event)">
+                   <button class="footer-action"
+                           :disabled="isBusy(selectedChat) || validPrivateContacts.length === 0"
+                           :style="{ color: 'var(--accent-moss)', opacity: (isBusy(selectedChat) || validPrivateContacts.length === 0) ? 0.35 : 1, cursor: (isBusy(selectedChat) || validPrivateContacts.length === 0) ? 'not-allowed' : 'pointer' }"
+                           @click.stop="openResolveModal(selectedChat)">
                      <i class="bi" :class="actionIcon(selectedChat, 'accept', 'bi-check-lg')"></i> {{ selectedChat.type === 'exchange' ? store.t('uf_action_exchange') : store.t('send') }}
                    </button>
                 </template>
@@ -130,8 +133,8 @@
       <div class="inbox-filters" @click.stop>
         <i class="bi bi-envelope-arrow-down filter-icon" :class="{active: filters.state.received}" @click="filters.state.received = !filters.state.received"></i>
         <i class="bi bi-envelope-arrow-up filter-icon" :class="{active: filters.state.sent}" @click="filters.state.sent = !filters.state.sent"></i>
-        <i class="bi bi-heart filter-icon" :class="{active: filters.state.matched}" @click="filters.state.matched = !filters.state.matched"></i>
-        <i class="bi bi-heartbreak filter-icon" :class="{active: filters.state.declined}" @click="filters.state.declined = !filters.state.declined"></i>
+        <i class="bi bi-heart filter-icon filter-match" :class="{active: filters.state.matched}" @click="filters.state.matched = !filters.state.matched"></i>
+        <i class="bi bi-heartbreak filter-icon filter-nomatch" :class="{active: filters.state.declined}" @click="filters.state.declined = !filters.state.declined"></i>
         <i class="bi bi-box-arrow-up filter-icon type-share" :class="{active: filters.type.share}" @click="filters.type.share = !filters.type.share"></i>
         <i class="bi bi-arrow-left-right filter-icon type-exchange" :class="{active: filters.type.exchange}" @click="filters.type.exchange = !filters.type.exchange"></i>
         <i class="bi bi-box-arrow-in-down filter-icon type-demand" :class="{active: filters.type.demand}" @click="filters.type.demand = !filters.type.demand"></i>
@@ -375,6 +378,7 @@ function handleMediaClick(mediaObj, mediaList) {
 }
 
 function openResolveModal(chat) {
+  if (validPrivateContacts.value.length === 0) return;
   if (resolveReq.value && resolveReq.value.id === chat.id) {
     resolveReq.value = null;
     return;
@@ -460,7 +464,7 @@ async function copyText(txt) {
 }
 
 .inbox-sidebar {
-  width: 320px;
+  width: 220px;
   flex-shrink: 0;
   border-left: 1px solid var(--border-subtle);
   background: var(--bg-surface);
@@ -531,9 +535,13 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   gap: 0.05rem;
   flex-shrink: 0;
 }
+.inbox-sidebar.collapsed .inbox-brand-row { order: 1; }
+.inbox-sidebar.collapsed .inbox-chat-list { order: 2; }
 .inbox-sidebar.collapsed .inbox-filters {
+  order: 3;
+  margin-top: auto;
   flex-direction: column;
-  padding: 0.25rem 0;
+  padding: 0.35rem 0 0.6rem;
   gap: 0;
 }
 .filter-icon {
@@ -547,6 +555,10 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
 }
 .filter-icon:hover { transform: scale(1.1); }
 .filter-icon.active { color: var(--accent-moss); }
+.filter-icon.filter-match.active,
+.filter-icon.filter-nomatch.active { color: #fff; }
+body.light-theme .filter-icon.filter-match.active,
+body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
 .filter-icon.type-share.active { color: var(--accent-info); }
 .filter-icon.type-exchange.active { color: var(--accent-moss); }
 .filter-icon.type-demand.active { color: var(--accent-danger); }
@@ -708,6 +720,22 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   }
   .inbox-main-pane {
     padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+  .inbox-back-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 0.15rem 0 0.5rem;
+    margin-bottom: 0.2rem;
+    background: linear-gradient(to bottom, var(--bg-base) 70%, transparent);
+  }
+  .inbox-back-btn {
+    font-size: 0.72rem;
+    opacity: 0.5;
+    gap: 0.25rem;
+    padding: 0.1rem 0.35rem;
+    height: auto;
+    width: auto;
   }
 }
 </style>
