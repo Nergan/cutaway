@@ -178,10 +178,7 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 /* Smooth Chevron Rotations for Mobile Collapsibles */
 .mobile-collapse-icon {
   display: inline-block;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.mobile-collapse-icon.is-expanded {
-  transform: rotate(180deg);
+  transition: transform 0.52s cubic-bezier(0.32, 0.72, 0, 1), color 0.2s ease;
 }
 
 /* MODALS / LIGHTBOX */

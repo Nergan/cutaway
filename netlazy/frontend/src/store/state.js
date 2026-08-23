@@ -69,6 +69,8 @@ const defaultState = {
     lightbox: { open: false, mediaList: [], index: 0, isEditable: false }
 };
 
+const VALID_VIEWS = ['feed', 'editor', 'inbox', 'vault'];
+
 export function isInboxUnread(item) {
     if (!item) return false;
     if (item.status === 'pending' && !item.is_sender) return !item.is_read;
@@ -114,6 +116,10 @@ export function useStore() {
     function syncUrlToView() {
         if (Capacitor.isNativePlatform()) return;
         const path = window.location.pathname;
+        if (isBareAppPath(path) && VALID_VIEWS.includes(state.currentView)) {
+            syncViewToUrl(true);
+            return;
+        }
         let view = 'editor';
         if (isBareAppPath(path)) view = 'editor';
         else if (path.match(/\/feed(\/.*)?$/)) view = 'feed';
@@ -187,6 +193,10 @@ export function useStore() {
                 ['isRegistered', 'isBanned', 'userId', 'currentAnchor'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
+
+                if (parsed.currentView && VALID_VIEWS.includes(parsed.currentView)) {
+                    state.currentView = parsed.currentView;
+                }
 
                 const vaultReady = await hasHybridKeys();
                 if (parsed.isRegistered && !vaultReady) {

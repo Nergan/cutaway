@@ -640,6 +640,10 @@ watch(hasActiveFilters, () => {
     });
 });
 
+function handlePtrRefresh() {
+  fetchFeed(true)
+}
+
 onMounted(() => {
   lastFilterString = activeFiltersString.value;
   if (store.state.feed.length === 0) {
@@ -649,6 +653,7 @@ onMounted(() => {
   document.addEventListener('click', closeAllMenus)
   document.addEventListener('click', handleGlobalClickForTagMenu)
   window.addEventListener('resize', handleResize)
+  window.addEventListener('netlazy:ptr-refresh', handlePtrRefresh)
   setTimeout(updateColumnsCount, 50)
   
   const area = document.querySelector('.tag-scroll-area');
@@ -661,6 +666,7 @@ onUnmounted(() => {
   document.removeEventListener('click', closeAllMenus)
   document.removeEventListener('click', handleGlobalClickForTagMenu)
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('netlazy:ptr-refresh', handlePtrRefresh)
 })
 
 onActivated(() => {

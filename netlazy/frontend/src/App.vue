@@ -479,6 +479,27 @@ function handleGlobalTouchMove(e) {
   }
 }
 
+async function performPullToRefresh() {
+  isPtrRefreshing.value = true;
+  ptrOffset.value = 20;
+  try {
+    await Promise.all([
+      store.fetchTags(),
+      store.fetchMyProfile(true),
+      store.fetchInbox(true),
+    ]);
+    window.dispatchEvent(new CustomEvent('netlazy:ptr-refresh'));
+  } catch (e) {
+    // keep UI responsive even if a fetch fails
+  } finally {
+    setTimeout(() => {
+      isPtrRefreshing.value = false;
+      ptrOffset.value = -60;
+      ptrRotation.value = 0;
+    }, 450);
+  }
+}
+
 function handleGlobalTouchEnd(e) {
   if (window.innerWidth > 768) {
     canPullToRefresh = false;
@@ -514,9 +535,7 @@ function handleGlobalTouchEnd(e) {
 
   if (canPullToRefresh) {
     if (deltaY > 140 && deltaY > absDeltaX * 1.5 && isViewAtVeryTop(e.target)) {
-      isPtrRefreshing.value = true;
-      ptrOffset.value = 20;
-      setTimeout(() => window.location.reload(), 500);
+      performPullToRefresh();
     } else {
       ptrOffset.value = -60;
       ptrRotation.value = 0;

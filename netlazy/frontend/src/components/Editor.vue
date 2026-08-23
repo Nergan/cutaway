@@ -42,7 +42,7 @@
 
       <button type="button" class="mobile-profile-toggle" v-if="isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed" :aria-expanded="!isMobileProfileCollapsed">
         <span>{{ store.state.isUserFriendlyInterface ? store.t('uf_your_profile') : store.t('my_profile') }}</span>
-        <i class="bi bi-chevron-down mobile-profile-chevron" :class="{ 'is-expanded': !isMobileProfileCollapsed }"></i>
+        <i class="bi mobile-profile-chevron" :class="isMobileProfileCollapsed ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
       </button>
       
       <div class="workspace-scroll-area"
@@ -68,7 +68,7 @@
         <template v-else>
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
             <span style="font-size: 0.75rem;">media</span>
-            <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
           </div>
           <transition name="collapse">
             <div v-show="showMedia" class="mobile-collapse-content">
@@ -134,7 +134,7 @@
             <span style="font-size: 0.75rem;">about me</span>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
-              <i class="bi mobile-collapse-icon" :class="showBio ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <i class="bi mobile-collapse-icon" :class="showBio ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
             </div>
           </div>
           <transition name="collapse">
@@ -146,7 +146,7 @@
           <div style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
             <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
               <span style="font-size: 0.75rem;">active tags</span>
-              <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
             </div>
           </div>
           <transition name="collapse">
@@ -163,7 +163,7 @@
 
           <div class="section-header mobile-collapse-header" @click="showContacts = !showContacts">
             <span style="font-size: 0.75rem;">contacts</span>
-            <i class="bi mobile-collapse-icon" :class="showContacts ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            <i class="bi mobile-collapse-icon" :class="showContacts ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
           </div>
           <transition name="collapse">
             <div v-show="showContacts" class="mobile-collapse-content" style="position: relative;">

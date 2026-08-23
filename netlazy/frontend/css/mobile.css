@@ -90,7 +90,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: height 0.35s var(--motion-ease), box-shadow 0.35s var(--motion-ease);
+    transition: height 0.52s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.52s cubic-bezier(0.32, 0.72, 0, 1);
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
   }
   body.light-theme .profile-workspace-pane {
@@ -110,7 +110,7 @@
     min-height: 0;
   }
   .workspace-scroll-area.mobile-profile-body {
-    transition: opacity 0.28s var(--motion-ease), transform 0.35s var(--motion-ease);
+    transition: opacity 0.45s cubic-bezier(0.32, 0.72, 0, 1), transform 0.52s cubic-bezier(0.32, 0.72, 0, 1);
     transform-origin: top center;
     opacity: 1;
     transform: translateY(0);
@@ -144,11 +144,7 @@
     color: var(--text-muted);
     font-size: 1rem;
     display: inline-block;
-    transition: transform 0.35s var(--motion-ease);
-    transform: rotate(0deg);
-  }
-  .mobile-profile-chevron.is-expanded {
-    transform: rotate(180deg);
+    transition: transform 0.52s cubic-bezier(0.32, 0.72, 0, 1), color 0.2s ease;
   }
   .editor-layout:not(.mobile-profile-collapsed) .mobile-profile-toggle {
     border-bottom-color: var(--border-subtle);
