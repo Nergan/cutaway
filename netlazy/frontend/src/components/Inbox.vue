@@ -131,8 +131,6 @@
       </div>
 
       <div class="inbox-filters" @click.stop>
-        <i class="bi bi-envelope-arrow-down filter-icon" :class="{active: filters.state.received}" @click="filters.state.received = !filters.state.received"></i>
-        <i class="bi bi-envelope-arrow-up filter-icon" :class="{active: filters.state.sent}" @click="filters.state.sent = !filters.state.sent"></i>
         <i class="bi bi-heart filter-icon filter-match" :class="{active: filters.state.matched}" @click="filters.state.matched = !filters.state.matched"></i>
         <i class="bi bi-heartbreak filter-icon filter-nomatch" :class="{active: filters.state.declined}" @click="filters.state.declined = !filters.state.declined"></i>
         <i class="bi bi-box-arrow-up filter-icon type-share" :class="{active: filters.type.share}" @click="filters.type.share = !filters.type.share"></i>
@@ -218,9 +216,14 @@ const resolveReq = ref(null)
 const pendingAction = ref(null)
 
 const filters = reactive({
-  state: { received: true, sent: true, matched: true, declined: true },
+  state: { matched: true, declined: true },
   type: { share: true, exchange: true, demand: true }
 });
+
+function isChatVisible(chat) {
+  const pending = chat.chatState === 'received' || chat.chatState === 'sent';
+  return pending || filters.state[chat.chatState] || filters.type[chat.type];
+}
 
 const chats = computed(() => {
     return store.state.inbox.map(req => {
@@ -242,7 +245,7 @@ const chats = computed(() => {
 });
 
 const filteredChats = computed(() => {
-  return chats.value.filter(c => filters.state[c.chatState] || filters.type[c.type]);
+  return chats.value.filter(isChatVisible);
 });
 
 function handleInboxBgClick(e) {
@@ -548,35 +551,32 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  box-sizing: border-box;
+  padding: 0.12rem 0.16rem;
+  border: none;
+  background: none;
+  position: relative;
   transition:
     color var(--motion-normal) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease),
-    background var(--motion-normal) var(--motion-ease),
-    border-color var(--motion-normal) var(--motion-ease),
-    box-shadow var(--motion-fast) var(--motion-ease);
+    transform var(--motion-fast) var(--motion-ease);
 }
 .filter-icon:hover { transform: scale(var(--motion-hover-scale)); }
 .filter-icon:active { transform: scale(var(--motion-press-scale)); }
 .filter-icon.active {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
-body.light-theme .filter-icon.active {
-  background: rgba(0, 0, 0, 0.08);
-  border-color: rgba(0, 0, 0, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+.filter-icon.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .chat-actions {
