@@ -1,6 +1,6 @@
 <template>
   <div style="display: flex; height: 100%; width: 100%; overflow: hidden;" ref="inboxRoot">
-    <div class="inbox-main-pane" v-show="!isMobile || selectedChat">
+    <div class="inbox-main-pane" :class="{ 'mobile-chat-open': isMobile && selectedChat }" v-show="!isMobile || selectedChat">
       <div v-if="isMobile && selectedChat" class="inbox-back-bar">
         <button class="footer-action inbox-back-btn" @click="selectedChatId = null"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
       </div>
@@ -721,21 +721,39 @@ body.light-theme .filter-icon.filter-nomatch.active { color: var(--text-main); }
   .inbox-main-pane {
     padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
+  .inbox-main-pane.mobile-chat-open {
+    padding-top: 0;
+    padding-left: 1.2rem;
+    padding-right: 1.2rem;
+  }
   .inbox-back-bar {
     position: sticky;
     top: 0;
     z-index: 20;
-    padding: 0.15rem 0 0.5rem;
-    margin-bottom: 0.2rem;
-    background: linear-gradient(to bottom, var(--bg-base) 70%, transparent);
+    margin: 0 -1.2rem 0.4rem;
+    padding: calc(0.2rem + env(safe-area-inset-top, 0px)) 1.2rem 0.35rem;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0%, transparent 100%);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  body.light-theme .inbox-back-bar {
+    background: linear-gradient(to bottom, rgba(254, 252, 245, 0.72) 0%, transparent 100%);
   }
   .inbox-back-btn {
     font-size: 0.72rem;
-    opacity: 0.5;
+    opacity: 0.45;
     gap: 0.25rem;
     padding: 0.1rem 0.35rem;
     height: auto;
     width: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+  }
+  .inbox-back-btn:hover,
+  .inbox-back-btn:active {
+    opacity: 0.7;
+    background: none;
   }
 }
 </style>
