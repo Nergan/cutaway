@@ -82,16 +82,23 @@
   .profile-workspace-pane {
     width: 100% !important;
     flex: 0 0 auto;
-    max-height: min(48vh, 100%);
+    --mobile-profile-expanded: calc((100vh - 65px - env(safe-area-inset-bottom)) * 0.75);
+    --mobile-profile-collapsed: 3.15rem;
+    max-height: var(--mobile-profile-expanded);
     border-left: none;
     border-top: 1px solid var(--border-subtle);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: max-height var(--motion-normal) var(--motion-ease);
+    transition: max-height 0.35s var(--motion-ease), box-shadow 0.35s var(--motion-ease);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  }
+  body.light-theme .profile-workspace-pane {
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   }
   .editor-layout.mobile-profile-collapsed .profile-workspace-pane {
-    max-height: 3.15rem;
+    max-height: var(--mobile-profile-collapsed);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
   }
   .workspace-scroll-area {
     height: auto !important;
@@ -101,6 +108,17 @@
     min-width: unset;
     flex: 1 1 auto;
     min-height: 0;
+  }
+  .workspace-scroll-area.mobile-profile-body {
+    transition: opacity 0.28s var(--motion-ease), transform 0.35s var(--motion-ease);
+    transform-origin: top center;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .workspace-scroll-area.mobile-profile-body.is-body-collapsed {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
   }
   .workspace-toggle-btn { display: none !important; }
   .editor-layout .resizer-v { display: none !important; }
@@ -122,10 +140,15 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .mobile-profile-toggle i {
+  .mobile-profile-chevron {
     color: var(--text-muted);
     font-size: 1rem;
-    transition: transform var(--motion-normal) var(--motion-ease);
+    display: inline-block;
+    transition: transform 0.35s var(--motion-ease);
+    transform: rotate(0deg);
+  }
+  .mobile-profile-chevron.is-expanded {
+    transform: rotate(180deg);
   }
   .editor-layout:not(.mobile-profile-collapsed) .mobile-profile-toggle {
     border-bottom-color: var(--border-subtle);

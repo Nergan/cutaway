@@ -1,10 +1,10 @@
 <template>
   <div class="editor-layout" :class="{ 'mobile-profile-collapsed': isMobile && isMobileProfileCollapsed }" ref="editorRoot">
-    <div class="tag-library-pane" @focusin="collapseProfileForTags" @pointerdown="collapseProfileForTags">
+    <div class="tag-library-pane">
       <div class="tag-library-header blurred-header" style="position: sticky; top: 0; z-index: 10;">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
-          <input type="text" class="seamless-input search-header-input" :value="store.state.tagSearchQuery" @input="store.state.tagSearchQuery = $event.target.value" @focus="collapseProfileForTags" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
+          <input type="text" class="seamless-input search-header-input" :value="store.state.tagSearchQuery" @input="store.state.tagSearchQuery = $event.target.value" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
           <transition name="fade">
             <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
           </transition>
@@ -40,13 +40,18 @@
         <i class="bi" :class="store.state.isWorkspaceCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
       </button>
 
-      <button type="button" class="mobile-profile-toggle" v-if="isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed">
+      <button type="button" class="mobile-profile-toggle" v-if="isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed" :aria-expanded="!isMobileProfileCollapsed">
         <span>{{ store.state.isUserFriendlyInterface ? store.t('uf_your_profile') : store.t('my_profile') }}</span>
-        <i class="bi" :class="isMobileProfileCollapsed ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+        <i class="bi bi-chevron-down mobile-profile-chevron" :class="{ 'is-expanded': !isMobileProfileCollapsed }"></i>
       </button>
       
-      <div class="workspace-scroll-area" v-show="isMobile ? !isMobileProfileCollapsed : !store.state.isWorkspaceCollapsed"
-           :class="{'drag-over-files': isDraggingFiles}"
+      <div class="workspace-scroll-area"
+           v-show="!isMobile && !store.state.isWorkspaceCollapsed"
+           :class="{
+             'mobile-profile-body': isMobile,
+             'is-body-collapsed': isMobile && isMobileProfileCollapsed,
+             'drag-over-files': isDraggingFiles
+           }"
            @dragenter.prevent="workspaceDragEnter"
            @dragover.prevent="workspaceDragOver"
            @dragleave.prevent="workspaceDragLeave"
@@ -216,10 +221,6 @@ const workspacePaneStyle = computed(() => {
 
 function handleResize() {
   isMobile.value = window.innerWidth <= 768
-}
-
-function collapseProfileForTags() {
-  if (isMobile.value) isMobileProfileCollapsed.value = true
 }
 
 onMounted(() => {
