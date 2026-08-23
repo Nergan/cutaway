@@ -73,14 +73,19 @@ class TestInboxUiContracts:
     def test_active_filter_uses_underline_and_accent_colors(self):
         css = extract_vue_scoped_css("frontend/src/components/Inbox.vue")
         base_block = css_rule_block(css, ".filter-icon")
-        underline_block = css_rule_block(css, ".filter-icon.active::after")
+        underline_block = css_rule_block(css, ".filter-icon::after")
+        active_underline_block = css_rule_block(css, ".filter-icon.active::after")
 
         assert "align-items: center" in base_block
         assert "justify-content: center" in base_block
         assert re.search(r"width:\s*[\d.]+rem", base_block)
         assert re.search(r"height:\s*[\d.]+rem", base_block)
-        assert "background:" in underline_block
-        assert "bottom: 0" in underline_block
+        assert "height: 1px" in underline_block
+        assert "opacity: 0" in underline_block
+        assert "scaleX(0)" in underline_block
+        assert "transition:" in underline_block
+        assert "opacity: 1" in active_underline_block
+        assert "scaleX(1)" in active_underline_block
         assert "border-color: currentColor" not in css
         assert "type-share.active { color: var(--accent-info)" in css
         assert "type-exchange.active { color: var(--accent-moss)" in css

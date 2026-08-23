@@ -573,15 +573,25 @@ body:not(.uf-mode) .inbox-sidebar.non-uf:hover {
 }
 .filter-icon:hover { transform: scale(var(--motion-hover-scale)); }
 .filter-icon:active { transform: scale(var(--motion-press-scale)); }
-.filter-icon.active::after {
+.filter-icon::after {
   content: '';
   position: absolute;
   left: 12%;
   right: 12%;
   bottom: 0;
-  height: 2px;
+  height: 1px;
   border-radius: 1px;
   background: currentColor;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center bottom;
+  transition:
+    opacity var(--motion-normal) var(--motion-ease),
+    transform var(--motion-normal) var(--motion-ease);
+}
+.filter-icon.active::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 .filter-icon.filter-match.active { color: #fff; }
 .filter-icon.filter-nomatch.active { color: #fff; }
