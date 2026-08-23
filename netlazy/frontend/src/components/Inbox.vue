@@ -86,7 +86,7 @@
                    </button>
                 </template>
               </template>
-              <template v-else-if="selectedChat.chatState === 'sent' || ['matched', 'declined'].includes(selectedChat.chatState)">
+              <template v-else-if="canDeleteChat(selectedChat)">
                  <button class="footer-action icon-btn" style="color: var(--accent-danger);" :disabled="isBusy(selectedChat)" @click="deleteMatch(selectedChat)">
                    <i class="bi" :class="actionIcon(selectedChat, 'delete', 'bi-trash3')"></i>
                  </button>
@@ -204,7 +204,7 @@
 
 <script setup>
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
-import { useStore } from '../store/state.js'
+import { useStore, isInboxUnread } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
@@ -309,8 +309,13 @@ function getChatStateLabel(state) {
 }
 
 function isUnread(chat) {
-  if (chat.status === 'pending' && !chat.is_sender) return !chat.is_read
-  if (chat.status !== 'pending' && chat.is_sender) return !chat.is_read
+  return isInboxUnread(chat)
+}
+
+function canDeleteChat(chat) {
+  if (!chat) return false
+  if (['matched', 'declined'].includes(chat.chatState)) return true
+  if (chat.chatState === 'sent' && chat.type === 'share') return true
   return false
 }
 

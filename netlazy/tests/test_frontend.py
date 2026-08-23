@@ -105,6 +105,20 @@ class TestInboxUiContracts:
     def test_is_read_mapped_from_api(self):
         state_js = read_text("frontend/src/store/state.js")
         assert "is_read: r.is_read" in state_js
+        assert "export function isInboxUnread" in state_js
+        assert "item.status === 'pending' && !item.is_sender" in state_js
+        assert "item.status !== 'pending' && item.is_sender" in state_js
+
+    def test_sidebar_badge_counts_unread_not_all_pending(self):
+        app = read_text("frontend/src/App.vue")
+        assert "isInboxUnread" in app
+        assert "r.status === 'pending' && !r.is_sender" not in app
+
+    def test_sent_exchange_demand_cannot_be_deleted(self):
+        inbox = read_text("frontend/src/components/Inbox.vue")
+        assert "function canDeleteChat" in inbox
+        assert "chat.chatState === 'sent' && chat.type === 'share'" in inbox
+        assert "canDeleteChat(selectedChat)" in inbox
 
 
 class TestGlobalUiContracts:

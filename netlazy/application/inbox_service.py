@@ -150,5 +150,29 @@ class InboxService:
 
         return result
 
+    async def delete_handshake(self, user_id: str, handshake_id: str) -> None:
+        h = await self._handshake_repo.get_by_id(handshake_id)
+        if not h:
+            raise HandshakeNotFoundError("Handshake not found")
+        if h.sender_id != user_id and h.receiver_id != user_id:
+            raise UnauthorizedHandshakeActionError("Only participants can delete this handshake")
+
+        if (
+            h.status == "pending"
+            and h.sender_id == user_id
+            and h.handshake_type in ("exchange", "demand", "mutual")
+        ):
+            raise InvalidHandshakeStateError("Cannot revoke a pending request that requires a response")
+
+        if h.sender_id == user_id:
+            h.sender_deleted = True
+        else:
+            h.receiver_deleted = True
+
+        if h.sender_deleted and h.receiver_deleted:
+            await self._handshake_repo.delete(handshake_id)
+        else:
+            await self._handshake_repo.update(h)
+
     async def delete_user_handshakes(self, user_id: str) -> None:
         await self._handshake_repo.delete_for_user(user_id)

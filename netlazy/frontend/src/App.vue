@@ -333,7 +333,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useStore } from './store/state.js'
+import { useStore, isInboxUnread } from './store/state.js'
 import api, { apiWithPoW } from './utils/api.js'
 import Lightbox from './components/Lightbox.vue'
 import Editor from './components/Editor.vue'
@@ -661,9 +661,7 @@ function reloadPage() {
   window.location.reload()
 }
 
-const pendingInboxCount = computed(() => {
-  return store.state.inbox.filter(r => r.status === 'pending' && !r.is_sender).length
-})
+const pendingInboxCount = computed(() => store.state.inbox.filter(isInboxUnread).length)
 
 const validPrivateContacts = computed(() => 
   store.state.myProfile.contacts.filter(c => c.is_private && c.type !== 'unknown' && c.value.trim() !== '')

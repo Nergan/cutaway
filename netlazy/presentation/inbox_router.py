@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from netlazy.domain.models import User
 from netlazy.presentation.route_handler import NetlazyRoute
-from netlazy.presentation.dependencies import inbox_service, profile_service, verify_request_signature, verify_pow, handshake_repo
+from netlazy.presentation.dependencies import inbox_service, profile_service, verify_request_signature, verify_pow
 from netlazy.presentation.profile_router import ProfileResponse, _to_response as profile_to_response
 from netlazy.application.inbox_service import HandshakeNotFoundError, UnauthorizedHandshakeActionError, InvalidHandshakeStateError, OtherUserNotFoundError, OtherUserBannedError
 
@@ -113,21 +113,14 @@ async def mark_handshake_read(handshake_id: str, user: User = Depends(verify_req
 
 @router.delete("/handshakes/{handshake_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_handshake(handshake_id: str, user: User = Depends(verify_request_signature)):
-    h = await handshake_repo.get_by_id(handshake_id)
-    if not h:
+    try:
+        await inbox_service.delete_handshake(user.user_id, handshake_id)
+    except HandshakeNotFoundError:
         raise HTTPException(status_code=404, detail="Handshake not found")
-    
-    if h.sender_id == user.user_id:
-        h.sender_deleted = True
-    elif h.receiver_id == user.user_id:
-        h.receiver_deleted = True
-    else:
+    except UnauthorizedHandshakeActionError:
         raise HTTPException(status_code=403, detail="Forbidden")
-        
-    if h.sender_deleted and h.receiver_deleted:
-        await handshake_repo.delete(handshake_id)
-    else:
-        await handshake_repo.update(h)
+    except InvalidHandshakeStateError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.get("", response_model=List[InboxItemResponse])
 async def get_inbox(user: User = Depends(verify_request_signature)):

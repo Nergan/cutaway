@@ -163,3 +163,45 @@ async def test_mark_as_read_sender_pending_does_not_consume_flag(inbox_service, 
 
     assert marked.is_read is False
     inbox_deps["handshake_repo"].update.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("handshake_type", ["exchange", "demand", "mutual"])
+async def test_sender_cannot_revoke_pending_response_request(inbox_service, inbox_deps, handshake_type):
+    inbox_deps["handshake_repo"].get_by_id.return_value = Handshake(
+        id="h1", sender_id="s1", receiver_id="r1",
+        handshake_type=handshake_type, status="pending"
+    )
+
+    with pytest.raises(InvalidHandshakeStateError, match="Cannot revoke"):
+        await inbox_service.delete_handshake("s1", "h1")
+
+    inbox_deps["handshake_repo"].update.assert_not_called()
+    inbox_deps["handshake_repo"].delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sender_can_delete_pending_share(inbox_service, inbox_deps):
+    inbox_deps["handshake_repo"].get_by_id.return_value = Handshake(
+        id="h1", sender_id="s1", receiver_id="r1",
+        handshake_type="share", status="pending"
+    )
+
+    await inbox_service.delete_handshake("s1", "h1")
+
+    updated = inbox_deps["handshake_repo"].update.call_args.args[0]
+    assert updated.sender_deleted is True
+    inbox_deps["handshake_repo"].delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sender_can_delete_resolved_exchange(inbox_service, inbox_deps):
+    inbox_deps["handshake_repo"].get_by_id.return_value = Handshake(
+        id="h1", sender_id="s1", receiver_id="r1",
+        handshake_type="exchange", status="accepted"
+    )
+
+    await inbox_service.delete_handshake("s1", "h1")
+
+    updated = inbox_deps["handshake_repo"].update.call_args.args[0]
+    assert updated.sender_deleted is True

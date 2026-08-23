@@ -69,6 +69,13 @@ const defaultState = {
     lightbox: { open: false, mediaList: [], index: 0, isEditable: false }
 };
 
+export function isInboxUnread(item) {
+    if (!item) return false;
+    if (item.status === 'pending' && !item.is_sender) return !item.is_read;
+    if (item.status !== 'pending' && item.is_sender) return !item.is_read;
+    return false;
+}
+
 let instance = null;
 
 export function useStore() {
