@@ -20,6 +20,7 @@ INBOX_UI_KEYS = (
     "decline",
     "send",
     "no_valid_private",
+    "failed_delete_chat",
 )
 
 MOTION_CSS_TOKENS = (

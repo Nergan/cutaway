@@ -115,7 +115,7 @@
         </div>
       </div>
       <div v-else class="empty-state">
-        <i class="bi bi-chat-dots empty-icon"></i>
+        <i class="bi bi-envelope empty-icon"></i>
         <h3>{{ store.t('select_chat_prompt') }}</h3>
       </div>
     </div>

@@ -155,7 +155,8 @@ class TestTranslations:
         keys = extract_locale_keys(translations, "en")
         assert "select_chat_prompt" in keys
         en_block = translations.split("en: {", 1)[1]
-        assert 'select_chat_prompt: "select a chat..."' in en_block
+        assert 'select_chat_prompt: "select a request..."' in en_block
+        assert 'no_chats: "no requests..."' in en_block
 
 
 class TestBackendFrontendAlignment:

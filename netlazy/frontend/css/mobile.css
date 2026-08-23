@@ -56,20 +56,80 @@
     color: var(--accent-moss);
   }
 
-  .editor-layout { flex-direction: column; overflow-y: auto; height: 100%; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .editor-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    padding-bottom: calc(65px + env(safe-area-inset-bottom));
+  }
   .tag-library-pane {
     width: 100% !important;
-    flex-shrink: 0;
-    min-height: auto;
-    height: 38vh;
-    max-height: 38vh;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
+    overflow: hidden;
   }
-  .profile-workspace-pane { width: 100% !important; border-left: none; flex-grow: 1; }
-  .workspace-scroll-area { height: auto !important; overflow-y: visible !important; overflow-x: visible !important; padding: 1.5rem; min-width: unset; padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important; }
+  .tag-library-pane .tag-library-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .profile-workspace-pane {
+    width: 100% !important;
+    flex: 0 0 auto;
+    max-height: min(48vh, 100%);
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: max-height var(--motion-normal) var(--motion-ease);
+  }
+  .editor-layout.mobile-profile-collapsed .profile-workspace-pane {
+    max-height: 3.15rem;
+  }
+  .workspace-scroll-area {
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0.9rem 1.2rem 1.2rem;
+    min-width: unset;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   .workspace-toggle-btn { display: none !important; }
   .editor-layout .resizer-v { display: none !important; }
+
+  .mobile-profile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0.85rem 1.2rem;
+    background: var(--bg-surface);
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-profile-toggle i {
+    color: var(--text-muted);
+    font-size: 1rem;
+    transition: transform var(--motion-normal) var(--motion-ease);
+  }
+  .editor-layout:not(.mobile-profile-collapsed) .mobile-profile-toggle {
+    border-bottom-color: var(--border-subtle);
+  }
 
   .inbox-layout {
     display: flex;

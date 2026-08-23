@@ -1,10 +1,10 @@
 <template>
-  <div class="editor-layout" ref="editorRoot">
-    <div class="tag-library-pane">
+  <div class="editor-layout" :class="{ 'mobile-profile-collapsed': isMobile && isMobileProfileCollapsed }" ref="editorRoot">
+    <div class="tag-library-pane" @focusin="collapseProfileForTags" @pointerdown="collapseProfileForTags">
       <div class="tag-library-header blurred-header" style="position: sticky; top: 0; z-index: 10;">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
-          <input type="text" class="seamless-input search-header-input" :value="store.state.tagSearchQuery" @input="store.state.tagSearchQuery = $event.target.value" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
+          <input type="text" class="seamless-input search-header-input" :value="store.state.tagSearchQuery" @input="store.state.tagSearchQuery = $event.target.value" @focus="collapseProfileForTags" :placeholder="store.t('search_tags')" style="padding-right: 1.5rem;">
           <transition name="fade">
             <i v-if="store.state.tagSearchQuery" class="bi bi-x-lg search-clear-btn" @click="store.state.tagSearchQuery = ''"></i>
           </transition>
@@ -33,21 +33,26 @@
       </div>
     </div>
 
-    <div class="profile-workspace-pane" :class="{collapsed: store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="{width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px'}" tabindex="0" @paste="handlePaste" @click="handleWorkspaceClick">
-      <div class="resizer-v left" @mousedown="startResize" v-show="!store.state.isWorkspaceCollapsed"></div>
+    <div class="profile-workspace-pane" :class="{collapsed: !isMobile && store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="workspacePaneStyle" tabindex="0" @paste="handlePaste" @click="handleWorkspaceClick">
+      <div class="resizer-v left" @mousedown="startResize" v-show="!isMobile && !store.state.isWorkspaceCollapsed"></div>
       
-      <button class="workspace-toggle-btn" v-if="store.state.isUserFriendlyInterface || store.state.isWorkspaceCollapsed" @click.stop="store.state.isWorkspaceCollapsed = false" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
+      <button class="workspace-toggle-btn" v-if="!isMobile && (store.state.isUserFriendlyInterface || store.state.isWorkspaceCollapsed)" @click.stop="store.state.isWorkspaceCollapsed = false" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
         <i class="bi" :class="store.state.isWorkspaceCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
       </button>
+
+      <button type="button" class="mobile-profile-toggle" v-if="isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed">
+        <span>{{ store.state.isUserFriendlyInterface ? store.t('uf_your_profile') : store.t('my_profile') }}</span>
+        <i class="bi" :class="isMobileProfileCollapsed ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+      </button>
       
-      <div class="workspace-scroll-area" v-show="!store.state.isWorkspaceCollapsed"
+      <div class="workspace-scroll-area" v-show="isMobile ? !isMobileProfileCollapsed : !store.state.isWorkspaceCollapsed"
            :class="{'drag-over-files': isDraggingFiles}"
            @dragenter.prevent="workspaceDragEnter"
            @dragover.prevent="workspaceDragOver"
            @dragleave.prevent="workspaceDragLeave"
            @drop.prevent="workspaceDrop">
 
-        <h2 v-if="store.state.isUserFriendlyInterface" style="font-size: 1.5rem; color: var(--text-main); font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-subtle);">
+        <h2 v-if="!isMobile && store.state.isUserFriendlyInterface" style="font-size: 1.5rem; color: var(--text-main); font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-subtle);">
           {{ store.t('uf_your_profile') }}
         </h2>
 
@@ -186,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onActivated } from 'vue'
+import { ref, computed, onActivated, onMounted, onUnmounted } from 'vue'
 import { useStore } from '../store/state.js'
 import api from '../utils/api.js'
 
@@ -201,6 +206,28 @@ const showMedia = ref(true)
 const showBio = ref(true)
 const showActiveTags = ref(true)
 const showContacts = ref(true)
+const isMobile = ref(window.innerWidth <= 768)
+const isMobileProfileCollapsed = ref(false)
+
+const workspacePaneStyle = computed(() => {
+  if (isMobile.value) return undefined
+  return { width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px' }
+})
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 768
+}
+
+function collapseProfileForTags() {
+  if (isMobile.value) isMobileProfileCollapsed.value = true
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 let dragIndex = null
 let saveTimeout = null
@@ -231,6 +258,7 @@ onActivated(() => {
 })
 
 function handleWorkspaceClick(e) {
+  if (isMobile.value) return
   if (!store.state.isUserFriendlyInterface) {
     if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone') && !e.target.closest('.contact-row')) {
       store.state.isWorkspaceCollapsed = true;

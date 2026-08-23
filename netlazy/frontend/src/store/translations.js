@@ -105,10 +105,11 @@ export default {
     tooltip_bonus: "Adds points to score",
     tooltip_abonus: "Subtracts points from score",
     no_message: "no message",
-    select_chat_prompt: "select a chat...",
-    no_chats: "no chats...",
+    select_chat_prompt: "select a request...",
+    no_chats: "no requests...",
     back: "back",
     matched_label: "matched",
+    failed_delete_chat: "failed to delete request",
     update_app: "update app"
   },
   ru: {
@@ -217,10 +218,11 @@ export default {
     tooltip_bonus: "Добавляет баллы к рейтингу",
     tooltip_abonus: "Отнимает баллы от рейтинга",
     no_message: "нет сообщения",
-    select_chat_prompt: "выберите чат...",
-    no_chats: "нет чатов...",
+    select_chat_prompt: "выберите запрос...",
+    no_chats: "нет запросов...",
     back: "назад",
     matched_label: "совпадение",
+    failed_delete_chat: "не удалось удалить запрос",
     update_app: "обновить приложение"
   },
   pt: {
@@ -329,10 +331,11 @@ export default {
     tooltip_bonus: "Adiciona pontos à pontuação",
     tooltip_abonus: "Subtrai pontos da pontuação",
     no_message: "sem mensagem",
-    select_chat_prompt: "selecione um chat...",
-    no_chats: "nenhum chat...",
+    select_chat_prompt: "selecione uma solicitação...",
+    no_chats: "nenhuma solicitação...",
     back: "voltar",
     matched_label: "combinado",
+    failed_delete_chat: "falha ao excluir solicitação",
     update_app: "atualizar aplicativo"
   },
   zh: {
@@ -434,10 +437,11 @@ export default {
     tooltip_bonus: "為評分增加分數",
     tooltip_abonus: "從評分中扣除分數",
     no_message: "沒有訊息",
-    select_chat_prompt: "選擇一個聊天...",
-    no_chats: "沒有聊天...",
+    select_chat_prompt: "選擇一個請求...",
+    no_chats: "沒有請求...",
     back: "返回",
     matched_label: "已配對",
+    failed_delete_chat: "刪除請求失敗",
     update_app: "更新應用程式",
     backup_phrase_confirm_btn: "我已經儲存，繼續"
   },
@@ -541,10 +545,11 @@ export default {
     tooltip_bonus: "スコアにポイントを追加します",
     tooltip_abonus: "スコアからポイントを減算します",
     no_message: "メッセージなし",
-    select_chat_prompt: "チャットを選択...",
-    no_chats: "チャットがありません...",
+    select_chat_prompt: "リクエストを選択...",
+    no_chats: "リクエストがありません...",
     back: "戻る",
     matched_label: "マッチ",
+    failed_delete_chat: "リクエストの削除に失敗しました",
     update_app: "アプリを更新"
   },
   ko: {
@@ -647,14 +652,14 @@ export default {
     tooltip_bonus: "점수에 포인트를 더합니다",
     tooltip_abonus: "점수에서 포인트를 뺍니다",
     no_message: "메시지 없음",
-    select_chat_prompt: "채팅을 선택하세요...",
-    no_chats: "채팅 없음...",
+    select_chat_prompt: "요청을 선택하세요...",
+    no_chats: "요청 없음...",
     back: "뒤로",
     matched_label: "매치됨",
     accepted: "수락됨",
     handshake_updated: "요청이 {status}",
     failed_resolve_handshake: "요청 처리 실패",
-    failed_delete_chat: "채팅 삭제 실패",
+    failed_delete_chat: "요청 삭제 실패",
     update_app: "앱 업데이트"
   }
 };
