@@ -5,6 +5,17 @@ export interface RestProxyConfig {
   secret: string;
 }
 
+/** Origin ответил не 200/404 — это не отказ в аутентификации, а сбой прокси. */
+export class OriginProxyError extends Error {
+  constructor(
+    public readonly operation: string,
+    public readonly status: number,
+  ) {
+    super(`mongo rest proxy ${operation} failed: ${status}`);
+    this.name = "OriginProxyError";
+  }
+}
+
 /**
  * RestProxyUserRepository — HTTPS-клиент к нашему origin API
  * (`/internal/v1/...` на HF/Render). Замена мёртвого Atlas Data API.
@@ -49,7 +60,7 @@ export class RestProxyUserRepository implements UserRepositoryPort {
     }>("/internal/v1/clients/find", { client_id: clientId });
     if (status === 404) return null;
     if (status !== 200 || !json) {
-      throw new Error(`mongo rest proxy findClient failed: ${status}`);
+      throw new OriginProxyError("findClient", status);
     }
     return {
       clientId: json.client_id,
@@ -68,7 +79,7 @@ export class RestProxyUserRepository implements UserRepositoryPort {
     }>("/internal/v1/enrollments/find", { token_hash: tokenHash });
     if (status === 404) return null;
     if (status !== 200 || !json) {
-      throw new Error(`mongo rest proxy findEnrollment failed: ${status}`);
+      throw new OriginProxyError("findEnrollment", status);
     }
     return {
       clientId: json.client_id,
@@ -89,14 +100,14 @@ export class RestProxyUserRepository implements UserRepositoryPort {
       public_key_mldsa65_hex: publicKeyMldsaHex ?? null,
     });
     if (status !== 200) {
-      throw new Error(`mongo rest proxy bindDeviceIdentity failed: ${status}`);
+      throw new OriginProxyError("bindDeviceIdentity", status);
     }
   }
 
   async consumeEnrollmentToken(tokenHash: string): Promise<void> {
     const { status } = await this.post("/internal/v1/enrollments/consume", { token_hash: tokenHash });
     if (status !== 200) {
-      throw new Error(`mongo rest proxy consumeEnrollmentToken failed: ${status}`);
+      throw new OriginProxyError("consumeEnrollmentToken", status);
     }
   }
 
@@ -106,7 +117,7 @@ export class RestProxyUserRepository implements UserRepositoryPort {
       bytes_delta: bytesDelta,
     });
     if (status !== 200) {
-      throw new Error(`mongo rest proxy incrementUsage failed: ${status}`);
+      throw new OriginProxyError("incrementUsage", status);
     }
   }
 }

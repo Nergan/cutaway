@@ -6,9 +6,16 @@ function hexToBytes(hex: string): Uint8Array {
   }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
   return bytes;
+}
+
+/** Копия в собственный ArrayBuffer: workerd/WebCrypto не любит views. */
+function copyBytes(view: Uint8Array): Uint8Array {
+  const out = new Uint8Array(view.byteLength);
+  out.set(view);
+  return out;
 }
 
 /**
@@ -36,7 +43,7 @@ export class WebCryptoEd25519Verifier implements SignatureVerifierPort {
     try {
       cryptoKey = await crypto.subtle.importKey(
         "raw",
-        publicKeyBytes,
+        copyBytes(publicKeyBytes),
         { name: "Ed25519" },
         false,
         ["verify"],
@@ -45,6 +52,17 @@ export class WebCryptoEd25519Verifier implements SignatureVerifierPort {
       return false; // невалидный публичный ключ
     }
 
-    return crypto.subtle.verify("Ed25519", cryptoKey, signatureBytes, message);
+    try {
+      // Алгоритм объектом — как в доке Workers. Строка "Ed25519" в Node
+      // проходит, а workerd на verify может бросить вместо false.
+      return await crypto.subtle.verify(
+        { name: "Ed25519" },
+        cryptoKey,
+        copyBytes(signatureBytes),
+        copyBytes(message),
+      );
+    } catch {
+      return false;
+    }
   }
 }

@@ -272,6 +272,17 @@ curl.exe -s http://127.0.0.1:47821/status
 и ядро отвечает текстом `invalid request body` без поля `ok`. В `$enroll`
 `ok` как раз есть (`true`) — это ответ `/enroll`, не `/connect`.
 
+Локальный `POST /connect` почти всегда отвечает **HTTP 200**, даже когда
+подключение не удалось: ядро так устроено (`desktop/main.go`). Смотрите поле
+`ok` и `/status`. `HTTP_CODE:200` рядом с `"ok":false` — это не «и да и нет»,
+а «запрос до ядра дошёл, VPN не поднялся».
+
+`ENROLLED` в админке — тоже другой этап. Invite → `/enroll` записывает
+публичный ключ в Mongo; зелёный статус значит «устройство привязано», а не
+«есть живая сессия». Сессия появляется только после успешного `POST /auth`
+на воркере. Пока `/status` показывает `failed` и `last_error` про `/auth`,
+админка честно остаётся `ENROLLED` с трафиком `0 B`.
+
 `{"ok":true}` и статус `connected` означают, что работает всё: воркер принял
 подпись, выдал сессию, поднял туннель и открыл TCP до `example.com`.
 
@@ -337,7 +348,11 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 | `/enroll` → `403 enrollment token expired` | То же самое, но срок истёк явно |
 | В `nodes` адрес `another.example` | Воркер работает на старой версии, сделайте `wrangler deploy` |
 | `/connect` → `invalid request body` | PowerShell сломал JSON в `-d`. Пишите тело в файл и `--data-binary "@файл"` |
-| `/connect` → `ok: false`, в логе `node auth failed` | Воркер не смог проверить подпись: устройство не привязано к базе, забанено или исчерпало квоту. Проверьте устройство в админке |
+| `/connect` → HTTP 200 и `"ok":false` | Так и задумано у локального API. Смотрите `error` и `GET /status` |
+| В админке `ENROLLED`, `/status` = `failed` | Ключ в Mongo есть, сессии нет. Enroll ≠ connect |
+| `/connect` → `http_challenge: ... unexpected status 500` | Упал воркер на `POST /auth` (не отказ в подписи). Нужен свежий `wrangler deploy` edge; в логах воркера будет `unhandled error` |
+| `/connect` → `unexpected status 502` / `origin unavailable` | Воркер жив, origin (Space) не отдал клиента. Смотрите логи HF на `/another/internal/v1/clients/find` |
+| `/connect` → `ok: false`, в логе `node auth failed` / воркер `403` | Подпись не принята: другой ключ, бан или квота. Проверьте устройство в админке |
 | `/connect` → `ok: false`, в логе `node dial failed` | Авторизация прошла, но туннель не поднялся. Обычно `host` в узле недостижим либо сессионный токен истёк, не дождавшись WebSocket |
 | Всё зелёное, но сайты не открываются | Скорее всего DNS или ограничения из части 2. Сначала проверьте по IP, минуя имена |
 | `tun: using noop` при запуске от администратора | Нет `wintun.dll` рядом с exe или не та разрядность |

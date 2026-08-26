@@ -1,6 +1,9 @@
 import type { BanCachePort } from "../ports/ban_cache_port.js";
 
-const BAN_CACHE_TTL_SECONDS = 30; // короткий TTL компенсирует eventual consistency KV, см. §7.3
+// Workers KV отклоняет expirationTtl < 60 секунд (минимум платформы).
+// Спецификация §7.3 хотела ~30с из-за eventual consistency — ниже 60 KV
+// бросает, и POST /auth отвечает generic 500 ещё до проверки подписи.
+export const BAN_CACHE_TTL_SECONDS = 60;
 
 /**
  * KvBanCache — cache-aside поверх Workers KV. Псевдокод-источник: §7.3
@@ -20,7 +23,12 @@ export class KvBanCache implements BanCachePort {
     }
 
     const denied = await fallback();
-    await this.kv.put(this.key(clientId), denied ? "1" : "0", { expirationTtl: BAN_CACHE_TTL_SECONDS });
+    try {
+      await this.kv.put(this.key(clientId), denied ? "1" : "0", { expirationTtl: BAN_CACHE_TTL_SECONDS });
+    } catch (err) {
+      // Решение уже есть; не кэшировать лучше, чем ронять /auth.
+      console.error("ban cache put failed", err);
+    }
     return denied;
   }
 

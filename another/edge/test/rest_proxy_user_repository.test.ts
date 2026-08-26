@@ -55,4 +55,14 @@ describe("RestProxyUserRepository", () => {
     await repo.consumeEnrollmentToken("deadbeef");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("throws OriginProxyError when findClient gets a non-200 origin status", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, { error: "internal server error" })));
+    const repo = new RestProxyUserRepository({ baseUrl: "https://origin.example", secret: "s" });
+    await expect(repo.findClient("dev-1")).rejects.toMatchObject({
+      name: "OriginProxyError",
+      operation: "findClient",
+      status: 500,
+    });
+  });
 });

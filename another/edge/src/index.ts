@@ -5,7 +5,7 @@ import { handleAuth } from "./handlers/auth.js";
 import { handleEnroll } from "./handlers/enroll.js";
 import { handleProxy } from "./handlers/proxy.js";
 import { DurableObjectNonceStore, NonceLedgerObject } from "./adapters/durable_object_nonce_store.js";
-import { RestProxyUserRepository } from "./adapters/rest_proxy_user_repository.js";
+import { OriginProxyError, RestProxyUserRepository } from "./adapters/rest_proxy_user_repository.js";
 import { WebCryptoEd25519Verifier } from "./adapters/webcrypto_ed25519_verifier.js";
 import { KvBanCache } from "./adapters/kv_ban_cache.js";
 import { KvSessionStore } from "./adapters/kv_session_store.js";
@@ -126,6 +126,16 @@ export default {
       }
     } catch (err) {
       console.error("unhandled error", err);
+      if (err instanceof OriginProxyError) {
+        return new Response(
+          JSON.stringify({
+            error: "origin unavailable",
+            operation: err.operation,
+            status: err.status,
+          }),
+          { status: 502 },
+        );
+      }
       return new Response(JSON.stringify({ error: "internal server error" }), { status: 500 });
     }
   },

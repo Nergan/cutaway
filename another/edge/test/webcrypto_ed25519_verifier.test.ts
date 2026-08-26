@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { generateKeyPairSync, sign as nodeSign } from "node:crypto";
 import { WebCryptoEd25519Verifier } from "../src/adapters/webcrypto_ed25519_verifier.js";
 
@@ -72,5 +72,23 @@ describe("WebCryptoEd25519Verifier", () => {
     const verifier = new WebCryptoEd25519Verifier();
     const ok = await verifier.verify("aabb", new TextEncoder().encode("x"), "ccdd");
     expect(ok).toBe(false);
+  });
+
+  it("returns false instead of throwing if SubtleCrypto.verify throws", async () => {
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const publicKeyHex = bytesToHex(rawPublicKeyFromSpki(publicKey.export({ type: "spki", format: "der" })));
+    const message = new TextEncoder().encode("payload");
+    const signatureHex = bytesToHex(new Uint8Array(nodeSign(null, message, privateKey)));
+
+    const spy = vi.spyOn(crypto.subtle, "verify").mockRejectedValue(
+      new TypeError("Failed to execute 'verify' on 'SubtleCrypto'"),
+    );
+
+    try {
+      const verifier = new WebCryptoEd25519Verifier();
+      await expect(verifier.verify(publicKeyHex, message, signatureHex)).resolves.toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
