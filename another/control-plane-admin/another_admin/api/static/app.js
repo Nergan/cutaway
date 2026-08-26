@@ -393,10 +393,49 @@ async function unlock() {
   $("session-status").className = "session-status ok";
 }
 
+function formatInviteUntil(iso) {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "";
+  return new Date(ms).toLocaleString("ru-RU", { hour12: false });
+}
+
+function inviteRemain(iso) {
+  const end = Date.parse(iso);
+  if (!Number.isFinite(end)) return "";
+  const sec = Math.floor((end - Date.now()) / 1000);
+  if (sec <= 0) return "истёк";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h >= 48) return `${Math.floor(h / 24)}д ${h % 24}ч`;
+  if (h > 0) return `${h}ч ${m}м`;
+  if (m > 0) return `${m}м`;
+  return `${sec}с`;
+}
+
+function inviteExpiryLine(iso, ttlHours) {
+  const hours = ttlHours || 24;
+  if (!iso) return `инвайт действует ${hours} ч`;
+  const remain = inviteRemain(iso);
+  return `инвайт до ${formatInviteUntil(iso)} · осталось ${remain}`;
+}
+
+function tickInviteClocks() {
+  for (const el of document.querySelectorAll("[data-invite-expires]")) {
+    const remain = inviteRemain(el.dataset.inviteExpires);
+    el.textContent = remain;
+    el.classList.toggle("is-expired", remain === "истёк");
+  }
+}
+
 function statusBadge(device) {
   if (device.is_banned) return '<span class="badge badge-danger">banned</span>';
   if (device.is_enrolled) return '<span class="badge badge-ok">enrolled</span>';
-  return '<span class="badge badge-idle">pending</span>';
+  const iso = device.enrollment_expires_at;
+  const remain = iso ? inviteRemain(iso) : "";
+  const clock = iso
+    ? `<span class="invite-ttl${remain === "истёк" ? " is-expired" : ""}" data-invite-expires="${esc(iso)}" title="${esc(formatInviteUntil(iso))}">${esc(remain)}</span>`
+    : "";
+  return `<span class="badge badge-idle">pending</span>${clock}`;
 }
 
 function quotaCell(device) {
@@ -453,7 +492,8 @@ function renderDevices(devices) {
         deviceBtn("Reissue", "btn btn-sm", async () => {
           const result = await sendCommand({ op: "reissue", client_id: d.client_id });
           showReveal(
-            `переиздан ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}`,
+            `переиздан ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+              `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>`,
           );
           await refreshDevices();
         }),
@@ -468,6 +508,7 @@ function renderDevices(devices) {
             .join("\n");
           showReveal(
             `сборка ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+              `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>` +
               `<pre>${esc(arts)}</pre>`,
           );
           await refreshDevices();
@@ -510,7 +551,8 @@ async function invite() {
   const result = await sendCommand({ op: "invite", comment, quota_limit_bytes: quota });
   showReveal(
     `client ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
-      ` — показан только один раз`,
+      ` — показан только один раз` +
+      `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>`,
   );
   await refreshDevices();
 }
@@ -639,11 +681,13 @@ let pollTicks = 0;
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTicks = 0;
+  tickInviteClocks();
   pollTimer = setInterval(async () => {
     if (!session.seeds || busyDepth > 0 || pollTick) return;
     pollTicks += 1;
     pollTick = true;
     renderBusy();
+    tickInviteClocks();
     try {
       await refreshSessions();
       if (pollTicks % 6 === 0) {
@@ -686,6 +730,7 @@ $("passphrase").addEventListener("keydown", (e) => {
 
 bind("btn-unlock", "unlock", async () => {
   await unlock();
+  document.body.classList.add("is-unlocked");
   $("investigation").checked = false;
   setBusyLabel("загрузка: расследование");
   await sendCommand({ op: "investigation_get" }).then((r) => {

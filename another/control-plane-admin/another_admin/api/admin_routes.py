@@ -158,7 +158,16 @@ async def command(body: CommandBody, request: Request) -> dict[str, Any]:
     }
 
 
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
+
+
 def _client_json(c) -> dict[str, Any]:
+    pending = bool(c.enrollment_token_hash) and not c.is_enrolled and not c.is_banned
     return {
         "client_id": c.client_id,
         "user_id": c.user_id,
@@ -168,7 +177,19 @@ def _client_json(c) -> dict[str, Any]:
         "quota_limit_bytes": c.quota_limit_bytes,
         "bytes_used": c.bytes_used,
         "public_key_hex": c.public_key_hex,
-        "last_activity": c.last_activity.isoformat() if c.last_activity else None,
+        "last_activity": _iso(c.last_activity),
+        "enrollment_expires_at": _iso(c.enrollment_expires_at) if pending else None,
+        "invite_pending": pending,
+    }
+
+
+def _invite_payload(result) -> dict[str, Any]:
+    return {
+        "client_id": result.client_id,
+        "enrollment_token": result.enrollment_token,
+        "qr_payload": result.qr_payload,
+        "enrollment_expires_at": _iso(result.enrollment_expires_at),
+        "invite_ttl_hours": 24,
     }
 
 
@@ -207,11 +228,7 @@ async def _execute_op(request: Request, body: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("comment is required")
         quota = int(body.get("quota_limit_bytes") or 0)
         result = await provisioning.create_invite(comment, quota)
-        return {
-            "client_id": result.client_id,
-            "enrollment_token": result.enrollment_token,
-            "qr_payload": result.qr_payload,
-        }
+        return _invite_payload(result)
 
     if op == "revoke":
         client_id = str(body.get("client_id") or "")
@@ -237,9 +254,7 @@ async def _execute_op(request: Request, body: dict[str, Any]) -> dict[str, Any]:
         await _invalidate_edge_ban(request, client_id)
         return {
             "revoked_client_id": client_id,
-            "client_id": result.client_id,
-            "enrollment_token": result.enrollment_token,
-            "qr_payload": result.qr_payload,
+            **_invite_payload(result),
         }
 
     if op == "list_devices":
@@ -375,7 +390,7 @@ async def _execute_op(request: Request, body: dict[str, Any]) -> dict[str, Any]:
         compiled = try_compile(plan, enabled=bool(cfg.build_enabled))
         payload = compiled.to_dict()
         payload["revoked_client_id"] = client_id
-        payload["qr_payload"] = result.qr_payload
+        payload.update(_invite_payload(result))
         return payload
 
     raise ValueError(f"unknown op: {op}")

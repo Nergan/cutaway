@@ -51,7 +51,12 @@ class DeviceProvisioningService:
         qr_payload = (
             f"another://enroll?token={quote(token)}&cp={quote(self.control_plane_url)}"
         )
-        return InviteResult(client_id=client_id, enrollment_token=token, qr_payload=qr_payload)
+        return InviteResult(
+            client_id=client_id,
+            enrollment_token=token,
+            qr_payload=qr_payload,
+            enrollment_expires_at=expires_at,
+        )
 
     def revoke_device(self, client_id: str) -> None:
         """Прямой перенос ``revoke_device`` из §7.3 спецификации. На
@@ -110,4 +115,9 @@ class DeviceProvisioningService:
         qr_payload = (
             f"another://enroll?token={quote(token)}&cp={quote(self.control_plane_url)}"
         )
-        return InviteResult(client_id=new_id, enrollment_token=token, qr_payload=qr_payload)
+        return InviteResult(
+            client_id=new_id,
+            enrollment_token=token,
+            qr_payload=qr_payload,
+            enrollment_expires_at=expires_at,
+        )

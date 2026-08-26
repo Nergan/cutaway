@@ -57,6 +57,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body:not(.is-unlocked) .workspace {
+  display: none !important;
+}
+
 ::selection {
   background: var(--accent-muted);
   color: var(--primary);
@@ -674,6 +678,17 @@ body.is-resizing .panel {
   color: var(--danger);
   background: var(--danger-muted);
 }
+.invite-ttl {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.invite-ttl.is-expired {
+  color: var(--danger);
+}
 
 /* Полоска расхода квоты под числами. */
 .meter {
@@ -734,6 +749,11 @@ body.is-resizing .panel {
   white-space: pre-wrap;
   font-size: 0.68rem;
   color: var(--text-dim);
+}
+.reveal-ttl {
+  margin-top: 0.35rem;
+  color: var(--accent);
+  word-break: normal;
 }
 
 /* ------------------------------------------------------------------ лог --- */

@@ -42,6 +42,7 @@ class InviteResult:
     client_id: str
     enrollment_token: str
     qr_payload: str
+    enrollment_expires_at: datetime | None = None
 
 
 @dataclass(frozen=True)

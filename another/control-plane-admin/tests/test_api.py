@@ -147,6 +147,8 @@ def test_admin_invite_list_revoke_via_signed_commands(api):
     invite = signed_command(1, chain, invite_body)
     assert invite.status_code == 200, invite.text
     client_id = invite.json()["result"]["client_id"]
+    assert invite.json()["result"]["invite_ttl_hours"] == 24
+    assert invite.json()["result"]["enrollment_expires_at"]
     chain_after_invite = invite.json()["chain_head_hex"]
 
     replay = signed_command(1, chain_before_invite, invite_body)
@@ -156,7 +158,10 @@ def test_admin_invite_list_revoke_via_signed_commands(api):
 
     listed = signed_command(2, chain_after_invite, {"op": "list_devices"})
     assert listed.status_code == 200
-    assert listed.json()["result"]["devices"][0]["client_id"] == client_id
+    device = listed.json()["result"]["devices"][0]
+    assert device["client_id"] == client_id
+    assert device["invite_pending"] is True
+    assert device["enrollment_expires_at"]
     chain = listed.json()["chain_head_hex"]
 
     revoked = signed_command(3, chain, {"op": "revoke", "client_id": client_id})

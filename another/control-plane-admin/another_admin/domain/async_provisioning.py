@@ -28,11 +28,16 @@ class AsyncDeviceProvisioningService:
         expires_at = datetime.now(timezone.utc) + timedelta(hours=self.invite_ttl_hours)
         return token, token_hash, expires_at
 
-    def _invite_result(self, client_id: str, token: str) -> InviteResult:
+    def _invite_result(self, client_id: str, token: str, expires_at: datetime) -> InviteResult:
         qr_payload = (
             f"another://enroll?token={quote(token)}&cp={quote(self.control_plane_url)}"
         )
-        return InviteResult(client_id=client_id, enrollment_token=token, qr_payload=qr_payload)
+        return InviteResult(
+            client_id=client_id,
+            enrollment_token=token,
+            qr_payload=qr_payload,
+            enrollment_expires_at=expires_at,
+        )
 
     async def create_invite(self, comment: str, quota_limit_bytes: int) -> InviteResult:
         token, token_hash, expires_at = self._token()
@@ -42,7 +47,7 @@ class AsyncDeviceProvisioningService:
             enrollment_token_hash=token_hash,
             expires_at=expires_at,
         )
-        return self._invite_result(client_id, token)
+        return self._invite_result(client_id, token, expires_at)
 
     async def revoke_device(self, client_id: str) -> None:
         if await self.store.find_client(client_id) is None:
@@ -81,7 +86,7 @@ class AsyncDeviceProvisioningService:
                 enrollment_token_hash=token_hash,
                 expires_at=expires_at,
             )
-        return self._invite_result(new_id, token)
+        return self._invite_result(new_id, token, expires_at)
 
     async def list_devices(self) -> list[ClientRecord]:
         return await self.store.list_clients()

@@ -255,13 +255,22 @@ $connect = @{
   nodes     = $enroll.nodes
   dest_host = "example.com"
   dest_port = 443
-} | ConvertTo-Json -Depth 5
+} | ConvertTo-Json -Depth 5 -Compress
 
-curl.exe -s -X POST http://127.0.0.1:47821/connect `
-  -H "Content-Type: application/json" -d $connect
+$connectFile = Join-Path $env:TEMP "another-connect.json"
+$utf8 = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($connectFile, $connect, $utf8)
+
+curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
+  -H "Content-Type: application/json" `
+  --data-binary "@$connectFile"
 
 curl.exe -s http://127.0.0.1:47821/status
 ```
+
+Снова не используйте `-d $connect`: PowerShell ломает JSON так же, как на шаге 6,
+и ядро отвечает текстом `invalid request body` без поля `ok`. В `$enroll`
+`ok` как раз есть (`true`) — это ответ `/enroll`, не `/connect`.
 
 `{"ok":true}` и статус `connected` означают, что работает всё: воркер принял
 подпись, выдал сессию, поднял туннель и открыл TCP до `example.com`.
@@ -289,8 +298,12 @@ cd another\core
 3. Подключайтесь **без** `dest_host` — пустой адрес и означает «весь трафик»:
 
 ```powershell
-$vpn = @{ client_id = $enroll.client_id; nodes = $enroll.nodes } | ConvertTo-Json -Depth 5
-curl.exe -s -X POST http://127.0.0.1:47821/connect -H "Content-Type: application/json" -d $vpn
+$vpn = @{ client_id = $enroll.client_id; nodes = $enroll.nodes } | ConvertTo-Json -Depth 5 -Compress
+$vpnFile = Join-Path $env:TEMP "another-connect.json"
+$utf8 = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($vpnFile, $vpn, $utf8)
+curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
+  -H "Content-Type: application/json" --data-binary "@$vpnFile"
 ```
 
 Ядро создаст интерфейс `Another` с адресом `10.7.0.2` и пропишет маршруты
@@ -323,6 +336,7 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 | `/enroll` → `403 invalid or already-used enrollment token` | Токен уже использован или истёк (24 часа). Создайте новое приглашение |
 | `/enroll` → `403 enrollment token expired` | То же самое, но срок истёк явно |
 | В `nodes` адрес `another.example` | Воркер работает на старой версии, сделайте `wrangler deploy` |
+| `/connect` → `invalid request body` | PowerShell сломал JSON в `-d`. Пишите тело в файл и `--data-binary "@файл"` |
 | `/connect` → `ok: false`, в логе `node auth failed` | Воркер не смог проверить подпись: устройство не привязано к базе, забанено или исчерпало квоту. Проверьте устройство в админке |
 | `/connect` → `ok: false`, в логе `node dial failed` | Авторизация прошла, но туннель не поднялся. Обычно `host` в узле недостижим либо сессионный токен истёк, не дождавшись WebSocket |
 | Всё зелёное, но сайты не открываются | Скорее всего DNS или ограничения из части 2. Сначала проверьте по IP, минуя имена |
