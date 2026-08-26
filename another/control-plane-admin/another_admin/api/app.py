@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,15 @@ from another_admin.api.internal_routes import router as internal_router
 from another_admin.ports.control_plane_store import ControlPlaneStore
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# StaticFiles определяет Content-Type через mimetypes, а тот на Windows берёт
+# типы из реестра, где .js часто прописан как text/plain. Браузер отказывается
+# исполнять такой ответ как ES-модуль (строгая проверка MIME в HTML-спеке), и
+# админка молча не запускается при локальном `uvicorn`. В Linux-образе на
+# Hugging Face этого нет, поэтому проблема ловится только на машине разработчика.
+# add_type перезаписывает соответствие в обе стороны и на Linux ничего не меняет.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/javascript", ".mjs")
 
 
 def create_app(

@@ -1,11 +1,12 @@
 /**
  * Админка фазы 3: монитор (сессии, алерты) + invite/reissue/сборка.
  * Подписи: Ed25519 (WebCrypto) + ML-DSA-65 (@noble/post-quantum).
- * SHA3-256 — @noble/hashes. Ключ только в RAM. CDN можно заменить вендором локально.
+ * SHA3-256 — @noble/hashes. Приватный ключ существует только в RAM.
  */
-// В @noble/hashes 1.x хеши лежат в подмодулях: корень пакета sha3_256 не отдаёт.
-import { sha3_256 } from "https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/sha3/+esm";
-import { ml_dsa65 } from "https://cdn.jsdelivr.net/npm/@noble/post-quantum@0.4.1/ml-dsa.js/+esm";
+// Крипта лежит рядом в vendor/, а не на CDN: панель должна работать в сети, где
+// jsdelivr недоступен, и код, подписывающий команды ключом админа, не должен
+// приезжать со стороннего сервера. Пересборка — vendor/README.md.
+import { ml_dsa65, sha3_256 } from "./vendor/noble-crypto.js";
 
 const GIGABYTE = 1024 ** 3;
 const ZERO_HEAD = "00".repeat(32);
