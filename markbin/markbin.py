@@ -1,4 +1,4 @@
-import os
+import sys
 import uuid
 import hashlib
 from datetime import datetime, timezone, timedelta
@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from pymongo.errors import DuplicateKeyError
 
@@ -17,9 +16,11 @@ router = APIRouter()
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR)
 
-MONGO_URL = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017')
-client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
-db = client.markbins
+# В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
+sys.path.append(str(BASE_DIR.parent))
+from shared_mongo import get_client
+
+db = get_client().markbins
 codes_collection = db.docs
 
 class DocRequest(BaseModel):

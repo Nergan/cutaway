@@ -1,8 +1,8 @@
 import importlib
 import logging
 import re
-from datetime import datetime
-from os import environ
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from collections import OrderedDict
 
@@ -11,20 +11,37 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-MONGO_URL = environ.get('MONGODB_URI', 'mongodb://localhost:27017')
-client = AsyncIOMotorClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
-stats_db = client['main-page']
+import shared_mongo
 
-app = FastAPI(title="Nargan's Projects Ecosystem")
+stats_db = shared_mongo.get_client()['main-page']
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_counter()
+    # A plugin failing to boot must not take the hub down with it.
+    for callback in startup_callbacks:
+        try:
+            await callback()
+        except Exception as e:
+            logger.error(f"Error executing startup callback {callback}: {e}")
+    yield
+    for callback in shutdown_callbacks:
+        try:
+            await callback()
+        except Exception as e:
+            logger.error(f"Error executing shutdown callback: {e}")
+    shared_mongo.close_client()
+
+
+app = FastAPI(title="Nargan's Projects Ecosystem", lifespan=lifespan)
 
 # --- Raw ASGI Middleware for Proxy Scheme Alignment ---
 # Avoids Starlette's BaseHTTPMiddleware stream bugs (EndOfStream exceptions on 404)
@@ -63,7 +80,6 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).parent
-templates = Jinja2Templates(directory=BASE_DIR)
 
 # --- Safe Static Mounting ---
 def mount_if_exists(path: str, name: str, dir_path: Path):
@@ -150,11 +166,6 @@ for plugin_dir in BASE_DIR.iterdir():
         else:
             loaded_plugins[plugin_name] = {"status": "ignored"}
 
-# --- Root Logic ---
-class BaseModelLimit(BaseModel):
-    pass
-
-
 # --- Optimized In-Memory Cache ---
 class LRUSet:
     """A lightweight, dependency-free cache to prevent duplicate database queries."""
@@ -187,14 +198,6 @@ class TrackRequest(BaseModel):
     uuid: str
 
 
-@app.on_event('shutdown')
-async def shutdown_event():
-    for callback in shutdown_callbacks:
-        try:
-            await callback()
-        except Exception as e:
-            logger.error(f"Error executing shutdown callback: {e}")
-
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
     return FileResponse(BASE_DIR / 'index.html')
@@ -208,16 +211,6 @@ async def init_counter():
     counter_doc = await stats_db.stats.find_one({'_id': 'unique_visitors'})
     if counter_doc:
         TOTAL_VISITORS = counter_doc.get('count', 0)
-
-@app.on_event('startup')
-async def startup_event():
-    await init_counter()
-    # A plugin failing to boot must not take the hub down with it.
-    for callback in startup_callbacks:
-        try:
-            await callback()
-        except Exception as e:
-            logger.error(f"Error executing startup callback {callback}: {e}")
 
 # --- Optimized Tracking Endpoint ---
 @app.post('/api/track')
@@ -239,12 +232,12 @@ async def track_visitor(request: Request, payload: TrackRequest):
         {
             '$setOnInsert': {
                 '_id': payload.uuid, 
-                'first_seen': datetime.utcnow(),
+                'first_seen': datetime.now(timezone.utc),
                 'ip_address': client_ip,
                 'user_agent': user_agent
             },
             '$set': {
-                'last_seen': datetime.utcnow()
+                'last_seen': datetime.now(timezone.utc)
             }
         },
         upsert=True
