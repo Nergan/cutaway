@@ -180,6 +180,25 @@ $identity.public_key
 Это и есть enrollment. Go-ядро само его не выполняет — в норме это делает
 Flutter, а мы сделаем вручную.
 
+Делайте это **во втором окне**, не в том, где запущен `another-core.exe`.
+Окно с ядром пишет только свои логи (`starting`, `tun: using noop`,
+`listening`) и ответ `/enroll` туда никогда не попадёт.
+
+Перед запросом в **этом же** окне должны жить три переменные. Если окно
+новое — задайте их снова:
+
+```powershell
+$WORKER = "https://another-edge.ВАШ-SUBDOMAIN.workers.dev"
+$identity = curl.exe -s http://127.0.0.1:47821/identity | ConvertFrom-Json
+$identity.public_key   # 64 hex-символа, иначе ядро не запущено
+$WORKER                # не пусто и не «...ВАШ-SUBDOMAIN...»
+```
+
+Дальше сам обмен. Сначала смотрим сырой ответ и код, и только потом парсим
+JSON. Если сразу скормить `curl` в `ConvertFrom-Json`, при ошибке `$enroll`
+будет пустым и `ConvertTo-Json` молча ничего не напечатает — так и выглядит
+«ничего не произошло».
+
 ```powershell
 $body = @{
   enrollment_token   = "ВСТАВЬТЕ_ТОКЕН_ИЗ_ШАГА_2"
@@ -187,17 +206,28 @@ $body = @{
   public_key_mldsa65 = $identity.public_key_mldsa65
 } | ConvertTo-Json
 
-$enroll = curl.exe -s -X POST "$WORKER/enroll" `
+$raw = curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST "$WORKER/enroll" `
   -H "Content-Type: application/json" `
-  -d $body | ConvertFrom-Json
+  -d $body
+$raw
+```
 
+В конце блока будет `HTTP_CODE:200` и JSON. Его и разбираем:
+
+```powershell
+$enroll = ($raw -split "`nHTTP_CODE:")[0] | ConvertFrom-Json
 $enroll | ConvertTo-Json -Depth 5
 ```
 
-В ответе должно быть `ok: true`, ваш `client_id`, `vless_user_id` и список
-`nodes`. Проверьте в `nodes`, что `host` — реальный адрес вашего воркера, а
-`control_plane` заполнен. Если там осталось `another.example` — воркер
-переразвёрнут не был, вернитесь к шагу 0.
+Здесь должны быть `ok: true`, `client_id`, `vless_user_id` и список `nodes`.
+В `nodes` поле `host` — реальный адрес воркера, `control_plane` не пустой.
+Если там `another.example` — воркер не переразвёртывали, вернитесь к шагу 0.
+
+Если `HTTP_CODE` не 200 — это не успех. Частые случаи:
+
+- пустой `$WORKER` → curl стучится непонятно куда, тело пустое;
+- Space ещё 503 → воркер не может сходить в `/internal/v1`, в теле ошибка origin;
+- `403` → токен уже использован или истекли сутки, в админке новое invite.
 
 Токен сгорел: повторный `/enroll` с ним даст `403`. Для нового устройства
 нужно новое приглашение.
