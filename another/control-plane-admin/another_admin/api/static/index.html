@@ -3,100 +3,165 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Another admin</title>
-  <style>
-    :root { font-family: ui-sans-serif, system-ui, sans-serif; color: #111; background: #f4f4f1; }
-    body { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
-    h1 { font-size: 1.25rem; }
-    section { background: #fff; border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
-    label { display: block; margin: 0.4rem 0; }
-    input, textarea, button { font: inherit; }
-    input[type="text"], input[type="password"], input[type="number"] { width: 100%; max-width: 28rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { text-align: left; border-bottom: 1px solid #eee; padding: 0.3rem 0.4rem; }
-    .err { color: #a40000; white-space: pre-wrap; }
-    .ok { color: #0a6; }
-    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; margin-top: 0.5rem; }
-    button { cursor: pointer; }
-    code { font-size: 0.85rem; }
-    .bell { font-weight: 600; }
-    .bell.warn { color: #a40000; }
-    .muted { color: #666; font-size: 0.85rem; }
-  </style>
+  <title>another · control plane</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./admin.css" />
 </head>
 <body>
-  <h1>Another — монитор (фаза 3)</h1>
-  <p>Ключ не сохраняется в браузере. Файл + passphrase только в RAM вкладки. Спека: <code>docs/auth-spec.md</code>, <code>docs/observability.md</code>.</p>
 
-  <section>
-    <h2>Сессия</h2>
-    <label>Файл ключа <input id="keyfile" type="file" accept=".another-admin-key,.json,application/json" /></label>
-    <label>Passphrase <input id="passphrase" type="password" autocomplete="off" /></label>
-    <div class="row">
-      <button id="btn-unlock" type="button">Unlock + bootstrap</button>
-      <span id="session-status"></span>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-title">ANOTHER</span>
+      <span class="brand-tag">control plane · monitor</span>
+    </div>
+
+    <div class="auth-strip">
+      <div class="field">
+        <span class="field-label">файл ключа</span>
+        <label class="filepick">
+          <input id="keyfile" type="file" accept=".another-admin-key,.json,application/json" />
+          <span class="filepick-btn">Выбрать</span>
+          <span class="filepick-name" id="keyfile-name">не выбран</span>
+        </label>
+      </div>
+      <label class="field">
+        <span>passphrase</span>
+        <input id="passphrase" class="control" type="password" autocomplete="off" />
+      </label>
+      <button id="btn-unlock" class="btn btn-accent" type="button">Unlock + bootstrap</button>
+    </div>
+
+    <div class="status-strip">
+      <span id="session-status" class="session-status">заблокировано</span>
       <span id="bell" class="bell"></span>
     </div>
-  </section>
+  </header>
 
-  <section>
-    <h2>Устройства</h2>
-    <div class="row">
-      <button id="btn-refresh" type="button">Обновить</button>
-      <label>Комментарий <input id="invite-comment" type="text" placeholder="Друг из Питера" /></label>
-      <label>Квота, ГБ <input id="invite-quota" type="number" value="50" min="0" /></label>
-      <button id="btn-invite" type="button">Invite</button>
-    </div>
-    <p id="last-token"></p>
-    <table>
-      <thead><tr><th>client_id</th><th>comment</th><th>status</th><th>quota</th><th></th></tr></thead>
-      <tbody id="devices"></tbody>
-    </table>
-  </section>
+  <main class="workspace" id="workspace">
 
-  <section>
-    <h2>Активные сессии</h2>
-    <p class="muted">Поллинг 10 с. По умолчанию hash IP, не сырой. Сырой IP — только режим расследования.</p>
-    <div class="row">
-      <button id="btn-sessions" type="button">Обновить</button>
-      <label><input id="investigation" type="checkbox" /> режим расследования (сырой IP)</label>
-    </div>
-    <table>
-      <thead><tr><th>client_id</th><th>узел</th><th>entrypoint</th><th>ip</th><th>байты окна</th><th>last_seen</th></tr></thead>
-      <tbody id="sessions"></tbody>
-    </table>
-  </section>
+    <section class="panel panel-devices">
+      <div class="panel-head">
+        <span class="panel-title">Устройства</span>
+        <span class="spacer"></span>
+        <label class="field">
+          <span>комментарий</span>
+          <input id="invite-comment" class="control" type="text" placeholder="Друг из Питера" />
+        </label>
+        <label class="field">
+          <span>квота, ГБ</span>
+          <input id="invite-quota" class="control control-narrow" type="number" value="50" min="0" />
+        </label>
+        <button id="btn-invite" class="btn btn-accent" type="button">Invite</button>
+        <button id="btn-refresh" class="btn" type="button">Обновить</button>
+      </div>
+      <p id="last-token" class="reveal"></p>
+      <div class="panel-body">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>client_id</th>
+              <th>комментарий</th>
+              <th>статус</th>
+              <th>трафик / квота</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="devices"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <section>
-    <h2>Пингер</h2>
-    <p>По одному URL на строку: <code>name | url | interval_s | expect_status</code></p>
-    <textarea id="ping-text" rows="4" style="width:100%"></textarea>
-    <div class="row">
-      <button id="btn-ping-load" type="button">Загрузить</button>
-      <button id="btn-ping-save" type="button">Сохранить</button>
-    </div>
-  </section>
+    <div class="splitter splitter-vertical splitter-top" data-resize="col"
+         role="separator" aria-orientation="vertical" tabindex="-1"></div>
 
-  <section>
-    <h2>Пороги алертов</h2>
-    <textarea id="thresholds-text" rows="6" style="width:100%"></textarea>
-    <div class="row">
-      <button id="btn-th-load" type="button">Загрузить</button>
-      <button id="btn-th-save" type="button">Сохранить</button>
-      <button id="btn-eval" type="button">Прогнать детектор</button>
-    </div>
-  </section>
+    <section class="panel panel-sessions">
+      <div class="panel-head">
+        <span class="panel-title">Активные сессии</span>
+        <span class="spacer"></span>
+        <label class="check">
+          <input id="investigation" type="checkbox" />
+          <span>режим расследования</span>
+        </label>
+        <button id="btn-sessions" class="btn" type="button">Обновить</button>
+      </div>
+      <p class="panel-note">
+        Поллинг каждые 10 с. По умолчанию показывается хеш IP; сырой IP — только в режиме расследования.
+      </p>
+      <div class="panel-body">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>client_id</th>
+              <th>узел</th>
+              <th>entrypoint</th>
+              <th>ip</th>
+              <th>байты окна</th>
+              <th>last_seen</th>
+            </tr>
+          </thead>
+          <tbody id="sessions"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <section>
-    <h2>События / алерты</h2>
-    <div class="row">
-      <button id="btn-events" type="button">Обновить</button>
-      <label><input id="unacked-only" type="checkbox" /> только неacked</label>
-    </div>
-    <ul id="events"></ul>
-  </section>
+    <div class="splitter splitter-horizontal" data-resize="row"
+         role="separator" aria-orientation="horizontal" tabindex="-1"></div>
+
+    <section class="panel panel-events">
+      <div class="panel-head">
+        <span class="panel-title">События и алерты</span>
+        <span class="spacer"></span>
+        <label class="check">
+          <input id="unacked-only" type="checkbox" />
+          <span>только неподтверждённые</span>
+        </label>
+        <button id="btn-eval" class="btn btn-accent" type="button">Прогнать детектор</button>
+        <button id="btn-events" class="btn" type="button">Обновить</button>
+      </div>
+      <div class="panel-body">
+        <ul id="events" class="log"></ul>
+      </div>
+    </section>
+
+    <div class="splitter splitter-vertical splitter-bottom" data-resize="col"
+         role="separator" aria-orientation="vertical" tabindex="-1"></div>
+
+    <section class="panel panel-config">
+      <div class="panel-head">
+        <span class="panel-title">Конфигурация</span>
+        <span class="spacer"></span>
+        <div class="tabs" role="tablist">
+          <button class="tab is-active" type="button" data-tab="pinger" role="tab">Пингер</button>
+          <button class="tab" type="button" data-tab="thresholds" role="tab">Пороги</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="tab-pane is-active" data-pane="pinger">
+          <p class="hint">Одна цель на строку: <code>name | url | interval_s | expect_status</code></p>
+          <textarea id="ping-text" class="control" spellcheck="false"></textarea>
+          <div class="tab-actions">
+            <button id="btn-ping-load" class="btn" type="button">Загрузить</button>
+            <button id="btn-ping-save" class="btn btn-accent" type="button">Сохранить</button>
+          </div>
+        </div>
+        <div class="tab-pane" data-pane="thresholds">
+          <p class="hint">Пороги детектора аномалий, JSON.</p>
+          <textarea id="thresholds-text" class="control" spellcheck="false"></textarea>
+          <div class="tab-actions">
+            <button id="btn-th-load" class="btn" type="button">Загрузить</button>
+            <button id="btn-th-save" class="btn btn-accent" type="button">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
 
   <p class="err" id="error"></p>
+
+  <script type="module" src="./layout.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

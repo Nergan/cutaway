@@ -3,7 +3,8 @@
  * Подписи: Ed25519 (WebCrypto) + ML-DSA-65 (@noble/post-quantum).
  * SHA3-256 — @noble/hashes. Ключ только в RAM. CDN можно заменить вендором локально.
  */
-import { sha3_256 } from "https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/+esm";
+// В @noble/hashes 1.x хеши лежат в подмодулях: корень пакета sha3_256 не отдаёт.
+import { sha3_256 } from "https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/sha3/+esm";
 import { ml_dsa65 } from "https://cdn.jsdelivr.net/npm/@noble/post-quantum@0.4.1/ml-dsa.js/+esm";
 
 const GIGABYTE = 1024 ** 3;
@@ -52,6 +53,36 @@ function hexToBytes(hex) {
 
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+// Комментарии и детали событий приходят из Mongo и попадают в innerHTML.
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KiB", "MiB", "GiB", "TiB", "PiB"];
+  let size = bytes;
+  let unit = -1;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+  return `${size.toFixed(size < 10 ? 1 : 0)} ${units[unit]}`;
+}
+
+function emptyRow(table, columns, text) {
+  const tr = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = columns;
+  td.className = "table-empty";
+  td.textContent = text;
+  tr.append(td);
+  table.append(tr);
 }
 
 function u64be(n) {
@@ -177,6 +208,8 @@ async function sendCommandNow(body) {
   });
   session.lastSeq = json.last_seq;
   session.chainHex = json.chain_head_hex;
+  // Счётчик в шапке — единственный видимый признак, что цепочка команд движется.
+  $("session-status").textContent = `${session.seeds.adminId} · seq ${session.lastSeq}`;
   return json.result;
 }
 
@@ -202,21 +235,44 @@ async function unlock() {
   });
   session.lastSeq = boot.last_seq;
   session.chainHex = boot.chain_head_hex;
-  $("session-status").textContent = `ok · ${seeds.adminId} · seq ${session.lastSeq}`;
-  $("session-status").className = "ok";
+  $("session-status").textContent = `${seeds.adminId} · seq ${session.lastSeq}`;
+  $("session-status").className = "session-status ok";
+}
+
+function statusBadge(device) {
+  if (device.is_banned) return '<span class="badge badge-danger">banned</span>';
+  if (device.is_enrolled) return '<span class="badge badge-ok">enrolled</span>';
+  return '<span class="badge badge-idle">pending</span>';
+}
+
+function quotaCell(device) {
+  const used = formatBytes(device.bytes_used);
+  if (!device.quota_limit_bytes) return `${used} / ∞`;
+  const share = Math.min(100, (Number(device.bytes_used) / device.quota_limit_bytes) * 100);
+  const level = share >= 100 ? " is-full" : share >= 80 ? " is-warn" : "";
+  return (
+    `${used} / ${formatBytes(device.quota_limit_bytes)}` +
+    `<div class="meter${level}"><span style="width:${share.toFixed(1)}%"></span></div>`
+  );
 }
 
 function renderDevices(devices) {
   const tb = $("devices");
   tb.innerHTML = "";
+  if (!devices.length) {
+    emptyRow(tb, 5, "устройств нет — выдайте первый invite");
+    return;
+  }
   for (const d of devices) {
     const tr = document.createElement("tr");
-    const status = d.is_banned ? "BANNED" : d.is_enrolled ? "enrolled" : "pending";
-    tr.innerHTML = `<td><code>${d.client_id}</code></td><td>${d.comment || ""}</td><td>${status}</td>
-      <td>${d.bytes_used}/${d.quota_limit_bytes || "∞"}</td><td></td>`;
+    tr.innerHTML = `<td><code>${esc(d.client_id)}</code></td>
+      <td class="cell-wrap">${esc(d.comment || "")}</td>
+      <td>${statusBadge(d)}</td>
+      <td class="cell-num">${quotaCell(d)}</td><td class="cell-actions"></td>`;
     const cell = tr.lastElementChild;
     if (!d.is_banned) {
       const ban = document.createElement("button");
+      ban.className = "btn btn-sm btn-danger";
       ban.textContent = "Ban";
       ban.onclick = async () => {
         try {
@@ -227,17 +283,20 @@ function renderDevices(devices) {
         }
       };
       const reissue = document.createElement("button");
+      reissue.className = "btn btn-sm";
       reissue.textContent = "Reissue";
       reissue.onclick = async () => {
         try {
           const result = await sendCommand({ op: "reissue", client_id: d.client_id });
-          $("last-token").innerHTML = `переиздан <code>${result.client_id}</code> token <code>${result.enrollment_token}</code>`;
+          $("last-token").innerHTML =
+            `переиздан <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>`;
           await refreshDevices();
         } catch (e) {
           showError(e);
         }
       };
       const build = document.createElement("button");
+      build.className = "btn btn-sm";
       build.textContent = "Собрать";
       build.onclick = async () => {
         try {
@@ -250,8 +309,8 @@ function renderDevices(devices) {
             .map((a) => `${a.platform}: ${a.compiled ? a.path : a.command}`)
             .join("\n");
           $("last-token").innerHTML =
-            `сборка <code>${result.client_id}</code> token <code>${result.enrollment_token}</code>` +
-            `<pre>${arts}</pre>`;
+            `сборка <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>` +
+            `<pre>${esc(arts)}</pre>`;
           await refreshDevices();
         } catch (e) {
           showError(e);
@@ -273,7 +332,9 @@ async function invite() {
   const gb = Number($("invite-quota").value);
   const quota = gb > 0 ? Math.floor(gb * GIGABYTE) : 0;
   const result = await sendCommand({ op: "invite", comment, quota_limit_bytes: quota });
-  $("last-token").innerHTML = `client <code>${result.client_id}</code> token <code>${result.enrollment_token}</code> (показан один раз)`;
+  $("last-token").innerHTML =
+    `client <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>` +
+    ` — показан только один раз`;
   await refreshDevices();
 }
 
@@ -310,12 +371,27 @@ async function loadEvents() {
   const ul = $("events");
   ul.innerHTML = "";
   let unackedAnomaly = 0;
-  for (const ev of result.events || []) {
+  const events = result.events || [];
+  if (!events.length) {
+    const li = document.createElement("li");
+    li.className = "table-empty";
+    li.textContent = "событий нет";
+    ul.append(li);
+  }
+  for (const ev of events) {
     if (!ev.acked && ev.category === "anomaly") unackedAnomaly += 1;
     const li = document.createElement("li");
-    li.textContent = `${ev.ts || ""} [${ev.category}] ${ev.client_id || ""} ${JSON.stringify(ev.detail || {})}`;
+    li.className = "log-row";
+    if (ev.category === "anomaly") li.classList.add("is-anomaly");
+    if (ev.acked) li.classList.add("is-acked");
+    li.innerHTML =
+      `<span class="log-ts">${esc(ev.ts || "")}</span>` +
+      `<span class="log-cat">${esc(ev.category)}</span>` +
+      `<span class="log-client">${esc(ev.client_id || "")}</span>` +
+      `<span class="log-detail">${esc(JSON.stringify(ev.detail || {}))}</span>`;
     if (!ev.acked && ev.event_id) {
       const btn = document.createElement("button");
+      btn.className = "btn btn-sm";
       btn.textContent = "ack";
       btn.onclick = async () => {
         try {
@@ -343,12 +419,17 @@ async function refreshSessions() {
   const result = await sendCommand({ op: "sessions" });
   const tb = $("sessions");
   tb.innerHTML = "";
-  for (const s of result.sessions || []) {
+  const sessions = result.sessions || [];
+  if (!sessions.length) {
+    emptyRow(tb, 6, "активных сессий нет");
+    return;
+  }
+  for (const s of sessions) {
     const tr = document.createElement("tr");
     const ip = s.ip || s.ip_hash || "";
-    tr.innerHTML = `<td><code>${s.client_id || ""}</code></td><td>${s.node || ""}</td>
-      <td>${s.entrypoint || ""}</td><td><code>${ip}</code></td>
-      <td>${s.bytes_window || 0}</td><td>${s.last_seen || ""}</td>`;
+    tr.innerHTML = `<td><code>${esc(s.client_id || "")}</code></td><td>${esc(s.node || "")}</td>
+      <td>${esc(s.entrypoint || "")}</td><td><code>${esc(ip)}</code></td>
+      <td class="cell-num">${formatBytes(s.bytes_window || 0)}</td><td>${esc(s.last_seen || "")}</td>`;
     tb.append(tr);
   }
 }

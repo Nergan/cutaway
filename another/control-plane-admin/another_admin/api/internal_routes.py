@@ -6,13 +6,11 @@ import hmac
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from another_admin.api.config import ApiConfig
 from another_admin.ports.control_plane_store import ControlPlaneStore
-
-router = APIRouter(prefix="/internal/v1", tags=["internal"])
 
 
 def _store(request: Request) -> ControlPlaneStore:
@@ -23,10 +21,28 @@ def _cfg(request: Request) -> ApiConfig:
     return request.app.state.cfg
 
 
-def _check_secret(request: Request, secret: str | None) -> None:
+async def require_proxy_secret(
+    request: Request,
+    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
+) -> None:
+    """Гейт на весь роутер.
+
+    Зависимости роутера решаются раньше валидации тела запроса, поэтому чужой
+    запрос получает 401, а не 422 с описанием схемы. Проверять секрет внутри
+    обработчика для этого поздно.
+    """
     expected = _cfg(request).service_secret
-    if not secret or not hmac.compare_digest(secret, expected):
+    if not expected or not x_another_proxy_secret:
         raise HTTPException(status_code=401, detail="invalid proxy secret")
+    if not hmac.compare_digest(x_another_proxy_secret, expected):
+        raise HTTPException(status_code=401, detail="invalid proxy secret")
+
+
+router = APIRouter(
+    prefix="/internal/v1",
+    tags=["internal"],
+    dependencies=[Depends(require_proxy_secret)],
+)
 
 
 class FindClientBody(BaseModel):
@@ -90,9 +106,7 @@ def _client_json(c) -> dict[str, Any]:
 async def find_client(
     body: FindClientBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, Any]:
-    _check_secret(request, x_another_proxy_secret)
     found = await _store(request).find_client(body.client_id)
     if found is None:
         raise HTTPException(status_code=404, detail="not found")
@@ -103,9 +117,7 @@ async def find_client(
 async def find_enrollment(
     body: FindEnrollmentBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, Any]:
-    _check_secret(request, x_another_proxy_secret)
     found = await _store(request).find_enrollment_by_token_hash(body.token_hash)
     if found is None:
         raise HTTPException(status_code=404, detail="not found")
@@ -122,9 +134,7 @@ async def find_enrollment(
 async def bind_identity(
     body: BindBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, bool]:
-    _check_secret(request, x_another_proxy_secret)
     await _store(request).bind_device_identity(
         body.client_id,
         body.public_key_hex,
@@ -138,9 +148,7 @@ async def bind_identity(
 async def consume_enrollment(
     body: ConsumeBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, bool]:
-    _check_secret(request, x_another_proxy_secret)
     await _store(request).consume_enrollment_token(body.token_hash)
     return {"ok": True}
 
@@ -149,9 +157,7 @@ async def consume_enrollment(
 async def increment_usage(
     body: UsageBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, bool]:
-    _check_secret(request, x_another_proxy_secret)
     await _store(request).increment_usage(body.client_id, body.bytes_delta)
     return {"ok": True}
 
@@ -159,9 +165,7 @@ async def increment_usage(
 @router.get("/ping-targets")
 async def ping_targets(
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, Any]:
-    _check_secret(request, x_another_proxy_secret)
     targets = await _store(request).get_ping_targets()
     return {
         "targets": [
@@ -180,9 +184,7 @@ async def ping_targets(
 async def post_event(
     body: EventBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, str]:
-    _check_secret(request, x_another_proxy_secret)
     event_id = await _store(request).append_event(
         {
             "category": body.category,
@@ -198,9 +200,7 @@ async def post_event(
 async def upsert_session(
     body: SessionUpsertBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, str]:
-    _check_secret(request, x_another_proxy_secret)
     session_id = await _store(request).upsert_session(body.model_dump())
     return {"session_id": session_id}
 
@@ -209,9 +209,7 @@ async def upsert_session(
 async def close_session(
     body: SessionCloseBody,
     request: Request,
-    x_another_proxy_secret: str | None = Header(default=None, alias="X-Another-Proxy-Secret"),
 ) -> dict[str, bool]:
-    _check_secret(request, x_another_proxy_secret)
     ok = await _store(request).close_session(
         client_id=body.client_id,
         ip_hash=body.ip_hash,

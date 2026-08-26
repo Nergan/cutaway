@@ -56,6 +56,8 @@ another/**/*.tfvars
 !another/**/*.tfvars.example
 another/control-plane-admin/var/
 another/dist-installers/
+# Вывод `wrangler deploy --dry-run --outdir` — собранный бандл воркера.
+another/edge/tmp/
 
 ### Environment & Secrets ###
 .env
