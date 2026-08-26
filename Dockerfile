@@ -35,6 +35,12 @@ USER user
 
 ENV PATH="/home/user/.local/bin:$PATH"
 ENV DISPLAY=:99
+# HF builder часто роняет сборку на одном медленном GET к PyPI. Не гоняем
+# `pip install --upgrade pip`: в образе уже есть рабочий pip, а обрыв на
+# files.pythonhosted.org из-за `&&` раньше даже не давал запустить build.sh.
+ENV PIP_DEFAULT_TIMEOUT=120
+ENV PIP_RETRIES=10
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
@@ -45,7 +51,7 @@ COPY --chown=user . .
 RUN sed -i 's/\r$//' start.sh build.sh && chmod +x build.sh start.sh
 
 # 2. И ТОЛЬКО ПОТОМ запускаем сборку
-RUN pip install --no-cache-dir --upgrade pip && ./build.sh
+RUN ./build.sh
 
 EXPOSE 7860
 

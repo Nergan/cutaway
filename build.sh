@@ -2,7 +2,20 @@
 set -e # Exit immediately on core failure
 
 echo "Installing Tier 1 (Core) dependencies..."
-pip install --no-cache-dir -r requirements.txt
+# Три попытки: на HF builder PyPI иногда отваливается по read timeout.
+pip_try() {
+    local n=1
+    until pip install --no-cache-dir "$@"; do
+        n=$((n + 1))
+        if [ "$n" -gt 3 ]; then
+            echo "pip failed after 3 attempts: $*" >&2
+            return 1
+        fi
+        echo "pip retry $n/3 after failure..."
+        sleep 5
+    done
+}
+pip_try -r requirements.txt
 
 echo "Scanning for Tier 2 (Plugin) dependencies..."
 # Iterate over all directories in the base path
