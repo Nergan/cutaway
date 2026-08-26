@@ -44,8 +44,24 @@ build/
 .coverage
 htmlcov/
 
+### Another (VPN control plane) ###
+# Основные правила — в another/.gitignore (вложенные .gitignore git учитывает),
+# они уже покрывают node_modules, сборки Flutter/Go, кеши pytest и terraform
+# state. Здесь — только то, что дорого прошляпить на уровне монорепозитория.
+another/**/.wrangler/
+another/**/.terraform/
+another/**/*.tfstate
+another/**/*.tfstate.*
+another/**/*.tfvars
+!another/**/*.tfvars.example
+another/control-plane-admin/var/
+another/dist-installers/
+
 ### Environment & Secrets ###
 .env
+.dev.vars
+*.pem
+*.key
 
 ### Deployment ###
 vercel.json

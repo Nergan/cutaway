@@ -1,0 +1,53 @@
+name: another-edge-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "another/edge/**"
+      - ".github/workflows/another-edge-deploy.yml"
+  workflow_dispatch: {}
+
+# Деплой воркера не параллелим: два одновременных wrangler deploy на один
+# скрипт — гонка за версию.
+concurrency:
+  group: another-edge-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # "production" — GitHub Environment. Секреты можно держать либо на нём (тогда
+    # доступны required reviewers и прочие protection rules), либо репозиторными
+    # — джоб увидит и те, и другие. Settings → Environments.
+    environment: production
+    defaults:
+      run:
+        working-directory: another/edge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: another/edge/package-lock.json
+
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: npx tsc --noEmit -p tsconfig.test.json
+      - run: npm test
+
+      # Terraform из этого пайплайна убран сознательно. В исходном варианте он
+      # шёл здесь с локальным state, а значит на каждом прогоне CI заводил
+      # НОВЫЙ KV namespace, id которого всё равно никуда не попадал —
+      # wrangler.toml ссылается на id литералом. KV namespace создаётся один
+      # раз вручную (`wrangler kv namespace create BAN_CACHE`), его id
+      # коммитится в wrangler.toml. См. another/DEPLOY.md.
+      # Terraform вокруг воркера (CNAME на свой домен, отключение ECH) нужен
+      # только когда в аккаунте появится собственная зона: infra/cloudflare/.
+      - name: Deploy Worker code
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

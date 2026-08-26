@@ -1,0 +1,16 @@
+# Зависимости плагина another для монорепозитория cutaway.
+#
+# Почему отдельный файл, а не control-plane-admin/requirements.txt:
+#   build.sh собирает только */requirements.txt на глубину 1, вложенный файл он
+#   не увидит. Здесь — подмножество, нужное origin API: без aiogram/typer/qrcode
+#   (они только для another_admin/bot и another_admin/cli, в монолит не входят) и
+#   без uvicorn (его ставит корневой requirements.txt).
+#
+# Диапазоны, а не пины: build.sh ставит плагины по алфавиту и последний
+# выигрывает, поэтому жёсткий пин здесь всё равно перезатрёт netlazy. Диапазоны
+# совместимы с тем, что в итоге остаётся установленным.
+
+pymongo>=4.9          # AsyncMongoClient (async API появился в 4.9)
+fastapi>=0.115
+httpx>=0.27
+cryptography>=46      # MLDSA65 для гибридных подписей админки

@@ -1,0 +1,89 @@
+# Локальный dev-стек. Разворачивается по частям (см. docs/implementation-plan.md):
+#   Part 1 (готово): mongo, core
+#   Part 2 (готово): edge — в проде это Cloudflare Worker, локально гоняется
+#           через `cd edge && npm run dev` (wrangler dev), отдельный
+#           docker-сервис для него не нужен и не имеет смысла (Workers —
+#           не контейнерный рантайм) — см. edge/README.md
+#   Part 3: control-plane-api — origin FastAPI (фаза 1). admin-bot в дереве,
+#           с релиза снят (docs/adr/0003-web-admin-pq-auth.md). CLI — авария.
+#   Part 4 (готово): app/ — Flutter GUI, не контейнеризуется (десктопное
+#           приложение запускается локально через `flutter run`, см.
+#           app/README.md); подключается к сервису core выше через
+#           ANOTHER_LOCAL_API_URL=http://127.0.0.1:47821
+#   Part 5 (готово): infra/ (Terraform) + .github/workflows/ (CI/CD) —
+#           не часть этого docker-compose (управляют облачной
+#           инфраструктурой, а не локальными контейнерами), см. infra/README.md
+#
+# Использование:
+#   cp .env.example .env   # заполнить реальными/тестовыми значениями
+#   docker compose up --build
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: another-mongo-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-another}
+    volumes:
+      - another-mongo-data:/data/db
+    # ВАЖНО: локальный эмулятор MongoDB, не замена Atlas. Origin API
+    # (`control-plane-api`) и CLI ходят сюда по MONGO_URI. Worker в проде
+    # ходит в Atlas только через REST-прокси origin, не через Data API.
+
+  core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    container_name: another-core-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ANOTHER_LOCAL_API_ADDR: "0.0.0.0:47821"
+    ports:
+      - "47821:47821"
+    depends_on:
+      - mongo
+
+  control-plane-api:
+    build:
+      context: ./control-plane-admin
+      dockerfile: Dockerfile.api
+    container_name: another-control-plane-api-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: "mongodb://mongo:27017"
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-another}
+      ANOTHER_SERVICE_SECRET: ${ANOTHER_SERVICE_SECRET:-dev-secret-change-me}
+      ANOTHER_CONTROL_PLANE_URL: ${ANOTHER_CONTROL_PLANE_URL:-http://127.0.0.1:8787}
+      EDGE_INTERNAL_URL: ${EDGE_INTERNAL_URL:-http://host.docker.internal:8787}
+      ADMIN_API_PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+
+  admin-bot:
+    build:
+      context: ./control-plane-admin
+      dockerfile: Dockerfile
+    container_name: another-admin-bot-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: "mongodb://mongo:27017"
+    depends_on:
+      - mongo
+    # Без заполненного TELEGRAM_BOT_TOKEN в .env контейнер завершится с
+    # ошибкой при старте (см. bot/main.py: явная проверка) — это ожидаемо
+    # для локальной разработки без настроенного бота; закомментируйте
+    # сервис, если он не нужен прямо сейчас.
+
+volumes:
+  another-mongo-data:

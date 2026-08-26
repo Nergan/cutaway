@@ -1,0 +1,14 @@
+.git
+.gitignore
+*.md
+.env
+.env.*
+tests/
+.pytest_cache/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/

@@ -1,0 +1,16 @@
+# Рантайм-зависимости control-plane-admin (CLI + origin API).
+# Telegram-бот в дереве, не развивается; aiogram остаётся, пока живёт код бота.
+# Для разработки/тестов см. requirements-dev.txt.
+#
+# Установка:
+#   pip install -r requirements.txt --break-system-packages
+# (или в venv — тогда --break-system-packages не нужен, см. README.md)
+
+pymongo>=4.13,<5
+typer>=0.12,<1
+aiogram>=3.10,<4
+qrcode[pil]>=7.4,<8
+httpx>=0.27,<1
+fastapi>=0.115,<1
+uvicorn>=0.32,<1
+cryptography>=48,<50

@@ -1,0 +1,40 @@
+name: another-edge-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "another/edge/**"
+      - ".github/workflows/another-edge-ci.yml"
+  pull_request:
+    paths:
+      - "another/edge/**"
+      - ".github/workflows/another-edge-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: another/edge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: another/edge/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck (src, строгий проход без Node-типов)
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Typecheck (src + test, с Node-типами для node:crypto)
+        run: npx tsc --noEmit -p tsconfig.test.json
+
+      - run: npm test
+
+      - name: Dry-run wrangler build (проверка bundling + биндингов)
+        run: npx wrangler deploy --dry-run --outdir=/tmp/wrangler-dryrun

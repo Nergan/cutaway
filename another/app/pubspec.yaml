@@ -1,0 +1,33 @@
+name: another
+description: >
+  Another VPN — приватный кроссплатформенный VPN, устойчивый к DPI.
+  UI намеренно только на английском (см. README.md) — экономия ресурсов,
+  приоритет: скорость, анонимизация трафика, кроссплатформенность.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # HTTP-клиент: используется и HttpCoreAdapter (десктоп → локальный control
+  # API Core), и ConfigRepositoryHttpAdapter (→ edge/enroll напрямую).
+  http: ^1.2.2
+  # Хранилище локального профиля (client_id, control-plane URL, список
+  # узлов) — НЕ хранит приватный ключ устройства, тот никогда не покидает
+  # Core (см. core/internal/adapters/keystore/file_keystore.go).
+  flutter_secure_storage: ^9.2.2
+  # Сканирование QR-кода приглашения, сгенерированного control-plane-admin
+  # (см. control-plane-admin/another_admin/adapters/qr_generator.py).
+  mobile_scanner: ^5.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

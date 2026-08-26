@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "another-admin"
+version = "0.1.0"
+description = "Another VPN — control-plane origin (CLI + API; Telegram-бот в дереве, вне релиза)"
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+    "pymongo>=4.13,<5",
+    "typer>=0.12,<1",
+    "aiogram>=3.10,<4",
+    "qrcode[pil]>=7.4,<8",
+    "httpx>=0.27,<1",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.32,<1",
+    "cryptography>=48,<50",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "mongomock>=4.1,<5",
+]
+
+[project.scripts]
+another-admin = "another_admin.cli.main:app"
+another-admin-api = "another_admin.api.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["another_admin*"]
+
+[tool.setuptools.package-data]
+another_admin = ["api/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

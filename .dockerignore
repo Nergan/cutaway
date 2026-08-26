@@ -49,9 +49,30 @@ Dockerfile
 **/.coverage
 **/htmlcov
 
+### Another (VPN control plane) ###
+# В образ монолита идёт только origin API — пакет another_admin. Всё остальное
+# в another/ живёт в git ради CI и целостности проекта, но в рантайме не нужно.
+# another/core исключён сознательно: op build_installer компилирует Go-ядро, а
+# Go-тулчейна в этом образе нет (ANOTHER_BUILD_ENABLED по умолчанию выключен).
+another/app
+another/core
+another/edge
+another/infra
+another/docs
+another/deploy
+another/docker-compose.yml
+another/control-plane-admin/tests
+another/control-plane-admin/requirements-dev.txt
+another/control-plane-admin/Dockerfile
+another/control-plane-admin/Dockerfile.api
+another/control-plane-admin/.dockerignore
+**/.wrangler
+**/.terraform
+
 ### Environment & Secrets ###
 .env
 **/.env
+**/.dev.vars
 
 ### Deployment ###
 vercel.json

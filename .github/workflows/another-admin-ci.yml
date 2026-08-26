@@ -1,0 +1,35 @@
+name: another-admin-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "another/control-plane-admin/**"
+      - ".github/workflows/another-admin-ci.yml"
+  pull_request:
+    paths:
+      - "another/control-plane-admin/**"
+      - ".github/workflows/another-admin-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: another/control-plane-admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: another/control-plane-admin/requirements-dev.txt
+
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -v
+
+      - name: Verify package installs and CLI entry point works
+        run: |
+          pip install -e .
+          another-admin --help

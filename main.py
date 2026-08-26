@@ -75,6 +75,7 @@ def mount_if_exists(path: str, name: str, dir_path: Path):
 
 # --- Dynamic Plugin Discovery (Resilient Monolith) ---
 loaded_plugins = {}
+startup_callbacks = []
 shutdown_callbacks = []
 
 logger.info("Starting dynamic plugin discovery...")
@@ -99,27 +100,44 @@ for plugin_dir in BASE_DIR.iterdir():
         try:
             logger.info(f"Attempting to load plugin: {plugin_name} via {entrypoint}")
             plugin_module = importlib.import_module(entrypoint)
-            
-            # Check for router contract
-            if hasattr(plugin_module, "router"):
+
+            plugin_router = getattr(plugin_module, "router", None)
+            plugin_asgi_app = getattr(plugin_module, "asgi_app", None)
+
+            if plugin_router is None and plugin_asgi_app is None:
+                plugin_errors[entrypoint] = "Module loaded but missing 'router'/'asgi_app' attribute."
+                continue
+
+            prefix = f"/{plugin_name.replace('_', '-')}"
+
+            if plugin_router is not None:
                 # 1. Mount statics FIRST to prevent catch-all routes from intercepting static files
                 mount_if_exists(f'/{plugin_name}/static', f'{plugin_name}_static', plugin_dir / 'static')
                 mount_if_exists(f'/{plugin_name}/scripts', f'{plugin_name}_scripts', plugin_dir / 'scripts')
 
                 # 2. Include the router
-                prefix = f"/{plugin_name.replace('_', '-')}"
-                app.include_router(plugin_module.router, prefix=prefix, tags=[plugin_name.capitalize()])
-                
-                # Check for shutdown hook contract
-                if hasattr(plugin_module, "shutdown_clients"):
-                    shutdown_callbacks.append(plugin_module.shutdown_clients)
-                    
-                loaded_plugins[plugin_name] = {"status": "online", "entrypoint": entrypoint}
-                logger.info(f"Successfully mounted plugin: {plugin_name} at {prefix}")
-                mounted = True
-                break  # Stop searching once successfully mounted
+                app.include_router(plugin_router, prefix=prefix, tags=[plugin_name.capitalize()])
             else:
-                plugin_errors[entrypoint] = "Module loaded but missing 'router' attribute."
+                # Full ASGI sub-app contract: the plugin owns its own routing and
+                # state below the prefix. Starlette does not forward lifespan into
+                # mounts, so such plugins boot via startup_clients/shutdown_clients.
+                app.mount(prefix, plugin_asgi_app, name=plugin_name)
+
+            # Check for lifecycle hook contracts.
+            # startup_clients is only honoured for sub-app plugins: mounts get no
+            # lifespan from Starlette, so it is their only way to boot. Router
+            # plugins have always booted without it and are left untouched here
+            # (netlazy exposes a dormant startup_clients — enabling it is a
+            # separate decision, not part of wiring `another` in).
+            if plugin_asgi_app is not None and hasattr(plugin_module, "startup_clients"):
+                startup_callbacks.append(plugin_module.startup_clients)
+            if hasattr(plugin_module, "shutdown_clients"):
+                shutdown_callbacks.append(plugin_module.shutdown_clients)
+
+            loaded_plugins[plugin_name] = {"status": "online", "entrypoint": entrypoint}
+            logger.info(f"Successfully mounted plugin: {plugin_name} at {prefix}")
+            mounted = True
+            break  # Stop searching once successfully mounted
                 
         except Exception as e:
             # Record the error and try the next potential entrypoint
@@ -194,6 +212,12 @@ async def init_counter():
 @app.on_event('startup')
 async def startup_event():
     await init_counter()
+    # A plugin failing to boot must not take the hub down with it.
+    for callback in startup_callbacks:
+        try:
+            await callback()
+        except Exception as e:
+            logger.error(f"Error executing startup callback {callback}: {e}")
 
 # --- Optimized Tracking Endpoint ---
 @app.post('/api/track')

@@ -1,0 +1,9 @@
+# Скопировать в terraform.tfvars и заполнить реальными значениями.
+# terraform.tfvars НЕ коммитить (см. корневой .gitignore: *.tfvars).
+
+cloudflare_api_token         = "CHANGE_ME_cf_api_token"
+cloudflare_account_id        = "CHANGE_ME_account_id"
+cloudflare_zone_id           = "CHANGE_ME_zone_id"
+cloudflare_account_subdomain = "CHANGE_ME_workers_dev_subdomain"
+worker_subdomain             = "cf-worker"
+environment                  = "production"

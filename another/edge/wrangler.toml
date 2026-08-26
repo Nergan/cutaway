@@ -1,0 +1,58 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "another-edge"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = []
+
+# TCP Sockets API (`cloudflare:sockets`, см. handlers/proxy.ts) доступен
+# без дополнительных compatibility_flags при достаточно свежей
+# compatibility_date — проверить актуальность при реальном деплое через
+# `wrangler deploy --dry-run` (см. edge/README.md).
+
+# --- Durable Objects: nonce-леджер (anti-replay, §7.2) -----------------------
+[[durable_objects.bindings]]
+name = "NONCE_LEDGER"
+class_name = "NonceLedgerObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["NonceLedgerObject"]
+
+# --- Workers KV: бан-кэш + session store (см. §7.3, index.ts) ----------------
+# Один и тот же namespace используется под два разных префикса ключей
+# ("ban:" и "session:") — осознанное упрощение для v1, не обязательно
+# заводить отдельный namespace ради разделения по неймспейсу ключей.
+[[kv_namespaces]]
+binding = "BAN_CACHE"
+id = "CHANGE_ME_kv_namespace_id" # создаётся через `wrangler kv namespace create BAN_CACHE`
+
+# --- Переменные окружения (не секреты — см. README про `wrangler secret put`) ---
+[vars]
+# Список Tier1-узлов, отдаваемый клиенту при /enroll (§7.1).
+NODES_JSON = "[{\"name\":\"cf-worker\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"cf-worker.another.example\",\"port\":443,\"path\":\"/proxy\",\"priority\":1},{\"name\":\"hf-space\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"CHANGE_ME.hf.space\",\"port\":443,\"path\":\"/proxy\",\"priority\":2},{\"name\":\"render\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"another-backup.onrender.com\",\"port\":443,\"path\":\"/proxy\",\"priority\":3}]"
+
+# Origin control-plane (REST-прокси + admin API). URL можно держать в vars;
+# секрет — только wrangler secret put.
+#
+# another живёт в монорепозитории cutaway и смонтирован под префиксом /another,
+# поэтому в URL входит и префикс: воркер дёргает
+# https://nargan-projects.hf.space/another/internal/v1/... Проверить URL Space:
+# HF Space Nargan/projects → https://nargan-projects.hf.space
+MONGO_REST_PROXY_URL = "https://nargan-projects.hf.space/another"
+
+# xHTTP data-plane sidecar (Go, core/cmd/xhttp-origin) в образе cutaway НЕ
+# запускается — там нет Go-тулчейна, а Space отдаёт один порт 7860. Значение
+# оставлено, чтобы биндинг существовал; маршрут /xhttp/* воркера работать не
+# будет, пока origin xHTTP не поднят отдельно (Render/VPS, deploy/origin/).
+ORIGIN_XHTTP_URL = "https://nargan-projects.hf.space/another"
+
+# --- Секреты (НЕ хранить значения здесь) ------------------------------------
+# wrangler secret put ANOTHER_SERVICE_SECRET
+# См. .env.example в корне репозитория для локальной разработки через
+# `wrangler dev` (секреты в `.dev.vars`, файл в .gitignore).
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true

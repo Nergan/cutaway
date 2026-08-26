@@ -1,0 +1,36 @@
+name: another-app-ci
+
+# ВНИМАНИЕ: этот workflow не прогонялся на реальном раннере (нет Flutter
+# SDK/доступа к pub.dev — см. another/app/README.md). Шаги ниже — стандартный
+# паттерн Flutter CI, но первый запуск стоит сделать через workflow_dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "another/app/**"
+      - ".github/workflows/another-app-ci.yml"
+  pull_request:
+    paths:
+      - "another/app/**"
+      - ".github/workflows/another-app-ci.yml"
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: another/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.0"
+          channel: "stable"
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

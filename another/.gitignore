@@ -1,0 +1,96 @@
+# =============================================================================
+# Another VPN — .gitignore
+# =============================================================================
+
+# --- Секреты / окружение -----------------------------------------------------
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
+!**/testdata/**/*.key
+infra/secrets/*.dec
+*.seed
+
+# --- Go (core/) ---------------------------------------------------------------
+core/**/*.aar
+core/**/*.xcframework
+core/**/*.jar
+core/bin/
+core/dist/
+*.exe
+*.test
+*.out
+/vendor/
+
+# --- Node / TypeScript (edge/) -------------------------------------------------
+node_modules/
+edge/dist/
+edge/.wrangler/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Python (control-plane-admin/) ---------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# --- Flutter / Dart (app/) ------------------------------------------------------
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/build/
+app/**/ephemeral/
+app/android/.gradle/
+app/android/local.properties
+app/ios/Pods/
+app/ios/Flutter/Flutter.framework
+app/ios/Flutter/Flutter.podspec
+app/*.iml
+app/.idea/
+
+# --- Terraform (infra/) ----------------------------------------------------------
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# --- Docker -------------------------------------------------------------------
+*.log
+
+# --- IDE / OS -------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Локальные dev-данные ядра --------------------------------------------------
+.another/
+
+# --- Локальные заметки оператора (реальные URL/id) ---------------------------
+# Архитектурные docs/*.md в git остаются: по ним агент восстанавливает замысел.
+docs/private/
+
+# --- Сборки инсталляторов / артефакты выдачи --------------------------------
+dist-installers/
+**/another-installer-*
+control-plane-admin/var/
+

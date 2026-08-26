@@ -1,0 +1,28 @@
+# Один compose для HF-совместимого origin и generic VPS.
+# Образ: docker build -f deploy/origin/Dockerfile .
+# Reality на 443 не включать на HF/Render (нет стабильного IP).
+
+services:
+  origin:
+    image: ${ORIGIN_IMAGE:-another-origin:local}
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "443:8443"
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-another}
+      ANOTHER_SERVICE_SECRET: ${ANOTHER_SERVICE_SECRET}
+      ANOTHER_CONTROL_PLANE_URL: ${ANOTHER_CONTROL_PLANE_URL:-http://127.0.0.1:8787}
+      EDGE_INTERNAL_URL: ${EDGE_INTERNAL_URL:-}
+      ANOTHER_NODES_JSON: ${ANOTHER_NODES_JSON:-[]}
+      ANOTHER_RUN_XHTTP: ${ANOTHER_RUN_XHTTP:-0}
+      ANOTHER_RUN_REALITY: ${ANOTHER_RUN_REALITY:-0}
+      ANOTHER_REALITY_PRIVATE_KEY: ${ANOTHER_REALITY_PRIVATE_KEY:-}
+      ANOTHER_REALITY_DEST: ${ANOTHER_REALITY_DEST:-}
+      ANOTHER_REALITY_SHORT_IDS: ${ANOTHER_REALITY_SHORT_IDS:-}
+      ANOTHER_REALITY_SERVER_NAMES: ${ANOTHER_REALITY_SERVER_NAMES:-}
+      ANOTHER_REALITY_LISTEN: 0.0.0.0:8443
+      ADMIN_API_HOST: 0.0.0.0
+      ADMIN_API_PORT: "8080"
+    restart: unless-stopped
