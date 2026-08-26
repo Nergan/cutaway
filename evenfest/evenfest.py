@@ -54,9 +54,9 @@ async def evenpage(request: Request, page_name: str = ''):
     page_content = config.get('content', {}).get(first_segment, '')
 
     return templates.TemplateResponse(
+        request,
         f'{first_segment}.html',
         {
-            'request': request,
             'menu': menu,
             'page_content': page_content,
         }

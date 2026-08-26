@@ -1,13 +1,10 @@
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent
-templates = Jinja2Templates(directory=BASE_DIR)
-BACKGROUNDS_DIR = BASE_DIR / 'static' / 'backgrounds'
 
 
 @router.get('/', response_class=FileResponse, name='snake_root')

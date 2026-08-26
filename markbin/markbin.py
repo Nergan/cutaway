@@ -82,16 +82,14 @@ async def get_doc(doc_uuid: str):
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("markbin.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "markbin.html", {
         "uuid": "",
         "base_url": "/markbin"
     })
 
 @router.get('/{doc_uuid}', response_class=HTMLResponse)
 async def view_doc(request: Request, doc_uuid: str):
-    return templates.TemplateResponse("markbin.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "markbin.html", {
         "uuid": doc_uuid,
         "base_url": "/markbin"
     })

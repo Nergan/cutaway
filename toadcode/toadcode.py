@@ -38,7 +38,7 @@ async def create_indexes():
 
 @router.get('/', response_class=HTMLResponse, name='toad_root')
 async def toadpage(request: Request):
-    return templates.TemplateResponse('toadcode.html', {'request': request, 'repo_data': '[]', 'code_id': None})
+    return templates.TemplateResponse(request, 'toadcode.html', {'repo_data': '[]', 'code_id': None})
 
 @router.get('/api/backgrounds')
 async def toad_backgrounds():
@@ -80,7 +80,7 @@ async def toad_save(request: SaveRequest):
     try:
         await codes_collection.insert_one({
             'code_id': request.id, 
-            'files': [f.dict() for f in request.files],
+            'files': [f.model_dump() for f in request.files],
             'hash': content_hash
         })
         return {'status': 'success', 'id': request.id}
@@ -113,9 +113,9 @@ async def toadcode_codeview(request: Request, code_id: str):
         files_json = json.dumps(files_list).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
         
         return templates.TemplateResponse(
+            request,
             'toadcode.html',
             {
-                'request': request,
                 'repo_data': files_json,
                 'code_id': actual_code_id,
             }

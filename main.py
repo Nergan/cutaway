@@ -25,7 +25,12 @@ stats_db = shared_mongo.get_client()['main-page']
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_counter()
+    # A dead database must not keep the hub from serving the landing page and
+    # the plugins that do not need Mongo.
+    try:
+        await init_counter()
+    except Exception as e:
+        logger.error(f"Visitor counter unavailable, starting without it: {e}")
     # A plugin failing to boot must not take the hub down with it.
     for callback in startup_callbacks:
         try:
@@ -139,13 +144,11 @@ for plugin_dir in BASE_DIR.iterdir():
                 # mounts, so such plugins boot via startup_clients/shutdown_clients.
                 app.mount(prefix, plugin_asgi_app, name=plugin_name)
 
-            # Check for lifecycle hook contracts.
-            # startup_clients is only honoured for sub-app plugins: mounts get no
-            # lifespan from Starlette, so it is their only way to boot. Router
-            # plugins have always booted without it and are left untouched here
-            # (netlazy exposes a dormant startup_clients — enabling it is a
-            # separate decision, not part of wiring `another` in).
-            if plugin_asgi_app is not None and hasattr(plugin_module, "startup_clients"):
+            # Check for lifecycle hook contracts. Sub-app plugins get no lifespan
+            # from Starlette, so this is their only way to boot; router plugins
+            # use it to move connection setup off their first request. Hooks must
+            # be idempotent — netlazy also self-initialises lazily per request.
+            if hasattr(plugin_module, "startup_clients"):
                 startup_callbacks.append(plugin_module.startup_clients)
             if hasattr(plugin_module, "shutdown_clients"):
                 shutdown_callbacks.append(plugin_module.shutdown_clients)
@@ -192,7 +195,9 @@ TOTAL_VISITORS = 0
 @app.get('/api/status')
 async def get_system_status():
     """Endpoint for the frontend to determine which projects successfully booted."""
-    return JSONResponse(content={"plugins": loaded_plugins})
+    # Import tracebacks stay in the logs: they name internal paths and modules.
+    public = {name: {"status": info["status"]} for name, info in loaded_plugins.items()}
+    return JSONResponse(content={"plugins": public})
 
 class TrackRequest(BaseModel):
     uuid: str

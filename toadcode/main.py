@@ -4,23 +4,23 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 # 1. Standalone FastAPI Initialization
-app = FastAPI(title="toadbin standalone")
+app = FastAPI(title="toadcode standalone")
 BASE_DIR = Path(__file__).parent
 
 # 2. Namespace static mounting (Guarantees parity with root deployment)
 if (BASE_DIR / 'static').exists():
-    app.mount('/toadbin/static', StaticFiles(directory=BASE_DIR / 'static'), name='toadbin_static')
+    app.mount('/toadcode/static', StaticFiles(directory=BASE_DIR / 'static'), name='toadcode_static')
 if (BASE_DIR / 'scripts').exists():
-    app.mount('/toadbin/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='toadbin_scripts')
+    app.mount('/toadcode/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='toadcode_scripts')
 
 # 3. Import and mount the core logic router
-from toadbin import router
-app.include_router(router, prefix='/toadbin')
+from toadcode import router
+app.include_router(router, prefix='/toadcode')
 
 @app.get("/")
 def root_redirect():
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url='/toadbin')
+    return RedirectResponse(url='/toadcode')
 
 # 4. The Dual-Boot Entrypoint
 if __name__ == '__main__':
@@ -34,7 +34,7 @@ if __name__ == '__main__':
             import eel
             eel.init(str(BASE_DIR))
             # Finds the HTML file natively
-            html_file = 'templates/index.html' if (BASE_DIR / 'templates' / 'index.html').exists() else 'toadbin.html'
+            html_file = 'templates/index.html' if (BASE_DIR / 'templates' / 'index.html').exists() else 'toadcode.html'
             eel.start(html_file, size=(1000, 850))
         except ImportError:
             print("Eel is not installed. To run the web server, use: python main.py --web")
