@@ -257,6 +257,13 @@ another-admin admin-register --keyfile $HOME\me.another-admin-key
   В коде это уже обойдено через `mimetypes.add_type` в
   `another_admin/api/app.py`, но если правили этот файл — проверьте, что вызов
   на месте. В Docker-образе на Hugging Face проблемы нет: там Linux.
+- **`Cannot create a key using the specified key usages`** — не passphrase и
+  не сервер. Так Chrome/Edge формулируют отказ WebCrypto: 32-байтовый seed
+  Ed25519 нельзя импортировать как `raw` с правом `sign` (raw — только для
+  публичного ключа). Файл уже расшифрован, дальше браузер спотыкается на
+  подписи challenge. В актуальном `app.js` seed оборачивается в PKCS#8
+  (RFC 8410). Если видите эту фразу — на Space ещё старый `app.js`, нужен
+  деплой и жёсткое обновление вкладки (Ctrl+F5).
 - **`401` в ответах админ-API** — passphrase не тот, либо ключ этого админа не
   зарегистрирован в базе (`admin-register` не выполнялся или выполнялся против
   другой базы).

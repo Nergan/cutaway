@@ -146,8 +146,22 @@ async function unwrapKeyfile(doc, passphrase) {
   };
 }
 
+// RFC 8410 §10.3: OneAsymmetricKey для Ed25519. WebCrypto принимает приватный
+// Ed25519 только как pkcs8/jwk; формат raw зарезервирован за публичным ключом.
+// importKey("raw", seed, "Ed25519", false, ["sign"]) поэтому падает с
+// DOMException "Cannot create a key using the specified key usages" — браузер
+// видит 32 байта как public key, а public key не может иметь usage "sign".
+// Обёртка: INTEGER 0 + OID 1.3.101.112 + вложенный OCTET STRING с seed.
+function ed25519SeedToPkcs8(seed) {
+  if (seed.length !== 32) throw new Error("ed25519 seed must be 32 bytes");
+  const pkcs8 = new Uint8Array(48);
+  pkcs8.set([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
+  pkcs8.set(seed, 16);
+  return pkcs8;
+}
+
 async function signEd25519(seed, message) {
-  const key = await crypto.subtle.importKey("raw", seed, "Ed25519", false, ["sign"]);
+  const key = await crypto.subtle.importKey("pkcs8", ed25519SeedToPkcs8(seed), "Ed25519", false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("Ed25519", key, message));
 }
 
