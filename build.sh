@@ -48,7 +48,7 @@ for dir in */; do
         
         # Disable exit-on-error to provide build-time fault tolerance for plugins
         set +e
-        pip install --no-cache-dir -r "${dir}requirements.txt"
+        pip_try -r "${dir}requirements.txt"
         
         if [ $? -eq 0 ]; then
             echo "Successfully installed dependencies for ${dir}"

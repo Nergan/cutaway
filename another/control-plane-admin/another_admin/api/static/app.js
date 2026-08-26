@@ -41,6 +41,66 @@ function showError(err) {
   errorEl.textContent = err ? String(err.message || err) : "";
 }
 
+let busyDepth = 0;
+let busyLabel = "";
+let pollTick = false;
+let lastBusyError = false;
+
+function renderBusy() {
+  const beacon = $("busy-beacon");
+  const label = $("busy-label");
+  const bar = $("busy-bar");
+  if (!beacon || !label || !bar) return;
+  if (busyDepth > 0) {
+    beacon.dataset.state = "busy";
+    label.textContent = busyLabel || "запрос…";
+    bar.classList.add("is-on");
+    document.body.classList.add("is-busy");
+  } else if (lastBusyError) {
+    beacon.dataset.state = "error";
+    label.textContent = "ошибка";
+    bar.classList.remove("is-on");
+    document.body.classList.remove("is-busy");
+  } else if (pollTick) {
+    beacon.dataset.state = "poll";
+    label.textContent = "опрос";
+    bar.classList.remove("is-on");
+    document.body.classList.remove("is-busy");
+  } else if (session.seeds) {
+    beacon.dataset.state = "idle";
+    label.textContent = "готово";
+    bar.classList.remove("is-on");
+    document.body.classList.remove("is-busy");
+  } else {
+    beacon.dataset.state = "locked";
+    label.textContent = "ожидание";
+    bar.classList.remove("is-on");
+    document.body.classList.remove("is-busy");
+  }
+}
+
+function setBusyLabel(text) {
+  busyLabel = text;
+  renderBusy();
+}
+
+async function withBusy(label, fn) {
+  busyDepth += 1;
+  busyLabel = label;
+  lastBusyError = false;
+  showError("");
+  renderBusy();
+  try {
+    return await fn();
+  } catch (err) {
+    lastBusyError = true;
+    throw err;
+  } finally {
+    busyDepth = Math.max(0, busyDepth - 1);
+    renderBusy();
+  }
+}
+
 function concatBytes(parts) {
   const len = parts.reduce((s, p) => s + p.length, 0);
   const out = new Uint8Array(len);
@@ -212,6 +272,7 @@ async function sendCommand(body) {
 
 async function sendCommandNow(body) {
   if (!session.seeds) throw new Error("сначала unlock");
+  // Подпись маячка задаёт withBusy / setBusyLabel, не перетираем её именем op.
   const seq = session.lastSeq + 1;
   const chain = hexToBytes(session.chainHex);
   const hashed = bodyHash(body);
@@ -240,12 +301,16 @@ async function unlock() {
   const file = $("keyfile").files?.[0];
   const passphrase = $("passphrase").value;
   if (!file || !passphrase) throw new Error("нужны файл ключа и passphrase");
+  setBusyLabel("unlock: расшифровка ключа");
   const doc = JSON.parse(await file.text());
   const seeds = await unwrapKeyfile(doc, passphrase);
   session.seeds = seeds;
+  setBusyLabel("unlock: challenge");
   const ch = await api("/admin/v1/challenge");
   const challenge = hexToBytes(ch.challenge_hex);
+  setBusyLabel("unlock: подпись");
   const { sigEd, sigPq } = await hybridSign(seeds, bootstrapMessage(challenge));
+  setBusyLabel("unlock: bootstrap");
   const boot = await api("/admin/v1/bootstrap", {
     method: "POST",
     body: JSON.stringify({
@@ -278,6 +343,21 @@ function quotaCell(device) {
   );
 }
 
+function deviceBtn(label, className, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = className;
+  btn.textContent = label;
+  btn.onclick = async () => {
+    try {
+      await withBusy(label.toLowerCase(), onClick);
+    } catch (e) {
+      showError(e);
+    }
+  };
+  return btn;
+}
+
 function renderDevices(devices) {
   const tb = $("devices");
   tb.innerHTML = "";
@@ -292,36 +372,24 @@ function renderDevices(devices) {
       <td>${statusBadge(d)}</td>
       <td class="cell-num">${quotaCell(d)}</td><td class="cell-actions"></td>`;
     const cell = tr.lastElementChild;
-    if (!d.is_banned) {
-      const ban = document.createElement("button");
-      ban.className = "btn btn-sm btn-danger";
-      ban.textContent = "Ban";
-      ban.onclick = async () => {
-        try {
+    if (d.is_banned) {
+      cell.append(deviceBtn("Unban", "btn btn-sm", async () => {
+        await sendCommand({ op: "unban", client_id: d.client_id });
+        await refreshDevices();
+      }));
+    } else {
+      cell.append(
+        deviceBtn("Ban", "btn btn-sm btn-danger", async () => {
           await sendCommand({ op: "revoke", client_id: d.client_id });
           await refreshDevices();
-        } catch (e) {
-          showError(e);
-        }
-      };
-      const reissue = document.createElement("button");
-      reissue.className = "btn btn-sm";
-      reissue.textContent = "Reissue";
-      reissue.onclick = async () => {
-        try {
+        }),
+        deviceBtn("Reissue", "btn btn-sm", async () => {
           const result = await sendCommand({ op: "reissue", client_id: d.client_id });
           $("last-token").innerHTML =
             `переиздан <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>`;
           await refreshDevices();
-        } catch (e) {
-          showError(e);
-        }
-      };
-      const build = document.createElement("button");
-      build.className = "btn btn-sm";
-      build.textContent = "Собрать";
-      build.onclick = async () => {
-        try {
+        }),
+        deviceBtn("Собрать", "btn btn-sm", async () => {
           const result = await sendCommand({
             op: "build_installer",
             client_id: d.client_id,
@@ -334,12 +402,27 @@ function renderDevices(devices) {
             `сборка <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>` +
             `<pre>${esc(arts)}</pre>`;
           await refreshDevices();
-        } catch (e) {
-          showError(e);
-        }
-      };
-      cell.append(ban, reissue, build);
+        }),
+      );
     }
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-sm btn-danger";
+    remove.textContent = "Delete";
+    remove.onclick = async () => {
+      if (!window.confirm(`Удалить ${d.client_id}? Запись исчезнет из списка, доступ отзовётся.`)) {
+        return;
+      }
+      try {
+        await withBusy("delete", async () => {
+          await sendCommand({ op: "delete", client_id: d.client_id });
+          await refreshDevices();
+        });
+      } catch (e) {
+        showError(e);
+      }
+    };
+    cell.append(remove);
     tb.append(tr);
   }
 }
@@ -417,8 +500,10 @@ async function loadEvents() {
       btn.textContent = "ack";
       btn.onclick = async () => {
         try {
-          await sendCommand({ op: "ack_event", event_id: ev.event_id });
-          await loadEvents();
+          await withBusy("ack", async () => {
+            await sendCommand({ op: "ack_event", event_id: ev.event_id });
+            await loadEvents();
+          });
         } catch (e) {
           showError(e);
         }
@@ -483,58 +568,78 @@ function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTicks = 0;
   pollTimer = setInterval(async () => {
-    if (!session.seeds) return;
+    if (!session.seeds || busyDepth > 0 || pollTick) return;
     pollTicks += 1;
+    pollTick = true;
+    renderBusy();
     try {
       await refreshSessions();
       if (pollTicks % 6 === 0) {
         await sendCommand({ op: "evaluate_alerts" });
       }
       await loadEvents();
+      lastBusyError = false;
     } catch {
       /* сеть/seq — покажем при ручном действии */
+    } finally {
+      pollTick = false;
+      renderBusy();
     }
   }, 10000);
 }
 
-function bind(id, fn) {
+function bind(id, label, fn) {
   $(id).onclick = async () => {
     try {
-      showError("");
-      await fn();
+      await withBusy(label, fn);
     } catch (e) {
       showError(e);
     }
   };
 }
 
-bind("btn-unlock", async () => {
+$("passphrase").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  $("btn-unlock").click();
+});
+
+bind("btn-unlock", "unlock", async () => {
   await unlock();
   $("investigation").checked = false;
+  setBusyLabel("загрузка: расследование");
   await sendCommand({ op: "investigation_get" }).then((r) => {
     $("investigation").checked = !!r.enabled;
   }).catch(() => {});
+  setBusyLabel("загрузка: устройства");
   await refreshDevices();
+  setBusyLabel("загрузка: сессии");
   await refreshSessions();
+  setBusyLabel("загрузка: пингер");
   await loadPing();
+  setBusyLabel("загрузка: пороги");
   await loadThresholds();
+  setBusyLabel("загрузка: события");
   await loadEvents();
   startPolling();
 });
-bind("btn-refresh", refreshDevices);
-bind("btn-invite", invite);
-bind("btn-ping-load", loadPing);
-bind("btn-ping-save", savePing);
-bind("btn-events", loadEvents);
-bind("btn-sessions", refreshSessions);
-bind("btn-th-load", loadThresholds);
-bind("btn-th-save", saveThresholds);
-bind("btn-eval", evaluateAlerts);
+bind("btn-refresh", "устройства", refreshDevices);
+bind("btn-invite", "invite", invite);
+bind("btn-ping-load", "пингер", loadPing);
+bind("btn-ping-save", "сохранить пингер", savePing);
+bind("btn-events", "события", loadEvents);
+bind("btn-sessions", "сессии", refreshSessions);
+bind("btn-th-load", "пороги", loadThresholds);
+bind("btn-th-save", "сохранить пороги", saveThresholds);
+bind("btn-eval", "детектор", evaluateAlerts);
 $("investigation").onchange = async () => {
   try {
-    showError("");
-    await toggleInvestigation();
+    await withBusy("расследование", toggleInvestigation);
   } catch (e) {
     showError(e);
   }
 };
+
+clearTimeout(window.__adminBoot);
+document.body.classList.add("is-ready");
+renderBusy();

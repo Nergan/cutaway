@@ -162,6 +162,24 @@ def test_admin_invite_list_revoke_via_signed_commands(api):
     revoked = signed_command(3, chain, {"op": "revoke", "client_id": client_id})
     assert revoked.status_code == 200
     assert revoked.json()["result"]["banned"] is True
+    chain = revoked.json()["chain_head_hex"]
+
+    unbanned = signed_command(4, chain, {"op": "unban", "client_id": client_id})
+    assert unbanned.status_code == 200
+    assert unbanned.json()["result"]["banned"] is False
+    chain = unbanned.json()["chain_head_hex"]
+
+    deleted = signed_command(5, chain, {"op": "delete", "client_id": client_id})
+    assert deleted.status_code == 200
+    assert deleted.json()["result"]["deleted"] is True
+    chain = deleted.json()["chain_head_hex"]
+
+    listed_after = signed_command(6, chain, {"op": "list_devices"})
+    assert listed_after.status_code == 200
+    assert listed_after.json()["result"]["devices"] == []
+
+    missing = signed_command(7, listed_after.json()["chain_head_hex"], {"op": "delete", "client_id": client_id})
+    assert missing.status_code == 404
 
 
 def test_ping_targets_roundtrip(api):

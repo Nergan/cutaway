@@ -225,6 +225,12 @@ async def _execute_op(request: Request, body: dict[str, Any]) -> dict[str, Any]:
         await _invalidate_edge_ban(request, client_id)
         return {"client_id": client_id, "banned": False}
 
+    if op == "delete":
+        client_id = str(body.get("client_id") or "")
+        await provisioning.delete_device(client_id)
+        await _invalidate_edge_ban(request, client_id)
+        return {"client_id": client_id, "deleted": True}
+
     if op == "reissue":
         client_id = str(body.get("client_id") or "")
         result = await provisioning.reissue_device(client_id)

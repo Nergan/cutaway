@@ -168,6 +168,22 @@ class InMemoryControlPlaneStore:
                 client["key_revoked_at"] = _utcnow() if banned else None
                 return
 
+    async def delete_client(self, client_id: str) -> bool:
+        for user_id, doc in list(self.users.items()):
+            clients = doc.get("clients", [])
+            kept = [c for c in clients if c.get("client_id") != client_id]
+            if len(kept) == len(clients):
+                continue
+            if kept:
+                doc["clients"] = kept
+            else:
+                del self.users[user_id]
+            for sid, sess in list(self.sessions.items()):
+                if sess.get("client_id") == client_id:
+                    del self.sessions[sid]
+            return True
+        return False
+
     async def get_admin(self, admin_id: str) -> AdminRecord | None:
         return self.admins.get(admin_id)
 

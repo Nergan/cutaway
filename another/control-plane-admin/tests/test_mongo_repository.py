@@ -95,3 +95,27 @@ def test_add_client_stub_appends_to_existing_user(repo):
     listed = repo.list_clients()
     assert {c.client_id for c in listed} == {first, second}
     assert {c.user_id for c in listed} == {found.user_id}
+
+
+def test_delete_client_removes_one_keeps_sibling(repo, collection):
+    first = repo.create_client_stub("alice", 100, "h1", datetime.now(timezone.utc))
+    found = repo.find_client(first)
+    second = repo.add_client_stub(found.user_id, "alice-phone", 100, "h2", datetime.now(timezone.utc))
+    assert repo.delete_client(first) is True
+    assert repo.find_client(first) is None
+    leftover = repo.find_client(second)
+    assert leftover is not None
+    assert leftover.user_id == found.user_id
+    assert collection.count_documents({}) == 1
+
+
+def test_delete_last_client_drops_user_document(repo, collection):
+    client_id = repo.create_client_stub("solo", 0, "h", datetime.now(timezone.utc))
+    assert repo.delete_client(client_id) is True
+    assert repo.find_client(client_id) is None
+    assert repo.list_clients() == []
+    assert collection.count_documents({}) == 0
+
+
+def test_delete_missing_client_returns_false(repo):
+    assert repo.delete_client("nope") is False

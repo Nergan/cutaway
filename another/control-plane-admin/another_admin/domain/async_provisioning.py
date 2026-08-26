@@ -54,6 +54,11 @@ class AsyncDeviceProvisioningService:
             raise ClientNotFoundError(client_id)
         await self.store.set_banned(client_id, False)
 
+    async def delete_device(self, client_id: str) -> None:
+        if await self.store.find_client(client_id) is None:
+            raise ClientNotFoundError(client_id)
+        await self.store.delete_client(client_id)
+
     async def reissue_device(self, client_id: str) -> InviteResult:
         existing = await self.store.find_client(client_id)
         if existing is None:

@@ -70,6 +70,11 @@ class DeviceProvisioningService:
             raise ClientNotFoundError(client_id)
         self.repo.set_banned(client_id, False)
 
+    def delete_device(self, client_id: str) -> None:
+        if self.repo.find_client(client_id) is None:
+            raise ClientNotFoundError(client_id)
+        self.repo.delete_client(client_id)
+
     def list_devices(self) -> list[ClientRecord]:
         return self.repo.list_clients()
 

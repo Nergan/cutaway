@@ -77,6 +77,9 @@ class FakeUserRepository:
         c = self.clients[client_id]
         self.clients[client_id] = ClientRecord(**{**c.__dict__, "is_banned": banned})
 
+    def delete_client(self, client_id: str) -> bool:
+        return self.clients.pop(client_id, None) is not None
+
 
 @pytest.fixture
 def repo() -> FakeUserRepository:
@@ -134,6 +137,18 @@ def test_unban_device(service, repo):
 
     assert repo.banned_calls == [(result.client_id, True), (result.client_id, False)]
     assert repo.clients[result.client_id].is_banned is False
+
+
+def test_delete_device_removes_record(service, repo):
+    result = service.create_invite("test", quota_limit_bytes=0)
+    service.delete_device(result.client_id)
+    assert result.client_id not in repo.clients
+    assert service.list_devices() == []
+
+
+def test_delete_unknown_device_raises(service):
+    with pytest.raises(ClientNotFoundError):
+        service.delete_device("does-not-exist")
 
 
 def test_list_devices_returns_all(service, repo):

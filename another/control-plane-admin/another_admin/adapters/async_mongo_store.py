@@ -209,6 +209,20 @@ class AsyncMongoStore:
             }},
         )
 
+    async def delete_client(self, client_id: str) -> bool:
+        doc = await self.users.find_one({"clients.client_id": client_id}, {"_id": 1})
+        if doc is None:
+            return False
+        await self.users.update_one(
+            {"_id": doc["_id"]},
+            {"$pull": {"clients": {"client_id": client_id}}},
+        )
+        leftover = await self.users.find_one({"_id": doc["_id"]}, {"clients": 1})
+        if leftover is not None and not leftover.get("clients"):
+            await self.users.delete_one({"_id": doc["_id"]})
+        await self.sessions.delete_many({"client_id": client_id})
+        return True
+
     async def get_admin(self, admin_id: str) -> AdminRecord | None:
         doc = await self.admins.find_one({"admin_id": admin_id})
         if doc is None:

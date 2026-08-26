@@ -186,3 +186,16 @@ class MongoUserRepository:
         update: dict[str, Any] = {"clients.$.is_banned": banned}
         update["clients.$.key_revoked_at"] = datetime.now(timezone.utc) if banned else None
         self._collection.update_one({"clients.client_id": client_id}, {"$set": update})
+
+    def delete_client(self, client_id: str) -> bool:
+        doc = self._collection.find_one({"clients.client_id": client_id}, {"_id": 1})
+        if doc is None:
+            return False
+        self._collection.update_one(
+            {"_id": doc["_id"]},
+            {"$pull": {"clients": {"client_id": client_id}}},
+        )
+        leftover = self._collection.find_one({"_id": doc["_id"]}, {"clients": 1})
+        if leftover is not None and not leftover.get("clients"):
+            self._collection.delete_one({"_id": doc["_id"]})
+        return True

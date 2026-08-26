@@ -17,6 +17,11 @@
       <span class="brand-tag">control plane · monitor</span>
     </div>
 
+    <div class="busy-beacon" id="busy-beacon" data-state="busy" aria-live="polite" title="состояние панели">
+      <span class="busy-dot" aria-hidden="true"></span>
+      <span class="busy-label" id="busy-label">модули…</span>
+    </div>
+
     <div class="auth-strip">
       <div class="field">
         <span class="field-label">файл ключа</span>
@@ -38,6 +43,7 @@
       <span id="bell" class="bell"></span>
     </div>
   </header>
+  <div class="busy-bar is-on" id="busy-bar"></div>
 
   <main class="workspace" id="workspace">
 
@@ -161,6 +167,16 @@
 
   <p class="err" id="error"></p>
 
+  <script>
+    window.__adminBoot = setTimeout(function () {
+      var b = document.getElementById("busy-beacon");
+      var l = document.getElementById("busy-label");
+      if (b && l && l.textContent === "модули…") {
+        b.dataset.state = "error";
+        l.textContent = "скрипт не загрузился";
+      }
+    }, 15000);
+  </script>
   <script type="module" src="./layout.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
