@@ -24,7 +24,9 @@ core/dist/
 *.exe
 *.test
 *.out
+# Go `go mod vendor` в корне another/, не статика админки.
 /vendor/
+!control-plane-admin/another_admin/api/static/vendor/
 
 # --- Node / TypeScript (edge/) -------------------------------------------------
 node_modules/

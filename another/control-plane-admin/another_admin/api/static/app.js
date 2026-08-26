@@ -3,10 +3,17 @@
  * Подписи: Ed25519 (WebCrypto) + ML-DSA-65 (@noble/post-quantum).
  * SHA3-256 — @noble/hashes. Приватный ключ существует только в RAM.
  */
-// Крипта лежит рядом в vendor/, а не на CDN: панель должна работать в сети, где
-// jsdelivr недоступен, и код, подписывающий команды ключом админа, не должен
-// приезжать со стороннего сервера. Пересборка — vendor/README.md.
-import { ml_dsa65, sha3_256 } from "./vendor/noble-crypto.js";
+// Крипта по умолчанию из vendor/ (без CDN). Если Space ещё не получил эти
+// файлы — синк на HF однажды упал, и панель осталась с 404 — берём те же
+// версии с jsdelivr, чтобы Unlock не зависел от доставки статики.
+const { ml_dsa65, sha3_256 } = await import("./vendor/noble-crypto.js").catch(async () => {
+  const [hashes, pq] = await Promise.all([
+    import("https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/sha3/+esm"),
+    import("https://cdn.jsdelivr.net/npm/@noble/post-quantum@0.4.1/ml-dsa.js/+esm"),
+  ]);
+  console.warn("another-admin: vendor/ недоступен, крипта с jsdelivr");
+  return { sha3_256: hashes.sha3_256, ml_dsa65: pq.ml_dsa65 };
+});
 
 const GIGABYTE = 1024 ** 3;
 const ZERO_HEAD = "00".repeat(32);
