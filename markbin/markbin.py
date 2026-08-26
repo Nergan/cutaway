@@ -5,10 +5,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from pathlib import Path
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
 router = APIRouter()
@@ -19,13 +19,23 @@ templates = Jinja2Templates(directory=BASE_DIR)
 # В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
 sys.path.append(str(BASE_DIR.parent))
 from shared_mongo import get_client
+from shared_limits import RateLimiter, body_size_limit
 
 db = get_client().markbins
 codes_collection = db.docs
 
+MAX_DOC_CHARS = 512 * 1024
+MAX_TTL_SECONDS = 365 * 24 * 3600
+
+# Writes are unauthenticated, so cap what one client can push into the cluster.
+save_guards = [
+    Depends(body_size_limit(2 * MAX_DOC_CHARS)),
+    Depends(RateLimiter(limit=20, window_seconds=60)),
+]
+
 class DocRequest(BaseModel):
-    content: str
-    ttl_seconds: Optional[int] = None
+    content: str = Field(..., max_length=MAX_DOC_CHARS)
+    ttl_seconds: Optional[int] = Field(None, ge=0, le=MAX_TTL_SECONDS)
 
 @router.on_event("startup")
 async def create_indexes():
@@ -34,7 +44,7 @@ async def create_indexes():
     # Native MongoDB TTL cleanup: automatically deletes documents when 'expires_at' is reached
     await codes_collection.create_index("expires_at", expireAfterSeconds=0)
 
-@router.post('/api/save')
+@router.post('/api/save', dependencies=save_guards)
 async def save_doc(doc: DocRequest):
     # Include TTL in the hash to allow identical content to have distinct expirations
     hash_input = doc.content + str(doc.ttl_seconds or 0)
@@ -58,7 +68,10 @@ async def save_doc(doc: DocRequest):
         await codes_collection.insert_one(doc_payload)
         return {"uuid": doc_id}
     except DuplicateKeyError:
+        # Lost a race against a concurrent identical save, so reuse its document.
         existing_doc = await codes_collection.find_one({"hash": content_hash})
+        if not existing_doc:
+            raise HTTPException(status_code=409, detail="Concurrent write conflict, please retry.")
         return {"uuid": existing_doc["uuid"]}
 
 @router.get('/api/docs/{doc_uuid}')

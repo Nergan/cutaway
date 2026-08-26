@@ -273,6 +273,50 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
         for f in temp_files:
             if os.path.exists(f): os.remove(f)
 
+# The helpers below wrap CPU-bound library work that would otherwise stall the
+# event loop for the whole worker; _direct_convert runs them via asyncio.to_thread.
+
+def _pdf_to_text(input_path: str, output_path: str, to_fmt: str):
+    doc = fitz.open(input_path)
+    try:
+        if to_fmt == 'txt':
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write("\n".join([page.get_text() for page in doc]))
+            return
+        parts = ["<!DOCTYPE html><html><body style='background:#f0f0f0; margin:0; padding:20px;'>"]
+        for page in doc:
+            parts.append(
+                f"<div style='background:white; margin:0 auto 20px auto; position:relative; "
+                f"width:{page.rect.width}px; height:{page.rect.height}px; overflow:hidden;'>"
+                f"{page.get_text('html')}</div>"
+            )
+        parts.append("</body></html>")
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("".join(parts))
+    finally:
+        doc.close()
+
+
+def _csv_to_xlsx(input_path: str, output_path: str):
+    pd.read_csv(input_path).to_excel(output_path, index=False)
+
+
+def _xlsx_to_csv(input_path: str, output_path: str):
+    pd.read_excel(input_path).to_csv(output_path, index=False)
+
+
+def _image_convert(input_path: str, output_path: str, to_fmt: str):
+    with Image.open(input_path) as img:
+        if img.mode in ("RGBA", "LA", "P") and to_fmt in ["jpg", "pdf"]:
+            img = img.convert("RGBA")
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img)
+            img = bg
+        elif img.mode != "RGB" and to_fmt in ["jpg", "pdf"]: img = img.convert("RGB")
+        if to_fmt == "pdf": img.save(output_path, "PDF", resolution=100.0)
+        else: img.save(output_path)
+
+
 async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None, merge_path: str = None, merge_loop: bool = False):
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
     if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
@@ -313,14 +357,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         return
 
     if from_fmt == 'pdf' and to_fmt in ['html', 'txt']:
-        doc = fitz.open(input_path)
-        if to_fmt == 'txt':
-            with open(output_path, "w", encoding="utf-8") as f: f.write("\n".join([page.get_text() for page in doc]))
-        else:
-            html_content = "<!DOCTYPE html><html><body style='background:#f0f0f0; margin:0; padding:20px;'>"
-            for page in doc: html_content += f"<div style='background:white; margin:0 auto 20px auto; position:relative; width:{page.rect.width}px; height:{page.rect.height}px; overflow:hidden;'>{page.get_text('html')}</div>"
-            html_content += "</body></html>"
-            with open(output_path, "w", encoding="utf-8") as f: f.write(html_content)
+        await asyncio.to_thread(_pdf_to_text, input_path, output_path, to_fmt)
         return
 
     if to_fmt in ['pdf', 'docx'] and from_fmt in ['doc', 'docx', 'rtf', 'odt', 'txt', 'csv', 'xlsx', 'pptx']:
@@ -378,30 +415,25 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             shutil.copy(input_path, output_path)
             return
         extra_args = ['--standalone', '--metadata', 'pagetitle=Document'] if to_fmt == 'html' else []
-        pypandoc.convert_file(input_path, PANDOC_OUT[to_fmt], format=PANDOC_IN[from_fmt], outputfile=output_path, extra_args=extra_args)
+        await asyncio.to_thread(
+            pypandoc.convert_file, input_path, PANDOC_OUT[to_fmt],
+            format=PANDOC_IN[from_fmt], outputfile=output_path, extra_args=extra_args,
+        )
         return
 
     if from_fmt == 'csv' and to_fmt == 'xlsx':
-        pd.read_csv(input_path).to_excel(output_path, index=False)
+        await asyncio.to_thread(_csv_to_xlsx, input_path, output_path)
         return
     if from_fmt == 'xlsx' and to_fmt == 'csv':
-        pd.read_excel(input_path).to_csv(output_path, index=False)
+        await asyncio.to_thread(_xlsx_to_csv, input_path, output_path)
         return
 
     if from_fmt == 'svg':
-        if to_fmt == 'png': cairosvg.svg2png(url=input_path, write_to=output_path)
-        elif to_fmt == 'pdf': cairosvg.svg2pdf(url=input_path, write_to=output_path)
+        if to_fmt == 'png': await asyncio.to_thread(cairosvg.svg2png, url=input_path, write_to=output_path)
+        elif to_fmt == 'pdf': await asyncio.to_thread(cairosvg.svg2pdf, url=input_path, write_to=output_path)
         return
     if from_fmt in ['jpg', 'png', 'webp', 'gif'] and to_fmt in ['jpg', 'png', 'webp', 'pdf']:
-        with Image.open(input_path) as img:
-            if img.mode in ("RGBA", "LA", "P") and to_fmt in ["jpg", "pdf"]:
-                img = img.convert("RGBA")
-                bg = Image.new("RGB", img.size, (255, 255, 255))
-                bg.paste(img, mask=img)
-                img = bg
-            elif img.mode != "RGB" and to_fmt in ["jpg", "pdf"]: img = img.convert("RGB")
-            if to_fmt == "pdf": img.save(output_path, "PDF", resolution=100.0)
-            else: img.save(output_path)
+        await asyncio.to_thread(_image_convert, input_path, output_path, to_fmt)
         return
 
     if from_fmt in ['zip', 'rar', '7z', 'tar', 'gz'] and to_fmt in ['zip', '7z', 'tar', 'gz']:

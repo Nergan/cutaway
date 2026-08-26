@@ -1,14 +1,16 @@
 import sys
 import hashlib
 import json
+import logging
 import urllib.request
 import asyncio
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Request, HTTPException, Response
+from urllib.parse import urlparse
+from fastapi import APIRouter, Depends, Request, HTTPException, Response
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
 router = APIRouter()
@@ -18,18 +20,30 @@ templates = Jinja2Templates(directory=BASE_DIR)
 # В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
 sys.path.append(str(BASE_DIR.parent))
 from shared_mongo import get_client
+from shared_limits import RateLimiter, body_size_limit
 
 db = get_client().toadcode
 codes_collection = db.codes
 
+MAX_FILES = 2000
+MAX_FILE_CHARS = 512 * 1024
+MAX_SNIPPET_BYTES = 8 * 1024 * 1024
+MAX_PROXY_BYTES = 64 * 1024 * 1024
+
+# Writes are unauthenticated, so cap what one client can push into the cluster.
+save_guards = [
+    Depends(body_size_limit(MAX_SNIPPET_BYTES)),
+    Depends(RateLimiter(limit=20, window_seconds=60)),
+]
+
 class FileItem(BaseModel):
-    path: str
-    content: str
+    path: str = Field(..., max_length=1024)
+    content: str = Field(..., max_length=MAX_FILE_CHARS)
     is_dir: Optional[bool] = False
 
 class SaveRequest(BaseModel):
-    id: str
-    files: List[FileItem]
+    id: str = Field(..., max_length=128)
+    files: List[FileItem] = Field(..., max_length=MAX_FILES)
 
 @router.on_event("startup")
 async def create_indexes():
@@ -52,19 +66,53 @@ async def toad_backgrounds():
     ]
     return JSONResponse(content={'backgrounds': mp4_files})
 
-@router.get('/api/proxy-zip')
-async def proxy_zip(url: str):
-    """Securely proxies ZIP downloads for GitHub and HuggingFace to bypass client CORS."""
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 Toadcode/1.0'})
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, urllib.request.urlopen, req)
-        zip_bytes = await loop.run_in_executor(None, response.read)
-        return Response(content=zip_bytes, media_type="application/zip")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+PROXY_ALLOWED_HOSTS = (
+    "github.com",
+    "codeload.github.com",
+    "githubusercontent.com",
+    "huggingface.co",
+    "hf.co",
+)
 
-@router.post('/api/save')
+
+def _is_allowed_proxy_target(raw_url: str) -> bool:
+    """Without this the endpoint is an open proxy into the container's network."""
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = (parsed.hostname or "").lower()
+    return any(host == allowed or host.endswith("." + allowed) for allowed in PROXY_ALLOWED_HOSTS)
+
+
+def _fetch_zip(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 Toadcode/1.0'})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        # urlopen follows redirects, so whoever answered may not be who we vetted.
+        if not _is_allowed_proxy_target(response.geturl()):
+            raise ValueError("Redirected outside the allowed hosts.")
+        declared = response.headers.get("Content-Length")
+        if declared and declared.isdigit() and int(declared) > MAX_PROXY_BYTES:
+            raise ValueError("Archive exceeds the size limit.")
+        payload = response.read(MAX_PROXY_BYTES + 1)
+    if len(payload) > MAX_PROXY_BYTES:
+        raise ValueError("Archive exceeds the size limit.")
+    return payload
+
+
+@router.get('/api/proxy-zip', dependencies=[Depends(RateLimiter(limit=30, window_seconds=60))])
+async def proxy_zip(url: str):
+    """Proxies ZIP downloads for GitHub and HuggingFace to bypass client CORS."""
+    if not _is_allowed_proxy_target(url):
+        raise HTTPException(status_code=400, detail="Only GitHub and HuggingFace URLs are allowed.")
+    try:
+        zip_bytes = await asyncio.to_thread(_fetch_zip, url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=502, detail="Upstream archive could not be fetched.")
+    return Response(content=zip_bytes, media_type="application/zip")
+
+@router.post('/api/save', dependencies=save_guards)
 async def toad_save(request: SaveRequest):
     m = hashlib.sha256()
     for f in sorted(request.files, key=lambda x: x.path):
@@ -89,8 +137,9 @@ async def toad_save(request: SaveRequest):
         if existing_doc:
             return {'status': 'success', 'id': existing_doc['code_id']}
         raise HTTPException(status_code=500, detail="Database conflict error")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.exception("toadcode: failed to persist snippet")
+        raise HTTPException(status_code=500, detail="Could not save the snippet.")
 
 @router.get('/{code_id:path}')
 async def toadcode_codeview(request: Request, code_id: str):
@@ -120,6 +169,6 @@ async def toadcode_codeview(request: Request, code_id: str):
                 'code_id': actual_code_id,
             }
         )
-    except Exception as e:
-        print(f"Error in toadcode_codeview: {e}")
+    except Exception:
+        logging.exception("toadcode: failed to render snippet view")
         return RedirectResponse(url=request.url_for('toad_root'))

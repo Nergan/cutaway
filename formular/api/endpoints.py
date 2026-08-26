@@ -1,10 +1,12 @@
+import asyncio
 import os
+import time
 import uuid
 import shutil
 import tempfile
 from pathlib import Path
 from urllib.parse import quote
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
@@ -16,6 +18,9 @@ router = APIRouter()
 TEMP_DIR = Path(tempfile.gettempdir()) / "formular_sessions"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+MAX_UPLOAD_BYTES = int(os.environ.get("FORMULAR_MAX_UPLOAD_BYTES", 256 * 1024 * 1024))
+SESSION_TTL_SECONDS = int(os.environ.get("FORMULAR_SESSION_TTL_SECONDS", 3600))
+
 
 def session_dir(raw_id: str) -> Path:
     """Session ids are server-generated UUIDs; anything else is a traversal attempt."""
@@ -25,8 +30,44 @@ def session_dir(raw_id: str) -> Path:
         raise HTTPException(status_code=400, detail="Invalid session id.")
 
 
-@router.post('/upload')
+async def enforce_upload_limit(request: Request):
+    """Reject oversized bodies before FastAPI parses the multipart form.
+
+    Starlette spools uploads to disk while parsing, so a check inside the
+    handler would run only after the bytes already landed there.
+    """
+    declared = request.headers.get("content-length")
+    if declared is None:
+        return
+    try:
+        length = int(declared)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Malformed Content-Length.")
+    if length > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit.",
+        )
+
+
+def _sweep_stale_sessions():
+    """Sessions are only cleaned up on a successful convert, so reap the rest."""
+    cutoff = time.time() - SESSION_TTL_SECONDS
+    for entry in TEMP_DIR.iterdir():
+        try:
+            if entry.is_dir() and entry.stat().st_mtime < cutoff:
+                shutil.rmtree(entry, ignore_errors=True)
+        except OSError:
+            continue
+
+
+@router.post('/upload', dependencies=[Depends(enforce_upload_limit)])
 async def upload_files(files: list[UploadFile] = File(...)):
+    try:
+        await asyncio.to_thread(_sweep_stale_sessions)
+    except OSError:
+        pass
+
     results = []
     for file in files:
         file_id = str(uuid.uuid4())
@@ -42,11 +83,24 @@ async def upload_files(files: list[UploadFile] = File(...)):
             continue
         file_path = input_dir / original_name
         
+        # Backstop for chunked requests that arrive without a Content-Length.
         size = 0
+        oversized = False
         with open(file_path, "wb") as f:
             while chunk := await file.read(8192 * 1024):
                 size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    oversized = True
+                    break
                 f.write(chunk)
+
+        if oversized:
+            shutil.rmtree(safe_dir, ignore_errors=True)
+            results.append({
+                "filename": original_name,
+                "error": f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit.",
+            })
+            continue
         
         detected_format = detect_file_format(str(file_path), original_name)
         allowed_targets = get_allowed_targets(detected_format)
