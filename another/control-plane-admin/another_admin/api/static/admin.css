@@ -141,6 +141,66 @@ body,
   flex: 0 0 auto;
 }
 
+.topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+}
+.lang-btn {
+  padding: 0.28rem 0.5rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.lang-btn + .lang-btn {
+  border-left: 1px solid var(--border);
+}
+.lang-btn:hover {
+  color: var(--primary);
+}
+.lang-btn.is-active {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+.topbar-toggle {
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.topbar-toggle:hover {
+  border-color: var(--border-hover);
+  color: var(--primary);
+}
+body.topbar-collapsed .topbar-toggle {
+  transform: rotate(-90deg);
+}
+body.topbar-collapsed .brand-tag {
+  display: none;
+}
+body.topbar-collapsed.is-unlocked .auth-strip {
+  display: none;
+}
+body.topbar-collapsed .topbar {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
 /* Маячок: сразу видно, идёт запрос или панель просто стоит. */
 .busy-beacon {
   display: inline-flex;

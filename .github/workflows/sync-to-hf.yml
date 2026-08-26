@@ -5,6 +5,11 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Срабатывает только на ветке main. Пуш в cursor/* или другую ветку Action
+# не запускает — отсюда «после пуша ничего не едет на HF».
+# Ручной запуск: Actions → Sync to Hugging Face Space → Run workflow,
+# ветку выбрать main (или ту, которую нужно зеркалить).
+
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest

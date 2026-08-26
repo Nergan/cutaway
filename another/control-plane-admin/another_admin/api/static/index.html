@@ -11,36 +11,44 @@
 </head>
 <body>
 
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <div class="brand">
       <span class="brand-title">ANOTHER</span>
-      <span class="brand-tag">control plane · monitor</span>
+      <span class="brand-tag" data-i18n="brandTag">control plane · monitor</span>
     </div>
 
     <div class="busy-beacon" id="busy-beacon" data-state="busy" aria-live="polite" title="состояние панели">
       <span class="busy-dot" aria-hidden="true"></span>
-      <span class="busy-label" id="busy-label">модули…</span>
+      <span class="busy-label" id="busy-label" data-i18n="busyModules">модули…</span>
     </div>
 
     <div class="auth-strip">
       <div class="field">
-        <span class="field-label">файл ключа</span>
+        <span class="field-label" data-i18n="fileLabel">файл ключа</span>
         <label class="filepick">
           <input id="keyfile" type="file" accept=".another-admin-key,.json,application/json" />
-          <span class="filepick-btn">Выбрать</span>
-          <span class="filepick-name" id="keyfile-name">не выбран</span>
+          <span class="filepick-btn" data-i18n="filePick">Выбрать</span>
+          <span class="filepick-name" id="keyfile-name" data-i18n="fileNone">не выбран</span>
         </label>
       </div>
       <label class="field">
-        <span>passphrase</span>
+        <span data-i18n="passphrase">passphrase</span>
         <input id="passphrase" class="control" type="password" autocomplete="off" />
       </label>
-      <button id="btn-unlock" class="btn btn-accent" type="button">Unlock + bootstrap</button>
+      <button id="btn-unlock" class="btn btn-accent" type="button" data-i18n="unlock">Unlock + bootstrap</button>
     </div>
 
     <div class="status-strip">
-      <span id="session-status" class="session-status">заблокировано</span>
+      <span id="session-status" class="session-status" data-i18n="locked">заблокировано</span>
       <span id="bell" class="bell"></span>
+    </div>
+
+    <div class="topbar-tools">
+      <div class="lang-switch" role="group" aria-label="language">
+        <button type="button" id="lang-ru" class="lang-btn" lang="ru">RU</button>
+        <button type="button" id="lang-en" class="lang-btn" lang="en">EN</button>
+      </div>
+      <button type="button" id="btn-topbar-toggle" class="topbar-toggle" aria-expanded="true" data-i18n-aria="collapseHeader" title="">▾</button>
     </div>
   </header>
   <div class="busy-bar is-on" id="busy-bar"></div>
@@ -49,31 +57,31 @@
 
     <section class="panel panel-devices">
       <div class="panel-head">
-        <span class="panel-title">Устройства</span>
+        <span class="panel-title" data-i18n="devices">Устройства</span>
         <span class="spacer"></span>
         <label class="field">
-          <span>комментарий</span>
+          <span data-i18n="comment">комментарий</span>
           <input id="invite-comment" class="control" type="text" placeholder="Друг из Питера" />
         </label>
         <label class="field">
-          <span>квота, ГБ</span>
+          <span data-i18n="quotaGb">квота, ГБ</span>
           <input id="invite-quota" class="control control-narrow" type="number" value="50" min="0" />
         </label>
-        <button id="btn-invite" class="btn btn-accent" type="button">Invite</button>
-        <button id="btn-refresh" class="btn" type="button">Обновить</button>
+        <button id="btn-invite" class="btn btn-accent" type="button" data-i18n="invite">Invite</button>
+        <button id="btn-refresh" class="btn" type="button" data-i18n="refresh">Обновить</button>
       </div>
       <div id="last-token" class="reveal" hidden>
-        <button type="button" id="last-token-close" class="reveal-close" aria-label="закрыть">×</button>
+        <button type="button" id="last-token-close" class="reveal-close" aria-label="закрыть" data-i18n-aria="close">×</button>
         <div id="last-token-body"></div>
       </div>
       <div class="panel-body">
         <table class="data-table">
           <thead>
             <tr>
-              <th>client_id</th>
-              <th>комментарий</th>
-              <th>статус</th>
-              <th>трафик / квота</th>
+              <th data-i18n="colClient">client_id</th>
+              <th data-i18n="colComment">комментарий</th>
+              <th data-i18n="colStatus">статус</th>
+              <th data-i18n="colQuota">трафик / квота</th>
               <th></th>
             </tr>
           </thead>
@@ -87,27 +95,27 @@
 
     <section class="panel panel-sessions">
       <div class="panel-head">
-        <span class="panel-title">Активные сессии</span>
+        <span class="panel-title" data-i18n="sessions">Активные сессии</span>
         <span class="spacer"></span>
         <label class="check">
           <input id="investigation" type="checkbox" />
-          <span>режим расследования</span>
+          <span data-i18n="investigation">режим расследования</span>
         </label>
-        <button id="btn-sessions" class="btn" type="button">Обновить</button>
+        <button id="btn-sessions" class="btn" type="button" data-i18n="refresh">Обновить</button>
       </div>
-      <p class="panel-note">
+      <p class="panel-note" data-i18n="pollNote">
         Поллинг каждые 10 с. По умолчанию показывается хеш IP; сырой IP — только в режиме расследования.
       </p>
       <div class="panel-body">
         <table class="data-table">
           <thead>
             <tr>
-              <th>client_id</th>
-              <th>узел</th>
-              <th>entrypoint</th>
-              <th>ip</th>
-              <th>байты окна</th>
-              <th>last_seen</th>
+              <th data-i18n="colClient">client_id</th>
+              <th data-i18n="colNode">узел</th>
+              <th data-i18n="colEntrypoint">entrypoint</th>
+              <th data-i18n="colIp">ip</th>
+              <th data-i18n="colBytes">байты окна</th>
+              <th data-i18n="colLastSeen">last_seen</th>
             </tr>
           </thead>
           <tbody id="sessions"></tbody>
@@ -120,14 +128,14 @@
 
     <section class="panel panel-events">
       <div class="panel-head">
-        <span class="panel-title">События и алерты</span>
+        <span class="panel-title" data-i18n="events">События и алерты</span>
         <span class="spacer"></span>
         <label class="check">
           <input id="unacked-only" type="checkbox" />
-          <span>только неподтверждённые</span>
+          <span data-i18n="unackedOnly">только неподтверждённые</span>
         </label>
-        <button id="btn-eval" class="btn btn-accent" type="button">Прогнать детектор</button>
-        <button id="btn-events" class="btn" type="button">Обновить</button>
+        <button id="btn-eval" class="btn btn-accent" type="button" data-i18n="runDetector">Прогнать детектор</button>
+        <button id="btn-events" class="btn" type="button" data-i18n="refresh">Обновить</button>
       </div>
       <div class="panel-body">
         <ul id="events" class="log"></ul>
@@ -139,28 +147,28 @@
 
     <section class="panel panel-config">
       <div class="panel-head">
-        <span class="panel-title">Конфигурация</span>
+        <span class="panel-title" data-i18n="config">Конфигурация</span>
         <span class="spacer"></span>
         <div class="tabs" role="tablist">
-          <button class="tab is-active" type="button" data-tab="pinger" role="tab">Пингер</button>
-          <button class="tab" type="button" data-tab="thresholds" role="tab">Пороги</button>
+          <button class="tab is-active" type="button" data-tab="pinger" role="tab" data-i18n="pinger">Пингер</button>
+          <button class="tab" type="button" data-tab="thresholds" role="tab" data-i18n="thresholds">Пороги</button>
         </div>
       </div>
       <div class="panel-body">
         <div class="tab-pane is-active" data-pane="pinger">
-          <p class="hint">Одна цель на строку: <code>name | url | interval_s | expect_status</code></p>
+          <p class="hint" data-i18n="pingerHint">Одна цель на строку: <code>name | url | interval_s | expect_status</code></p>
           <textarea id="ping-text" class="control" spellcheck="false"></textarea>
           <div class="tab-actions">
-            <button id="btn-ping-load" class="btn" type="button">Загрузить</button>
-            <button id="btn-ping-save" class="btn btn-accent" type="button">Сохранить</button>
+            <button id="btn-ping-load" class="btn" type="button" data-i18n="load">Загрузить</button>
+            <button id="btn-ping-save" class="btn btn-accent" type="button" data-i18n="save">Сохранить</button>
           </div>
         </div>
         <div class="tab-pane" data-pane="thresholds">
-          <p class="hint">Пороги детектора аномалий, JSON.</p>
+          <p class="hint" data-i18n="thresholdsHint">Пороги детектора аномалий, JSON.</p>
           <textarea id="thresholds-text" class="control" spellcheck="false"></textarea>
           <div class="tab-actions">
-            <button id="btn-th-load" class="btn" type="button">Загрузить</button>
-            <button id="btn-th-save" class="btn btn-accent" type="button">Сохранить</button>
+            <button id="btn-th-load" class="btn" type="button" data-i18n="load">Загрузить</button>
+            <button id="btn-th-save" class="btn btn-accent" type="button" data-i18n="save">Сохранить</button>
           </div>
         </div>
       </div>
@@ -172,8 +180,8 @@
     <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-text">
       <p id="confirm-text"></p>
       <div class="confirm-actions">
-        <button type="button" id="confirm-cancel" class="btn">Отмена</button>
-        <button type="button" id="confirm-ok" class="btn btn-danger">Удалить</button>
+        <button type="button" id="confirm-cancel" class="btn" data-i18n="cancel">Отмена</button>
+        <button type="button" id="confirm-ok" class="btn btn-danger" data-i18n="delete">Удалить</button>
       </div>
     </div>
   </div>
@@ -184,9 +192,9 @@
     window.__adminBoot = setTimeout(function () {
       var b = document.getElementById("busy-beacon");
       var l = document.getElementById("busy-label");
-      if (b && l && l.textContent === "модули…") {
+      if (b && l && (l.textContent === "модули…" || l.textContent === "modules…")) {
         b.dataset.state = "error";
-        l.textContent = "скрипт не загрузился";
+        l.textContent = "script failed to load";
       }
     }, 15000);
   </script>

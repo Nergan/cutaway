@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/another-vpn/another/core/internal/adapters/auth"
 	"github.com/another-vpn/another/core/internal/adapters/keystore"
@@ -156,13 +157,10 @@ type connectRequest struct {
 	// параллельных вызовах, что для v1 (один Flutter-клиент на инстанс
 	// Core) достаточно.
 	ClientID string `json:"client_id,omitempty"`
-	// Nodes — опциональный динамический список узлов, полученный Flutter
-	// от edge/enroll при онбординге (§7.1 спецификации). Если не задан,
-	// используется статическая политика из переменных окружения
-	// (см. main(): полезно для запуска/тестирования Core в одиночку,
-	// без GUI). Если задан — ПОЛНОСТЬЮ заменяет статическую политику для
-	// этого вызова (а не дополняет её).
-	Nodes []domain.NodeDescriptor `json:"nodes,omitempty"`
+	// Nodes — JSON массива или одного объекта (PowerShell 5.1 сворачивает
+	// одноэлементный массив). Если поле пустое, берётся политика из env;
+	// для смоук-теста шага 7 сюда нужно передать $enroll.nodes.
+	Nodes json.RawMessage `json:"nodes,omitempty"`
 }
 
 func (s *controlServer) handleConnect(w http.ResponseWriter, r *http.Request) {
@@ -177,9 +175,21 @@ func (s *controlServer) handleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	// dest_host пустой = полноценный VPN (TUN). Не подставляем example.com.
 
+	nodes, err := domain.ParseNodeList(req.Nodes)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
 	policy := s.policy
-	if len(req.Nodes) > 0 {
-		policy = domain.NewFailoverPolicy(req.Nodes)
+	if len(nodes) > 0 {
+		policy = domain.NewFailoverPolicy(nodes)
+	} else if policyUsesLoopbackControlPlane(s.policy) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": false,
+			"error": "nodes required: pass $enroll.nodes from POST /enroll. " +
+				"Without it the core uses ANOTHER_CONTROL_PLANE_URL, default http://127.0.0.1:8787 (wrangler dev).",
+		})
+		return
 	}
 	if req.ClientID != "" {
 		s.connect.ClientID = req.ClientID
@@ -288,4 +298,17 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func policyUsesLoopbackControlPlane(p *domain.FailoverPolicy) bool {
+	if p == nil {
+		return false
+	}
+	for _, n := range p.Ordered() {
+		u := strings.ToLower(n.ControlPlane)
+		if strings.Contains(u, "127.0.0.1") || strings.Contains(u, "localhost") || strings.Contains(u, "[::1]") {
+			return true
+		}
+	}
+	return false
 }

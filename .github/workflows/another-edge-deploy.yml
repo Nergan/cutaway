@@ -38,6 +38,19 @@ jobs:
       - run: npx tsc --noEmit -p tsconfig.test.json
       - run: npm test
 
+      - name: Check Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then missing="$missing CLOUDFLARE_API_TOKEN"; fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then missing="$missing CLOUDFLARE_ACCOUNT_ID"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::GitHub secrets are empty:$missing. Add them at Settings → Secrets and variables → Actions (repository and/or the production environment). Local .env is not visible to Actions. See another/DEPLOY.md step 2."
+            exit 1
+          fi
+
       # Terraform из этого пайплайна убран сознательно. В исходном варианте он
       # шёл здесь с локальным state, а значит на каждом прогоне CI заводил
       # НОВЫЙ KV namespace, id которого всё равно никуда не попадал —

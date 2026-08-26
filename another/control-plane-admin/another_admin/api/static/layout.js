@@ -1,9 +1,12 @@
+import { t, syncCollapseLabel } from "./i18n.js";
+
 /**
  * Раскладка админки: перетаскивание границ панелей и вкладки в «Конфигурации».
  * Ничего не знает про API и ключи — только про геометрию и localStorage.
  */
 
 const STORAGE_KEY = "another-admin-layout";
+const TOPBAR_KEY = "another-admin-topbar";
 
 // Не даём утащить границу так, чтобы панель исчезла совсем.
 const MIN_RATIO = 15;
@@ -100,10 +103,37 @@ const keyfileName = document.getElementById("keyfile-name");
 if (keyfile && keyfileName) {
   keyfile.addEventListener("change", () => {
     const picked = keyfile.files?.[0]?.name;
-    keyfileName.textContent = picked || "не выбран";
+    keyfileName.textContent = picked || t("fileNone");
     keyfileName.classList.toggle("is-set", Boolean(picked));
+    if (picked) keyfileName.removeAttribute("data-i18n");
+    else keyfileName.setAttribute("data-i18n", "fileNone");
   });
 }
+
+function applyTopbar() {
+  let collapsed = false;
+  try {
+    collapsed = localStorage.getItem(TOPBAR_KEY) === "collapsed";
+  } catch {
+    /* ignore */
+  }
+  document.body.classList.toggle("topbar-collapsed", collapsed);
+  syncCollapseLabel();
+}
+
+function toggleTopbar() {
+  const next = !document.body.classList.contains("topbar-collapsed");
+  document.body.classList.toggle("topbar-collapsed", next);
+  try {
+    localStorage.setItem(TOPBAR_KEY, next ? "collapsed" : "expanded");
+  } catch {
+    /* ignore */
+  }
+  syncCollapseLabel();
+}
+
+applyTopbar();
+document.getElementById("btn-topbar-toggle")?.addEventListener("click", toggleTopbar);
 
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => {

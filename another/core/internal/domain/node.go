@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -147,4 +148,27 @@ type NodeDescriptor struct {
 	RealityPublicKey string `json:"reality_public_key,omitempty"`
 	ShortID          string `json:"short_id,omitempty"`
 	Fingerprint      string `json:"fingerprint,omitempty"` // chrome (uTLS), по умолчанию chrome
+}
+
+// ParseNodeList принимает JSON массива узлов или одного объекта.
+// Windows PowerShell 5.1 (`ConvertTo-Json`) сворачивает массив из одного
+// элемента в объект — без этой функции /connect отвечает 400, а ядро
+// молча уходит на дефолт http://127.0.0.1:8787.
+func ParseNodeList(raw json.RawMessage) ([]NodeDescriptor, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, nil
+	}
+	if raw[0] == '[' {
+		var nodes []NodeDescriptor
+		if err := json.Unmarshal(raw, &nodes); err != nil {
+			return nil, fmt.Errorf("domain: nodes array: %w", err)
+		}
+		return nodes, nil
+	}
+	var one NodeDescriptor
+	if err := json.Unmarshal(raw, &one); err != nil {
+		return nil, fmt.Errorf("domain: nodes object: %w", err)
+	}
+	return []NodeDescriptor{one}, nil
 }

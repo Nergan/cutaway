@@ -74,6 +74,31 @@ func TestNodeDescriptor_UnmarshalsArray(t *testing.T) {
 	}
 }
 
+func TestParseNodeList_ArrayAndSingleObject(t *testing.T) {
+	many, err := ParseNodeList([]byte(`[
+		{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"a.example","port":443,"path":"/proxy","priority":1,"control_plane":"https://a.example"}
+	]`))
+	if err != nil {
+		t.Fatalf("array: %v", err)
+	}
+	if len(many) != 1 || many[0].Name != "cf-worker" {
+		t.Fatalf("array parsed %+v", many)
+	}
+
+	one, err := ParseNodeList([]byte(`{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"a.example","port":443,"path":"/proxy","priority":1,"control_plane":"https://a.example"}`))
+	if err != nil {
+		t.Fatalf("object: %v", err)
+	}
+	if len(one) != 1 || one[0].ControlPlane != "https://a.example" {
+		t.Fatalf("object parsed %+v", one)
+	}
+
+	empty, err := ParseNodeList(nil)
+	if err != nil || empty != nil {
+		t.Fatalf("nil: %v %+v", err, empty)
+	}
+}
+
 func TestTier_UnmarshalJSON_RejectsUnknown(t *testing.T) {
 	var tier Tier
 	err := json.Unmarshal([]byte(`"tier99-bogus"`), &tier)

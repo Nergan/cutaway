@@ -3,6 +3,8 @@
  * Подписи: Ed25519 (WebCrypto) + ML-DSA-65 (@noble/post-quantum).
  * SHA3-256 — @noble/hashes. Приватный ключ существует только в RAM.
  */
+import { t, initI18n, onLangChange, syncCollapseLabel } from "./i18n.js";
+
 // Крипта по умолчанию из vendor/ (без CDN). Если Space ещё не получил эти
 // файлы — синк на HF однажды упал, и панель осталась с 404 — берём те же
 // версии с jsdelivr, чтобы Unlock не зависел от доставки статики.
@@ -53,27 +55,27 @@ function renderBusy() {
   if (!beacon || !label || !bar) return;
   if (busyDepth > 0) {
     beacon.dataset.state = "busy";
-    label.textContent = busyLabel || "запрос…";
+    label.textContent = busyLabel || t("busyRequest");
     bar.classList.add("is-on");
     document.body.classList.add("is-busy");
   } else if (lastBusyError) {
     beacon.dataset.state = "error";
-    label.textContent = "ошибка";
+    label.textContent = t("busyError");
     bar.classList.remove("is-on");
     document.body.classList.remove("is-busy");
   } else if (pollTick) {
     beacon.dataset.state = "poll";
-    label.textContent = "опрос";
+    label.textContent = t("busyPoll");
     bar.classList.remove("is-on");
     document.body.classList.remove("is-busy");
   } else if (session.seeds) {
     beacon.dataset.state = "idle";
-    label.textContent = "готово";
+    label.textContent = t("busyReady");
     bar.classList.remove("is-on");
     document.body.classList.remove("is-busy");
   } else {
     beacon.dataset.state = "locked";
-    label.textContent = "ожидание";
+    label.textContent = t("busyWait");
     bar.classList.remove("is-on");
     document.body.classList.remove("is-busy");
   }
@@ -133,7 +135,7 @@ function esc(value) {
 function codeCopy(text) {
   const value = String(text ?? "");
   if (!value) return "";
-  return `<code class="copyable" data-copy="${esc(value)}" title="копировать">${esc(value)}</code>`;
+  return `<code class="copyable" data-copy="${esc(value)}" title="${esc(t("copyHint"))}">${esc(value)}</code>`;
 }
 
 let toastTimer = 0;
@@ -151,9 +153,9 @@ function showToast(text) {
 async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
-    showToast("скопировано");
+    showToast(t("copied"));
   } catch {
-    showToast("не удалось скопировать");
+    showToast(t("copyFailed"));
   }
 }
 
@@ -167,13 +169,14 @@ function hideReveal() {
   $("last-token-body").innerHTML = "";
 }
 
-function askConfirm({ text, okLabel = "Удалить" }) {
+function askConfirm({ text, okLabel }) {
   return new Promise((resolve) => {
     const overlay = $("confirm-dialog");
     const ok = $("confirm-ok");
     const cancel = $("confirm-cancel");
     $("confirm-text").textContent = text;
-    ok.textContent = okLabel;
+    ok.textContent = okLabel || t("delete");
+    cancel.textContent = t("cancel");
     overlay.hidden = false;
     ok.focus();
     const done = (yes) => {
@@ -338,7 +341,7 @@ async function sendCommand(body) {
 }
 
 async function sendCommandNow(body) {
-  if (!session.seeds) throw new Error("сначала unlock");
+  if (!session.seeds) throw new Error(t("unlockFirst"));
   // Подпись маячка задаёт withBusy / setBusyLabel, не перетираем её именем op.
   const seq = session.lastSeq + 1;
   const chain = hexToBytes(session.chainHex);
@@ -367,17 +370,17 @@ async function unlock() {
   showError("");
   const file = $("keyfile").files?.[0];
   const passphrase = $("passphrase").value;
-  if (!file || !passphrase) throw new Error("нужны файл ключа и passphrase");
-  setBusyLabel("unlock: расшифровка ключа");
+  if (!file || !passphrase) throw new Error(t("needKeyAndPass"));
+  setBusyLabel(t("busyUnlockDecrypt"));
   const doc = JSON.parse(await file.text());
   const seeds = await unwrapKeyfile(doc, passphrase);
   session.seeds = seeds;
-  setBusyLabel("unlock: challenge");
+  setBusyLabel(t("busyUnlockChallenge"));
   const ch = await api("/admin/v1/challenge");
   const challenge = hexToBytes(ch.challenge_hex);
-  setBusyLabel("unlock: подпись");
+  setBusyLabel(t("busyUnlockSign"));
   const { sigEd, sigPq } = await hybridSign(seeds, bootstrapMessage(challenge));
-  setBusyLabel("unlock: bootstrap");
+  setBusyLabel(t("busyUnlockBootstrap"));
   const boot = await api("/admin/v1/bootstrap", {
     method: "POST",
     body: JSON.stringify({
@@ -396,46 +399,46 @@ async function unlock() {
 function formatInviteUntil(iso) {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return "";
-  return new Date(ms).toLocaleString("ru-RU", { hour12: false });
+  return new Date(ms).toLocaleString(t("locale"), { hour12: false });
 }
 
 function inviteRemain(iso) {
   const end = Date.parse(iso);
   if (!Number.isFinite(end)) return "";
   const sec = Math.floor((end - Date.now()) / 1000);
-  if (sec <= 0) return "истёк";
+  if (sec <= 0) return t("expired");
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (h >= 48) return `${Math.floor(h / 24)}д ${h % 24}ч`;
-  if (h > 0) return `${h}ч ${m}м`;
-  if (m > 0) return `${m}м`;
-  return `${sec}с`;
+  if (h >= 48) return t("remainDH", { d: Math.floor(h / 24), h: h % 24 });
+  if (h > 0) return t("remainHM", { h, m });
+  if (m > 0) return t("remainM", { m });
+  return t("remainS", { s: sec });
 }
 
 function inviteExpiryLine(iso, ttlHours) {
   const hours = ttlHours || 24;
-  if (!iso) return `инвайт действует ${hours} ч`;
+  if (!iso) return t("inviteTtlHours", { hours });
   const remain = inviteRemain(iso);
-  return `инвайт до ${formatInviteUntil(iso)} · осталось ${remain}`;
+  return t("inviteUntil", { until: formatInviteUntil(iso), remain });
 }
 
 function tickInviteClocks() {
   for (const el of document.querySelectorAll("[data-invite-expires]")) {
     const remain = inviteRemain(el.dataset.inviteExpires);
     el.textContent = remain;
-    el.classList.toggle("is-expired", remain === "истёк");
+    el.classList.toggle("is-expired", remain === t("expired"));
   }
 }
 
 function statusBadge(device) {
-  if (device.is_banned) return '<span class="badge badge-danger">banned</span>';
-  if (device.is_enrolled) return '<span class="badge badge-ok">enrolled</span>';
+  if (device.is_banned) return `<span class="badge badge-danger">${esc(t("banned"))}</span>`;
+  if (device.is_enrolled) return `<span class="badge badge-ok">${esc(t("enrolled"))}</span>`;
   const iso = device.enrollment_expires_at;
   const remain = iso ? inviteRemain(iso) : "";
   const clock = iso
-    ? `<span class="invite-ttl${remain === "истёк" ? " is-expired" : ""}" data-invite-expires="${esc(iso)}" title="${esc(formatInviteUntil(iso))}">${esc(remain)}</span>`
+    ? `<span class="invite-ttl${remain === t("expired") ? " is-expired" : ""}" data-invite-expires="${esc(iso)}" title="${esc(formatInviteUntil(iso))}">${esc(remain)}</span>`
     : "";
-  return `<span class="badge badge-idle">pending</span>${clock}`;
+  return `<span class="badge badge-idle">${esc(t("pending"))}</span>${clock}`;
 }
 
 function quotaCell(device) {
@@ -468,7 +471,7 @@ function renderDevices(devices) {
   const tb = $("devices");
   tb.innerHTML = "";
   if (!devices.length) {
-    emptyRow(tb, 5, "устройств нет — выдайте первый invite");
+    emptyRow(tb, 5, t("noDevices"));
     return;
   }
   for (const d of devices) {
@@ -479,25 +482,25 @@ function renderDevices(devices) {
       <td class="cell-num">${quotaCell(d)}</td><td class="cell-actions"></td>`;
     const cell = tr.lastElementChild;
     if (d.is_banned) {
-      cell.append(deviceBtn("Unban", "btn btn-sm", async () => {
+      cell.append(deviceBtn(t("unban"), "btn btn-sm", async () => {
         await sendCommand({ op: "unban", client_id: d.client_id });
         await refreshDevices();
       }));
     } else {
       cell.append(
-        deviceBtn("Ban", "btn btn-sm btn-danger", async () => {
+        deviceBtn(t("ban"), "btn btn-sm btn-danger", async () => {
           await sendCommand({ op: "revoke", client_id: d.client_id });
           await refreshDevices();
         }),
-        deviceBtn("Reissue", "btn btn-sm", async () => {
+        deviceBtn(t("reissue"), "btn btn-sm", async () => {
           const result = await sendCommand({ op: "reissue", client_id: d.client_id });
           showReveal(
-            `переиздан ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+            `${esc(t("reissued"))} ${codeCopy(result.client_id)} · ${esc(t("token"))} ${codeCopy(result.enrollment_token)}` +
               `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>`,
           );
           await refreshDevices();
         }),
-        deviceBtn("Собрать", "btn btn-sm", async () => {
+        deviceBtn(t("assemble"), "btn btn-sm", async () => {
           const result = await sendCommand({
             op: "build_installer",
             client_id: d.client_id,
@@ -507,7 +510,7 @@ function renderDevices(devices) {
             .map((a) => `${a.platform}: ${a.compiled ? a.path : a.command}`)
             .join("\n");
           showReveal(
-            `сборка ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+            `${esc(t("assembled"))} ${codeCopy(result.client_id)} · ${esc(t("token"))} ${codeCopy(result.enrollment_token)}` +
               `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>` +
               `<pre>${esc(arts)}</pre>`,
           );
@@ -518,11 +521,11 @@ function renderDevices(devices) {
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "btn btn-sm btn-danger";
-    remove.textContent = "Delete";
+    remove.textContent = t("delete");
     remove.onclick = async () => {
       const ok = await askConfirm({
-        text: `Удалить ${d.client_id}? Запись исчезнет из списка, доступ отзовётся.`,
-        okLabel: "Удалить",
+        text: t("deleteConfirm", { id: d.client_id }),
+        okLabel: t("delete"),
       });
       if (!ok) return;
       try {
@@ -539,9 +542,11 @@ function renderDevices(devices) {
   }
 }
 
+let lastDevices = [];
 async function refreshDevices() {
   const result = await sendCommand({ op: "list_devices" });
-  renderDevices(result.devices || []);
+  lastDevices = result.devices || [];
+  renderDevices(lastDevices);
 }
 
 async function invite() {
@@ -550,8 +555,8 @@ async function invite() {
   const quota = gb > 0 ? Math.floor(gb * GIGABYTE) : 0;
   const result = await sendCommand({ op: "invite", comment, quota_limit_bytes: quota });
   showReveal(
-    `client ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
-      ` — показан только один раз` +
+    `${esc(t("client"))} ${codeCopy(result.client_id)} · ${esc(t("token"))} ${codeCopy(result.enrollment_token)}` +
+      ` — ${esc(t("shownOnce"))}` +
       `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>`,
   );
   await refreshDevices();
@@ -581,20 +586,16 @@ async function savePing() {
   await sendCommand({ op: "ping_targets_set", targets });
 }
 
-async function loadEvents() {
-  const result = await sendCommand({
-    op: "events",
-    unacked_only: $("unacked-only").checked,
-    limit: 50,
-  });
+let lastEvents = [];
+function renderEvents(events) {
+  lastEvents = events;
   const ul = $("events");
   ul.innerHTML = "";
   let unackedAnomaly = 0;
-  const events = result.events || [];
   if (!events.length) {
     const li = document.createElement("li");
     li.className = "table-empty";
-    li.textContent = "событий нет";
+    li.textContent = t("noEvents");
     ul.append(li);
   }
   for (const ev of events) {
@@ -628,21 +629,30 @@ async function loadEvents() {
   }
   const bell = $("bell");
   if (unackedAnomaly > 0) {
-    bell.textContent = `алерты: ${unackedAnomaly}`;
+    bell.textContent = `${t("alerts")}: ${unackedAnomaly}`;
     bell.className = "bell warn";
   } else {
-    bell.textContent = session.seeds ? "алерты: 0" : "";
+    bell.textContent = session.seeds ? `${t("alerts")}: 0` : "";
     bell.className = "bell";
   }
 }
 
-async function refreshSessions() {
-  const result = await sendCommand({ op: "sessions" });
+async function loadEvents() {
+  const result = await sendCommand({
+    op: "events",
+    unacked_only: $("unacked-only").checked,
+    limit: 50,
+  });
+  renderEvents(result.events || []);
+}
+
+let lastSessions = [];
+function renderSessions(sessions) {
+  lastSessions = sessions;
   const tb = $("sessions");
   tb.innerHTML = "";
-  const sessions = result.sessions || [];
   if (!sessions.length) {
-    emptyRow(tb, 6, "активных сессий нет");
+    emptyRow(tb, 6, t("noSessions"));
     return;
   }
   for (const s of sessions) {
@@ -653,6 +663,11 @@ async function refreshSessions() {
       <td class="cell-num">${formatBytes(s.bytes_window || 0)}</td><td>${esc(s.last_seen || "")}</td>`;
     tb.append(tr);
   }
+}
+
+async function refreshSessions() {
+  const result = await sendCommand({ op: "sessions" });
+  renderSessions(result.sessions || []);
 }
 
 async function toggleInvestigation() {
@@ -704,10 +719,10 @@ function startPolling() {
   }, 10000);
 }
 
-function bind(id, label, fn) {
+function bind(id, labelKey, fn) {
   $(id).onclick = async () => {
     try {
-      await withBusy(label, fn);
+      await withBusy(t(labelKey), fn);
     } catch (e) {
       showError(e);
     }
@@ -731,40 +746,57 @@ $("passphrase").addEventListener("keydown", (e) => {
 bind("btn-unlock", "unlock", async () => {
   await unlock();
   document.body.classList.add("is-unlocked");
+  if (localStorage.getItem("another-admin-topbar") !== "expanded") {
+    document.body.classList.add("topbar-collapsed");
+    try { localStorage.setItem("another-admin-topbar", "collapsed"); } catch { /* ignore */ }
+    syncCollapseLabel();
+  }
   $("investigation").checked = false;
-  setBusyLabel("загрузка: расследование");
+  setBusyLabel(t("busyLoadInvestigation"));
   await sendCommand({ op: "investigation_get" }).then((r) => {
     $("investigation").checked = !!r.enabled;
   }).catch(() => {});
-  setBusyLabel("загрузка: устройства");
+  setBusyLabel(t("busyLoadDevices"));
   await refreshDevices();
-  setBusyLabel("загрузка: сессии");
+  setBusyLabel(t("busyLoadSessions"));
   await refreshSessions();
-  setBusyLabel("загрузка: пингер");
+  setBusyLabel(t("busyLoadPinger"));
   await loadPing();
-  setBusyLabel("загрузка: пороги");
+  setBusyLabel(t("busyLoadThresholds"));
   await loadThresholds();
-  setBusyLabel("загрузка: события");
+  setBusyLabel(t("busyLoadEvents"));
   await loadEvents();
   startPolling();
 });
-bind("btn-refresh", "устройства", refreshDevices);
+bind("btn-refresh", "devices", refreshDevices);
 bind("btn-invite", "invite", invite);
-bind("btn-ping-load", "пингер", loadPing);
-bind("btn-ping-save", "сохранить пингер", savePing);
-bind("btn-events", "события", loadEvents);
-bind("btn-sessions", "сессии", refreshSessions);
-bind("btn-th-load", "пороги", loadThresholds);
-bind("btn-th-save", "сохранить пороги", saveThresholds);
-bind("btn-eval", "детектор", evaluateAlerts);
+bind("btn-ping-load", "pinger", loadPing);
+bind("btn-ping-save", "save", savePing);
+bind("btn-events", "events", loadEvents);
+bind("btn-sessions", "sessions", refreshSessions);
+bind("btn-th-load", "thresholds", loadThresholds);
+bind("btn-th-save", "save", saveThresholds);
+bind("btn-eval", "runDetector", evaluateAlerts);
 $("investigation").onchange = async () => {
   try {
-    await withBusy("расследование", toggleInvestigation);
+    await withBusy(t("investigation"), toggleInvestigation);
   } catch (e) {
     showError(e);
   }
 };
 
+onLangChange(() => {
+  renderBusy();
+  if (session.seeds) {
+    $("session-status").textContent = `${session.seeds.adminId} · seq ${session.lastSeq}`;
+  }
+  renderDevices(lastDevices);
+  renderSessions(lastSessions);
+  renderEvents(lastEvents);
+  tickInviteClocks();
+});
+
+initI18n();
 clearTimeout(window.__adminBoot);
 document.body.classList.add("is-ready");
 renderBusy();

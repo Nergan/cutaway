@@ -26,7 +26,11 @@ Restart контейнера на Hugging Face **не** подтягивает �
 2. **Edge (воркер)** — TypeScript на Cloudflare Workers. Деплоится отдельно,
    прямо из GitHub Actions в Cloudflare.
 
-Один `git push` в `main` запускает оба пути:
+Один `git push` в **`main`** запускает оба пути. Пуш в другую ветку
+(`cursor/…`, feature-ветки) GitHub Actions **не** запускает: у workflow
+стоит `branches: [main]`. Если Action не появился после пуша — сначала
+проверьте, что пушили именно `main` (Settings → Actions, вкладка самого
+репозитория).
 
 ```
 git push (main)
@@ -108,6 +112,9 @@ git push (main)
 Workflow деплоит из GitHub Environment с именем `production`. Секреты можно
 положить либо на этот environment (тогда доступны required reviewers и прочие
 protection rules), либо просто на репозиторий — джоб увидит и те, и другие.
+Локальный `cutaway/.env` сюда **не** подхватывается: если токен есть только
+там, ручной `another-edge-deploy` упадёт с
+`it's necessary to set a CLOUDFLARE_API_TOKEN environment variable`.
 
 ## Шаг 3. Первый деплой воркера — один раз руками
 

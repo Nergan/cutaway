@@ -14,11 +14,11 @@
 Система состоит из трёх частей, и их роли не совпадают с тем, что можно
 предположить по названиям.
 
-| Часть | Где | За что отвечает |
-| --- | --- | --- |
+| Часть         | Где                                    | За что отвечает                                                                           |
+| ------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Control plane | Hugging Face Space, префикс `/another` | База (MongoDB), админка, внутренний API для воркера. Трафик через себя **не** пропускает. |
-| Edge | Cloudflare Worker | И авторизация (`/enroll`, `/nonce`, `/auth`), и **сам VPN-трафик** (`/proxy`). |
-| Клиент | ваша машина | Go-бинарник `core/cmd/desktop`. Локальный HTTP API на `127.0.0.1:47821`. |
+| Edge          | Cloudflare Worker                      | И авторизация (`/enroll`, `/nonce`, `/auth`), и **сам VPN-трафик** (`/proxy`).            |
+| Клиент        | ваша машина                            | Go-бинарник `core/cmd/desktop`. Локальный HTTP API на `127.0.0.1:47821`.                  |
 
 Главное, что стоит уяснить: **точка выхода в интернет — это сам воркер.**
 Он не проксирует трафик на какой-то отдельный сервер, а открывает исходящие
@@ -36,15 +36,15 @@ Flutter-приложение в `app/` для этого не нужно: код
 Прочитайте эту таблицу до того, как начнёте, чтобы потом не искать
 несуществующую ошибку.
 
-| Что | Состояние |
-| --- | --- |
-| TCP-трафик (HTTP, HTTPS, SSH, почта) | Работает |
-| DNS | Работает. Клиент сам превращает UDP-запрос на порт 53 в DNS-over-TCP, потому что воркер не умеет UDP (`core/internal/adapters/netstack/engine.go`) |
+| Что                                                              | Состояние                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TCP-трафик (HTTP, HTTPS, SSH, почта)                             | Работает                                                                                                                                                                                                                                        |
+| DNS                                                              | Работает. Клиент сам превращает UDP-запрос на порт 53 в DNS-over-TCP, потому что воркер не умеет UDP (`core/internal/adapters/netstack/engine.go`)                                                                                              |
 | Остальной UDP: QUIC/HTTP3, WireGuard внутри туннеля, игры, голос | **Не работает.** Клиент отправляет такие потоки как TCP (все транспорты жёстко пишут `CommandTCP`), воркер тоже всегда открывает TCP. Браузеры при неудаче QUIC откатываются на TCP, так что веб от этого не страдает, а вот звонки и игры — да |
-| Сайты за Cloudflare | **Может не открываться.** Воркерам запрещены исходящие TCP к собственным диапазонам Cloudflare (комментарий в `proxy.ts:19-21`). Насколько это мешает — проверяется только практикой |
-| ICMP, то есть `ping` через туннель | Не работает, пакеты отбрасываются осознанно (`engine.go`) |
-| Учёт трафика | Считается, но записывается одной суммой в конце соединения, а не в реальном времени |
-| Квота и бан | Проверяются в момент `/auth`, то есть при подключении. Уже открытая сессия по превышению квоты не рвётся |
+| Сайты за Cloudflare                                              | **Может не открываться.** Воркерам запрещены исходящие TCP к собственным диапазонам Cloudflare (комментарий в `proxy.ts:19-21`). Насколько это мешает — проверяется только практикой                                                            |
+| ICMP, то есть `ping` через туннель                               | Не работает, пакеты отбрасываются осознанно (`engine.go`)                                                                                                                                                                                       |
+| Учёт трафика                                                     | Считается, но записывается одной суммой в конце соединения, а не в реальном времени                                                                                                                                                             |
+| Квота и бан                                                      | Проверяются в момент `/auth`, то есть при подключении. Уже открытая сессия по превышению квоты не рвётся                                                                                                                                        |
 
 ### Почему нельзя просто взять v2rayN, Nekoray, sing-box или Hiddify
 
@@ -250,16 +250,15 @@ $enroll | ConvertTo-Json -Depth 5
 вместо полного VPN (`connect_usecase.go:51-52`).
 
 ```powershell
-$connect = @{
-  client_id = $enroll.client_id
-  nodes     = $enroll.nodes
-  dest_host = "example.com"
-  dest_port = 443
-} | ConvertTo-Json -Depth 5 -Compress
+# PowerShell 5.1 сворачивает массив из одного узла в объект. Собираем JSON руками,
+# чтобы nodes всегда был массивом с control_plane на воркер, а не на :8787.
+$node = @($enroll.nodes)[0]
+$nodesJson = '[' + ($node | ConvertTo-Json -Depth 6 -Compress) + ']'
+$connectJson = '{"client_id":"' + $enroll.client_id + '","nodes":' + $nodesJson + ',"dest_host":"example.com","dest_port":443}'
 
 $connectFile = Join-Path $env:TEMP "another-connect.json"
 $utf8 = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($connectFile, $connect, $utf8)
+[System.IO.File]::WriteAllText($connectFile, $connectJson, $utf8)
 
 curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
   -H "Content-Type: application/json" `
@@ -267,6 +266,18 @@ curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connec
 
 curl.exe -s http://127.0.0.1:47821/status
 ```
+
+Перед этим в том же окне должны жить `$enroll` (шаг 6) и `$WORKER`. Если окно новое и `$enroll` пуст, узлы можно собрать из адреса воркера — **не** из дефолта ядра `http://127.0.0.1:8787`:
+
+```powershell
+$WORKER = "https://another-edge.ВАШ-SUBDOMAIN.workers.dev"
+$clientId = "nu-ya-754619"   # client_id из админки / шага 6
+$hostName = ([uri]$WORKER).Host
+$nodesJson = '[{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"' + $hostName + '","port":443,"path":"/proxy","priority":1,"control_plane":"' + $WORKER + '"}]'
+$connectJson = '{"client_id":"' + $clientId + '","nodes":' + $nodesJson + ',"dest_host":"example.com","dest_port":443}'
+```
+
+Не используйте `@{ nodes = $enroll.nodes } | ConvertTo-Json`: в Windows PowerShell 5.1 один узел превращается в объект, поле `nodes` пропадает или ломается, и ядро подставляет `ANOTHER_CONTROL_PLANE_URL` по умолчанию — `http://127.0.0.1:8787` (порт wrangler dev). Отсюда `dial tcp 127.0.0.1:8787: actively refused`.
 
 Снова не используйте `-d $connect`: PowerShell ломает JSON так же, как на шаге 6,
 и ядро отвечает текстом `invalid request body` без поля `ok`. В `$enroll`
@@ -309,10 +320,12 @@ cd another\core
 3. Подключайтесь **без** `dest_host` — пустой адрес и означает «весь трафик»:
 
 ```powershell
-$vpn = @{ client_id = $enroll.client_id; nodes = $enroll.nodes } | ConvertTo-Json -Depth 5 -Compress
 $vpnFile = Join-Path $env:TEMP "another-connect.json"
 $utf8 = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($vpnFile, $vpn, $utf8)
+$node = @($enroll.nodes)[0]
+$nodesJson = '[' + ($node | ConvertTo-Json -Depth 6 -Compress) + ']'
+$vpnJson = '{"client_id":"' + $enroll.client_id + '","nodes":' + $nodesJson + '}'
+[System.IO.File]::WriteAllText($vpnFile, $vpnJson, $utf8)
 curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
   -H "Content-Type: application/json" --data-binary "@$vpnFile"
 ```
@@ -341,21 +354,22 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 
 ## Если что-то не выходит
 
-| Симптом | Причина |
-| --- | --- |
-| `/enroll` → `400 invalid JSON body` | PowerShell сломал кавычки в `-d $body`. Пишите JSON в файл и `--data-binary "@файл"` |
-| `/enroll` → `403 invalid or already-used enrollment token` | Токен уже использован или истёк (24 часа). Создайте новое приглашение |
-| `/enroll` → `403 enrollment token expired` | То же самое, но срок истёк явно |
-| В `nodes` адрес `another.example` | Воркер работает на старой версии, сделайте `wrangler deploy` |
-| `/connect` → `invalid request body` | PowerShell сломал JSON в `-d`. Пишите тело в файл и `--data-binary "@файл"` |
-| `/connect` → HTTP 200 и `"ok":false` | Так и задумано у локального API. Смотрите `error` и `GET /status` |
-| В админке `ENROLLED`, `/status` = `failed` | Ключ в Mongo есть, сессии нет. Enroll ≠ connect |
-| `/connect` → `http_challenge: ... unexpected status 500` | Упал воркер на `POST /auth` (не отказ в подписи). Нужен свежий `wrangler deploy` edge; в логах воркера будет `unhandled error` |
-| `/connect` → `unexpected status 502` / `origin unavailable` | Воркер жив, origin (Space) не отдал клиента. Смотрите логи HF на `/another/internal/v1/clients/find` |
-| `/connect` → `ok: false`, в логе `node auth failed` / воркер `403` | Подпись не принята: другой ключ, бан или квота. Проверьте устройство в админке |
-| `/connect` → `ok: false`, в логе `node dial failed` | Авторизация прошла, но туннель не поднялся. Обычно `host` в узле недостижим либо сессионный токен истёк, не дождавшись WebSocket |
-| Всё зелёное, но сайты не открываются | Скорее всего DNS или ограничения из части 2. Сначала проверьте по IP, минуя имена |
-| `tun: using noop` при запуске от администратора | Нет `wintun.dll` рядом с exe или не та разрядность |
+| Симптом                                                            | Причина                                                                                                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/enroll` → `400 invalid JSON body`                                | PowerShell сломал кавычки в `-d $body`. Пишите JSON в файл и `--data-binary "@файл"`                                               |
+| `/enroll` → `403 invalid or already-used enrollment token`         | Токен уже использован или истёк (24 часа). Создайте новое приглашение                                                              |
+| `/enroll` → `403 enrollment token expired`                         | То же самое, но срок истёк явно                                                                                                    |
+| В `nodes` адрес `another.example`                                  | Воркер работает на старой версии, сделайте `wrangler deploy`                                                                       |
+| `/connect` → `invalid request body`                                | PowerShell сломал JSON в `-d`. Пишите тело в файл и `--data-binary "@файл"`                                                        |
+| `/connect` → `dial tcp 127.0.0.1:8787`                             | В запрос не попали `nodes` из `/enroll`. Ядро взяло дефолт wrangler dev. Соберите JSON как в шаге 7, с `control_plane` = `$WORKER` |
+| `/connect` → HTTP 200 и `"ok":false`                               | Так и задумано у локального API. Смотрите `error` и `GET /status`                                                                  |
+| В админке `ENROLLED`, `/status` = `failed`                         | Ключ в Mongo есть, сессии нет. Enroll ≠ connect                                                                                    |
+| `/connect` → `http_challenge: ... unexpected status 500`           | Упал воркер на `POST /auth` (не отказ в подписи). Нужен свежий `wrangler deploy` edge; в логах воркера будет `unhandled error`     |
+| `/connect` → `unexpected status 502` / `origin unavailable`        | Воркер жив, origin (Space) не отдал клиента. Смотрите логи HF на `/another/internal/v1/clients/find`                               |
+| `/connect` → `ok: false`, в логе `node auth failed` / воркер `403` | Подпись не принята: другой ключ, бан или квота. Проверьте устройство в админке                                                     |
+| `/connect` → `ok: false`, в логе `node dial failed`                | Авторизация прошла, но туннель не поднялся. Обычно `host` в узле недостижим либо сессионный токен истёк, не дождавшись WebSocket   |
+| Всё зелёное, но сайты не открываются                               | Скорее всего DNS или ограничения из части 2. Сначала проверьте по IP, минуя имена                                                  |
+| `tun: using noop` при запуске от администратора                    | Нет `wintun.dll` рядом с exe или не та разрядность                                                                                 |
 
 Полезно знать: `session_token` живёт **120 секунд** и проверяется только в
 момент открытия WebSocket. Само соединение потом живёт сколько угодно. Это
