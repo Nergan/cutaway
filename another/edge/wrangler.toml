@@ -29,7 +29,19 @@ id = "6e88f186512c4f23bc75aa7b5a415b1a" # создаётся через `wrangle
 # --- Переменные окружения (не секреты — см. README про `wrangler secret put`) ---
 [vars]
 # Список Tier1-узлов, отдаваемый клиенту при /enroll (§7.1).
-NODES_JSON = "[{\"name\":\"cf-worker\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"cf-worker.another.example\",\"port\":443,\"path\":\"/proxy\",\"priority\":1},{\"name\":\"hf-space\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"CHANGE_ME.hf.space\",\"port\":443,\"path\":\"/proxy\",\"priority\":2},{\"name\":\"render\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"host\":\"another-backup.onrender.com\",\"port\":443,\"path\":\"/proxy\",\"priority\":3}]"
+#
+# У единственного узла намеренно НЕ заданы host и control_plane: обработчик
+# /enroll подставляет туда адрес, по которому клиент к воркеру и обратился
+# (см. resolveNodes в src/handlers/enroll.ts). Так конфиг не привязан к
+# `<subdomain>.workers.dev` и продолжит работать после переезда на свой домен.
+# Если задать host явно — подстановки не будет, значение уйдёт как есть.
+#
+# Раньше здесь были ещё два узла, hf-space и render, оба как vless-ws на
+# /proxy. Это было неверно: /proxy реализован только в самом воркере
+# (cloudflare:sockets), а на HF Space и Render никакого VLESS-сервера нет —
+# клиент просто перебирал мёртвые адреса при failover. Добавлять их обратно
+# имеет смысл только вместе с реальным деплоем data plane из deploy/origin/.
+NODES_JSON = "[{\"name\":\"cf-worker\",\"tier\":\"tier1-bootstrap\",\"transport\":\"vless-ws\",\"port\":443,\"path\":\"/proxy\",\"priority\":1}]"
 
 # Origin control-plane (REST-прокси + admin API). URL можно держать в vars;
 # секрет — только wrangler secret put.

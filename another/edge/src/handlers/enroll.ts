@@ -21,6 +21,47 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+/**
+ * resolveNodes — подставляет в узлы собственный адрес воркера.
+ *
+ * NODES_JSON хранится в wrangler.toml, где реальный хост воркера неизвестен:
+ * он зависит от аккаунта (`<name>.<subdomain>.workers.dev`), а позже может
+ * стать кастомным доменом. Захардкоженный хост в конфиге неизбежно расходится
+ * с фактическим деплоем, а клиент из-за этого стучится в несуществующее имя.
+ * Поэтому: узел может не задавать `host` и `control_plane` — тогда они берутся
+ * из URL текущего запроса, то есть ровно того адреса, по которому клиент только
+ * что успешно дошёл до /enroll.
+ *
+ * `control_plane` подставляется всем узлам без него: challenge-response
+ * (/nonce + /auth) всегда живёт на воркере, независимо от того, через какой
+ * узел пойдёт трафик. Без этого поля Go-клиент не может авторизоваться
+ * (core/internal/domain/node.go, поле ControlPlane).
+ */
+function resolveNodes(nodesJson: string, requestUrl: string): unknown[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(nodesJson);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const self = new URL(requestUrl);
+  const selfOrigin = `${self.protocol}//${self.host}`;
+
+  return parsed.map((node) => {
+    if (typeof node !== "object" || node === null) return node;
+    const fields = node as Record<string, unknown>;
+    const host = typeof fields.host === "string" ? fields.host : "";
+    const controlPlane = typeof fields.control_plane === "string" ? fields.control_plane : "";
+    return {
+      ...fields,
+      host: host.length > 0 ? host : self.host,
+      control_plane: controlPlane.length > 0 ? controlPlane : selfOrigin,
+    };
+  });
+}
+
 function generateVlessUserId(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -76,17 +117,10 @@ export async function handleEnroll(request: Request, deps: EnrollDeps): Promise<
   );
   await deps.userRepo.consumeEnrollmentToken(tokenHash);
 
-  let nodes: unknown;
-  try {
-    nodes = JSON.parse(deps.nodesJson);
-  } catch {
-    nodes = [];
-  }
-
   return Response.json({
     ok: true,
     client_id: enrollment.clientId,
     vless_user_id: vlessUserIdHex,
-    nodes,
+    nodes: resolveNodes(deps.nodesJson, request.url),
   });
 }
