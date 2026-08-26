@@ -62,7 +62,10 @@
         <button id="btn-invite" class="btn btn-accent" type="button">Invite</button>
         <button id="btn-refresh" class="btn" type="button">Обновить</button>
       </div>
-      <p id="last-token" class="reveal"></p>
+      <div id="last-token" class="reveal" hidden>
+        <button type="button" id="last-token-close" class="reveal-close" aria-label="закрыть">×</button>
+        <div id="last-token-body"></div>
+      </div>
       <div class="panel-body">
         <table class="data-table">
           <thead>
@@ -165,6 +168,16 @@
 
   </main>
 
+  <div id="confirm-dialog" class="confirm-overlay" hidden>
+    <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirm-text">
+      <p id="confirm-text"></p>
+      <div class="confirm-actions">
+        <button type="button" id="confirm-cancel" class="btn">Отмена</button>
+        <button type="button" id="confirm-ok" class="btn btn-danger">Удалить</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
   <p class="err" id="error"></p>
 
   <script>

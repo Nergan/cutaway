@@ -622,6 +622,14 @@ body.is-resizing .panel {
   font-size: 0.74rem;
   color: var(--primary);
 }
+.copyable {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.25);
+}
+.copyable:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 .cell-actions {
   display: flex;
   gap: 0.3rem;
@@ -688,12 +696,10 @@ body.is-resizing .panel {
 }
 
 /* Одноразовый показ токена — выделяем, его больше не покажут. */
-.reveal:empty {
-  display: none;
-}
 .reveal {
+  position: relative;
   margin: 0.7rem;
-  padding: 0.6rem 0.7rem;
+  padding: 0.6rem 1.8rem 0.6rem 0.7rem;
   background: var(--accent-muted);
   border: 1px solid var(--accent);
   font-family: var(--font-mono);
@@ -701,6 +707,22 @@ body.is-resizing .panel {
   line-height: 1.6;
   color: var(--text);
   word-break: break-all;
+}
+.reveal-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.3rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.reveal-close:hover {
+  color: var(--primary);
 }
 .reveal code {
   color: var(--primary);
@@ -833,6 +855,54 @@ body.is-resizing .panel {
 }
 
 /* --------------------------------------------------------------- ошибка --- */
+
+.confirm-overlay[hidden],
+.toast[hidden],
+.reveal[hidden] {
+  display: none !important;
+}
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.62);
+}
+.confirm-card {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1rem 1.05rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-hover);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.confirm-card p {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.toast {
+  position: fixed;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 70;
+  padding: 0.4rem 0.7rem;
+  background: var(--ok-muted);
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
 
 #error:empty {
   display: none;

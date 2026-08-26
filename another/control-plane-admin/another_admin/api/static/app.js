@@ -130,6 +130,73 @@ function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
+function codeCopy(text) {
+  const value = String(text ?? "");
+  if (!value) return "";
+  return `<code class="copyable" data-copy="${esc(value)}" title="копировать">${esc(value)}</code>`;
+}
+
+let toastTimer = 0;
+function showToast(text) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    el.hidden = true;
+  }, 1600);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("скопировано");
+  } catch {
+    showToast("не удалось скопировать");
+  }
+}
+
+function showReveal(html) {
+  $("last-token-body").innerHTML = html;
+  $("last-token").hidden = false;
+}
+
+function hideReveal() {
+  $("last-token").hidden = true;
+  $("last-token-body").innerHTML = "";
+}
+
+function askConfirm({ text, okLabel = "Удалить" }) {
+  return new Promise((resolve) => {
+    const overlay = $("confirm-dialog");
+    const ok = $("confirm-ok");
+    const cancel = $("confirm-cancel");
+    $("confirm-text").textContent = text;
+    ok.textContent = okLabel;
+    overlay.hidden = false;
+    ok.focus();
+    const done = (yes) => {
+      overlay.hidden = true;
+      ok.onclick = null;
+      cancel.onclick = null;
+      overlay.onclick = null;
+      document.removeEventListener("keydown", onKey);
+      resolve(yes);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") done(false);
+      if (e.key === "Enter") done(true);
+    };
+    ok.onclick = () => done(true);
+    cancel.onclick = () => done(false);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) done(false);
+    };
+    document.addEventListener("keydown", onKey);
+  });
+}
+
 function formatBytes(value) {
   const bytes = Number(value) || 0;
   if (bytes < 1024) return `${bytes} B`;
@@ -367,7 +434,7 @@ function renderDevices(devices) {
   }
   for (const d of devices) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td><code>${esc(d.client_id)}</code></td>
+    tr.innerHTML = `<td>${codeCopy(d.client_id)}</td>
       <td class="cell-wrap">${esc(d.comment || "")}</td>
       <td>${statusBadge(d)}</td>
       <td class="cell-num">${quotaCell(d)}</td><td class="cell-actions"></td>`;
@@ -385,8 +452,9 @@ function renderDevices(devices) {
         }),
         deviceBtn("Reissue", "btn btn-sm", async () => {
           const result = await sendCommand({ op: "reissue", client_id: d.client_id });
-          $("last-token").innerHTML =
-            `переиздан <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>`;
+          showReveal(
+            `переиздан ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}`,
+          );
           await refreshDevices();
         }),
         deviceBtn("Собрать", "btn btn-sm", async () => {
@@ -398,9 +466,10 @@ function renderDevices(devices) {
           const arts = (result.artifacts || [])
             .map((a) => `${a.platform}: ${a.compiled ? a.path : a.command}`)
             .join("\n");
-          $("last-token").innerHTML =
-            `сборка <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>` +
-            `<pre>${esc(arts)}</pre>`;
+          showReveal(
+            `сборка ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+              `<pre>${esc(arts)}</pre>`,
+          );
           await refreshDevices();
         }),
       );
@@ -410,9 +479,11 @@ function renderDevices(devices) {
     remove.className = "btn btn-sm btn-danger";
     remove.textContent = "Delete";
     remove.onclick = async () => {
-      if (!window.confirm(`Удалить ${d.client_id}? Запись исчезнет из списка, доступ отзовётся.`)) {
-        return;
-      }
+      const ok = await askConfirm({
+        text: `Удалить ${d.client_id}? Запись исчезнет из списка, доступ отзовётся.`,
+        okLabel: "Удалить",
+      });
+      if (!ok) return;
       try {
         await withBusy("delete", async () => {
           await sendCommand({ op: "delete", client_id: d.client_id });
@@ -437,9 +508,10 @@ async function invite() {
   const gb = Number($("invite-quota").value);
   const quota = gb > 0 ? Math.floor(gb * GIGABYTE) : 0;
   const result = await sendCommand({ op: "invite", comment, quota_limit_bytes: quota });
-  $("last-token").innerHTML =
-    `client <code>${esc(result.client_id)}</code> · token <code>${esc(result.enrollment_token)}</code>` +
-    ` — показан только один раз`;
+  showReveal(
+    `client ${codeCopy(result.client_id)} · token ${codeCopy(result.enrollment_token)}` +
+      ` — показан только один раз`,
+  );
   await refreshDevices();
 }
 
@@ -492,7 +564,7 @@ async function loadEvents() {
     li.innerHTML =
       `<span class="log-ts">${esc(ev.ts || "")}</span>` +
       `<span class="log-cat">${esc(ev.category)}</span>` +
-      `<span class="log-client">${esc(ev.client_id || "")}</span>` +
+      `<span class="log-client">${codeCopy(ev.client_id || "")}</span>` +
       `<span class="log-detail">${esc(JSON.stringify(ev.detail || {}))}</span>`;
     if (!ev.acked && ev.event_id) {
       const btn = document.createElement("button");
@@ -534,8 +606,8 @@ async function refreshSessions() {
   for (const s of sessions) {
     const tr = document.createElement("tr");
     const ip = s.ip || s.ip_hash || "";
-    tr.innerHTML = `<td><code>${esc(s.client_id || "")}</code></td><td>${esc(s.node || "")}</td>
-      <td>${esc(s.entrypoint || "")}</td><td><code>${esc(ip)}</code></td>
+    tr.innerHTML = `<td>${codeCopy(s.client_id || "")}</td><td>${esc(s.node || "")}</td>
+      <td>${esc(s.entrypoint || "")}</td><td>${codeCopy(ip)}</td>
       <td class="cell-num">${formatBytes(s.bytes_window || 0)}</td><td>${esc(s.last_seen || "")}</td>`;
     tb.append(tr);
   }
@@ -597,6 +669,14 @@ function bind(id, label, fn) {
     }
   };
 }
+
+$("last-token-close").onclick = hideReveal;
+document.addEventListener("click", (e) => {
+  const hit = e.target.closest("[data-copy]");
+  if (!hit) return;
+  e.preventDefault();
+  copyText(hit.getAttribute("data-copy") || "");
+});
 
 $("passphrase").addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;

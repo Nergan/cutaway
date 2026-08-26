@@ -199,16 +199,25 @@ JSON. Если сразу скормить `curl` в `ConvertFrom-Json`, при 
 будет пустым и `ConvertTo-Json` молча ничего не напечатает — так и выглядит
 «ничего не произошло».
 
+PowerShell ломает JSON, если передать его в `curl.exe -d $body`: кавычки
+съедаются, воркер отвечает `400 {"error":"invalid JSON body"}`. Токен при
+этом **не сгорает** — запрос даже не дошёл до проверки. Пишите тело в файл
+и отдавайте его бинарём:
+
 ```powershell
 $body = @{
   enrollment_token   = "ВСТАВЬТЕ_ТОКЕН_ИЗ_ШАГА_2"
   public_key         = $identity.public_key
   public_key_mldsa65 = $identity.public_key_mldsa65
-} | ConvertTo-Json
+} | ConvertTo-Json -Compress
+
+$enrollFile = Join-Path $env:TEMP "another-enroll.json"
+$utf8 = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($enrollFile, $body, $utf8)
 
 $raw = curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST "$WORKER/enroll" `
   -H "Content-Type: application/json" `
-  -d $body
+  --data-binary "@$enrollFile"
 $raw
 ```
 
@@ -227,6 +236,8 @@ $enroll | ConvertTo-Json -Depth 5
 
 - пустой `$WORKER` → curl стучится непонятно куда, тело пустое;
 - Space ещё 503 → воркер не может сходить в `/internal/v1`, в теле ошибка origin;
+- `400 {"error":"invalid JSON body"}` → PowerShell скормил `curl` ломаный JSON.
+  Нужен `--data-binary "@файл"`, не `-d $body`. Токен ещё жив, повторите.
 - `403` → токен уже использован или истекли сутки, в админке новое invite.
 
 Токен сгорел: повторный `/enroll` с ним даст `403`. Для нового устройства
@@ -308,6 +319,7 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 
 | Симптом | Причина |
 | --- | --- |
+| `/enroll` → `400 invalid JSON body` | PowerShell сломал кавычки в `-d $body`. Пишите JSON в файл и `--data-binary "@файл"` |
 | `/enroll` → `403 invalid or already-used enrollment token` | Токен уже использован или истёк (24 часа). Создайте новое приглашение |
 | `/enroll` → `403 enrollment token expired` | То же самое, но срок истёк явно |
 | В `nodes` адрес `another.example` | Воркер работает на старой версии, сделайте `wrangler deploy` |
