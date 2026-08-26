@@ -15,8 +15,8 @@ name = "NONCE_LEDGER"
 class_name = "NonceLedgerObject"
 
 [[migrations]]
-tag = "v1"
-new_classes = ["NonceLedgerObject"]
+tag = "v1" # Можно указать любую версию, например v1
+new_sqlite_classes = ["NonceLedgerObject"]
 
 # --- Workers KV: бан-кэш + session store (см. §7.3, index.ts) ----------------
 # Один и тот же namespace используется под два разных префикса ключей
@@ -24,7 +24,7 @@ new_classes = ["NonceLedgerObject"]
 # заводить отдельный namespace ради разделения по неймспейсу ключей.
 [[kv_namespaces]]
 binding = "BAN_CACHE"
-id = "CHANGE_ME_kv_namespace_id" # создаётся через `wrangler kv namespace create BAN_CACHE`
+id = "6e88f186512c4f23bc75aa7b5a415b1a" # создаётся через `wrangler kv namespace create BAN_CACHE`
 
 # --- Переменные окружения (не секреты — см. README про `wrangler secret put`) ---
 [vars]
