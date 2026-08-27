@@ -150,6 +150,30 @@ max_processes = 2
 max_connections = 16
 idle_timeout_seconds = 900
 
+[projects.soon]
+directory = "soon"
+entrypoint = "soon.soon"
+prefix = "/soon"
+requirements = "soon/requirements.txt"
+startup = "lazy"
+env_allowlist = ["MONGODB_URI", "MONGO_MAX_POOL_SIZE", "MONGO_TLS", "MONGO_TLS_ALLOW_INVALID_CERTS"]
+
+[projects.soon.limits]
+request_rate = 90
+request_window_seconds = 60
+request_bytes = 3145728
+response_bytes = 8388608
+max_concurrency = 12
+request_timeout_seconds = 30
+max_websockets = 24
+websocket_message_bytes = 4194304
+websocket_lifetime_seconds = 3600
+memory_mb = 512
+cpu_percent = 100
+max_processes = 2
+max_connections = 48
+idle_timeout_seconds = 900
+
 [projects.evenfest]
 directory = "evenfest"
 entrypoint = "evenfest.evenfest"
@@ -331,6 +355,10 @@ MONGO_MAX_POOL_SIZE = "3"
 MONGO_TLS_ALLOW_INVALID_CERTS = "0"
 
 [profiles.hf.projects.evenfest.env_defaults]
+MONGO_MAX_POOL_SIZE = "3"
+MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+
+[profiles.hf.projects.soon.env_defaults]
 MONGO_MAX_POOL_SIZE = "3"
 MONGO_TLS_ALLOW_INVALID_CERTS = "0"
 

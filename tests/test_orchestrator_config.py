@@ -32,6 +32,7 @@ def test_hf_profile_disables_policy_sensitive_projects():
         "markbin",
         "kanban",
         "snake",
+        "soon",
         "evenfest",
         "dnd",
         "netlazy",
@@ -126,7 +127,7 @@ def test_isolated_hub_imports_no_project_modules():
             "-c",
             (
                 "import sys, main; "
-                "names=('formular','toadcode','markbin','kanban','snake','evenfest','dnd','netlazy','another'); "
+                "names=('formular','toadcode','markbin','kanban','snake','soon','evenfest','dnd','netlazy','another'); "
                 "print(','.join(name for name in names if name in sys.modules))"
             ),
         ],
@@ -155,7 +156,7 @@ def test_worker_factory_imports_only_selected_project():
             "-c",
             (
                 "import sys; from orchestrator.worker import create_app; create_app(); "
-                "names=('formular','toadcode','markbin','snake','evenfest','dnd','netlazy','another'); "
+                "names=('formular','toadcode','markbin','snake','soon','evenfest','dnd','netlazy','another'); "
                 "print(','.join(name for name in names if name in sys.modules))"
             ),
         ],

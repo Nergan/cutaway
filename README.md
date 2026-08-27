@@ -79,6 +79,11 @@ See [the orchestrator guide](docs/orchestrator.md) for configuration and operati
 
 * **Description:** An organic, canvas-based arcade game utilizing vector particle calculations, dynamic difficulty scaling, and a selection API serving video backgrounds.
 
+#### 9. [Soon](./soon/) (Shared Canvas)
+
+* **Description:** An unauthenticated collaborative board. Everyone in the same room draws on one canvas; there is no landing-page card, the route is `/soon`.
+* **Core Capabilities:** Live strokes and named cursors over WebSocket, image paste/drag-and-drop stored in MongoDB GridFS, a collapsible sidebar, and jump-to-user edge hints. One shared room at `/soon`.
+
 ---
 
 ## Deployment & Setup

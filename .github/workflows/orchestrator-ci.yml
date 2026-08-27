@@ -30,4 +30,4 @@ jobs:
           bash -n build.sh start.sh
 
       - name: Run orchestrator tests
-        run: pytest -q tests
+        run: python -m pytest -q tests
