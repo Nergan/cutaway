@@ -86,19 +86,20 @@
     .extras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
     .help-text { font-size: 8pt; color: var(--muted); line-height: 1.35; }
     .toast {
-      position: absolute; left: 12px; bottom: 36px; background: var(--card); border: 1px solid #7a6352;
-      color: var(--text); padding: 6px 10px; font-size: 8pt; display: none; z-index: 6;
+      position: absolute; left: 12px; top: calc(8px + env(safe-area-inset-top, 0px));
+      background: var(--card); border: 1px solid #7a6352;
+      color: var(--text); padding: 6px 10px; font-size: 8pt; display: none; z-index: 7;
       max-width: 70%; border-radius: var(--radius);
     }
     .statusbar {
-      position: absolute; left: 10px; bottom: calc(8px + var(--safe-b)); z-index: 5;
+      position: absolute; left: 10px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 5;
       background: transparent; border: none; padding: 0; pointer-events: none;
       color: #6e6964; font-size: 8pt;
       -webkit-text-stroke: 2px #1f1b18; paint-order: stroke fill;
       text-shadow: 0 0 2px #1f1b18;
     }
     .chat {
-      position: absolute; left: 10px; bottom: calc(26px + var(--safe-b)); z-index: 6;
+      position: absolute; left: 10px; bottom: calc(10px + var(--safe-b)); z-index: 6;
       width: min(440px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 4px;
       pointer-events: none;
     }
@@ -125,11 +126,11 @@
     }
     .chat-nick { color: #d4a373; }
     .chat-input {
-      display: none; pointer-events: auto;
+      display: block; pointer-events: auto;
       background: rgba(12, 10, 9, 0.4); border: 1px solid rgba(229, 225, 219, 0.18);
       color: #efeae4;
     }
-    .chat.open .chat-input { display: block; }
+    .chat.open .chat-input { background: rgba(12, 10, 9, 0.55); }
     .edge-chip {
       position: absolute; z-index: 5; left: 0; top: 0; border: none; background: transparent;
       color: #c4bbb3; font-size: 8pt; padding: 2px 4px; cursor: pointer;
@@ -188,7 +189,7 @@
         <input class="form-control" id="rgba" spellcheck="false" autocomplete="off">
       </div>
       <label class="meta" for="width" style="margin-top:6px"><span data-i18n="width"></span> <span id="width-label">3</span></label>
-      <input type="range" id="width" class="range-control" min="1" max="32" value="3">
+      <input type="range" id="width" class="range-control" min="1" max="100" value="3">
     </div>
     <div>
       <div class="section-title" id="people-title"></div>
@@ -216,6 +217,7 @@
   const SCALE_MIN = 0.01;
   const SCALE_MAX = 8;
   const DRAG_PX = 5;
+  const MAX_STROKE_POINTS = 1000;
   const I18N = {
     ru: {
       tools: "инструменты",
@@ -229,7 +231,7 @@
       toggleGrid: "Сетка", toggleGridHint: "Показать или скрыть сетку",
       goCenter: "В центр", goCenterHint: "Плавно вернуть камеру в центр холста",
       saveNick: "Сохранить", nickPh: "свой ник",
-      chatPh: "сообщение…",
+      chatPh: "сообщение… или нажмите T",
       help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, Delete — удалить выделенное. Shift — несколько объектов. Ctrl при растяжении сохраняет пропорции. Любой объект можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. СКМ, пробел или два пальца двигают холст. Клик по человеку переносит к курсору.",
       online: "на связи", offline: "нет связи", reconnect: "переподключение…",
       you: "вы", guest: "гость", follow: "Перейти к",
@@ -258,7 +260,7 @@
       toggleGrid: "Grid", toggleGridHint: "Show or hide the grid",
       goCenter: "To center", goCenterHint: "Smoothly pan the camera back to the board origin",
       saveNick: "Save", nickPh: "your nickname",
-      chatPh: "message…",
+      chatPh: "message… or press T",
       help: "Shortcuts follow physical keys on any layout. T opens chat, Delete removes the selection. Shift selects multiple. Hold Ctrl while resizing to keep proportions. Drag handles to resize or rotate any object. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Middle-click, Space, or two fingers pan. Click a person to jump to their cursor.",
       online: "online", offline: "offline", reconnect: "reconnecting…",
       you: "you", guest: "guest", follow: "Go to",
@@ -654,7 +656,18 @@
       { x: box.x, y: box.y + box.h },
     ].map((p) => rotatePoint(p, c.x, c.y, rad));
   }
+  function strokeHitsPoint(obj, wx, wy) {
+    if (obj.type !== "stroke" || !obj.points || obj.points.length < 2) return false;
+    const local = worldToLocal(obj, wx, wy);
+    const thresh = Math.max((obj.width || 3) / 2 + 2, 8 / state.camera.scale);
+    for (let i = 1; i < obj.points.length; i++) {
+      const a = obj.points[i - 1], b = obj.points[i];
+      if (distSeg(local.x, local.y, a[0], a[1], b[0], b[1]) <= thresh) return true;
+    }
+    return false;
+  }
   function objectContains(obj, wx, wy) {
+    if (obj.type === "stroke") return strokeHitsPoint(obj, wx, wy);
     const box = localBounds(obj);
     if (!box) return false;
     const local = worldToLocal(obj, wx, wy);
@@ -772,7 +785,7 @@
     if (copy.w != null) copy.w = Math.round(clampNum(Math.abs(copy.w * sx), mins.w, maxs.w) * 100) / 100;
     if (copy.h != null) copy.h = Math.round(clampNum(Math.abs(copy.h * sy), mins.h, maxs.h) * 100) / 100;
     if (copy.width != null) {
-      const hi = copy.type === "shape" ? 40 : 80;
+      const hi = copy.type === "shape" ? 40 : 100;
       copy.width = clampNum(copy.width * (Math.abs(sx) + Math.abs(sy)) / 2, 0.5, hi);
     }
     if (copy.size != null) {
@@ -841,19 +854,8 @@
     return [...map.values()].sort((a, b) => (a.z || 0) - (b.z || 0));
   }
   function hit(wx, wy) {
-    const screenPad = 8 / state.camera.scale;
     for (const obj of hitables().reverse()) {
-      const local = worldToLocal(obj, wx, wy);
-      if (obj.type === "stroke" && obj.points && obj.points.length > 1) {
-        const thresh = Math.max((obj.width || 3) / 2 + 2, screenPad);
-        for (let i = 1; i < obj.points.length; i++) {
-          const a = obj.points[i - 1], b = obj.points[i];
-          if (distSeg(local.x, local.y, a[0], a[1], b[0], b[1]) <= thresh) return obj;
-        }
-        if (state.tool === "select" && objectContains(obj, wx, wy)) return obj;
-      } else if (objectContains(obj, wx, wy)) {
-        return obj;
-      }
+      if (objectContains(obj, wx, wy)) return obj;
     }
     return null;
   }
@@ -1448,8 +1450,13 @@
     if (!state.drawing || state.tool !== "pen") return;
     const last = state.points[state.points.length - 1];
     if (Math.hypot(w.x - last[0], w.y - last[1]) >= 1.4) {
-      state.points.push([w.x, w.y]);
-      if (state.points.length > 200) state.points.shift();
+      if (state.points.length >= MAX_STROKE_POINTS) {
+        sealStroke();
+        state.points = [last, [w.x, w.y]];
+        state.draftId = uid();
+      } else {
+        state.points.push([w.x, w.y]);
+      }
     }
     const draft = {
       id: state.draftId, type: "stroke", points: state.points,
@@ -1458,6 +1465,16 @@
     state.drafts.set(draft.id, draft);
     sendDrafts([draft]);
     state.dirty = true;
+  }
+  function sealStroke() {
+    if (!state.draftId || state.points.length < 2) return;
+    const obj = {
+      id: state.draftId, type: "stroke", points: state.points.slice(),
+      color: state.color, width: state.width, alpha: state.alpha, rot: 0, z: maxZ() + 1,
+    };
+    state.drafts.delete(obj.id);
+    clearDraft(obj.id);
+    commit({ op: "add", object: obj }, { op: "delete", id: obj.id });
   }
   function onUp(ev) {
     state.pointers.delete(ev.pointerId);
@@ -1511,15 +1528,7 @@
     }
     if (!last || !state.drawing) return;
     state.drawing = false;
-    if (state.tool === "pen" && state.points.length >= 2) {
-      const obj = {
-        id: state.draftId, type: "stroke", points: state.points,
-        color: state.color, width: state.width, alpha: state.alpha, rot: 0, z: maxZ() + 1,
-      };
-      state.drafts.delete(obj.id);
-      clearDraft(obj.id);
-      commit({ op: "add", object: obj }, { op: "delete", id: obj.id });
-    }
+    if (state.tool === "pen") sealStroke();
     state.points = []; state.draftId = null;
   }
   function onWheel(ev) {
@@ -1693,6 +1702,17 @@
     };
   }
 
+  function chatNickColor(msg) {
+    if (msg.color) return msg.color;
+    const user = state.users.get(msg.from);
+    if (user && user.color) return user.color;
+    if (state.me && msg.from === state.me.id && state.me.color) return state.me.color;
+    return "";
+  }
+  function scrollChatDown() {
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+    requestAnimationFrame(() => { chatLogEl.scrollTop = chatLogEl.scrollHeight; });
+  }
   function renderChat() {
     const msgs = state.chat.slice(-300);
     const ids = new Set(msgs.map((m) => m.id));
@@ -1702,32 +1722,37 @@
     for (const m of msgs) {
       if (have.has(String(m.id))) continue;
       const line = document.createElement("div");
-      line.className = "chat-line" + (state.chatPainted ? " chat-in" : "");
+      line.className = "chat-line";
       line.dataset.id = m.id;
       const nick = document.createElement("span");
       nick.className = "chat-nick";
+      const color = chatNickColor(m);
+      if (color) nick.style.color = color;
       nick.textContent = (m.name || t("guest")) + ": ";
       const text = document.createElement("span");
       text.textContent = m.text || "";
       line.append(nick, text);
       chatLogEl.appendChild(line);
+      if (state.chatPainted) {
+        void line.offsetWidth;
+        line.classList.add("chat-in");
+      }
     }
     chatLogEl.classList.toggle("has-msg", msgs.length > 0);
-    if (!state.chatOpen || nearBottom || !state.chatPainted) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+    if (!state.chatOpen || nearBottom || !state.chatPainted) scrollChatDown();
     state.chatPainted = true;
   }
+  function setChatOpen(open) {
+    state.chatOpen = open;
+    chatEl.classList.toggle("open", open);
+    if (open) scrollChatDown();
+  }
   function openChat() {
-    if (!state.chatOpen) chatInput.value = "";
-    state.chatOpen = true;
-    chatEl.classList.add("open");
-    requestAnimationFrame(() => {
-      chatInput.focus();
-      chatLogEl.scrollTop = chatLogEl.scrollHeight;
-    });
+    setChatOpen(true);
+    requestAnimationFrame(() => chatInput.focus());
   }
   function closeChat() {
-    state.chatOpen = false;
-    chatEl.classList.remove("open");
+    setChatOpen(false);
     if (document.activeElement === chatInput || document.activeElement === chatLogEl) {
       chatInput.blur();
       chatLogEl.blur();
@@ -1831,6 +1856,9 @@
   window.addEventListener("pointercancel", onUp);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   chatLogEl.addEventListener("wheel", (ev) => ev.stopPropagation(), { passive: true });
+  chatEl.addEventListener("focusin", () => {
+    if (!state.chatOpen) setChatOpen(true);
+  });
   chatEl.addEventListener("focusout", (ev) => {
     const next = ev.relatedTarget;
     if (next && chatEl.contains(next)) return;

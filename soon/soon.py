@@ -80,7 +80,7 @@ EMOJI_RE = re.compile(r"^[\S]{1,8}$")
 HTTPS_RE = re.compile(r"^https://[^\s]{3,500}$", re.IGNORECASE)
 
 MAX_OBJECTS = 500
-MAX_POINTS = 200
+MAX_POINTS = 1000
 MAX_TEXT = 2000
 MAX_CHAT = 300
 MAX_CHAT_TEXT = 240
@@ -259,7 +259,7 @@ def validate_object(raw: Any) -> dict[str, Any]:
     if obj_type == "stroke":
         points = raw.get("points")
         if not isinstance(points, list) or not (2 <= len(points) <= MAX_POINTS):
-            raise ValueError("Stroke needs 2–200 points.")
+            raise ValueError(f"Stroke needs 2–{MAX_POINTS} points.")
         cleaned: list[list[float]] = []
         for point in points:
             if not isinstance(point, (list, tuple)) or len(point) != 2:
@@ -267,7 +267,7 @@ def validate_object(raw: Any) -> dict[str, Any]:
             cleaned.append([_finite(point[0]), _finite(point[1])])
         obj["points"] = cleaned
         obj["color"] = _color(raw.get("color", "#d4a373"))
-        obj["width"] = _finite(raw.get("width", 3), 0.5, 80)
+        obj["width"] = _finite(raw.get("width", 3), 0.5, 100)
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
     elif obj_type == "shape":
         kind = raw.get("kind")
@@ -891,6 +891,7 @@ async def _run_socket(websocket: WebSocket) -> None:
                     "from": client_id,
                     "name": nick,
                     "text": text,
+                    "color": state.presence.get(client_id, {}).get("color") or color,
                 }
                 async with state.lock:
                     state.chat.append(entry)

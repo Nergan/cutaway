@@ -62,6 +62,14 @@ def test_validate_stroke_and_reject_javascript_link():
     turned = validate_object({**stroke, "rot": 45})
     assert turned["rot"] == 45.0
 
+    fat = validate_object({**stroke, "width": 100})
+    assert fat["width"] == 100.0
+    try:
+        validate_object({**stroke, "width": 101})
+        assert False, "expected width out of range"
+    except ValueError:
+        pass
+
     try:
         validate_object(
             {
