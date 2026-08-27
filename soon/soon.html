@@ -46,12 +46,13 @@
     .section-title { font-size: 8pt; color: var(--muted); }
     .marquee {
       position: absolute; z-index: 4; display: none; pointer-events: none;
-      border: 1px solid Highlight; background: Highlight; opacity: 0.28;
+      box-sizing: border-box; border: 1px solid Highlight; background: transparent;
     }
-    @supports (background: color-mix(in srgb, Highlight 22%, transparent)) {
-      .marquee { opacity: 1; background: color-mix(in srgb, Highlight 22%, transparent); }
+    .marquee::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: Highlight; opacity: 0.28;
     }
-    .tool-group { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .tool-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
     .icon-btn {
       display: inline-flex; align-items: center; justify-content: center;
       padding: 4px; min-width: 0;
@@ -174,10 +175,8 @@
       <div class="section-title" data-i18n="tools"></div>
       <div class="tool-group" id="tools">
         <button type="button" class="btn icon-btn active" data-tool="select" data-i18n-title="selectHint" data-i18n-aria="select"><i class="bi bi-cursor" aria-hidden="true"></i></button>
-        <button type="button" class="btn icon-btn" data-tool="pan" data-i18n-title="panHint" data-i18n-aria="pan"><i class="bi bi-hand-index" aria-hidden="true"></i></button>
         <button type="button" class="btn icon-btn" data-tool="pen" data-i18n-title="penHint" data-i18n-aria="pen"><i class="bi bi-pencil" aria-hidden="true"></i></button>
         <button type="button" class="btn icon-btn" data-tool="eraser" data-i18n-title="eraserHint" data-i18n-aria="eraser"><i class="bi bi-eraser" aria-hidden="true"></i></button>
-        <button type="button" class="btn icon-btn" data-tool="lasso" data-i18n-title="lassoHint" data-i18n-aria="lasso"><i class="bi bi-bounding-box" aria-hidden="true"></i></button>
         <button type="button" class="btn icon-btn" data-tool="image" data-i18n-title="imageHint" data-i18n-aria="image"><i class="bi bi-image" aria-hidden="true"></i></button>
       </div>
     </div>
@@ -222,20 +221,18 @@
   const I18N = {
     ru: {
       tools: "инструменты",
-      select: "Выбор", selectHint: "Выбрать объект (V). Shift — несколько, перетаскивание пустого места — рамка",
-      pan: "Перемещение", panHint: "Двигать холст (H, пробел)",
+      select: "Выбор", selectHint: "Выбрать объект (V). Shift — несколько, перетаскивание пустого места — рамка, СКМ или пробел — двигать холст",
       pen: "Карандаш", penHint: "Рисовать (P)",
-      eraser: "Ластик", eraserHint: "Стереть часть линии (E)",
-      lasso: "Рамка", lassoHint: "Выделить рамкой, как в проводнике (L). Shift добавляет к выделению",
+      eraser: "Ластик", eraserHint: "Стереть часть линии (E). Толщина задаёт радиус",
       image: "Картинка", imageHint: "Вставить изображение (I, Ctrl+V)",
-      color: "цвет", opacity: "прозрачность", width: "толщина",
+      color: "цвет", opacity: "непрозрачность", width: "толщина",
       copyLink: "Копировать ссылку", copyLinkHint: "Ссылка на эту доску",
       downloadPng: "Скачать PNG", downloadPngHint: "Снимок видимой области",
       toggleGrid: "Сетка", toggleGridHint: "Показать или скрыть сетку",
       goCenter: "В центр", goCenterHint: "Плавно вернуть камеру в центр холста",
       saveNick: "Сохранить", nickPh: "свой ник",
       chatPh: "сообщение…",
-      help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, Delete — удалить выделенное. Shift — несколько объектов. Любой объект можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. Два пальца двигают холст. Клик по человеку переносит к курсору.",
+      help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, Delete — удалить выделенное. Shift — несколько объектов. Ctrl при растяжении сохраняет пропорции. Любой объект можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. СКМ, пробел или два пальца двигают холст. Клик по человеку переносит к курсору.",
       online: "на связи", offline: "нет связи", reconnect: "переподключение…",
       you: "вы", guest: "гость", follow: "Перейти к",
       copied: "скопировано", copyFirst: "сначала выберите объект",
@@ -251,11 +248,9 @@
     },
     en: {
       tools: "tools",
-      select: "Select", selectHint: "Select an object (V). Shift for multiple, drag empty space for a marquee",
-      pan: "Pan", panHint: "Move the canvas (H, Space)",
+      select: "Select", selectHint: "Select an object (V). Shift for multiple, drag empty space for a marquee, middle-click or Space to pan",
       pen: "Pencil", penHint: "Draw (P)",
-      eraser: "Eraser", eraserHint: "Erase part of a stroke (E)",
-      lasso: "Marquee", lassoHint: "Select with a rectangle, like in a file manager (L). Shift adds to the selection",
+      eraser: "Eraser", eraserHint: "Erase part of a stroke (E). Thickness sets the radius",
       image: "Image", imageHint: "Insert an image (I, Ctrl+V)",
       color: "color", opacity: "opacity", width: "thickness",
       copyLink: "Copy link", copyLinkHint: "Link to this board",
@@ -264,7 +259,7 @@
       goCenter: "To center", goCenterHint: "Smoothly pan the camera back to the board origin",
       saveNick: "Save", nickPh: "your nickname",
       chatPh: "message…",
-      help: "Shortcuts follow physical keys on any layout. T opens chat, Delete removes the selection. Shift selects multiple. Drag handles to resize or rotate any object. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Two fingers pan. Click a person to jump to their cursor.",
+      help: "Shortcuts follow physical keys on any layout. T opens chat, Delete removes the selection. Shift selects multiple. Hold Ctrl while resizing to keep proportions. Drag handles to resize or rotate any object. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Middle-click, Space, or two fingers pan. Click a person to jump to their cursor.",
       online: "online", offline: "offline", reconnect: "reconnecting…",
       you: "you", guest: "guest", follow: "Go to",
       copied: "copied", copyFirst: "select an object first",
@@ -301,7 +296,7 @@
     selected: new Set(), camera: { x: 0, y: 0, scale: 1 }, cssW: 1, cssH: 1,
     drawing: false, panning: false, moving: false, lassoing: false, erasing: false,
     start: null, last: null, hover: null, points: [], lasso: null, lassoAdd: false,
-    pendingMove: null, pendingLasso: null, shift: false,
+    pendingMove: null, pendingLasso: null, pendingToggle: null, shift: false, ctrl: false,
     draftId: null, moveOrigins: new Map(),
     xform: null, eraseGesture: null, chat: [], chatOpen: false, chatPainted: false,
     undo: [], redo: [], clip: null, connected: false,
@@ -353,8 +348,15 @@
   }
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
   function clampScale(value) { return Math.max(SCALE_MIN, Math.min(SCALE_MAX, value)); }
-  function hasShift(ev) {
-    return !!(state.shift || (ev && (ev.shiftKey || (ev.getModifierState && ev.getModifierState("Shift")))));
+  function selectMod(ev) {
+    if (ev) {
+      if (ev.shiftKey || ev.ctrlKey || ev.metaKey) return true;
+      if (ev.getModifierState && (ev.getModifierState("Shift") || ev.getModifierState("Control") || ev.getModifierState("Meta"))) return true;
+    }
+    return !!(state.shift || state.ctrl);
+  }
+  function ratioLock(ev) {
+    return !!(ev && (ev.ctrlKey || ev.metaKey || (ev.getModifierState && (ev.getModifierState("Control") || ev.getModifierState("Meta")))));
   }
   function selectedObjects() {
     return [...state.selected].map((id) => state.objects.get(id) || state.drafts.get(id)).filter(Boolean);
@@ -689,7 +691,7 @@
     }
     return copy;
   }
-  function applyResize(origin, handle, wx, wy) {
+  function applyResize(origin, handle, wx, wy, lockRatio) {
     const box = localBounds(origin);
     if (!box) return clone(origin);
     const c = localCenter(box);
@@ -698,7 +700,20 @@
     const mins = minBox(origin);
     if (handle.includes("e") || handle.includes("w")) hw = Math.max(mins.w / 2, Math.abs(local.x - c.x));
     if (handle.includes("n") || handle.includes("s")) hh = Math.max(mins.h / 2, Math.abs(local.y - c.y));
-    return scaleAbout(origin, c, (hw * 2) / box.w, (hh * 2) / box.h);
+    let sx = (hw * 2) / box.w, sy = (hh * 2) / box.h;
+    if (lockRatio && box.w > 0 && box.h > 0) {
+      const minS = Math.max(mins.w / box.w, mins.h / box.h);
+      if (handle === "n" || handle === "s") sx = sy;
+      else if (handle === "e" || handle === "w") sy = sx;
+      else {
+        const fromX = Math.abs(local.x - c.x) / (box.w / 2);
+        const fromY = Math.abs(local.y - c.y) / (box.h / 2);
+        sx = sy = Math.max(fromX, fromY, minS);
+      }
+      sx = Math.max(sx, minS);
+      sy = Math.max(sy, minS);
+    }
+    return scaleAbout(origin, c, sx, sy);
   }
   function applyRotate(origin, wx, wy) {
     const c = objectCenter(origin);
@@ -734,6 +749,7 @@
           const a = obj.points[i - 1], b = obj.points[i];
           if (distSeg(local.x, local.y, a[0], a[1], b[0], b[1]) <= thresh) return obj;
         }
+        if (state.tool === "select" && objectContains(obj, wx, wy)) return obj;
       } else if (objectContains(obj, wx, wy)) {
         return obj;
       }
@@ -1042,14 +1058,15 @@
 
   function setTool(tool) {
     if (tool === "image") { fileInput.click(); return; }
+    if (tool === "pan" || tool === "lasso") tool = "select";
     state.tool = tool;
     document.querySelectorAll("#tools .btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.tool === tool);
     });
-    canvas.style.cursor = tool === "pan" ? "grab" : tool === "eraser" ? "none" : tool === "pen" || tool === "lasso" ? "crosshair" : "default";
+    canvas.style.cursor = tool === "eraser" ? "none" : tool === "pen" ? "crosshair" : "default";
   }
   function eraserRadius() {
-    return Math.max(state.width / 2, 7 / state.camera.scale);
+    return (6 + state.width * 1.25) / state.camera.scale;
   }
   function densify(points, step) {
     if (!points || !points.length) return [];
@@ -1196,7 +1213,7 @@
       state.pinch = { dist: Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y) || 1, mid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 } };
       return;
     }
-    if (ev.button === 1 || state.space || state.tool === "pan") {
+    if (ev.button === 1 || state.space) {
       stopFollow();
       state.panning = true; state.last = p; canvas.style.cursor = "grabbing"; return;
     }
@@ -1204,12 +1221,9 @@
     const w = toWorld(p.x, p.y);
     state.start = w; state.last = p; state.hover = p;
     if (state.tool === "eraser") { state.erasing = true; eraseAt(w.x, w.y); return; }
-    if (state.tool === "lasso") {
-      beginLasso(w, hasShift(ev));
-      return;
-    }
     if (state.tool === "select") {
-      const handle = !hasShift(ev) && hitHandle(p.x, p.y);
+      const add = selectMod(ev);
+      const handle = !ev.shiftKey && hitHandle(p.x, p.y);
       if (handle) {
         state.xform = {
           kind: handle.handle === "rot" ? "rotate" : "resize",
@@ -1220,8 +1234,9 @@
       }
       const obj = hit(w.x, w.y);
       if (obj) {
-        if (hasShift(ev)) {
-          if (state.selected.has(obj.id)) state.selected.delete(obj.id);
+        state.pendingToggle = null;
+        if (add) {
+          if (state.selected.has(obj.id)) state.pendingToggle = obj.id;
           else state.selected.add(obj.id);
         } else if (!state.selected.has(obj.id)) {
           state.selected = new Set([obj.id]);
@@ -1229,12 +1244,12 @@
         if (state.selected.has(obj.id)) {
           const movable = selectedObjects().filter((item) => state.objects.has(item.id));
           if (movable.length) {
-            state.pendingMove = { x: p.x, y: p.y, isolate: hasShift(ev) ? null : obj.id };
+            state.pendingMove = { x: p.x, y: p.y, isolate: add ? null : obj.id };
             state.moveOrigins = new Map(movable.map((item) => [item.id, clone(item)]));
           }
         }
       } else {
-        state.pendingLasso = { x: p.x, y: p.y, world: w, add: hasShift(ev) };
+        state.pendingLasso = { x: p.x, y: p.y, world: w, add };
       }
       state.dirty = true;
       return;
@@ -1285,7 +1300,7 @@
       const origin = state.xform.origin;
       const next = state.xform.kind === "rotate"
         ? applyRotate(origin, w.x, w.y)
-        : applyResize(origin, state.xform.handle, w.x, w.y);
+        : applyResize(origin, state.xform.handle, w.x, w.y, ratioLock(ev));
       state.objects.set(next.id, next);
       send({ type: "draft", object: next });
       state.dirty = true;
@@ -1305,6 +1320,7 @@
     if (state.pendingMove && !state.moving) {
       if (Math.hypot(p.x - state.pendingMove.x, p.y - state.pendingMove.y) >= DRAG_PX) {
         state.moving = true;
+        state.pendingToggle = null;
         state.pendingMove = null;
       } else return;
     }
@@ -1345,7 +1361,7 @@
     const last = state.pointers.size === 0;
     if (state.panning && last) {
       state.panning = false;
-      canvas.style.cursor = state.tool === "pan" ? "grab" : state.tool === "eraser" ? "none" : state.tool === "select" ? "default" : "crosshair";
+      canvas.style.cursor = state.tool === "eraser" ? "none" : state.tool === "select" ? "default" : "crosshair";
     }
     if (last && state.xform) {
       const origin = state.xform.origin;
@@ -1364,13 +1380,18 @@
       if (state.lassoing) finishLasso();
     }
     if (last && state.pendingMove && !state.moving) {
-      if (state.pendingMove.isolate) {
+      if (state.pendingToggle && state.selected.has(state.pendingToggle)) {
+        state.selected.delete(state.pendingToggle);
+        state.dirty = true;
+      } else if (state.pendingMove.isolate) {
         state.selected = new Set([state.pendingMove.isolate]);
         state.dirty = true;
       }
+      state.pendingToggle = null;
       state.pendingMove = null;
       state.moveOrigins.clear();
     }
+    if (last && state.moving) state.pendingToggle = null;
     if (last && state.moving && state.selected.size) {
       for (const obj of selectedObjects()) {
         send({ type: "draft", object: null, id: obj.id });
@@ -1614,6 +1635,7 @@
   widthEl.addEventListener("input", () => {
     state.width = Number(widthEl.value);
     document.getElementById("width-label").textContent = widthEl.value;
+    if (state.tool === "eraser") state.dirty = true;
   });
   alphaEl.addEventListener("input", () => {
     state.alpha = Number(alphaEl.value) / 100;
@@ -1679,7 +1701,8 @@
   });
 
   window.addEventListener("keydown", (ev) => {
-    if (ev.code === "ShiftLeft" || ev.code === "ShiftRight") state.shift = true;
+    if (ev.key === "Shift" || ev.code === "ShiftLeft" || ev.code === "ShiftRight") state.shift = true;
+    if (ev.key === "Control" || ev.code === "ControlLeft" || ev.code === "ControlRight") state.ctrl = true;
     if (ev.code === "Escape" && state.chatOpen) { ev.preventDefault(); closeChat(); return; }
     if (ev.code === "Enter" && state.chatOpen && document.activeElement === chatInput) {
       ev.preventDefault(); sendChat(); return;
@@ -1702,14 +1725,15 @@
         );
       }
     }
-    const tools = { v: "select", h: "pan", p: "pen", e: "eraser", l: "lasso", i: "image" };
+    const tools = { v: "select", p: "pen", e: "eraser", i: "image" };
     if (!mod && tools[letter]) setTool(tools[letter]);
   });
   window.addEventListener("keyup", (ev) => {
     if (ev.code === "Space") state.space = false;
-    if (ev.code === "ShiftLeft" || ev.code === "ShiftRight") state.shift = false;
+    if (ev.key === "Shift" || ev.code === "ShiftLeft" || ev.code === "ShiftRight") state.shift = false;
+    if (ev.key === "Control" || ev.code === "ControlLeft" || ev.code === "ControlRight") state.ctrl = false;
   });
-  window.addEventListener("blur", () => { state.shift = false; state.space = false; });
+  window.addEventListener("blur", () => { state.shift = false; state.ctrl = false; state.space = false; });
   window.addEventListener("copy", (ev) => {
     if (typing()) return;
     const payload = copySelected();
