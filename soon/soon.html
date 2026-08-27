@@ -83,7 +83,15 @@
     .nick-row { display: flex; gap: 4px; }
     .nick-row .form-control { flex: 1; }
     .nick-row .btn { min-height: 28px; min-width: 28px; flex: 0 0 28px; padding: 4px; }
-    .extras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .extras { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+    #text-edit {
+      position: absolute; z-index: 6; display: none; margin: 0; padding: 2px;
+      border: 1px dashed var(--accent); border-radius: 2px;
+      background: rgba(12, 10, 9, 0.35); color: #e5e1db;
+      font-family: Verdana, Arial, Helvetica, sans-serif; line-height: 1.25;
+      resize: none; overflow: hidden; outline: none; pointer-events: auto;
+      transform-origin: center center;
+    }
     .help-text { font-size: 8pt; color: var(--muted); line-height: 1.35; }
     .toast {
       position: absolute; left: 12px; top: calc(8px + env(safe-area-inset-top, 0px));
@@ -155,6 +163,7 @@
     <canvas id="board"></canvas>
     <div class="marquee" id="marquee"></div>
     <div id="offscreen"></div>
+    <textarea id="text-edit" maxlength="2000" autocomplete="off" spellcheck="false"></textarea>
     <div class="toast" id="toast"></div>
     <div class="chat" id="chat">
       <div class="chat-log" id="chat-log" tabindex="0"></div>
@@ -176,7 +185,7 @@
         <button type="button" class="btn icon-btn active" data-tool="select" data-i18n-title="selectHint" data-i18n-aria="select"><i class="bi bi-cursor" aria-hidden="true"></i></button>
         <button type="button" class="btn icon-btn" data-tool="pen" data-i18n-title="penHint" data-i18n-aria="pen"><i class="bi bi-pencil" aria-hidden="true"></i></button>
         <button type="button" class="btn icon-btn" data-tool="eraser" data-i18n-title="eraserHint" data-i18n-aria="eraser"><i class="bi bi-eraser" aria-hidden="true"></i></button>
-        <button type="button" class="btn icon-btn" data-tool="image" data-i18n-title="imageHint" data-i18n-aria="image"><i class="bi bi-image" aria-hidden="true"></i></button>
+        <button type="button" class="btn icon-btn" data-tool="text" data-i18n-title="textHint" data-i18n-aria="text"><i class="bi bi-type" aria-hidden="true"></i></button>
       </div>
     </div>
     <div>
@@ -200,8 +209,6 @@
       </div>
     </div>
     <div class="extras">
-      <button type="button" class="btn icon-btn" id="share" data-i18n-title="copyLinkHint" data-i18n-aria="copyLink"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
-      <button type="button" class="btn icon-btn" id="png" data-i18n-title="downloadPngHint" data-i18n-aria="downloadPng"><i class="bi bi-download" aria-hidden="true"></i></button>
       <button type="button" class="btn icon-btn active" id="grid-btn" data-i18n-title="toggleGridHint" data-i18n-aria="toggleGrid"><i class="bi bi-grid-3x3" aria-hidden="true"></i></button>
       <button type="button" class="btn icon-btn" id="fit" data-i18n-title="goCenterHint" data-i18n-aria="goCenter"><i class="bi bi-crosshair" aria-hidden="true"></i></button>
     </div>
@@ -223,16 +230,14 @@
       tools: "инструменты",
       select: "Выбор", selectHint: "Выбрать объект (V). Shift — несколько, перетаскивание пустого места — рамка, СКМ или пробел — двигать холст",
       pen: "Карандаш", penHint: "Рисовать (P)",
-      eraser: "Ластик", eraserHint: "Стереть часть линии (E). Толщина задаёт радиус",
-      image: "Картинка", imageHint: "Вставить изображение (I, Ctrl+V)",
+      eraser: "Ластик", eraserHint: "Стереть часть линии или символ текста (E). Толщина задаёт радиус",
+      text: "Текст", textHint: "Текстовое поле (X). Цвет как у кисти; размер и поворот — за маркеры",
       color: "цвет", opacity: "непрозрачность", width: "толщина",
-      copyLink: "Копировать ссылку", copyLinkHint: "Ссылка на эту доску",
-      downloadPng: "Скачать PNG", downloadPngHint: "Снимок видимой области",
       toggleGrid: "Сетка", toggleGridHint: "Показать или скрыть сетку",
       goCenter: "В центр", goCenterHint: "Плавно вернуть камеру в центр холста",
       saveNick: "Сохранить", nickPh: "свой ник",
       chatPh: "сообщение… или нажмите T",
-      help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, Delete — удалить выделенное. Shift — несколько объектов. Ctrl при растяжении сохраняет пропорции. Любой объект можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. СКМ, пробел или два пальца двигают холст. Клик по человеку переносит к курсору.",
+      help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, X — текст, Delete — удалить выделенное. Shift — несколько объектов. Ctrl при растяжении сохраняет пропорции. Любой объект можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, картинки — Ctrl+V или перетаскивание. Ctrl+Z/Y — отмена. СКМ, пробел или два пальца двигают холст. Клик по человеку переносит к курсору.",
       online: "на связи", offline: "нет связи", reconnect: "переподключение…",
       you: "вы", guest: "гость", follow: "Перейти к",
       copied: "скопировано", copyFirst: "сначала выберите объект",
@@ -252,16 +257,14 @@
       tools: "tools",
       select: "Select", selectHint: "Select an object (V). Shift for multiple, drag empty space for a marquee, middle-click or Space to pan",
       pen: "Pencil", penHint: "Draw (P)",
-      eraser: "Eraser", eraserHint: "Erase part of a stroke (E). Thickness sets the radius",
-      image: "Image", imageHint: "Insert an image (I, Ctrl+V)",
+      eraser: "Eraser", eraserHint: "Erase part of a stroke or a text character (E). Thickness sets the radius",
+      text: "Text", textHint: "Text field (X). Uses the brush color; resize and rotate with handles",
       color: "color", opacity: "opacity", width: "thickness",
-      copyLink: "Copy link", copyLinkHint: "Link to this board",
-      downloadPng: "Download PNG", downloadPngHint: "Snapshot of the visible area",
       toggleGrid: "Grid", toggleGridHint: "Show or hide the grid",
       goCenter: "To center", goCenterHint: "Smoothly pan the camera back to the board origin",
       saveNick: "Save", nickPh: "your nickname",
       chatPh: "message… or press T",
-      help: "Shortcuts follow physical keys on any layout. T opens chat, Delete removes the selection. Shift selects multiple. Hold Ctrl while resizing to keep proportions. Drag handles to resize or rotate any object. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Middle-click, Space, or two fingers pan. Click a person to jump to their cursor.",
+      help: "Shortcuts follow physical keys on any layout. T opens chat, X places text, Delete removes the selection. Shift selects multiple. Hold Ctrl while resizing to keep proportions. Drag handles to resize or rotate any object. Ctrl+C/V copy and paste; images also via Ctrl+V or drag-and-drop. Ctrl+Z/Y undo. Middle-click, Space, or two fingers pan. Click a person to jump to their cursor.",
       online: "online", offline: "offline", reconnect: "reconnecting…",
       you: "you", guest: "guest", follow: "Go to",
       copied: "copied", copyFirst: "select an object first",
@@ -291,6 +294,7 @@
   const chatEl = document.getElementById("chat");
   const chatLogEl = document.getElementById("chat-log");
   const chatInput = document.getElementById("chat-input");
+  const textEditEl = document.getElementById("text-edit");
   const mobile = window.matchMedia("(max-width: 720px)");
 
   const state = {
@@ -302,7 +306,8 @@
     start: null, last: null, hover: null, points: [], lasso: null, lassoAdd: false,
     pendingMove: null, pendingLasso: null, pendingToggle: null, shift: false, ctrl: false,
     draftId: null, moveOrigins: new Map(),
-    xform: null, eraseGesture: null, chat: [], chatOpen: false, chatPainted: false,
+    xform: null, eraseGesture: null, textEdit: null, textEditNew: false,
+    chat: [], chatOpen: false, chatPainted: false,
     undo: [], redo: [], clip: null, connected: false,
     ws: null, backoff: 600, imageCache: new Map(), dirty: true, space: false,
     pointers: new Map(), pinch: null, lastCursor: 0, lastDraft: 0, followAnim: 0,
@@ -612,10 +617,47 @@
     if (obj.type === "stamp") return { x: obj.x - obj.size / 2, y: obj.y - obj.size / 2, w: obj.size, h: obj.size };
     if (obj.type === "text") {
       const size = obj.size || 18;
-      return { x: obj.x, y: obj.y, w: Math.max(size, (obj.text || "").length * size * 0.62), h: size * 1.2 };
+      return {
+        x: obj.x, y: obj.y,
+        w: obj.w || Math.max(size, (obj.text || "").length * size * 0.62),
+        h: obj.h || size * 1.25,
+      };
     }
     if (obj.w && obj.h) return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
     return null;
+  }
+  function textFont(obj) {
+    return (obj.size || 18) + "px Verdana, Arial, Helvetica, sans-serif";
+  }
+  function layoutText(obj) {
+    const size = obj.size || 18;
+    const lineH = size * 1.25;
+    const pad = 2;
+    const left = (obj.x || 0) + pad;
+    const maxW = Math.max(size * 0.5, (obj.w || 200) - pad * 2);
+    ctx.save();
+    ctx.font = textFont(obj);
+    const glyphs = [];
+    let x = left, y = (obj.y || 0) + pad;
+    const raw = String(obj.text || "");
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (ch === "\n") {
+        glyphs.push({ ch, index: i, x, y, w: size * 0.35, h: lineH });
+        x = left;
+        y += lineH;
+        continue;
+      }
+      const w = Math.max(1, ctx.measureText(ch).width);
+      if (x > left && x + w > left + maxW) {
+        x = left;
+        y += lineH;
+      }
+      glyphs.push({ ch, index: i, x, y, w, h: lineH });
+      x += w;
+    }
+    ctx.restore();
+    return glyphs;
   }
   function objectRot(obj) { return ((obj.rot || 0) * Math.PI) / 180; }
   function localCenter(box) { return { x: box.x + box.w / 2, y: box.y + box.h / 2 }; }
@@ -689,9 +731,13 @@
       ctx.globalAlpha *= alpha; ctx.strokeStyle = obj.color; ctx.lineWidth = obj.width || 2;
       ctx.beginPath(); ctx.moveTo(obj.x1, obj.y1); ctx.lineTo(obj.x2, obj.y2); ctx.stroke();
     } else if (obj.type === "text") {
+      if (state.textEdit === obj.id && !ghost) { ctx.restore(); if (state.selected.has(obj.id)) drawSelection(obj); return; }
       ctx.globalAlpha *= alpha; ctx.fillStyle = obj.color;
-      ctx.font = (obj.size || 18) + "px Verdana, Arial, sans-serif";
-      ctx.textBaseline = "top"; ctx.fillText(obj.text || "", obj.x, obj.y);
+      ctx.font = textFont(obj); ctx.textBaseline = "top";
+      ctx.beginPath(); ctx.rect(obj.x, obj.y, obj.w || 1, obj.h || 1); ctx.clip();
+      for (const g of layoutText(obj)) {
+        if (g.ch !== "\n") ctx.fillText(g.ch, g.x, g.y);
+      }
     } else if (obj.type === "note" || obj.type === "file" || obj.type === "link") {
       ctx.globalAlpha *= alpha; ctx.fillStyle = obj.color || "#4a3c31";
       ctx.fillRect(obj.x, obj.y, obj.w || 160, obj.h || 80);
@@ -761,12 +807,13 @@
     if (obj.type === "note") return { w: 80, h: 60 };
     if (obj.type === "link") return { w: 120, h: 48 };
     if (obj.type === "image" || obj.type === "file") return { w: 24, h: 24 };
+    if (obj.type === "text") return { w: 32, h: 20 };
     return { w: 8, h: 8 };
   }
   function maxBox(obj) {
     if (obj.type === "note") return { w: 640, h: 480 };
     if (obj.type === "link") return { w: 640, h: 160 };
-    if (obj.type === "image" || obj.type === "file") return { w: 1e6, h: 1e6 };
+    if (obj.type === "image" || obj.type === "file" || obj.type === "text") return { w: 1e6, h: 1e6 };
     return { w: 1e6, h: 1e6 };
   }
   function scaleAbout(origin, c, sx, sy) {
@@ -790,7 +837,7 @@
     }
     if (copy.size != null) {
       const lo = copy.type === "stamp" ? 16 : 10;
-      const hi = copy.type === "stamp" ? 160 : 96;
+      const hi = copy.type === "stamp" ? 160 : copy.type === "text" ? 240 : 96;
       copy.size = clampNum(copy.size * Math.abs(sy), lo, hi);
     }
     return copy;
@@ -1124,6 +1171,7 @@
       const only = selectedObjects()[0];
       if (only) drawHandles(only);
     }
+    syncTextEditor();
     if (state.tool === "eraser" && state.hover) {
       const r = eraserRadius() * state.camera.scale;
       ctx.save();
@@ -1162,13 +1210,13 @@
   }
 
   function setTool(tool) {
-    if (tool === "image") { fileInput.click(); return; }
     if (tool === "pan" || tool === "lasso") tool = "select";
+    if (tool !== "text") endTextEdit();
     state.tool = tool;
     document.querySelectorAll("#tools .btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.tool === tool);
     });
-    canvas.style.cursor = tool === "eraser" ? "none" : tool === "pen" ? "crosshair" : "default";
+    canvas.style.cursor = tool === "eraser" ? "none" : tool === "pen" || tool === "text" ? "crosshair" : "default";
   }
   function eraserRadius() {
     return (6 + state.width * 1.25) / state.camera.scale;
@@ -1265,17 +1313,113 @@
       send({ type: "draft", object: piece });
     }
   }
+  function applyEraseToText(obj, wx, wy) {
+    const gesture = ensureEraseGesture();
+    if (!gesture.originals.has(obj.id) && state.objects.has(obj.id)) {
+      gesture.originals.set(obj.id, clone(obj));
+    }
+    gesture.textMarks = gesture.textMarks || new Set();
+    const local = worldToLocal(obj, wx, wy);
+    const glyphs = layoutText(obj);
+    let hit = null;
+    for (const g of glyphs) {
+      if (local.x >= g.x && local.x <= g.x + g.w && local.y >= g.y && local.y <= g.y + g.h) {
+        hit = g;
+        break;
+      }
+    }
+    if (!hit) return false;
+    const mark = obj.id + ":" + hit.index + ":" + Math.round(hit.x) + ":" + Math.round(hit.y);
+    if (gesture.textMarks.has(mark)) return false;
+    gesture.textMarks.add(mark);
+    const next = clone(obj);
+    next.text = String(next.text || "").slice(0, hit.index) + String(next.text || "").slice(hit.index + 1);
+    if (!next.text) {
+      state.objects.delete(obj.id);
+      state.selected.delete(obj.id);
+      state.drafts.delete(obj.id);
+      clearDraft(obj.id);
+    } else {
+      state.objects.set(obj.id, next);
+      send({ type: "draft", object: next });
+    }
+    return true;
+  }
   function eraseAt(wx, wy) {
     const radius = eraserRadius();
-    const ids = [];
-    for (const obj of state.objects.values()) {
-      if (strokeHitsBrush(obj, wx, wy, radius)) ids.push(obj.id);
+    let changed = false;
+    for (const obj of [...state.objects.values()]) {
+      if (obj.type === "stroke" && strokeHitsBrush(obj, wx, wy, radius)) {
+        applyEraseToStroke(obj, wx, wy, radius);
+        changed = true;
+      } else if (obj.type === "text" && obj.id !== state.textEdit && applyEraseToText(obj, wx, wy)) {
+        changed = true;
+      }
     }
-    for (const id of ids) {
-      const obj = state.objects.get(id);
-      if (obj) applyEraseToStroke(obj, wx, wy, radius);
+    if (changed) state.dirty = true;
+  }
+  function syncTextEditor() {
+    if (!state.textEdit) { textEditEl.style.display = "none"; return; }
+    const obj = state.objects.get(state.textEdit);
+    if (!obj) { textEditEl.style.display = "none"; return; }
+    const box = localBounds(obj);
+    const c = objectCenter(obj);
+    const p = toScreen(c.x, c.y);
+    const sc = state.camera.scale;
+    textEditEl.style.display = "block";
+    textEditEl.style.left = p.x + "px";
+    textEditEl.style.top = p.y + "px";
+    textEditEl.style.width = Math.max(24, box.w * sc) + "px";
+    textEditEl.style.height = Math.max(20, box.h * sc) + "px";
+    textEditEl.style.transform = "translate(-50%, -50%) rotate(" + (obj.rot || 0) + "deg)";
+    textEditEl.style.fontSize = ((obj.size || 18) * sc) + "px";
+    textEditEl.style.color = obj.color || state.color;
+  }
+  function startTextEdit(id, isNew) {
+    const obj = state.objects.get(id);
+    if (!obj || obj.type !== "text") return;
+    if (state.textEdit && state.textEdit !== id) endTextEdit();
+    state.textEdit = id;
+    state.textEditNew = !!isNew;
+    textEditEl.value = obj.text || "";
+    syncTextEditor();
+    requestAnimationFrame(() => textEditEl.focus());
+  }
+  function endTextEdit() {
+    const id = state.textEdit;
+    if (!id) return;
+    const obj = state.objects.get(id);
+    const text = textEditEl.value.replace(/\0/g, "");
+    const wasNew = state.textEditNew;
+    state.textEdit = null;
+    state.textEditNew = false;
+    textEditEl.style.display = "none";
+    if (!obj) return;
+    clearDraft(id);
+    if (!text) {
+      state.objects.delete(id);
+      state.selected.delete(id);
+      if (!wasNew) commit({ op: "delete", id }, { op: "add", object: clone(obj) });
+      else { state.dirty = true; }
+      return;
     }
-    if (ids.length) state.dirty = true;
+    const next = clone(obj);
+    next.text = text;
+    state.objects.set(id, next);
+    if (wasNew) commit({ op: "add", object: next }, { op: "delete", id });
+    else if (text !== obj.text) commit({ op: "update", object: next }, { op: "update", object: obj });
+    state.dirty = true;
+  }
+  function placeText(x, y) {
+    const obj = {
+      id: uid(), type: "text", x, y, w: 240, h: 72,
+      text: "", size: 18, color: state.color, alpha: state.alpha, rot: 0, z: maxZ() + 1,
+    };
+    state.objects.set(obj.id, obj);
+    state.selected = new Set([obj.id]);
+    send({ type: "draft", object: obj });
+    startTextEdit(obj.id, true);
+    state.dirty = true;
   }
   function finishErase() {
     const gesture = state.eraseGesture;
@@ -1325,7 +1469,14 @@
     if (ev.button !== 0) return;
     const w = toWorld(p.x, p.y);
     state.start = w; state.last = p; state.hover = p;
+    if (state.textEdit) { endTextEdit(); }
     if (state.tool === "eraser") { state.erasing = true; eraseAt(w.x, w.y); return; }
+    if (state.tool === "text") {
+      const obj = hit(w.x, w.y);
+      if (obj && obj.type === "text") startTextEdit(obj.id, false);
+      else placeText(w.x, w.y);
+      return;
+    }
     if (state.tool === "select") {
       const add = selectMod(ev);
       const handle = !ev.shiftKey && hitHandle(p.x, p.y);
@@ -1623,7 +1774,8 @@
     ws.onopen = () => {
       state.backoff = 600; state.connected = true; updateStatus();
       const saved = sessionStorage.getItem("soon-name");
-      if (saved) send({ type: "hello", name: saved });
+      const color = sessionStorage.getItem("soon-color");
+      if (saved || color) send({ type: "hello", name: saved || undefined, color: color || undefined });
     };
     ws.onclose = () => {
       if (state.ws === ws) state.ws = null;
@@ -1638,6 +1790,7 @@
       let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
       if (msg.type === "hello") {
         state.me = { id: msg.id, name: msg.name, color: msg.color };
+        if (msg.color) sessionStorage.setItem("soon-color", msg.color);
         state.objects = new Map((msg.objects || []).map((obj) => [obj.id, obj]));
         state.users = new Map();
         state.drafts = new Map();
@@ -1681,7 +1834,14 @@
             state.draftFrom.delete(id);
           }
         }
-        renderPeople(); state.dirty = true;
+        if (state.me) {
+          const mine = next.get(state.me.id);
+          if (mine && mine.color) {
+            state.me.color = mine.color;
+            sessionStorage.setItem("soon-color", mine.color);
+          }
+        }
+        renderPeople(); renderChat(); state.dirty = true;
       } else if (msg.type === "cursor") {
         const user = state.users.get(msg.id);
         if (!user) return;
@@ -1720,7 +1880,13 @@
     const have = new Set([...chatLogEl.children].map((el) => el.dataset.id));
     const nearBottom = chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 48;
     for (const m of msgs) {
-      if (have.has(String(m.id))) continue;
+      const existing = have.has(String(m.id)) && chatLogEl.querySelector('[data-id="' + m.id + '"]');
+      if (existing) {
+        const nick = existing.querySelector(".chat-nick");
+        const color = chatNickColor(m);
+        if (nick && color) nick.style.color = color;
+        continue;
+      }
       const line = document.createElement("div");
       line.className = "chat-line";
       line.dataset.id = m.id;
@@ -1820,13 +1986,6 @@
   };
   bindDrag(svCanvas, pickSV);
   bindDrag(hueCanvas, pickHue);
-  document.getElementById("share").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(location.origin + PREFIX + "/"); toast(t("copied")); }
-    catch (_) { toast(location.origin + PREFIX + "/"); }
-  });
-  document.getElementById("png").addEventListener("click", () => {
-    const a = document.createElement("a"); a.download = "soon.png"; a.href = canvas.toDataURL("image/png"); a.click();
-  });
   document.getElementById("grid-btn").addEventListener("click", () => {
     state.grid = !state.grid;
     document.getElementById("grid-btn").classList.toggle("active", state.grid);
@@ -1850,6 +2009,24 @@
   });
   document.getElementById("sidebar-toggle").addEventListener("click", () => setSidebar(!sidebarOpen()));
 
+  textEditEl.addEventListener("input", () => {
+    const obj = state.objects.get(state.textEdit);
+    if (!obj) return;
+    obj.text = textEditEl.value;
+    sendDrafts([obj]);
+    state.dirty = true;
+  });
+  textEditEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+  canvas.addEventListener("dblclick", (ev) => {
+    if (typing() && ev.target === textEditEl) return;
+    const p = pointer(ev);
+    const w = toWorld(p.x, p.y);
+    const obj = hit(w.x, w.y);
+    if (obj && obj.type === "text") {
+      ev.preventDefault();
+      startTextEdit(obj.id, false);
+    }
+  });
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   window.addEventListener("pointerup", onUp);
@@ -1868,6 +2045,7 @@
   window.addEventListener("keydown", (ev) => {
     if (ev.key === "Shift" || ev.code === "ShiftLeft" || ev.code === "ShiftRight") state.shift = true;
     if (ev.key === "Control" || ev.code === "ControlLeft" || ev.code === "ControlRight") state.ctrl = true;
+    if (ev.code === "Escape" && state.textEdit) { ev.preventDefault(); endTextEdit(); return; }
     if (ev.code === "Escape" && state.chatOpen) { ev.preventDefault(); closeChat(); return; }
     if (ev.code === "Enter" && state.chatOpen && document.activeElement === chatInput) {
       ev.preventDefault(); sendChat(); return;
@@ -1890,7 +2068,7 @@
         );
       }
     }
-    const tools = { v: "select", p: "pen", e: "eraser", i: "image" };
+    const tools = { v: "select", p: "pen", e: "eraser", x: "text" };
     if (!mod && tools[letter]) setTool(tools[letter]);
   });
   window.addEventListener("keyup", (ev) => {

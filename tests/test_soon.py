@@ -5,8 +5,11 @@ from PIL import Image
 
 from soon.media_store import file_hash, is_masked, mask_image, unmask_image
 from soon.soon import (
+    GUEST_COLORS,
     _cdn_url,
+    _guest_color,
     _media_id,
+    _palette_color,
     apply_op,
     claim_name,
     normalize_room,
@@ -218,6 +221,52 @@ def test_session_id_accepts_client_sid():
     fresh = session_id("../nope")
     assert len(fresh) == 16
     assert session_id(None) != session_id("")
+
+
+def test_guest_color_is_random_and_avoids_taken():
+    assert _palette_color("#4A90D9") == "#4a90d9"
+    assert _palette_color("#ffffff") is None
+    first = _guest_color()
+    assert first in GUEST_COLORS
+    leftover = [item for item in GUEST_COLORS if item != first]
+    second = _guest_color({first})
+    assert second in leftover
+
+
+def test_validate_text_box_and_legacy_without_size_box():
+    boxed = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "text",
+            "x": 10,
+            "y": 20,
+            "w": 240,
+            "h": 72,
+            "text": "hello",
+            "color": "#6fbf4a",
+            "size": 22,
+            "rot": 15,
+            "z": 1,
+        }
+    )
+    assert boxed["w"] == 240.0
+    assert boxed["h"] == 72.0
+    assert boxed["color"] == "#6fbf4a"
+    assert boxed["size"] == 22.0
+    assert boxed["rot"] == 15.0
+
+    legacy = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "text": "hi",
+            "z": 1,
+        }
+    )
+    assert legacy["w"] >= 40
+    assert legacy["h"] >= 24
 
 
 def _tiny_png() -> bytes:

@@ -287,8 +287,21 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["x"] = _finite(raw.get("x", 0))
         obj["y"] = _finite(raw.get("y", 0))
         obj["text"] = _text(raw.get("text", ""))
-        obj["color"] = _color(raw.get("color", "#e5e1db"))
-        obj["size"] = _finite(raw.get("size", 18), 10, 96)
+        obj["color"] = _color(raw.get("color", "#d4a373"))
+        obj["size"] = _finite(raw.get("size", 18), 10, 240)
+        obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
+        size = obj["size"]
+        if raw.get("w") is None:
+            obj["w"] = round(
+                max(40.0, min(MAX_IMAGE, max(size, len(obj["text"]) * size * 0.62))),
+                2,
+            )
+        else:
+            obj["w"] = _finite(raw.get("w"), 24, MAX_IMAGE)
+        if raw.get("h") is None:
+            obj["h"] = round(max(24.0, size * 1.25), 2)
+        else:
+            obj["h"] = _finite(raw.get("h"), 16, MAX_IMAGE)
     elif obj_type == "note":
         obj["x"] = _finite(raw.get("x", 0))
         obj["y"] = _finite(raw.get("y", 0))
@@ -484,12 +497,29 @@ def session_id(raw: Any) -> str:
     return secrets.token_hex(8)
 
 
-def _guest_color(seed: str) -> str:
-    palette = (
-        "#d4a373", "#d98a59", "#e65c5c", "#a3e09d",
-        "#7eb8d4", "#c9a0dc", "#e8dbce", "#f0ebe1",
-    )
-    return palette[sum(ord(ch) for ch in seed) % len(palette)]
+GUEST_COLORS = (
+    "#e09a2b",
+    "#6fbf4a",
+    "#2eb8a8",
+    "#4a90d9",
+    "#7b6cd9",
+    "#d45eb0",
+    "#d4a373",
+    "#e05a4f",
+)
+
+
+def _palette_color(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    raw = value.strip().lower()
+    return raw if raw in GUEST_COLORS else None
+
+
+def _guest_color(taken: set[str] | None = None) -> str:
+    used = {str(item).lower() for item in (taken or set()) if item}
+    free = [item for item in GUEST_COLORS if item not in used]
+    return secrets.choice(free or GUEST_COLORS)
 
 
 async def _broadcast(room: Room, payload: dict[str, Any], skip: str | None = None) -> None:
@@ -772,13 +802,18 @@ async def _run_socket(websocket: WebSocket) -> None:
     await websocket.accept()
     client_id = session_id(websocket.query_params.get("sid"))
     state = await hub.room(name)
-    color = _guest_color(client_id)
     bucket: list[float] = []
     old: WebSocket | None = None
 
     async with state.lock:
         old = state.clients.get(client_id)
         state.clients[client_id] = websocket
+        taken_colors = {
+            str(info.get("color") or "").lower()
+            for other_id, info in state.presence.items()
+            if other_id != client_id
+        }
+        color = _guest_color(taken_colors)
         if client_id not in state.presence:
             state.presence[client_id] = {
                 "name": _guest_name(taken_names(state.presence)),
@@ -788,7 +823,7 @@ async def _run_socket(websocket: WebSocket) -> None:
             }
         info = state.presence[client_id]
         name_hint = info.get("name") or _guest_name(taken_names(state.presence))
-        color = info.get("color") or color
+        color = _palette_color(info.get("color")) or color
         info["name"] = name_hint
         info["color"] = color
         snapshot = list(state.objects.values())
@@ -842,20 +877,27 @@ async def _run_socket(websocket: WebSocket) -> None:
                 bucket.append(now)
 
             if kind == "hello":
+                guest = None
                 async with state.lock:
-                    try:
-                        guest = claim_name(
-                            state.presence, client_id, message.get("name")
-                        )
-                    except ValueError as exc:
-                        await websocket.send_json(
-                            {"type": "error", "message": str(exc)}
-                        )
-                        continue
                     info = state.presence.get(client_id)
-                    if info is not None:
-                        info["name"] = guest
-                await websocket.send_json({"type": "nick", "name": guest})
+                    wanted = _palette_color(message.get("color"))
+                    if info is not None and wanted:
+                        info["color"] = wanted
+                        color = wanted
+                    if message.get("name"):
+                        try:
+                            guest = claim_name(
+                                state.presence, client_id, message.get("name")
+                            )
+                        except ValueError as exc:
+                            await websocket.send_json(
+                                {"type": "error", "message": str(exc)}
+                            )
+                            continue
+                        if info is not None:
+                            info["name"] = guest
+                if guest is not None:
+                    await websocket.send_json({"type": "nick", "name": guest})
                 await _presence(state)
             elif kind == "cursor":
                 try:
@@ -876,7 +918,7 @@ async def _run_socket(websocket: WebSocket) -> None:
                         "x": x,
                         "y": y,
                         "name": state.presence.get(client_id, {}).get("name"),
-                        "color": color,
+                        "color": state.presence.get(client_id, {}).get("color") or color,
                     },
                     skip=client_id,
                 )
