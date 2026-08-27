@@ -87,6 +87,8 @@ MAX_CHAT_TEXT = 240
 WS_IDLE = 40.0
 MAX_MEDIA_BYTES = 1_500_000
 MAX_COORD = 1_000_000.0
+MIN_IMAGE = 24.0
+MAX_IMAGE = MAX_COORD
 DEFAULT_ROOM = "board"
 
 OBJECT_TYPES = frozenset(
@@ -297,8 +299,8 @@ def validate_object(raw: Any) -> dict[str, Any]:
     elif obj_type in {"image", "file"}:
         obj["x"] = _finite(raw.get("x", 0))
         obj["y"] = _finite(raw.get("y", 0))
-        obj["w"] = _finite(raw.get("w", 240), 24, 2400)
-        obj["h"] = _finite(raw.get("h", 180), 24, 2400)
+        obj["w"] = _finite(raw.get("w", 240), MIN_IMAGE, MAX_IMAGE)
+        obj["h"] = _finite(raw.get("h", 180), MIN_IMAGE, MAX_IMAGE)
         obj["media_id"] = _media_id(raw.get("media_id"))
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
         if obj_type == "image" and raw.get("media_url"):

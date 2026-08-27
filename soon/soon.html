@@ -750,11 +750,18 @@
     if (obj.type === "image" || obj.type === "file") return { w: 24, h: 24 };
     return { w: 8, h: 8 };
   }
+  function maxBox(obj) {
+    if (obj.type === "note") return { w: 640, h: 480 };
+    if (obj.type === "link") return { w: 640, h: 160 };
+    if (obj.type === "image" || obj.type === "file") return { w: 1e6, h: 1e6 };
+    return { w: 1e6, h: 1e6 };
+  }
   function scaleAbout(origin, c, sx, sy) {
     const copy = clone(origin);
     const mapX = (x) => c.x + (x - c.x) * sx;
     const mapY = (y) => c.y + (y - c.y) * sy;
     const mins = minBox(copy);
+    const maxs = maxBox(copy);
     if (copy.points) copy.points = copy.points.map(([x, y]) => [mapX(x), mapY(y)]);
     if (copy.x1 != null) {
       copy.x1 = mapX(copy.x1); copy.y1 = mapY(copy.y1);
@@ -762,8 +769,8 @@
     }
     if (copy.x != null) copy.x = mapX(copy.x);
     if (copy.y != null) copy.y = mapY(copy.y);
-    if (copy.w != null) copy.w = Math.max(mins.w, Math.abs(copy.w * sx));
-    if (copy.h != null) copy.h = Math.max(mins.h, Math.abs(copy.h * sy));
+    if (copy.w != null) copy.w = Math.round(clampNum(Math.abs(copy.w * sx), mins.w, maxs.w) * 100) / 100;
+    if (copy.h != null) copy.h = Math.round(clampNum(Math.abs(copy.h * sy), mins.h, maxs.h) * 100) / 100;
     if (copy.width != null) {
       const hi = copy.type === "shape" ? 40 : 80;
       copy.width = clampNum(copy.width * (Math.abs(sx) + Math.abs(sy)) / 2, 0.5, hi);
@@ -782,9 +789,15 @@
     const local = worldToLocal(origin, wx, wy);
     let hw = box.w / 2, hh = box.h / 2;
     const mins = minBox(origin);
-    if (handle.includes("e") || handle.includes("w")) hw = Math.max(mins.w / 2, Math.abs(local.x - c.x));
-    if (handle.includes("n") || handle.includes("s")) hh = Math.max(mins.h / 2, Math.abs(local.y - c.y));
+    const maxs = maxBox(origin);
+    if (handle.includes("e") || handle.includes("w")) {
+      hw = clampNum(Math.abs(local.x - c.x), mins.w / 2, maxs.w / 2);
+    }
+    if (handle.includes("n") || handle.includes("s")) {
+      hh = clampNum(Math.abs(local.y - c.y), mins.h / 2, maxs.h / 2);
+    }
     let sx = (hw * 2) / box.w, sy = (hh * 2) / box.h;
+    const maxSx = maxs.w / box.w, maxSy = maxs.h / box.h;
     if (lockRatio && box.w > 0 && box.h > 0) {
       const minS = Math.max(mins.w / box.w, mins.h / box.h);
       if (handle === "n" || handle === "s") sx = sy;
@@ -794,8 +807,12 @@
         const fromY = Math.abs(local.y - c.y) / (box.h / 2);
         sx = sy = Math.max(fromX, fromY, minS);
       }
-      sx = Math.max(sx, minS);
-      sy = Math.max(sy, minS);
+      const cap = Math.min(maxSx, maxSy);
+      sx = clampNum(sx, minS, cap);
+      sy = clampNum(sy, minS, cap);
+    } else {
+      sx = Math.min(sx, maxSx);
+      sy = Math.min(sy, maxSy);
     }
     return scaleAbout(origin, c, sx, sy);
   }

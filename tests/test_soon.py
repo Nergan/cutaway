@@ -183,6 +183,10 @@ def test_validate_image_rotation():
     wrapped = validate_object({**obj, "rot": -45})
     assert wrapped["rot"] == 315.0
 
+    large = validate_object({**obj, "w": 8000, "h": 4500})
+    assert large["w"] == 8000.0
+    assert large["h"] == 4500.0
+
 
 def test_validate_stroke_and_note_keep_rotation():
     note = validate_object(
