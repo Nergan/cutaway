@@ -225,6 +225,7 @@
   const SCALE_MAX = 8;
   const DRAG_PX = 5;
   const MAX_STROKE_POINTS = 1000;
+  const TEXT_SIZE_MUL = 3;
   const I18N = {
     ru: {
       tools: "инструменты",
@@ -622,7 +623,7 @@
     }
     if (obj.type === "stamp") return { x: obj.x - obj.size / 2, y: obj.y - obj.size / 2, w: obj.size, h: obj.size };
     if (obj.type === "text") {
-      const size = obj.size || 18;
+      const size = textFontPx(obj);
       return {
         x: obj.x, y: obj.y,
         w: obj.w || Math.max(size, (obj.text || "").length * size * 0.62),
@@ -632,11 +633,14 @@
     if (obj.w && obj.h) return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
     return null;
   }
+  function textFontPx(obj) {
+    return Math.max(1, (obj.size || 18) * TEXT_SIZE_MUL);
+  }
   function textFont(obj) {
-    return (obj.size || 18) + "px Verdana, Arial, Helvetica, sans-serif";
+    return textFontPx(obj) + "px Verdana, Arial, Helvetica, sans-serif";
   }
   function layoutText(obj) {
-    const size = obj.size || 18;
+    const size = textFontPx(obj);
     const lineH = size * 1.25;
     const pad = 2;
     const left = (obj.x || 0) + pad;
@@ -660,9 +664,9 @@
     ctx.restore();
     return glyphs;
   }
-  function fitTextBox(obj) {
+  function fitTextBox(obj, pinCenter) {
     if (!obj || obj.type !== "text") return obj;
-    const size = obj.size || 18;
+    const size = textFontPx(obj);
     const pad = 2;
     const glyphs = layoutText(obj);
     if (!glyphs.length) {
@@ -671,15 +675,19 @@
       obj.w = Math.max(8, Math.round((ctx.measureText("W").width + pad * 2) * 100) / 100);
       ctx.restore();
       obj.h = Math.max(8, Math.round((size * 1.25 + pad * 2) * 100) / 100);
-      return obj;
+    } else {
+      let x2 = obj.x, y2 = obj.y;
+      for (const g of glyphs) {
+        x2 = Math.max(x2, g.x + g.w);
+        y2 = Math.max(y2, g.y + g.h);
+      }
+      obj.w = Math.max(8, Math.round((x2 - obj.x + pad) * 100) / 100);
+      obj.h = Math.max(8, Math.round((y2 - obj.y + pad) * 100) / 100);
     }
-    let x2 = obj.x, y2 = obj.y;
-    for (const g of glyphs) {
-      x2 = Math.max(x2, g.x + g.w);
-      y2 = Math.max(y2, g.y + g.h);
+    if (pinCenter) {
+      obj.x = Math.round((pinCenter.x - obj.w / 2) * 100) / 100;
+      obj.y = Math.round((pinCenter.y - obj.h / 2) * 100) / 100;
     }
-    obj.w = Math.max(8, Math.round((x2 - obj.x + pad) * 100) / 100);
-    obj.h = Math.max(8, Math.round((y2 - obj.y + pad) * 100) / 100);
     return obj;
   }
   function textFontSize() {
@@ -699,7 +707,7 @@
     for (const orig of origins) {
       const cur = state.objects.get(orig.id);
       if (!cur) continue;
-      if (cur.color !== orig.color || cur.alpha !== orig.alpha || cur.size !== orig.size || cur.w !== orig.w || cur.h !== orig.h) {
+      if (cur.color !== orig.color || cur.alpha !== orig.alpha || cur.size !== orig.size || cur.w !== orig.w || cur.h !== orig.h || cur.x !== orig.x || cur.y !== orig.y) {
         doOps.push({ op: "update", object: clone(cur) });
         undoOps.push({ op: "update", object: orig });
       }
@@ -728,8 +736,9 @@
     for (const obj of items) {
       const cur = state.objects.get(obj.id);
       if (!cur) continue;
+      const pin = objectCenter(cur);
       cur.size = size;
-      fitTextBox(cur);
+      fitTextBox(cur, pin);
       sendDrafts([cur]);
     }
     if (state.textEdit) syncTextEditor();
@@ -1472,10 +1481,10 @@
     textEditEl.style.display = "block";
     textEditEl.style.left = p.x + "px";
     textEditEl.style.top = p.y + "px";
-    textEditEl.style.width = Math.max(24, box.w * sc) + "px";
-    textEditEl.style.height = Math.max(20, box.h * sc) + "px";
+    textEditEl.style.width = Math.max(8, box.w * sc) + "px";
+    textEditEl.style.height = Math.max(8, box.h * sc) + "px";
     textEditEl.style.transform = "translate(-50%, -50%) rotate(" + (obj.rot || 0) + "deg)";
-    textEditEl.style.fontSize = ((obj.size || 18) * sc) + "px";
+    textEditEl.style.fontSize = (textFontPx(obj) * sc) + "px";
     textEditEl.style.color = obj.color || state.color;
   }
   function startTextEdit(id, isNew) {
@@ -1588,9 +1597,10 @@
         };
         return;
       }
-      const current = hit(w.x, w.y);
-      if (current && current.id === state.textEdit) {
-        textEditEl.focus();
+      if (editing && objectContains(editing, w.x, w.y)) {
+        state.selected = new Set([editing.id]);
+        state.pendingMove = { x: p.x, y: p.y, isolate: null };
+        state.moveOrigins = new Map([[editing.id, clone(editing)]]);
         return;
       }
       endTextEdit();
@@ -1649,7 +1659,10 @@
     if (state.tool === "eraser") state.dirty = true;
     if ((state.tool === "select" || state.textEdit) && !state.moving && !state.xform && !state.panning && !state.lassoing) {
       const h = hitHandle(p.x, p.y);
-      canvas.style.cursor = h ? (h.handle === "rot" ? "grab" : "nwse-resize") : "default";
+      const editing = state.textEdit && state.objects.get(state.textEdit);
+      if (h) canvas.style.cursor = h.handle === "rot" ? "grab" : "nwse-resize";
+      else if (editing && objectContains(editing, w.x, w.y)) canvas.style.cursor = "move";
+      else canvas.style.cursor = state.tool === "text" ? "crosshair" : "default";
     }
     if (state.pointers.has(ev.pointerId)) state.pointers.set(ev.pointerId, p);
     const now = performance.now();
@@ -1685,7 +1698,7 @@
       const next = state.xform.kind === "rotate"
         ? applyRotate(origin, w.x, w.y)
         : applyResize(origin, state.xform.handle, w.x, w.y, origin.type === "text" || ratioLock(ev));
-      if (next.type === "text" && state.xform.kind === "resize") fitTextBox(next);
+      if (next.type === "text" && state.xform.kind === "resize") fitTextBox(next, objectCenter(next));
       state.objects.set(next.id, next);
       sendDrafts([next]);
       if (state.textEdit === next.id) syncTextEditor();
@@ -1770,7 +1783,7 @@
       const origin = state.xform.origin;
       const obj = state.objects.get(origin.id);
       if (obj && obj.type === "text") {
-        fitTextBox(obj);
+        fitTextBox(obj, objectCenter(obj));
         if (state.textEdit === obj.id) syncTextEditor();
       }
       clearDraft(origin.id);
@@ -1789,14 +1802,16 @@
       if (state.lassoing) finishLasso();
     }
     if (last && state.pendingMove && !state.moving) {
-      if (state.pendingToggle && state.selected.has(state.pendingToggle)) {
+      if (state.textEdit) {
+        textEditEl.focus();
+      } else if (state.pendingToggle && state.selected.has(state.pendingToggle)) {
         state.selected.delete(state.pendingToggle);
         state.dirty = true;
       } else if (state.pendingMove.isolate) {
         state.selected = new Set([state.pendingMove.isolate]);
         state.dirty = true;
       }
-      syncStyleFromSelection();
+      if (!state.textEdit) syncStyleFromSelection();
       state.pendingToggle = null;
       state.pendingMove = null;
       state.moveOrigins.clear();
@@ -1811,8 +1826,10 @@
         doOps.push({ op: "update", object: clone(obj) });
         undoOps.push({ op: "update", object: origin });
       }
-      if (doOps.length) commitBatch(doOps, undoOps);
+      if (doOps.length && !state.textEditNew) commitBatch(doOps, undoOps);
+      else if (doOps.length && state.textEditNew) sendDrafts(selectedObjects());
       state.moving = false; state.moveOrigins.clear();
+      if (state.textEdit) requestAnimationFrame(() => textEditEl.focus());
     }
     if (!last || !state.drawing) return;
     state.drawing = false;
