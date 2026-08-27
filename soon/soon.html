@@ -93,6 +93,30 @@
       -webkit-text-stroke: 2px #1f1b18; paint-order: stroke fill;
       text-shadow: 0 0 2px #1f1b18;
     }
+    .chat {
+      position: absolute; left: 10px; bottom: calc(26px + var(--safe-b)); z-index: 6;
+      width: min(440px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 4px;
+      pointer-events: none;
+    }
+    .chat-log {
+      display: none; max-height: 7.4em; overflow: hidden; padding: 4px 7px;
+      background: rgba(12, 10, 9, 0.22); border-radius: 2px;
+      font-size: 9pt; line-height: 1.35; color: #efeae4;
+      text-shadow: 1px 1px 0 #1a1614, -1px 0 0 #1a1614;
+    }
+    .chat-log.has-msg { display: block; }
+    .chat.open .chat-log {
+      max-height: 240px; overflow-y: auto; pointer-events: auto;
+      background: rgba(12, 10, 9, 0.32);
+    }
+    .chat-line { word-break: break-word; }
+    .chat-nick { color: #d4a373; }
+    .chat-input {
+      display: none; pointer-events: auto;
+      background: rgba(12, 10, 9, 0.35); border: 1px solid rgba(229, 225, 219, 0.18);
+      color: #efeae4;
+    }
+    .chat.open .chat-input { display: block; }
     .edge-chip {
       position: absolute; z-index: 5; left: 0; top: 0; border: none; background: transparent;
       color: #c4bbb3; font-size: 8pt; padding: 2px 4px; cursor: pointer;
@@ -117,6 +141,10 @@
     <canvas id="board"></canvas>
     <div id="offscreen"></div>
     <div class="toast" id="toast"></div>
+    <div class="chat" id="chat">
+      <div class="chat-log" id="chat-log"></div>
+      <input class="form-control chat-input" id="chat-input" maxlength="240" autocomplete="off" spellcheck="false" data-i18n-placeholder="chatPh">
+    </div>
     <div class="statusbar" id="status-line"></div>
   </div>
   <button type="button" class="sidebar-toggle" id="sidebar-toggle" data-i18n-aria="panel" aria-expanded="true"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
@@ -184,7 +212,7 @@
       select: "Выбор", selectHint: "Выбрать объект (V)",
       pan: "Перемещение", panHint: "Двигать холст (H, пробел)",
       pen: "Карандаш", penHint: "Рисовать (P)",
-      eraser: "Ластик", eraserHint: "Стереть объект (E)",
+      eraser: "Ластик", eraserHint: "Стереть часть линии (E)",
       lasso: "Рамка", lassoHint: "Выделить прямоугольником, как в проводнике (L)",
       image: "Картинка", imageHint: "Вставить изображение (I, Ctrl+V)",
       color: "цвет", opacity: "прозрачность", width: "толщина",
@@ -193,7 +221,8 @@
       toggleGrid: "Сетка", toggleGridHint: "Показать или скрыть сетку",
       resetZoom: "Сбросить масштаб", resetZoomHint: "Вернуть вид 100% в начало холста",
       saveNick: "Сохранить", nickPh: "свой ник",
-      help: "Клавиши по физическим кнопкам, на любой раскладке. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. Два пальца двигают холст. Клик по человеку переносит к курсору.",
+      chatPh: "сообщение…",
+      help: "Клавиши по физическим кнопкам, на любой раскладке. T — чат, Delete — удалить выделенное. Картинку можно растянуть и повернуть за маркеры. Ctrl+C/V — копия и вставка, Ctrl+Z/Y — отмена. Два пальца двигают холст. Клик по человеку переносит к курсору.",
       online: "на связи", offline: "нет связи", reconnect: "переподключение…",
       you: "вы", guest: "гость", follow: "Перейти к",
       copied: "скопировано", copyFirst: "сначала выберите объект",
@@ -213,7 +242,7 @@
       select: "Select", selectHint: "Select an object (V)",
       pan: "Pan", panHint: "Move the canvas (H, Space)",
       pen: "Pencil", penHint: "Draw (P)",
-      eraser: "Eraser", eraserHint: "Erase an object (E)",
+      eraser: "Eraser", eraserHint: "Erase part of a stroke (E)",
       lasso: "Marquee", lassoHint: "Select with a rectangle, like in a file manager (L)",
       image: "Image", imageHint: "Insert an image (I, Ctrl+V)",
       color: "color", opacity: "opacity", width: "thickness",
@@ -222,7 +251,8 @@
       toggleGrid: "Grid", toggleGridHint: "Show or hide the grid",
       resetZoom: "Reset zoom", resetZoomHint: "Return to 100% at the origin",
       saveNick: "Save", nickPh: "your nickname",
-      help: "Shortcuts follow physical keys on any layout. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Two fingers pan. Click a person to jump to their cursor.",
+      chatPh: "message…",
+      help: "Shortcuts follow physical keys on any layout. T opens chat, Delete removes the selection. Drag image handles to resize or rotate. Ctrl+C/V copy and paste, Ctrl+Z/Y undo. Two fingers pan. Click a person to jump to their cursor.",
       online: "online", offline: "offline", reconnect: "reconnecting…",
       you: "you", guest: "guest", follow: "Go to",
       copied: "copied", copyFirst: "select an object first",
@@ -247,6 +277,9 @@
   const hueCtx = hueCanvas.getContext("2d");
   const appEl = document.getElementById("app");
   const nickEl = document.getElementById("nick");
+  const chatEl = document.getElementById("chat");
+  const chatLogEl = document.getElementById("chat-log");
+  const chatInput = document.getElementById("chat-input");
   const mobile = window.matchMedia("(max-width: 720px)");
 
   const state = {
@@ -254,9 +287,10 @@
     me: null, tool: "select", color: "#d4a373", alpha: 1, hsv: { h: 28, s: 0.45, v: 0.83 },
     width: 3, grid: true, objects: new Map(), drafts: new Map(), users: new Map(),
     selected: new Set(), camera: { x: 0, y: 0, scale: 1 }, cssW: 1, cssH: 1,
-    drawing: false, panning: false, moving: false, lassoing: false,
-    start: null, last: null, points: [], lasso: null, draftId: null, moveOrigins: new Map(),
-    erased: new Set(), undo: [], redo: [], clip: null, connected: false,
+    drawing: false, panning: false, moving: false, lassoing: false, erasing: false,
+    start: null, last: null, hover: null, points: [], lasso: null, draftId: null, moveOrigins: new Map(),
+    xform: null, eraseGesture: null, chat: [], chatOpen: false,
+    undo: [], redo: [], clip: null, connected: false,
     ws: null, backoff: 600, imageCache: new Map(), dirty: true, space: false,
     pointers: new Map(), pinch: null, lastCursor: 0, followAnim: 0,
   };
@@ -303,17 +337,30 @@
   }
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
   function selectedObjects() {
-    return [...state.selected].map((id) => state.objects.get(id)).filter(Boolean);
+    return [...state.selected].map((id) => state.objects.get(id) || state.drafts.get(id)).filter(Boolean);
   }
-
+  function asOps(value) {
+    return Array.isArray(value) ? value : value ? [value] : [];
+  }
   function commit(op, inverse) {
     applyLocal(op);
+    send({ type: "op", ...op });
     if (inverse) {
-      state.undo.push({ do: op, undo: inverse });
+      state.undo.push({ do: [op], undo: [inverse] });
       if (state.undo.length > 80) state.undo.shift();
       state.redo = [];
     }
-    send({ type: "op", ...op });
+    state.dirty = true;
+  }
+  function commitBatch(doOps, undoOps) {
+    if (!doOps.length) return;
+    for (const op of doOps) {
+      applyLocal(op);
+      send({ type: "op", ...op });
+    }
+    state.undo.push({ do: doOps, undo: undoOps });
+    if (state.undo.length > 80) state.undo.shift();
+    state.redo = [];
     state.dirty = true;
   }
   function applyLocal(op) {
@@ -321,24 +368,31 @@
     else if (op.op === "delete") {
       state.objects.delete(op.id);
       state.selected.delete(op.id);
+      state.drafts.delete(op.id);
     } else if (op.op === "clear") {
       state.objects.clear();
       state.selected.clear();
     }
+    state.dirty = true;
   }
   function doUndo() {
     const item = state.undo.pop();
     if (!item) return;
-    applyLocal(item.undo);
-    send({ type: "op", ...item.undo });
+    const undos = asOps(item.undo);
+    for (let i = undos.length - 1; i >= 0; i--) {
+      applyLocal(undos[i]);
+      send({ type: "op", ...undos[i] });
+    }
     state.redo.push(item);
     state.dirty = true;
   }
   function doRedo() {
     const item = state.redo.pop();
     if (!item) return;
-    applyLocal(item.do);
-    send({ type: "op", ...item.do });
+    for (const op of asOps(item.do)) {
+      applyLocal(op);
+      send({ type: "op", ...op });
+    }
     state.undo.push(item);
     state.dirty = true;
   }
@@ -452,12 +506,15 @@
     if (obj.type === "stroke") {
       strokePath(obj.points, obj.width * state.camera.scale, obj.color, alpha);
     } else if (obj.type === "image") {
-      const p = toScreen(obj.x, obj.y);
+      const c = imageCenter(obj);
+      const p = toScreen(c.x, c.y);
       const w = obj.w * state.camera.scale, h = obj.h * state.camera.scale;
       const img = imageOf(obj.media_id);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(imageRot(obj));
       ctx.globalAlpha *= alpha;
-      if (img.complete && img.naturalWidth) ctx.drawImage(img, p.x, p.y, w, h);
-      else { ctx.fillStyle = "#4a3c31"; ctx.fillRect(p.x, p.y, w, h); }
+      if (img.complete && img.naturalWidth) ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      else { ctx.fillStyle = "#4a3c31"; ctx.fillRect(-w / 2, -h / 2, w, h); }
     } else if (obj.type === "shape") {
       const a = toScreen(obj.x1, obj.y1), b = toScreen(obj.x2, obj.y2);
       ctx.globalAlpha *= alpha; ctx.strokeStyle = obj.color; ctx.lineWidth = obj.width * state.camera.scale;
@@ -481,16 +538,95 @@
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(obj.emoji, p.x, p.y); ctx.textAlign = "start";
     }
-    if (state.selected.has(obj.id)) {
+    ctx.restore();
+    if (state.selected.has(obj.id)) drawSelection(obj);
+  }
+  function imageRot(obj) { return ((obj.rot || 0) * Math.PI) / 180; }
+  function imageCenter(obj) { return { x: obj.x + obj.w / 2, y: obj.y + obj.h / 2 }; }
+  function rotatePoint(p, cx, cy, rad) {
+    const dx = p.x - cx, dy = p.y - cy, c = Math.cos(rad), s = Math.sin(rad);
+    return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c };
+  }
+  function imageCorners(obj) {
+    const c = imageCenter(obj), rad = imageRot(obj);
+    return [
+      { x: obj.x, y: obj.y },
+      { x: obj.x + obj.w, y: obj.y },
+      { x: obj.x + obj.w, y: obj.y + obj.h },
+      { x: obj.x, y: obj.y + obj.h },
+    ].map((p) => rotatePoint(p, c.x, c.y, rad));
+  }
+  function imageContains(obj, wx, wy) {
+    const c = imageCenter(obj);
+    const local = rotatePoint({ x: wx, y: wy }, c.x, c.y, -imageRot(obj));
+    return local.x >= obj.x && local.x <= obj.x + obj.w && local.y >= obj.y && local.y <= obj.y + obj.h;
+  }
+  function drawSelection(obj) {
+    ctx.save();
+    ctx.globalAlpha = 1; ctx.strokeStyle = "#d98a59"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+    if (obj.type === "image") {
+      const corners = imageCorners(obj).map((p) => toScreen(p.x, p.y));
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+      ctx.closePath(); ctx.stroke();
+    } else {
       const box = bounds(obj);
       if (box) {
         const a = toScreen(box.x, box.y);
-        ctx.globalAlpha = 1; ctx.strokeStyle = "#d98a59"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
         ctx.strokeRect(a.x - 3, a.y - 3, box.w * state.camera.scale + 6, box.h * state.camera.scale + 6);
-        ctx.setLineDash([]);
       }
     }
+    ctx.setLineDash([]);
     ctx.restore();
+  }
+  function handlePositions(obj) {
+    const c = imageCenter(obj), rad = imageRot(obj);
+    const names = ["nw", "ne", "se", "sw"];
+    const handles = imageCorners(obj).map((p, i) => ({ name: names[i], ...toScreen(p.x, p.y) }));
+    const tip = rotatePoint({ x: c.x, y: obj.y - 28 / state.camera.scale }, c.x, c.y, rad);
+    handles.push({ name: "rot", ...toScreen(tip.x, tip.y) });
+    return handles;
+  }
+  function hitHandle(sx, sy) {
+    if (state.selected.size !== 1) return null;
+    const obj = selectedObjects()[0];
+    if (!obj || obj.type !== "image") return null;
+    for (const h of handlePositions(obj)) {
+      if (Math.hypot(sx - h.x, sy - h.y) <= 9) return { handle: h.name, obj };
+    }
+    return null;
+  }
+  function drawHandles(obj) {
+    const hs = handlePositions(obj);
+    const c = imageCenter(obj);
+    const top = rotatePoint({ x: c.x, y: obj.y }, c.x, c.y, imageRot(obj));
+    const tm = toScreen(top.x, top.y);
+    const rotH = hs.find((h) => h.name === "rot");
+    ctx.save();
+    ctx.strokeStyle = "#d98a59"; ctx.fillStyle = "#e5e1db"; ctx.lineWidth = 1;
+    if (rotH) { ctx.beginPath(); ctx.moveTo(tm.x, tm.y); ctx.lineTo(rotH.x, rotH.y); ctx.stroke(); }
+    for (const h of hs) {
+      ctx.beginPath();
+      if (h.name === "rot") ctx.arc(h.x, h.y, 5, 0, Math.PI * 2);
+      else ctx.rect(h.x - 4, h.y - 4, 8, 8);
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function applyResize(origin, handle, wx, wy) {
+    const c = imageCenter(origin);
+    const local = rotatePoint({ x: wx, y: wy }, c.x, c.y, -imageRot(origin));
+    let hw = origin.w / 2, hh = origin.h / 2;
+    if (handle.includes("e") || handle.includes("w")) hw = Math.max(24, Math.abs(local.x - c.x));
+    if (handle.includes("n") || handle.includes("s")) hh = Math.max(24, Math.abs(local.y - c.y));
+    return { ...clone(origin), x: c.x - hw, y: c.y - hh, w: hw * 2, h: hh * 2 };
+  }
+  function applyRotate(origin, wx, wy) {
+    const c = imageCenter(origin);
+    let deg = Math.atan2(wy - c.y, wx - c.x) * 180 / Math.PI + 90;
+    deg = ((deg % 360) + 360) % 360;
+    return { ...clone(origin), rot: Math.round(deg * 100) / 100 };
   }
   function bounds(obj) {
     if (obj.type === "stroke" && obj.points && obj.points.length) {
@@ -503,6 +639,12 @@
     }
     if (obj.type === "stamp") return { x: obj.x - obj.size / 2, y: obj.y - obj.size / 2, w: obj.size, h: obj.size };
     if (obj.type === "text") return { x: obj.x, y: obj.y, w: Math.max(40, (obj.text || "").length * 10), h: 24 };
+    if (obj.type === "image") {
+      const corners = imageCorners(obj);
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+      for (const p of corners) { x1 = Math.min(x1, p.x); y1 = Math.min(y1, p.y); x2 = Math.max(x2, p.x); y2 = Math.max(y2, p.y); }
+      return { x: x1, y: y1, w: Math.max(1, x2 - x1), h: Math.max(1, y2 - y1) };
+    }
     if (obj.w && obj.h) return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
     return null;
   }
@@ -511,14 +653,23 @@
     const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len));
     return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
   }
+  function hitables() {
+    const map = new Map();
+    for (const obj of state.objects.values()) map.set(obj.id, obj);
+    for (const [id, draft] of state.drafts) map.set(id, draft);
+    return [...map.values()].sort((a, b) => (a.z || 0) - (b.z || 0));
+  }
   function hit(wx, wy) {
-    for (const obj of sorted().reverse()) {
-      if (obj.type === "stroke") {
-        const thresh = Math.max(6, (obj.width || 3) + 4);
+    const screenPad = 8 / state.camera.scale;
+    for (const obj of hitables().reverse()) {
+      if (obj.type === "stroke" && obj.points && obj.points.length > 1) {
+        const thresh = Math.max((obj.width || 3) / 2 + 2, screenPad);
         for (let i = 1; i < obj.points.length; i++) {
           const a = obj.points[i - 1], b = obj.points[i];
           if (distSeg(wx, wy, a[0], a[1], b[0], b[1]) <= thresh) return obj;
         }
+      } else if (obj.type === "image") {
+        if (imageContains(obj, wx, wy)) return obj;
       } else {
         const box = bounds(obj);
         if (box && wx >= box.x && wy >= box.y && wx <= box.x + box.w && wy <= box.y + box.h) return obj;
@@ -726,6 +877,21 @@
       const p = toScreen(user.x, user.y);
       drawCursor(user, p, p.x >= 0 && p.x <= state.cssW && p.y >= 0 && p.y <= state.cssH);
     }
+    if (state.selected.size === 1) {
+      const only = selectedObjects()[0];
+      if (only && only.type === "image") drawHandles(only);
+    }
+    if (state.tool === "eraser" && state.hover) {
+      const r = eraserRadius() * state.camera.scale;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(state.hover.x, state.hover.y, r, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(229,225,219,0.9)";
+      ctx.fillStyle = "rgba(229,225,219,0.08)";
+      ctx.lineWidth = 1;
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
     updateOffscreen();
   }
   function drawGrid() {
@@ -758,13 +924,138 @@
     document.querySelectorAll("#tools .btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.tool === tool);
     });
-    canvas.style.cursor = tool === "pan" ? "grab" : tool === "pen" || tool === "lasso" || tool === "eraser" ? "crosshair" : "default";
+    canvas.style.cursor = tool === "pan" ? "grab" : tool === "eraser" ? "none" : tool === "pen" || tool === "lasso" ? "crosshair" : "default";
+  }
+  function eraserRadius() {
+    return Math.max(state.width / 2, 7 / state.camera.scale);
+  }
+  function densify(points, step) {
+    if (!points || !points.length) return [];
+    let length = 0;
+    for (let i = 1; i < points.length; i++) {
+      length += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+    }
+    const actual = Math.max(step, length / 400);
+    const out = [[points[0][0], points[0][1]]];
+    for (let i = 1; i < points.length; i++) {
+      const ax = points[i - 1][0], ay = points[i - 1][1];
+      const bx = points[i][0], by = points[i][1];
+      const d = Math.hypot(bx - ax, by - ay);
+      const n = Math.max(1, Math.ceil(d / actual));
+      for (let k = 1; k <= n; k++) {
+        const t = k / n;
+        out.push([ax + (bx - ax) * t, ay + (by - ay) * t]);
+      }
+    }
+    return out;
+  }
+  function thinPoints(pts) {
+    if (pts.length <= 2) return pts.map((p) => [p[0], p[1]]);
+    const out = [[pts[0][0], pts[0][1]]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const last = out[out.length - 1];
+      if (Math.hypot(pts[i][0] - last[0], pts[i][1] - last[1]) >= 1.4) out.push([pts[i][0], pts[i][1]]);
+    }
+    out.push([pts[pts.length - 1][0], pts[pts.length - 1][1]]);
+    if (out.length <= 200) return out;
+    const step = (out.length - 1) / 199;
+    const reduced = [];
+    for (let i = 0; i < 199; i++) reduced.push(out[Math.round(i * step)]);
+    reduced.push(out[out.length - 1]);
+    return reduced;
+  }
+  function eraseStroke(obj, cx, cy, radius) {
+    const rad = radius + (obj.width || 3) / 2;
+    const pts = densify(obj.points, Math.max(1.2, rad / 2));
+    const chunks = [];
+    let cur = [];
+    for (const p of pts) {
+      if (Math.hypot(p[0] - cx, p[1] - cy) > rad) cur.push(p);
+      else {
+        if (cur.length >= 2) chunks.push(thinPoints(cur));
+        cur = [];
+      }
+    }
+    if (cur.length >= 2) chunks.push(thinPoints(cur));
+    return chunks;
+  }
+  function strokeHitsBrush(obj, wx, wy, radius) {
+    if (obj.type !== "stroke" || !obj.points || obj.points.length < 2) return false;
+    const rad = radius + (obj.width || 3) / 2;
+    for (let i = 1; i < obj.points.length; i++) {
+      const a = obj.points[i - 1], b = obj.points[i];
+      if (distSeg(wx, wy, a[0], a[1], b[0], b[1]) <= rad) return true;
+    }
+    return false;
+  }
+  function ensureEraseGesture() {
+    if (!state.eraseGesture) state.eraseGesture = { originals: new Map(), created: new Set() };
+    return state.eraseGesture;
+  }
+  function applyEraseToStroke(obj, wx, wy, radius) {
+    const gesture = ensureEraseGesture();
+    if (!gesture.originals.has(obj.id) && !gesture.created.has(obj.id) && state.objects.has(obj.id)) {
+      gesture.originals.set(obj.id, clone(obj));
+    }
+    const chunks = eraseStroke(obj, wx, wy, radius);
+    if (!chunks.length) {
+      state.objects.delete(obj.id);
+      state.selected.delete(obj.id);
+      state.drafts.delete(obj.id);
+      send({ type: "draft", object: null, id: obj.id });
+      return;
+    }
+    const first = clone(obj);
+    first.points = chunks[0];
+    state.objects.set(obj.id, first);
+    send({ type: "draft", object: first });
+    for (let i = 1; i < chunks.length; i++) {
+      const piece = clone(obj);
+      piece.id = uid();
+      piece.points = chunks[i];
+      piece.z = maxZ() + 1;
+      state.objects.set(piece.id, piece);
+      gesture.created.add(piece.id);
+      send({ type: "draft", object: piece });
+    }
   }
   function eraseAt(wx, wy) {
-    const obj = hit(wx, wy);
-    if (!obj || state.erased.has(obj.id)) return;
-    state.erased.add(obj.id);
-    commit({ op: "delete", id: obj.id }, { op: "add", object: obj });
+    const radius = eraserRadius();
+    const ids = [];
+    for (const obj of state.objects.values()) {
+      if (strokeHitsBrush(obj, wx, wy, radius)) ids.push(obj.id);
+    }
+    for (const id of ids) {
+      const obj = state.objects.get(id);
+      if (obj) applyEraseToStroke(obj, wx, wy, radius);
+    }
+    if (ids.length) state.dirty = true;
+  }
+  function finishErase() {
+    const gesture = state.eraseGesture;
+    state.eraseGesture = null;
+    state.erasing = false;
+    if (!gesture) return;
+    const doOps = [], undoOps = [];
+    for (const [id, orig] of gesture.originals) {
+      const current = state.objects.get(id);
+      if (!current) {
+        doOps.push({ op: "delete", id });
+        undoOps.push({ op: "add", object: orig });
+      } else {
+        doOps.push({ op: "update", object: clone(current) });
+        undoOps.push({ op: "update", object: orig });
+      }
+    }
+    for (const id of gesture.created) {
+      const current = state.objects.get(id);
+      if (!current) continue;
+      doOps.push({ op: "add", object: clone(current) });
+      undoOps.push({ op: "delete", id });
+    }
+    if (doOps.length) commitBatch(doOps, undoOps);
+    for (const id of gesture.originals.keys()) send({ type: "draft", object: null, id });
+    for (const id of gesture.created) send({ type: "draft", object: null, id });
   }
 
   function onDown(ev) {
@@ -774,7 +1065,8 @@
     try { canvas.setPointerCapture(ev.pointerId); } catch (_) {}
     if (state.pointers.size === 2) {
       state.drawing = false; state.moving = false; state.panning = false; state.lassoing = false;
-      state.lasso = null;
+      state.lasso = null; state.xform = null;
+      if (state.eraseGesture) finishErase();
       const pts = [...state.pointers.values()];
       state.pinch = { dist: Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y) || 1, mid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 } };
       return;
@@ -785,20 +1077,32 @@
     }
     if (ev.button !== 0) return;
     const w = toWorld(p.x, p.y);
-    state.start = w; state.last = p;
-    if (state.tool === "eraser") { state.erased = new Set(); eraseAt(w.x, w.y); return; }
+    state.start = w; state.last = p; state.hover = p;
+    if (state.tool === "eraser") { state.erasing = true; eraseAt(w.x, w.y); return; }
     if (state.tool === "lasso") {
       state.lassoing = true;
       state.lasso = { x1: w.x, y1: w.y, x2: w.x, y2: w.y };
       state.dirty = true; return;
     }
     if (state.tool === "select") {
+      const handle = hitHandle(p.x, p.y);
+      if (handle) {
+        state.xform = {
+          kind: handle.handle === "rot" ? "rotate" : "resize",
+          handle: handle.handle,
+          origin: clone(handle.obj),
+        };
+        return;
+      }
       const obj = hit(w.x, w.y);
       if (obj) {
         if (!state.selected.has(obj.id) && !ev.shiftKey) state.selected = new Set([obj.id]);
         else state.selected.add(obj.id);
-        state.moving = true;
-        state.moveOrigins = new Map(selectedObjects().map((item) => [item.id, clone(item)]));
+        const movable = selectedObjects().filter((item) => state.objects.has(item.id));
+        if (movable.length) {
+          state.moving = true;
+          state.moveOrigins = new Map(movable.map((item) => [item.id, clone(item)]));
+        }
       } else if (!ev.shiftKey) {
         state.selected.clear();
       }
@@ -812,6 +1116,12 @@
   function onMove(ev) {
     const p = pointer(ev);
     const w = toWorld(p.x, p.y);
+    state.hover = p;
+    if (state.tool === "eraser") state.dirty = true;
+    if (state.tool === "select" && !state.moving && !state.xform && !state.panning) {
+      const h = hitHandle(p.x, p.y);
+      canvas.style.cursor = h ? (h.handle === "rot" ? "grab" : "nwse-resize") : "default";
+    }
     if (state.pointers.has(ev.pointerId)) state.pointers.set(ev.pointerId, p);
     const now = performance.now();
     if (now - state.lastCursor > 40) {
@@ -841,7 +1151,17 @@
       state.camera.y -= (p.y - state.last.y) / state.camera.scale;
       state.last = p; state.dirty = true; updateStatus(); return;
     }
-    if (state.tool === "eraser" && (ev.buttons & 1)) { eraseAt(w.x, w.y); return; }
+    if (state.xform) {
+      const origin = state.xform.origin;
+      const next = state.xform.kind === "rotate"
+        ? applyRotate(origin, w.x, w.y)
+        : applyResize(origin, state.xform.handle, w.x, w.y);
+      state.objects.set(next.id, next);
+      send({ type: "draft", object: next });
+      state.dirty = true;
+      return;
+    }
+    if (state.tool === "eraser" && (state.erasing || (ev.buttons & 1))) { eraseAt(w.x, w.y); return; }
     if (state.lassoing && state.lasso) {
       state.lasso.x2 = w.x; state.lasso.y2 = w.y;
       state.dirty = true; return;
@@ -874,16 +1194,25 @@
     state.pointers.delete(ev.pointerId);
     if (state.pointers.size < 2) state.pinch = null;
     try { canvas.releasePointerCapture(ev.pointerId); } catch (_) {}
-    if (state.panning) {
+    const last = state.pointers.size === 0;
+    if (state.panning && last) {
       state.panning = false;
-      canvas.style.cursor = state.tool === "pan" ? "grab" : state.tool === "select" ? "default" : "crosshair";
+      canvas.style.cursor = state.tool === "pan" ? "grab" : state.tool === "eraser" ? "none" : state.tool === "select" ? "default" : "crosshair";
     }
-    if (state.lassoing) {
+    if (last && state.xform) {
+      const origin = state.xform.origin;
+      const obj = state.objects.get(origin.id);
+      send({ type: "draft", object: null, id: origin.id });
+      if (obj) commit({ op: "update", object: obj }, { op: "update", object: origin });
+      state.xform = null;
+    }
+    if (last && (state.erasing || state.eraseGesture)) finishErase();
+    if (last && state.lassoing) {
       state.lassoing = false;
       const box = state.lasso;
       if (box && Math.hypot(box.x2 - box.x1, box.y2 - box.y1) >= 4) {
         const next = new Set();
-        for (const obj of state.objects.values()) {
+        for (const obj of hitables()) {
           if (objectInRect(obj, box)) next.add(obj.id);
         }
         state.selected = next;
@@ -891,7 +1220,7 @@
       state.lasso = null;
       state.dirty = true;
     }
-    if (state.moving && state.selected.size) {
+    if (last && state.moving && state.selected.size) {
       for (const obj of selectedObjects()) {
         send({ type: "draft", object: null, id: obj.id });
         const origin = state.moveOrigins.get(obj.id);
@@ -899,7 +1228,7 @@
       }
       state.moving = false; state.moveOrigins.clear();
     }
-    if (!state.drawing) return;
+    if (!last || !state.drawing) return;
     state.drawing = false;
     if (state.tool === "pen" && state.points.length >= 2) {
       const obj = {
@@ -944,7 +1273,7 @@
         const obj = {
           id, type: "image", x: wx, y: wy,
           w: Math.max(40, img.width * scale), h: Math.max(40, img.height * scale),
-          media_id: meta.id, alpha: state.alpha, z: maxZ() + 1,
+          media_id: meta.id, alpha: state.alpha, rot: 0, z: maxZ() + 1,
         };
         commit({ op: "add", object: obj }, { op: "delete", id });
         state.selected = new Set([id]);
@@ -998,8 +1327,9 @@
       if (msg.type === "hello") {
         state.me = { id: msg.id, name: msg.name, color: msg.color };
         state.objects = new Map((msg.objects || []).map((obj) => [obj.id, obj]));
+        state.chat = Array.isArray(msg.chat) ? msg.chat.slice(-300) : [];
         nickEl.value = msg.name || "";
-        state.connected = true; updateStatus(); state.dirty = true;
+        state.connected = true; updateStatus(); renderChat(); state.dirty = true;
       } else if (msg.type === "nick") {
         if (state.me) state.me.name = msg.name;
         nickEl.value = msg.name;
@@ -1030,11 +1360,56 @@
         const user = state.users.get(msg.id) || { id: msg.id };
         state.users.set(msg.id, { ...user, ...msg });
         state.dirty = true;
+      } else if (msg.type === "chat") {
+        state.chat.push({ id: msg.id, from: msg.from, name: msg.name, text: msg.text });
+        if (state.chat.length > 300) state.chat.splice(0, state.chat.length - 300);
+        renderChat();
       } else if (msg.type === "error") {
         toast(msg.message);
         if (msg.id) { state.objects.delete(msg.id); state.selected.delete(msg.id); state.dirty = true; }
       }
     };
+  }
+
+  function renderChat() {
+    const msgs = state.chat.slice(-300);
+    const visible = state.chatOpen ? msgs : msgs.slice(-8);
+    chatLogEl.replaceChildren();
+    chatLogEl.classList.toggle("has-msg", visible.length > 0);
+    for (const m of visible) {
+      const line = document.createElement("div");
+      line.className = "chat-line";
+      const nick = document.createElement("span");
+      nick.className = "chat-nick";
+      nick.textContent = (m.name || t("guest")) + ": ";
+      const text = document.createElement("span");
+      text.textContent = m.text || "";
+      line.append(nick, text);
+      chatLogEl.appendChild(line);
+    }
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+  function openChat() {
+    state.chatOpen = true;
+    chatEl.classList.add("open");
+    renderChat();
+    chatInput.value = "";
+    requestAnimationFrame(() => {
+      chatInput.focus();
+      chatInput.value = "";
+    });
+  }
+  function closeChat() {
+    state.chatOpen = false;
+    chatEl.classList.remove("open");
+    chatInput.blur();
+    renderChat();
+  }
+  function sendChat() {
+    const text = chatInput.value.trim();
+    closeChat();
+    if (!text) return;
+    send({ type: "chat", text: text.slice(0, 240) });
   }
 
   function setSidebar(open) {
@@ -1129,15 +1504,27 @@
   canvas.addEventListener("contextmenu", (ev) => ev.preventDefault());
 
   window.addEventListener("keydown", (ev) => {
+    if (ev.code === "Escape" && state.chatOpen) { ev.preventDefault(); closeChat(); return; }
+    if (ev.code === "Enter" && state.chatOpen && document.activeElement === chatInput) {
+      ev.preventDefault(); sendChat(); return;
+    }
     if (typing()) return;
     const letter = physicalKey(ev);
     if (ev.code === "Space") { state.space = true; ev.preventDefault(); }
     const mod = ev.ctrlKey || ev.metaKey;
+    if (!mod && ev.code === "KeyT") { ev.preventDefault(); openChat(); return; }
     if (mod && ev.code === "KeyZ" && !ev.shiftKey) { ev.preventDefault(); doUndo(); return; }
     if ((mod && ev.code === "KeyY") || (mod && ev.code === "KeyZ" && ev.shiftKey)) { ev.preventDefault(); doRedo(); return; }
     if (mod && (ev.code === "KeyC" || ev.code === "KeyV")) return;
     if (ev.key === "Delete" || ev.key === "Backspace") {
-      for (const obj of selectedObjects()) commit({ op: "delete", id: obj.id }, { op: "add", object: obj });
+      const items = selectedObjects();
+      if (items.length) {
+        ev.preventDefault();
+        commitBatch(
+          items.map((obj) => ({ op: "delete", id: obj.id })),
+          items.map((obj) => ({ op: "add", object: clone(obj) }))
+        );
+      }
     }
     const tools = { v: "select", h: "pan", p: "pen", e: "eraser", l: "lasso", i: "image" };
     if (!mod && tools[letter]) setTool(tools[letter]);

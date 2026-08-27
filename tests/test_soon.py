@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 from soon.soon import apply_op, claim_name, normalize_room, sniff_mime, validate_object
 
 
@@ -123,3 +125,24 @@ def test_claim_name_rejects_duplicates_and_short_values():
 def test_sniff_png_and_reject_html():
     assert sniff_mime(PNG) == "image/png"
     assert sniff_mime(b"<html>not a file</html>") is None
+
+
+def test_validate_image_rotation():
+    obj = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "image",
+            "x": 10,
+            "y": 20,
+            "w": 120,
+            "h": 80,
+            "media_id": str(ObjectId()),
+            "rot": 90,
+            "z": 1,
+        }
+    )
+    assert obj["rot"] == 90.0
+    assert obj["w"] == 120.0
+
+    wrapped = validate_object({**obj, "rot": -45})
+    assert wrapped["rot"] == 315.0

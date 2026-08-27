@@ -8,6 +8,7 @@ import logging
 import re
 import secrets
 import sys
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,8 @@ HTTPS_RE = re.compile(r"^https://[^\s]{3,500}$", re.IGNORECASE)
 MAX_OBJECTS = 500
 MAX_POINTS = 200
 MAX_TEXT = 2000
+MAX_CHAT = 300
+MAX_CHAT_TEXT = 240
 MAX_MEDIA_BYTES = 1_500_000
 MAX_COORD = 1_000_000.0
 DEFAULT_ROOM = "board"
@@ -156,6 +159,15 @@ def _color(value: Any) -> str:
     raise ValueError("Invalid color.")
 
 
+def _chat_text(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Invalid chat.")
+    text = " ".join(value.split())
+    if not (1 <= len(text) <= MAX_CHAT_TEXT):
+        raise ValueError("Invalid chat.")
+    return text
+
+
 def _text(value: Any, limit: int = MAX_TEXT) -> str:
     if not isinstance(value, str):
         raise ValueError("Invalid text.")
@@ -253,6 +265,9 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["h"] = _finite(raw.get("h", 180), 24, 2400)
         obj["media_id"] = _media_id(raw.get("media_id"))
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
+        if obj_type == "image":
+            rot = _finite(raw.get("rot", 0), -360, 360)
+            obj["rot"] = round(rot % 360, 2)
         if obj_type == "file":
             obj["filename"] = _text(raw.get("filename", "file"), 180)
             mime = raw.get("mime")
@@ -307,6 +322,7 @@ class Room:
         self.objects: dict[str, dict[str, Any]] = {}
         self.clients: dict[str, WebSocket] = {}
         self.presence: dict[str, dict[str, Any]] = {}
+        self.chat: deque[dict[str, Any]] = deque(maxlen=MAX_CHAT)
         self.lock = asyncio.Lock()
         self.loaded = False
 
@@ -568,6 +584,7 @@ async def _run_socket(websocket: WebSocket) -> None:
             "y": None,
         }
         snapshot = list(state.objects.values())
+        chat = list(state.chat)
 
     try:
         await websocket.send_json(
@@ -579,6 +596,7 @@ async def _run_socket(websocket: WebSocket) -> None:
                 "color": color,
                 "mongo": hub.mongo_ok,
                 "objects": snapshot,
+                "chat": chat,
             }
         )
         await _presence(state)
@@ -638,6 +656,21 @@ async def _run_socket(websocket: WebSocket) -> None:
                     },
                     skip=client_id,
                 )
+            elif kind == "chat":
+                try:
+                    text = _chat_text(message.get("text"))
+                except ValueError:
+                    continue
+                nick = state.presence.get(client_id, {}).get("name") or name_hint
+                entry = {
+                    "id": secrets.token_hex(4),
+                    "from": client_id,
+                    "name": nick,
+                    "text": text,
+                }
+                async with state.lock:
+                    state.chat.append(entry)
+                await _broadcast(state, {"type": "chat", **entry})
             elif kind == "draft":
                 draft = message.get("object")
                 payload: dict[str, Any] = {"type": "draft", "from": client_id}
