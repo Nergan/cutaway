@@ -288,7 +288,7 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["y"] = _finite(raw.get("y", 0))
         obj["text"] = _text(raw.get("text", ""))
         obj["color"] = _color(raw.get("color", "#d4a373"))
-        obj["size"] = _finite(raw.get("size", 18), 10, 240)
+        obj["size"] = _finite(raw.get("size", 18), 1, 240)
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
         size = obj["size"]
         if raw.get("w") is None:
@@ -297,11 +297,11 @@ def validate_object(raw: Any) -> dict[str, Any]:
                 2,
             )
         else:
-            obj["w"] = _finite(raw.get("w"), 24, MAX_IMAGE)
+            obj["w"] = _finite(raw.get("w"), 8, MAX_IMAGE)
         if raw.get("h") is None:
-            obj["h"] = round(max(24.0, size * 1.25), 2)
+            obj["h"] = round(max(8.0, size * 1.25), 2)
         else:
-            obj["h"] = _finite(raw.get("h"), 16, MAX_IMAGE)
+            obj["h"] = _finite(raw.get("h"), 8, MAX_IMAGE)
     elif obj_type == "note":
         obj["x"] = _finite(raw.get("x", 0))
         obj["y"] = _finite(raw.get("y", 0))

@@ -255,6 +255,24 @@ def test_validate_text_box_and_legacy_without_size_box():
     assert boxed["size"] == 22.0
     assert boxed["rot"] == 15.0
 
+    small = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 10,
+            "text": "a",
+            "color": "#6fbf4a",
+            "size": 3,
+            "z": 1,
+        }
+    )
+    assert small["size"] == 3.0
+    assert small["w"] == 12.0
+    assert small["h"] == 10.0
+
     legacy = validate_object(
         {
             "id": "abcd1234efgh",
@@ -266,7 +284,7 @@ def test_validate_text_box_and_legacy_without_size_box():
         }
     )
     assert legacy["w"] >= 40
-    assert legacy["h"] >= 24
+    assert legacy["h"] >= 8
 
 
 def _tiny_png() -> bytes:

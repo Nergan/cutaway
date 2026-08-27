@@ -89,8 +89,8 @@
       border: 1px dashed var(--accent); border-radius: 2px;
       background: rgba(12, 10, 9, 0.35); color: #e5e1db;
       font-family: Verdana, Arial, Helvetica, sans-serif; line-height: 1.25;
-      resize: none; overflow: hidden; outline: none; pointer-events: auto;
-      transform-origin: center center;
+      white-space: pre; overflow: hidden; resize: none; outline: none;
+      pointer-events: none; transform-origin: center center;
     }
     .help-text { font-size: 8pt; color: var(--muted); line-height: 1.35; }
     .toast {
@@ -163,7 +163,7 @@
     <canvas id="board"></canvas>
     <div class="marquee" id="marquee"></div>
     <div id="offscreen"></div>
-    <textarea id="text-edit" maxlength="2000" autocomplete="off" spellcheck="false"></textarea>
+    <textarea id="text-edit" maxlength="2000" autocomplete="off" spellcheck="false" wrap="off"></textarea>
     <div class="toast" id="toast"></div>
     <div class="chat" id="chat">
       <div class="chat-log" id="chat-log" tabindex="0"></div>
@@ -231,8 +231,8 @@
       select: "Выбор", selectHint: "Выбрать объект (V). Shift — несколько, перетаскивание пустого места — рамка, СКМ или пробел — двигать холст",
       pen: "Карандаш", penHint: "Рисовать (P)",
       eraser: "Ластик", eraserHint: "Стереть часть линии или символ текста (E). Толщина задаёт радиус",
-      text: "Текст", textHint: "Текстовое поле (X). Цвет как у кисти; размер и поворот — за маркеры",
-      color: "цвет", opacity: "непрозрачность", width: "толщина",
+      text: "Текст", textHint: "Текстовое поле (X). Толщина — размер шрифта; рамку можно растянуть прямо во время ввода",
+      color: "цвет", opacity: "непрозрачность", width: "толщина", fontSize: "размер",
       toggleGrid: "Сетка", toggleGridHint: "Показать или скрыть сетку",
       goCenter: "В центр", goCenterHint: "Плавно вернуть камеру в центр холста",
       saveNick: "Сохранить", nickPh: "свой ник",
@@ -258,8 +258,8 @@
       select: "Select", selectHint: "Select an object (V). Shift for multiple, drag empty space for a marquee, middle-click or Space to pan",
       pen: "Pencil", penHint: "Draw (P)",
       eraser: "Eraser", eraserHint: "Erase part of a stroke or a text character (E). Thickness sets the radius",
-      text: "Text", textHint: "Text field (X). Uses the brush color; resize and rotate with handles",
-      color: "color", opacity: "opacity", width: "thickness",
+      text: "Text", textHint: "Text field (X). Thickness is the font size; stretch the box while typing",
+      color: "color", opacity: "opacity", width: "thickness", fontSize: "size",
       toggleGrid: "Grid", toggleGridHint: "Show or hide the grid",
       goCenter: "To center", goCenterHint: "Smoothly pan the camera back to the board origin",
       saveNick: "Save", nickPh: "your nickname",
@@ -307,6 +307,7 @@
     pendingMove: null, pendingLasso: null, pendingToggle: null, shift: false, ctrl: false,
     draftId: null, moveOrigins: new Map(),
     xform: null, eraseGesture: null, textEdit: null, textEditNew: false,
+    styleGesture: null,
     chat: [], chatOpen: false, chatPainted: false,
     undo: [], redo: [], clip: null, connected: false,
     ws: null, backoff: 600, imageCache: new Map(), dirty: true, space: false,
@@ -421,7 +422,11 @@
     state.dirty = true;
   }
   function applyLocal(op) {
-    if (op.op === "add" || op.op === "update") state.objects.set(op.object.id, clone(op.object));
+    if (op.op === "add" || op.op === "update") {
+      const obj = clone(op.object);
+      if (obj.type === "text") fitTextBox(obj);
+      state.objects.set(obj.id, obj);
+    }
     else if (op.op === "delete") {
       state.objects.delete(op.id);
       state.selected.delete(op.id);
@@ -489,11 +494,12 @@
     const a = m[4] == null ? 1 : Math.max(0, Math.min(1, +m[4]));
     return { r, g, b, a };
   }
-  function syncColorFromHsv() {
+  function syncColorFromHsv(apply) {
     const [r, g, b] = hsvToRgb(state.hsv.h, state.hsv.s, state.hsv.v);
     state.color = rgbToHex(r, g, b);
     rgbaEl.value = rgbaString();
     drawSpectrum();
+    if (apply !== false) paintSelectedText();
   }
   function drawSpectrum() {
     const sw = svCanvas.width, sh = svCanvas.height;
@@ -634,7 +640,6 @@
     const lineH = size * 1.25;
     const pad = 2;
     const left = (obj.x || 0) + pad;
-    const maxW = Math.max(size * 0.5, (obj.w || 200) - pad * 2);
     ctx.save();
     ctx.font = textFont(obj);
     const glyphs = [];
@@ -649,15 +654,109 @@
         continue;
       }
       const w = Math.max(1, ctx.measureText(ch).width);
-      if (x > left && x + w > left + maxW) {
-        x = left;
-        y += lineH;
-      }
       glyphs.push({ ch, index: i, x, y, w, h: lineH });
       x += w;
     }
     ctx.restore();
     return glyphs;
+  }
+  function fitTextBox(obj) {
+    if (!obj || obj.type !== "text") return obj;
+    const size = obj.size || 18;
+    const pad = 2;
+    const glyphs = layoutText(obj);
+    if (!glyphs.length) {
+      ctx.save();
+      ctx.font = textFont(obj);
+      obj.w = Math.max(8, Math.round((ctx.measureText("W").width + pad * 2) * 100) / 100);
+      ctx.restore();
+      obj.h = Math.max(8, Math.round((size * 1.25 + pad * 2) * 100) / 100);
+      return obj;
+    }
+    let x2 = obj.x, y2 = obj.y;
+    for (const g of glyphs) {
+      x2 = Math.max(x2, g.x + g.w);
+      y2 = Math.max(y2, g.y + g.h);
+    }
+    obj.w = Math.max(8, Math.round((x2 - obj.x + pad) * 100) / 100);
+    obj.h = Math.max(8, Math.round((y2 - obj.y + pad) * 100) / 100);
+    return obj;
+  }
+  function textFontSize() {
+    return clampNum(Number(state.width) || 18, 1, 100);
+  }
+  function selectedTexts() {
+    return selectedObjects().filter((obj) => obj.type === "text");
+  }
+  function beginStyleGesture() {
+    if (!state.styleGesture) state.styleGesture = selectedTexts().map((obj) => clone(obj));
+  }
+  function endStyleGesture() {
+    const origins = state.styleGesture;
+    state.styleGesture = null;
+    if (!origins || state.textEditNew) return;
+    const doOps = [], undoOps = [];
+    for (const orig of origins) {
+      const cur = state.objects.get(orig.id);
+      if (!cur) continue;
+      if (cur.color !== orig.color || cur.alpha !== orig.alpha || cur.size !== orig.size || cur.w !== orig.w || cur.h !== orig.h) {
+        doOps.push({ op: "update", object: clone(cur) });
+        undoOps.push({ op: "update", object: orig });
+      }
+    }
+    if (doOps.length) commitBatch(doOps, undoOps);
+  }
+  function paintSelectedText() {
+    const items = selectedTexts();
+    if (!items.length) return;
+    beginStyleGesture();
+    for (const obj of items) {
+      const cur = state.objects.get(obj.id);
+      if (!cur) continue;
+      cur.color = state.color;
+      cur.alpha = state.alpha;
+      sendDrafts([cur]);
+    }
+    if (state.textEdit) syncTextEditor();
+    state.dirty = true;
+  }
+  function resizeSelectedText() {
+    const items = selectedTexts();
+    if (!items.length) return;
+    beginStyleGesture();
+    const size = textFontSize();
+    for (const obj of items) {
+      const cur = state.objects.get(obj.id);
+      if (!cur) continue;
+      cur.size = size;
+      fitTextBox(cur);
+      sendDrafts([cur]);
+    }
+    if (state.textEdit) syncTextEditor();
+    state.dirty = true;
+  }
+  function syncStyleFromSelection() {
+    const texts = selectedTexts();
+    const textMode = state.tool === "text" || texts.length > 0;
+    const title = document.querySelector("label[for='width'] [data-i18n]");
+    if (title) {
+      title.dataset.i18n = textMode ? "fontSize" : "width";
+      title.textContent = t(title.dataset.i18n);
+    }
+    if (texts.length !== 1) return;
+    const obj = texts[0];
+    const size = Math.round(obj.size || 18);
+    widthEl.value = String(clampNum(size, 1, 100));
+    document.getElementById("width-label").textContent = widthEl.value;
+    state.width = Number(widthEl.value);
+    const rgb = hexToRgb(obj.color || state.color);
+    if (rgb && rgb.length === 3 && !rgb.some((n) => Number.isNaN(n))) {
+      state.hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+      state.alpha = obj.alpha == null ? 1 : obj.alpha;
+      alphaEl.value = String(Math.round(state.alpha * 100));
+      document.getElementById("alpha-label").textContent = alphaEl.value + "%";
+      syncColorFromHsv(false);
+    }
   }
   function objectRot(obj) { return ((obj.rot || 0) * Math.PI) / 180; }
   function localCenter(box) { return { x: box.x + box.w / 2, y: box.y + box.h / 2 }; }
@@ -779,7 +878,7 @@
     const obj = selectedObjects()[0];
     if (!obj) return null;
     for (const h of handlePositions(obj)) {
-      if (Math.hypot(sx - h.x, sy - h.y) <= 9) return { handle: h.name, obj };
+      if (Math.hypot(sx - h.x, sy - h.y) <= (obj.type === "text" ? 12 : 9)) return { handle: h.name, obj };
     }
     return null;
   }
@@ -807,7 +906,7 @@
     if (obj.type === "note") return { w: 80, h: 60 };
     if (obj.type === "link") return { w: 120, h: 48 };
     if (obj.type === "image" || obj.type === "file") return { w: 24, h: 24 };
-    if (obj.type === "text") return { w: 32, h: 20 };
+    if (obj.type === "text") return { w: 8, h: 8 };
     return { w: 8, h: 8 };
   }
   function maxBox(obj) {
@@ -836,9 +935,10 @@
       copy.width = clampNum(copy.width * (Math.abs(sx) + Math.abs(sy)) / 2, 0.5, hi);
     }
     if (copy.size != null) {
-      const lo = copy.type === "stamp" ? 16 : 10;
+      const lo = copy.type === "stamp" ? 16 : copy.type === "text" ? 1 : 10;
       const hi = copy.type === "stamp" ? 160 : copy.type === "text" ? 240 : 96;
-      copy.size = clampNum(copy.size * Math.abs(sy), lo, hi);
+      const factor = copy.type === "text" ? (Math.abs(sx) + Math.abs(sy)) / 2 : Math.abs(sy);
+      copy.size = clampNum(copy.size * factor, lo, hi);
     }
     return copy;
   }
@@ -989,6 +1089,7 @@
       if (objectInRect(obj, box)) next.add(obj.id);
     }
     state.selected = next;
+    syncStyleFromSelection();
     state.dirty = true;
   }
 
@@ -1217,6 +1318,7 @@
       btn.classList.toggle("active", btn.dataset.tool === tool);
     });
     canvas.style.cursor = tool === "eraser" ? "none" : tool === "pen" || tool === "text" ? "crosshair" : "default";
+    syncStyleFromSelection();
   }
   function eraserRadius() {
     return (6 + state.width * 1.25) / state.camera.scale;
@@ -1340,6 +1442,7 @@
       state.drafts.delete(obj.id);
       clearDraft(obj.id);
     } else {
+      fitTextBox(next);
       state.objects.set(obj.id, next);
       send({ type: "draft", object: next });
     }
@@ -1405,20 +1508,25 @@
     }
     const next = clone(obj);
     next.text = text;
+    fitTextBox(next);
     state.objects.set(id, next);
     if (wasNew) commit({ op: "add", object: next }, { op: "delete", id });
-    else if (text !== obj.text) commit({ op: "update", object: next }, { op: "update", object: obj });
+    else if (text !== obj.text || next.w !== obj.w || next.h !== obj.h || next.size !== obj.size || next.color !== obj.color) {
+      commit({ op: "update", object: next }, { op: "update", object: obj });
+    }
     state.dirty = true;
   }
   function placeText(x, y) {
     const obj = {
-      id: uid(), type: "text", x, y, w: 240, h: 72,
-      text: "", size: 18, color: state.color, alpha: state.alpha, rot: 0, z: maxZ() + 1,
+      id: uid(), type: "text", x, y, w: 24, h: 16,
+      text: "", size: textFontSize(), color: state.color, alpha: state.alpha, rot: 0, z: maxZ() + 1,
     };
+    fitTextBox(obj);
     state.objects.set(obj.id, obj);
     state.selected = new Set([obj.id]);
     send({ type: "draft", object: obj });
     startTextEdit(obj.id, true);
+    syncStyleFromSelection();
     state.dirty = true;
   }
   function finishErase() {
@@ -1469,12 +1577,31 @@
     if (ev.button !== 0) return;
     const w = toWorld(p.x, p.y);
     state.start = w; state.last = p; state.hover = p;
-    if (state.textEdit) { endTextEdit(); }
+    if (state.textEdit) {
+      const handle = hitHandle(p.x, p.y);
+      const editing = state.objects.get(state.textEdit);
+      if (handle && editing && handle.obj.id === state.textEdit) {
+        state.xform = {
+          kind: handle.handle === "rot" ? "rotate" : "resize",
+          handle: handle.handle,
+          origin: clone(handle.obj),
+        };
+        return;
+      }
+      const current = hit(w.x, w.y);
+      if (current && current.id === state.textEdit) {
+        textEditEl.focus();
+        return;
+      }
+      endTextEdit();
+    }
     if (state.tool === "eraser") { state.erasing = true; eraseAt(w.x, w.y); return; }
     if (state.tool === "text") {
       const obj = hit(w.x, w.y);
-      if (obj && obj.type === "text") startTextEdit(obj.id, false);
-      else placeText(w.x, w.y);
+      if (obj && obj.type === "text") {
+        startTextEdit(obj.id, false);
+        syncStyleFromSelection();
+      } else placeText(w.x, w.y);
       return;
     }
     if (state.tool === "select") {
@@ -1507,6 +1634,7 @@
       } else {
         state.pendingLasso = { x: p.x, y: p.y, world: w, add };
       }
+      syncStyleFromSelection();
       state.dirty = true;
       return;
     }
@@ -1519,7 +1647,7 @@
     const w = toWorld(p.x, p.y);
     state.hover = p;
     if (state.tool === "eraser") state.dirty = true;
-    if (state.tool === "select" && !state.moving && !state.xform && !state.panning && !state.lassoing) {
+    if ((state.tool === "select" || state.textEdit) && !state.moving && !state.xform && !state.panning && !state.lassoing) {
       const h = hitHandle(p.x, p.y);
       canvas.style.cursor = h ? (h.handle === "rot" ? "grab" : "nwse-resize") : "default";
     }
@@ -1556,9 +1684,11 @@
       const origin = state.xform.origin;
       const next = state.xform.kind === "rotate"
         ? applyRotate(origin, w.x, w.y)
-        : applyResize(origin, state.xform.handle, w.x, w.y, ratioLock(ev));
+        : applyResize(origin, state.xform.handle, w.x, w.y, origin.type === "text" || ratioLock(ev));
+      if (next.type === "text" && state.xform.kind === "resize") fitTextBox(next);
       state.objects.set(next.id, next);
       sendDrafts([next]);
+      if (state.textEdit === next.id) syncTextEditor();
       state.dirty = true;
       return;
     }
@@ -1639,9 +1769,15 @@
     if (last && state.xform) {
       const origin = state.xform.origin;
       const obj = state.objects.get(origin.id);
+      if (obj && obj.type === "text") {
+        fitTextBox(obj);
+        if (state.textEdit === obj.id) syncTextEditor();
+      }
       clearDraft(origin.id);
-      if (obj) commit({ op: "update", object: obj }, { op: "update", object: origin });
+      if (obj && !state.textEditNew) commit({ op: "update", object: clone(obj) }, { op: "update", object: origin });
+      else if (obj && state.textEditNew) sendDrafts([obj]);
       state.xform = null;
+      if (state.textEdit) requestAnimationFrame(() => textEditEl.focus());
     }
     if (last && (state.erasing || state.eraseGesture)) finishErase();
     if (last && (state.lassoing || state.pendingLasso)) {
@@ -1660,6 +1796,7 @@
         state.selected = new Set([state.pendingMove.isolate]);
         state.dirty = true;
       }
+      syncStyleFromSelection();
       state.pendingToggle = null;
       state.pendingMove = null;
       state.moveOrigins.clear();
@@ -1791,7 +1928,11 @@
       if (msg.type === "hello") {
         state.me = { id: msg.id, name: msg.name, color: msg.color };
         if (msg.color) sessionStorage.setItem("soon-color", msg.color);
-        state.objects = new Map((msg.objects || []).map((obj) => [obj.id, obj]));
+        state.objects = new Map((msg.objects || []).map((obj) => {
+          const copy = clone(obj);
+          if (copy.type === "text") fitTextBox(copy);
+          return [copy.id, copy];
+        }));
         state.users = new Map();
         state.drafts = new Map();
         state.draftFrom = new Map();
@@ -1952,6 +2093,7 @@
     document.getElementById("lang-ru").classList.toggle("active", state.lang === "ru");
     document.getElementById("lang-en").classList.toggle("active", state.lang === "en");
     renderPeople();
+    syncStyleFromSelection();
     state.dirty = true;
   }
 
@@ -1965,12 +2107,16 @@
     state.width = Number(widthEl.value);
     document.getElementById("width-label").textContent = widthEl.value;
     if (state.tool === "eraser") state.dirty = true;
+    resizeSelectedText();
   });
+  widthEl.addEventListener("change", () => endStyleGesture());
   alphaEl.addEventListener("input", () => {
     state.alpha = Number(alphaEl.value) / 100;
     document.getElementById("alpha-label").textContent = alphaEl.value + "%";
     rgbaEl.value = rgbaString();
+    paintSelectedText();
   });
+  alphaEl.addEventListener("change", () => endStyleGesture());
   rgbaEl.addEventListener("change", () => {
     const parsed = parseRgba(rgbaEl.value);
     if (!parsed) { rgbaEl.value = rgbaString(); return; }
@@ -1979,10 +2125,13 @@
     alphaEl.value = String(Math.round(parsed.a * 100));
     document.getElementById("alpha-label").textContent = alphaEl.value + "%";
     syncColorFromHsv();
+    endStyleGesture();
   });
   const bindDrag = (el, handler) => {
     el.addEventListener("pointerdown", (ev) => { el.setPointerCapture(ev.pointerId); handler(ev); });
     el.addEventListener("pointermove", (ev) => { if (ev.buttons) handler(ev); });
+    el.addEventListener("pointerup", () => endStyleGesture());
+    el.addEventListener("pointercancel", () => endStyleGesture());
   };
   bindDrag(svCanvas, pickSV);
   bindDrag(hueCanvas, pickHue);
@@ -2013,7 +2162,9 @@
     const obj = state.objects.get(state.textEdit);
     if (!obj) return;
     obj.text = textEditEl.value;
+    fitTextBox(obj);
     sendDrafts([obj]);
+    syncTextEditor();
     state.dirty = true;
   });
   textEditEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
