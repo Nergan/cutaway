@@ -1,6 +1,19 @@
-from bson import ObjectId
+import io
 
-from soon.soon import apply_op, claim_name, normalize_room, session_id, sniff_mime, validate_object
+from bson import ObjectId
+from PIL import Image
+
+from soon.media_store import file_hash, is_masked, mask_image, unmask_image
+from soon.soon import (
+    _cdn_url,
+    _media_id,
+    apply_op,
+    claim_name,
+    normalize_room,
+    session_id,
+    sniff_mime,
+    validate_object,
+)
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
@@ -193,3 +206,106 @@ def test_session_id_accepts_client_sid():
     fresh = session_id("../nope")
     assert len(fresh) == 16
     assert session_id(None) != session_id("")
+
+
+def _tiny_png() -> bytes:
+    image = Image.new("RGB", (8, 8), (212, 163, 115))
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
+
+
+def test_media_id_accepts_sha256_and_object_id():
+    digest = "a" * 64
+    assert _media_id(digest) == digest
+    oid = str(ObjectId())
+    assert _media_id(oid) == oid
+    try:
+        _media_id("not-an-id")
+        assert False, "expected invalid media id"
+    except ValueError:
+        pass
+
+
+def test_cdn_url_accepts_cloudinary_only():
+    url = "https://res.cloudinary.com/demo/raw/upload/soon/abc"
+    assert _cdn_url(url) == url
+    try:
+        _cdn_url("https://evil.example/pic.webp")
+        assert False, "expected rejected host"
+    except ValueError:
+        pass
+
+
+def test_validate_image_hash_and_optional_cdn_url():
+    digest = file_hash(b"same-bytes")
+    obj = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "image",
+            "x": 1,
+            "y": 2,
+            "w": 80,
+            "h": 60,
+            "media_id": digest,
+            "media_url": "https://res.cloudinary.com/demo/raw/upload/soon/" + digest,
+            "z": 1,
+        }
+    )
+    assert obj["media_id"] == digest
+    assert obj["media_url"].startswith("https://res.cloudinary.com/")
+
+
+def test_apply_op_delete_returns_object_and_clear_collects_media():
+    digest = "b" * 64
+    store = {}
+    apply_op(
+        store,
+        {
+            "op": "add",
+            "object": {
+                "id": "abcd1234efgh",
+                "type": "image",
+                "x": 0,
+                "y": 0,
+                "w": 80,
+                "h": 60,
+                "media_id": digest,
+                "z": 1,
+            },
+        },
+    )
+    deleted = apply_op(store, {"op": "delete", "id": "abcd1234efgh"})
+    assert deleted["object"]["media_id"] == digest
+    assert store == {}
+
+    apply_op(
+        store,
+        {
+            "op": "add",
+            "object": {
+                "id": "abcd1234efgh",
+                "type": "image",
+                "x": 0,
+                "y": 0,
+                "w": 80,
+                "h": 60,
+                "media_id": digest,
+                "z": 1,
+            },
+        },
+    )
+    cleared = apply_op(store, {"op": "clear"})
+    assert cleared["media_ids"] == [digest]
+    assert store == {}
+
+
+def test_mask_image_roundtrip_and_hash_dedup_key():
+    png = _tiny_png()
+    wrapped = mask_image(png)
+    assert is_masked(wrapped)
+    assert wrapped.startswith(b"RIFF")
+    plain = unmask_image(wrapped)
+    assert plain[:4] == b"RIFF"
+    assert file_hash(png) == file_hash(png)
+    assert file_hash(png) != file_hash(plain)

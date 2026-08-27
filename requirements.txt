@@ -17,3 +17,6 @@ httpx
 python-multipart>=0.0.9
 websockets
 psutil
+cloudinary==1.41.0
+Pillow>=10.0.0
+cryptography>=42.0.0

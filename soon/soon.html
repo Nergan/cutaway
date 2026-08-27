@@ -525,12 +525,65 @@
 
   function sorted() { return [...state.objects.values()].sort((a, b) => (a.z || 0) - (b.z || 0)); }
   function mediaUrl(id) { return PREFIX + "/api/media/" + id; }
-  function imageOf(id) {
+  const MEDIA_MARKER = new TextEncoder().encode("||NLZ_PAYLOAD||");
+  const unwrapCache = new Map();
+  function findMediaMarker(bytes) {
+    for (let i = 0; i <= bytes.length - MEDIA_MARKER.length; i++) {
+      if (bytes[i] !== MEDIA_MARKER[0]) continue;
+      let match = true;
+      for (let j = 1; j < MEDIA_MARKER.length; j++) {
+        if (bytes[i + j] !== MEDIA_MARKER[j]) { match = false; break; }
+      }
+      if (match) return i;
+    }
+    return -1;
+  }
+  async function unwrapSoonBytes(bytes) {
+    const index = findMediaMarker(bytes);
+    if (index < 0) return new Blob([bytes]);
+    const start = index + MEDIA_MARKER.length;
+    const iv = bytes.slice(start, start + 12);
+    const cipher = bytes.slice(start + 12);
+    const material = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode("soon-board"),
+      { name: "HKDF" }, false, ["deriveKey"]
+    );
+    const key = await crypto.subtle.deriveKey(
+      { name: "HKDF", salt: new Uint8Array(32), info: new TextEncoder().encode("soon_media_key"), hash: "SHA-256" },
+      material, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+    );
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    return new Blob([plain], { type: "image/webp" });
+  }
+  async function resolveImageSrc(id, url) {
+    const cacheKey = url || id;
+    if (unwrapCache.has(cacheKey)) return unwrapCache.get(cacheKey);
+    const candidates = [];
+    if (url) candidates.push(url);
+    if (id) {
+      candidates.push(mediaUrl(id));
+      candidates.push(mediaUrl(id) + "?unwrap=1");
+    }
+    for (const src of candidates) {
+      try {
+        const res = await fetch(src);
+        if (!res.ok) continue;
+        const blob = await unwrapSoonBytes(new Uint8Array(await res.arrayBuffer()));
+        const objectUrl = URL.createObjectURL(blob);
+        unwrapCache.set(cacheKey, objectUrl);
+        return objectUrl;
+      } catch (_) {}
+    }
+    return id ? mediaUrl(id) + "?unwrap=1" : "";
+  }
+  function imageOf(id, url) {
     if (state.imageCache.has(id)) return state.imageCache.get(id);
     const img = new Image();
     img.onload = () => { state.dirty = true; };
-    img.src = mediaUrl(id);
     state.imageCache.set(id, img);
+    resolveImageSrc(id, url).then((src) => {
+      if (src) { img.src = src; state.dirty = true; }
+    });
     return img;
   }
   function strokePath(points, width, color, alpha) {
@@ -615,7 +668,7 @@
     if (obj.type === "stroke") {
       strokePath(obj.points, obj.width || 3, obj.color, alpha);
     } else if (obj.type === "image") {
-      const img = imageOf(obj.media_id);
+      const img = imageOf(obj.media_id, obj.media_url);
       ctx.globalAlpha *= alpha;
       if (img.complete && img.naturalWidth) ctx.drawImage(img, obj.x, obj.y, obj.w, obj.h);
       else { ctx.fillStyle = "#4a3c31"; ctx.fillRect(obj.x, obj.y, obj.w, obj.h); }
@@ -1485,15 +1538,20 @@
         const obj = {
           id, type: "image", x: wx, y: wy,
           w: Math.max(40, img.width * scale), h: Math.max(40, img.height * scale),
-          media_id: meta.id, alpha: state.alpha, rot: 0, z: maxZ() + 1,
+          media_id: meta.id, media_url: meta.url || "",
+          alpha: state.alpha, rot: 0, z: maxZ() + 1,
         };
+        if (!obj.media_url) delete obj.media_url;
         commit({ op: "add", object: obj }, { op: "delete", id });
         state.selected = new Set([id]);
         endUpload(true);
       };
       img.onerror = () => { endUpload(false); toast(t("uploadFail")); };
-      img.src = mediaUrl(meta.id);
       state.imageCache.set(meta.id, img);
+      resolveImageSrc(meta.id, meta.url).then((src) => {
+        if (src) img.src = src;
+        else { endUpload(false); toast(t("uploadFail")); }
+      });
     } catch (err) {
       endUpload(false);
       toast(String(err.message || err));

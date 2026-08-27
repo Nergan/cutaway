@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 import re
 import secrets
 import sys
 from collections import deque
 from pathlib import Path
 from typing import Any
+from urllib.request import urlopen
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -27,6 +29,29 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from gridfs.errors import NoFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 from pymongo.errors import PyMongoError
+
+try:
+    from soon.media_store import (
+        MEDIA_HASH_RE,
+        cloudinary_ready,
+        count_media_usage,
+        find_media_by_hash,
+        is_cdn_url,
+        release_media,
+        store_image,
+        unmask_image,
+    )
+except ImportError:
+    from media_store import (
+        MEDIA_HASH_RE,
+        cloudinary_ready,
+        count_media_usage,
+        find_media_by_hash,
+        is_cdn_url,
+        release_media,
+        store_image,
+        unmask_image,
+    )
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent
@@ -185,6 +210,8 @@ def _oid(value: Any) -> str:
 def _media_id(value: Any) -> str:
     if not isinstance(value, str):
         raise ValueError("Invalid media id.")
+    if MEDIA_HASH_RE.fullmatch(value):
+        return value
     try:
         return str(ObjectId(value))
     except (InvalidId, TypeError) as exc:
@@ -198,6 +225,13 @@ def _url(value: Any) -> str:
     lowered = url.lower()
     if lowered.startswith("https://javascript:") or "javascript:" in lowered:
         raise ValueError("Rejected link.")
+    return url
+
+
+def _cdn_url(value: Any) -> str:
+    url = _url(value)
+    if not is_cdn_url(url):
+        raise ValueError("Rejected media url.")
     return url
 
 
@@ -267,6 +301,8 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["h"] = _finite(raw.get("h", 180), 24, 2400)
         obj["media_id"] = _media_id(raw.get("media_id"))
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
+        if obj_type == "image" and raw.get("media_url"):
+            obj["media_url"] = _cdn_url(raw.get("media_url"))
         if obj_type == "file":
             obj["filename"] = _text(raw.get("filename", "file"), 180)
             mime = raw.get("mime")
@@ -301,20 +337,35 @@ def apply_op(store: dict[str, dict[str, Any]], msg: dict[str, Any]) -> dict[str,
         return {"op": "add", "object": obj}
     if op == "update":
         obj = validate_object(msg.get("object"))
-        if obj["id"] not in store:
+        previous = store.get(obj["id"])
+        if previous is None:
             if len(store) >= MAX_OBJECTS:
                 raise ValueError("Board is full.")
             store[obj["id"]] = obj
             return {"op": "add", "object": obj}
         store[obj["id"]] = obj
-        return {"op": "update", "object": obj}
+        result: dict[str, Any] = {"op": "update", "object": obj}
+        old_media = previous.get("media_id")
+        if old_media and old_media != obj.get("media_id"):
+            result["released_media_id"] = old_media
+        return result
     if op == "delete":
         oid = _oid(msg.get("id"))
-        store.pop(oid, None)
-        return {"op": "delete", "id": oid}
+        removed = store.pop(oid, None)
+        payload: dict[str, Any] = {"op": "delete", "id": oid}
+        if removed is not None:
+            payload["object"] = removed
+        return payload
     if op == "clear":
+        media_ids = list(
+            dict.fromkeys(
+                obj["media_id"]
+                for obj in store.values()
+                if obj.get("media_id")
+            )
+        )
         store.clear()
-        return {"op": "clear"}
+        return {"op": "clear", "media_ids": media_ids}
     raise ValueError("Unknown op.")
 
 
@@ -366,6 +417,7 @@ class Hub:
         if not self.mongo_ok:
             return
         collection = _db().objects
+        released: list[str] = []
         try:
             kind = op["op"]
             if kind in {"add", "update"}:
@@ -375,12 +427,24 @@ class Hub:
                     {"room": room.name, "oid": obj["id"], "data": obj},
                     upsert=True,
                 )
+                mid = op.get("released_media_id")
+                if isinstance(mid, str) and mid:
+                    released.append(mid)
             elif kind == "delete":
                 await collection.delete_one({"room": room.name, "oid": op["id"]})
+                obj = op.get("object")
+                if isinstance(obj, dict) and isinstance(obj.get("media_id"), str):
+                    released.append(obj["media_id"])
             elif kind == "clear":
                 await collection.delete_many({"room": room.name})
+                released.extend(
+                    mid for mid in op.get("media_ids") or [] if isinstance(mid, str)
+                )
         except PyMongoError:
             logger.exception("soon: persist failed for room %s", room.name)
+            return
+        for media_id in released:
+            await _gc_media(media_id)
 
 
 hub = Hub()
@@ -468,6 +532,7 @@ async def ensure_indexes() -> None:
         await _db().objects.create_index(
             [("room", 1), ("oid", 1)], unique=True, name="room_oid"
         )
+        await _db().media.create_index("hash", unique=True, name="media_hash")
         await _db().command("ping")
         hub.mongo_ok = True
         logger.info("soon: mongo ready")
@@ -476,8 +541,100 @@ async def ensure_indexes() -> None:
         logger.exception("soon: mongo unavailable, board is in-memory only")
 
 
+async def _gc_media(media_id: str) -> None:
+    if not hub.mongo_ok or not media_id:
+        return
+    try:
+        await release_media(_db(), _fs(), media_id)
+    except Exception:
+        logger.exception("soon: media gc failed for %s", media_id)
+
+
+async def _fetch_cdn_bytes(url: str) -> bytes:
+    def _read() -> bytes:
+        if os.getenv("CUTAWAY_PROJECT_NETWORK_HOSTS"):
+            from shared_network import safe_urlopen
+
+            return safe_urlopen(url, timeout=30, max_bytes=MAX_MEDIA_BYTES * 4)
+        with urlopen(url, timeout=30) as response:
+            return response.read(MAX_MEDIA_BYTES * 4)
+
+    return await asyncio.to_thread(_read)
+
+
+async def migrate_gridfs_images() -> None:
+    if not hub.mongo_ok or not cloudinary_ready():
+        return
+    db = _db()
+    fs = _fs()
+    moved = 0
+    failed = 0
+    orphans = 0
+    cursor = db.objects.find({"data.type": "image"})
+    async for doc in cursor:
+        data = doc.get("data")
+        if not isinstance(data, dict):
+            continue
+        media_id = data.get("media_id")
+        if isinstance(media_id, str) and MEDIA_HASH_RE.fullmatch(media_id):
+            if not data.get("media_url"):
+                catalog = await find_media_by_hash(db, media_id)
+                if catalog and catalog.get("url"):
+                    data["media_url"] = catalog["url"]
+                    await db.objects.replace_one({"_id": doc["_id"]}, {**doc, "data": data})
+            continue
+        try:
+            oid = ObjectId(media_id)
+            grid_out = await fs.open_download_stream(oid)
+            payload = await grid_out.read()
+            filename = str(grid_out.filename or "migrated")
+        except Exception:
+            failed += 1
+            continue
+        try:
+            meta = await store_image(db, payload, filename)
+        except Exception:
+            logger.exception("soon: failed to migrate media %s", media_id)
+            failed += 1
+            continue
+        data["media_id"] = meta["id"]
+        data["media_url"] = meta["url"]
+        try:
+            await db.objects.replace_one({"_id": doc["_id"]}, {**doc, "data": data})
+            await fs.delete(oid)
+            moved += 1
+        except Exception:
+            logger.exception("soon: failed to rewrite migrated object %s", doc.get("oid"))
+            failed += 1
+    try:
+        async for grid_out in fs.find({}):
+            meta = grid_out.metadata or {}
+            mime = str(meta.get("content_type") or "")
+            if mime not in IMAGE_MIMES:
+                continue
+            oid = str(grid_out._id)
+            used = await count_media_usage(db, oid)
+            if used:
+                continue
+            await fs.delete(grid_out._id)
+            orphans += 1
+    except Exception:
+        logger.exception("soon: gridfs image sweep failed")
+    if moved or failed or orphans:
+        logger.info(
+            "soon: migrated %s images to cloudinary (%s failed, %s orphan files removed)",
+            moved,
+            failed,
+            orphans,
+        )
+
+
 async def startup_clients() -> None:
     await ensure_indexes()
+    try:
+        await migrate_gridfs_images()
+    except Exception:
+        logger.exception("soon: image migration failed")
 
 
 async def shutdown_clients() -> None:
@@ -525,6 +682,13 @@ async def upload_media(file: UploadFile = File(...)) -> dict[str, str]:
     filename = _text(file.filename or "upload", 180) or "upload"
     if not hub.mongo_ok:
         raise HTTPException(status_code=503, detail="Media storage is unavailable.")
+    kind = "image" if mime in IMAGE_MIMES else "file"
+    if kind == "image" and cloudinary_ready():
+        try:
+            return await store_image(_db(), data, filename)
+        except Exception as exc:
+            logger.exception("soon: cloudinary upload failed")
+            raise HTTPException(status_code=503, detail="Could not store the file.") from exc
     try:
         file_id = await _fs().upload_from_stream(
             filename,
@@ -534,12 +698,41 @@ async def upload_media(file: UploadFile = File(...)) -> dict[str, str]:
     except PyMongoError as exc:
         logger.exception("soon: media upload failed")
         raise HTTPException(status_code=503, detail="Could not store the file.") from exc
-    kind = "image" if mime in IMAGE_MIMES else "file"
     return {"id": str(file_id), "mime": mime, "filename": filename, "kind": kind}
 
 
+def _media_headers(mime: str, filename: str, inline: bool) -> dict[str, str]:
+    safe_name = filename.replace('"', "").replace("\r", "").replace("\n", "")
+    disposition = "inline" if inline else "attachment"
+    return {
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+        "Content-Security-Policy": "default-src 'none'",
+    }
+
+
 @router.get("/api/media/{media_id}")
-async def get_media(media_id: str) -> Response:
+async def get_media(media_id: str, unwrap: str = "") -> Response:
+    if MEDIA_HASH_RE.fullmatch(media_id):
+        if not hub.mongo_ok:
+            raise HTTPException(status_code=404, detail="Not found.")
+        doc = await find_media_by_hash(_db(), media_id)
+        if not doc or not doc.get("url"):
+            raise HTTPException(status_code=404, detail="Not found.")
+        url = str(doc["url"])
+        if unwrap != "1":
+            return RedirectResponse(url, status_code=302)
+        try:
+            payload = unmask_image(await _fetch_cdn_bytes(url))
+        except Exception as exc:
+            logger.exception("soon: failed to unwrap %s", media_id)
+            raise HTTPException(status_code=502, detail="Could not read the file.") from exc
+        return Response(
+            content=payload,
+            media_type="image/webp",
+            headers=_media_headers("image/webp", "image.webp", True),
+        )
     try:
         oid = ObjectId(media_id)
     except (InvalidId, TypeError) as exc:
@@ -554,22 +747,11 @@ async def get_media(media_id: str) -> Response:
     if mime not in ALLOWED_MIMES:
         mime = "application/octet-stream"
     inline = mime in IMAGE_MIMES or mime.startswith("audio/") or mime == "video/webm"
-    disposition = "inline" if inline else "attachment"
-    filename = (
-        str(grid_out.filename or "file")
-        .replace('"', "")
-        .replace("\r", "")
-        .replace("\n", "")
-    )
+    filename = str(grid_out.filename or "file")
     return Response(
         content=payload,
         media_type=mime,
-        headers={
-            "Cache-Control": "public, max-age=86400",
-            "X-Content-Type-Options": "nosniff",
-            "Content-Disposition": f'{disposition}; filename="{filename}"',
-            "Content-Security-Policy": "default-src 'none'",
-        },
+        headers=_media_headers(mime, filename, inline),
     )
 
 

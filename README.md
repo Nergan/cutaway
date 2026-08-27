@@ -82,7 +82,7 @@ See [the orchestrator guide](docs/orchestrator.md) for configuration and operati
 #### 9. [Soon](./soon/) (Shared Canvas)
 
 * **Description:** An unauthenticated collaborative board. Everyone in the same room draws on one canvas; there is no landing-page card, the route is `/soon`.
-* **Core Capabilities:** Live strokes and named cursors over WebSocket, image paste/drag-and-drop stored in MongoDB GridFS, a collapsible sidebar, and jump-to-user edge hints. One shared room at `/soon`.
+* **Core Capabilities:** Live strokes and named cursors over WebSocket, image paste/drag-and-drop stored on Cloudinary with hash dedup, a collapsible sidebar, and jump-to-user edge hints. One shared room at `/soon`.
 
 ---
 

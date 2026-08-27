@@ -1,6 +1,6 @@
 # Soon
 
-Одна общая онлайн-доска без аккаунтов. Все видят одно пространство. Штрихи хранятся в MongoDB, картинки — в GridFS.
+Одна общая онлайн-доска без аккаунтов. Все видят одно пространство. Штрихи хранятся в MongoDB, картинки — в Cloudinary (дедуп по SHA-256; с доски и с CDN удаляются вместе).
 
 ## Возможности
 
@@ -23,4 +23,4 @@ pip install -r requirements.txt
 python main.py --web
 ```
 
-Откройте [http://localhost:8000/soon](http://localhost:8000/soon). Нужна переменная `MONGODB_URI`, иначе доска живёт только в памяти процесса (картинки при этом не сохраняются).
+Откройте [http://localhost:8000/soon](http://localhost:8000/soon). Нужны `MONGODB_URI` и переменные Cloudinary (`CLOUDINARY_URL` или `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`), иначе картинки не сохраняются.
