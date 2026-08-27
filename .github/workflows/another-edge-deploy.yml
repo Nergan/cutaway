@@ -1,11 +1,6 @@
 name: another-edge-deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "another/edge/**"
-      - ".github/workflows/another-edge-deploy.yml"
   workflow_dispatch: {}
 
 # Деплой воркера не параллелим: два одновременных wrangler deploy на один

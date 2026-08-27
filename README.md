@@ -12,18 +12,21 @@ pinned: false
 
 [Читать на русском языке (README.ru.md)](README.ru.md)
 
-A unified, resilient, and dynamically orchestrated web ecosystem containing a collection of independent web applications (plugins). Built on top of FastAPI, Python, and MongoDB, this monorepo acts as an application hub designed to easily scale, auto-discover new modules, and gracefully degrade in case of database or system issues.
+A unified, resilient web ecosystem containing a collection of independent web applications. Built on FastAPI, Python, and MongoDB, the monorepo uses an explicit project registry, hosting profiles, runtime quotas, and optional process isolation.
 
 ---
 
 ## Architecture Overview
 
-The ecosystem operates on a modular, monolithic architecture governed by a central coordinator:
+The ecosystem is governed by the manifest in `orchestrator.toml`:
 
-1. **Dynamic Plugin Discovery (`main.py`):** On startup, the root coordinator scans local directories, automatically looks for valid routers inside each project folder (evaluating multiple fallback entry points like `main.py`, `[plugin_name].py`, or direct routers), and mounts both static assets and API paths underneath isolated prefixes.
-2. **Resilient System Status (`/api/status`):** The landing page dynamically polls this endpoint. If any plugin fails to import, load its requirements, or validate its entry points, it is flagged as `offline` and automatically dimmed on the user's interface, allowing the rest of the application hub to run undisturbed.
-3. **Optimized RAM-First Tracking (`/api/track`):** Centralized analytics track unique visitors via MongoDB. Database roundtrips are minimized through a local `LRUSet` cache, protecting the database under heavy traffic surges.
-4. **Dual-Boot Deployment:** All primary plugins contain a standalone boot mechanism (`main.py` inside their folders) allowing developers to run them individually as a desktop application using Eel, or as a standalone web application via `--web`.
+1. **Explicit Registry:** Only declared projects can be built, deployed, or run. A project-local `.project-ignore` is a fail-closed kill switch.
+2. **Process Isolation:** The Hugging Face profile runs one lazy uvicorn worker per project. The hub only proxies HTTP/WebSocket traffic, so a worker crash does not import into or stop neighbouring projects.
+3. **Resource Policies:** Per-project traffic, concurrency, timeout, memory, CPU, subprocess, connection, temporary-disk, restart, and circuit-breaker limits are enforced by the hub and supervisor.
+4. **Compatible Embedded Mode:** `CUTAWAY_ISOLATION=embedded` retains an in-process mode for local or constrained infrastructure.
+5. **Runtime Status:** `/healthz` reports hub health and `/api/status` reports disabled, starting, online, degraded, and circuit-open projects.
+
+See [the orchestrator guide](docs/orchestrator.md) for configuration and operational limits.
 
 ---
 
@@ -43,7 +46,7 @@ The ecosystem operates on a modular, monolithic architecture governed by a centr
 
 #### 2. [Yellow Mirror](./yellow_mirror/) (Headless Remote Mirror)
 
-* **Description:** A WebSocket-based real-time browser stream bypassing client-side constraints.
+* **Description:** A WebSocket-based real-time browser stream for trusted, explicitly allowlisted destinations. It is disabled in the Hugging Face profile.
 * **Core Capabilities:** Spins up persistent isolated Chromium contexts within server-side Playwright. Employs CDP Screencast protocols, compressing rendering frames as base64 JPEG sequences sent via high-speed WebSockets directly to an HTML5 canvas. Forwards raw mouse movements, clicks, and multi-language keyboard layouts.
 
 #### 3. [Toadcode](./toadcode/) (Collaborative Workspace)
@@ -102,11 +105,11 @@ Ensure the following host engines are installed for full conversion/mirroring ca
    cd projects
    ```
 
-2. Run the dynamic script to automatically resolve all core and individual application dependencies:
+2. Build the projects enabled by the selected hosting profile:
 
    ```bash
    chmod +x build.sh
-   ./build.sh
+   CUTAWAY_PROFILE=local ./build.sh
    ```
 
 3. Configure your environmental values in a `.env` file at the root:
@@ -115,7 +118,7 @@ Ensure the following host engines are installed for full conversion/mirroring ca
    MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/
    ```
 
-4. Launch the application:
+4. Launch the application (`embedded` is the local profile default):
 
    ```bash
    chmod +x start.sh

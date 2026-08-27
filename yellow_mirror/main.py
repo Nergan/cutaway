@@ -14,7 +14,7 @@ if (BASE_DIR / 'scripts').exists():
     app.mount('/yellow_mirror/scripts', StaticFiles(directory=BASE_DIR / 'scripts'), name='yellow_mirror_scripts')
 
 # 3. Import and mount the core logic router
-from yellow_mirror import router
+from yellow_mirror import router, shutdown_clients
 app.include_router(router, prefix='/yellow-mirror')
 
 @app.get("/")

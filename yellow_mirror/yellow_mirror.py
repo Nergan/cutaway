@@ -1,16 +1,34 @@
 import asyncio
+import logging
 import os
+import re
 import shutil
+import tempfile
 from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from playwright.async_api import async_playwright
+from shared_network import NetworkPolicyError, validate_outbound_url_async
 
 router = APIRouter()
 
 active_sessions = {}
-MAX_SESSIONS = 10
+MAX_SESSIONS = max(1, int(os.getenv("YELLOW_MIRROR_MAX_SESSIONS", "2")))
 BASE_DIR = Path(__file__).parent
+SESSION_ROOT = Path(tempfile.gettempdir()) / "yellow_mirror"
+SESSION_ROOT.mkdir(parents=True, exist_ok=True)
+CLIENT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _allowed_hosts() -> tuple[str, ...]:
+    configured = os.getenv("YELLOW_MIRROR_ALLOWED_HOSTS")
+    if configured is None:
+        configured = os.getenv("CUTAWAY_PROJECT_NETWORK_HOSTS", "")
+    return tuple(item.strip().lower() for item in configured.split(",") if item.strip())
+
+
+async def _validate_navigation(url: str) -> None:
+    await validate_outbound_url_async(url, allowed_hosts=_allowed_hosts())
 
 @router.get("/")
 async def yellow_mirror_page():
@@ -20,9 +38,13 @@ async def yellow_mirror_page():
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await websocket.accept()
 
+    if not CLIENT_ID_RE.fullmatch(client_id) or client_id in active_sessions:
+        await websocket.send_json({"type": "error", "message": "Invalid or duplicate session id."})
+        await websocket.close(code=1008)
+        return
     if len(active_sessions) >= MAX_SESSIONS:
-        await websocket.send_json({"type": "error", "message": "Server at maximum capacity (10)."})
-        await websocket.close()
+        await websocket.send_json({"type": "error", "message": "Server at maximum capacity."})
+        await websocket.close(code=1013)
         return
         
     active_sessions[client_id] = {
@@ -37,7 +59,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             data = await websocket.receive_json()
             await handle_client_message(client_id, data)
+    except NetworkPolicyError as exc:
+        await websocket.send_json({"type": "error", "message": str(exc)})
     except WebSocketDisconnect:
+        pass
+    except Exception:
+        logging.exception("yellow_mirror session failed")
+        try:
+            await websocket.send_json({"type": "error", "message": "Browser session failed."})
+        except Exception:
+            pass
+    finally:
         await cleanup_session(client_id)
 
 async def handle_client_message(client_id: str, data: dict):
@@ -47,17 +79,21 @@ async def handle_client_message(client_id: str, data: dict):
     msg_type = data.get("type")
     
     if msg_type == "init":
-        url = data.get("url")
-        width, height = data.get("width", 1280), data.get("height", 720)
+        if session.get("playwright") is not None:
+            raise NetworkPolicyError("Browser session is already initialised.")
+        url = str(data.get("url") or "")
+        await _validate_navigation(url)
+        width = max(320, min(1920, int(data.get("width", 1280))))
+        height = max(240, min(1080, int(data.get("height", 720))))
         
         p = await async_playwright().start()
         session["playwright"] = p
         
-        user_data_dir = f"/tmp/ym_{client_id}"
+        user_data_dir = SESSION_ROOT / f"ym_{client_id}"
         
         context = await p.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            headless=True, # Runs perfectly on HF Spaces!
+            user_data_dir=str(user_data_dir),
+            headless=True,
             args=[
                 "--autoplay-policy=no-user-gesture-required",
                 "--mute-audio",
@@ -70,6 +106,21 @@ async def handle_client_message(client_id: str, data: dict):
         session["context"] = context
         page = context.pages[0] if context.pages else await context.new_page()
         session["page"] = page
+        page.set_default_navigation_timeout(30_000)
+
+        async def enforce_network_policy(route):
+            request_url = route.request.url
+            if request_url.startswith(("data:", "blob:", "about:")):
+                await route.continue_()
+                return
+            try:
+                await _validate_navigation(request_url)
+            except NetworkPolicyError:
+                await route.abort()
+                return
+            await route.continue_()
+
+        await page.route("**/*", enforce_network_policy)
         
         async def on_nav(frame):
             if frame == page.main_frame:
@@ -77,7 +128,7 @@ async def handle_client_message(client_id: str, data: dict):
                 except: pass
         page.on("framenavigated", on_nav)
         
-        await page.goto(url)
+        await page.goto(url, wait_until="domcontentloaded")
         
         # ⚡ High-Speed CDP Screencast Setup
         cdp = await context.new_cdp_session(page)
@@ -96,13 +147,18 @@ async def handle_client_message(client_id: str, data: dict):
         await cdp.send("Page.startScreencast", {"format": "jpeg", "quality": 60, "maxWidth": width, "maxHeight": height})
             
     elif msg_type == "navigate":
-        if session.get("page"): await session["page"].goto(data.get("url"))
+        url = str(data.get("url") or "")
+        await _validate_navigation(url)
+        if session.get("page"):
+            await session["page"].goto(url, wait_until="domcontentloaded")
         
     elif msg_type == "resize":
+        width = max(320, min(1920, int(data.get("width", 1280))))
+        height = max(240, min(1080, int(data.get("height", 720))))
         if session.get("page"): 
-            await session["page"].set_viewport_size({"width": data.get("width"), "height": data.get("height")})
+            await session["page"].set_viewport_size({"width": width, "height": height})
             if session.get("cdp"):
-                try: await session["cdp"].send("Page.startScreencast", {"format": "jpeg", "quality": 60, "maxWidth": data.get("width"), "maxHeight": data.get("height")})
+                try: await session["cdp"].send("Page.startScreencast", {"format": "jpeg", "quality": 60, "maxWidth": width, "maxHeight": height})
                 except: pass
             
     elif msg_type == "input" and session.get("page"):
@@ -150,7 +206,7 @@ async def cleanup_session(client_id: str):
         if session.get("playwright"):
             try: await session["playwright"].stop()
             except: pass
-        shutil.rmtree(f"/tmp/ym_{client_id}", ignore_errors=True)
+        shutil.rmtree(SESSION_ROOT / f"ym_{client_id}", ignore_errors=True)
         
 async def shutdown_clients():
     for client_id in list(active_sessions.keys()):

@@ -3,6 +3,7 @@ import asyncio
 import shutil
 import tempfile
 import pathlib
+import re
 import pandas as pd
 import pypandoc
 import fitz
@@ -13,6 +14,13 @@ import yaml
 import toml
 import shlex
 from playwright.async_api import async_playwright
+from shared_runtime import ProcessResult, SubprocessFailure, run_process
+
+
+MAX_ARCHIVE_FILES = int(os.getenv("FORMULAR_MAX_ARCHIVE_FILES", "2000"))
+MAX_ARCHIVE_UNPACKED_BYTES = int(
+    os.getenv("FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES", str(256 * 1024 * 1024))
+)
 
 DIRECT_EDGES = {
     'docx': ['pdf', 'html', 'txt', 'md'],
@@ -61,15 +69,106 @@ def find_shortest_path(start, end):
                 queue.append((neighbor, path + [neighbor]))
     return None
 
-async def _run_process(*cmd, timeout=300):
-    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
-    try: await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        try: proc.kill()
-        except: pass
-        raise Exception(f"Engine process timed out after {timeout} seconds.")
-    if proc.returncode != 0 and cmd[0] not in ['libreoffice']:
-        raise Exception(f"Engine failure with code {proc.returncode}.")
+def _local_media_protocols(cmd):
+    argv = [str(item) for item in cmd]
+    executable = pathlib.Path(argv[0]).name.lower()
+    if executable in {"ffmpeg", "ffprobe"} and "-protocol_whitelist" not in argv:
+        argv[1:1] = ["-protocol_whitelist", "file,pipe,crypto,data"]
+    return argv
+
+
+async def _run_process(*cmd, timeout=300, capture_stdout=False) -> ProcessResult:
+    argv = _local_media_protocols(cmd)
+    try:
+        result = await run_process(
+            argv,
+            timeout=timeout,
+            capture_stdout=capture_stdout,
+            check=False,
+        )
+    except SubprocessFailure as exc:
+        raise Exception(str(exc)) from exc
+    if result.returncode != 0 and pathlib.Path(argv[0]).name.lower() != "libreoffice":
+        raise Exception(f"Engine failure with code {result.returncode}.")
+    return result
+
+
+async def _has_audio(input_path: str) -> bool:
+    result = await _run_process(
+        "ffprobe",
+        "-i",
+        input_path,
+        "-show_streams",
+        "-select_streams",
+        "a",
+        "-loglevel",
+        "error",
+        timeout=30,
+        capture_stdout=True,
+    )
+    return bool(result.stdout.strip())
+
+
+def _validate_archive_listing(result: ProcessResult) -> None:
+    if result.stdout_truncated:
+        raise Exception("Archive contains too much metadata.")
+    text = result.stdout.decode("utf-8", errors="replace")
+    _, separator, entries = text.partition("----------")
+    if not separator:
+        raise Exception("Archive metadata could not be inspected.")
+
+    file_count = 0
+    total_size = 0
+    for line in entries.splitlines():
+        if line.startswith("Path = "):
+            raw_path = line.removeprefix("Path = ").strip().replace("\\", "/")
+            candidate = pathlib.PurePosixPath(raw_path)
+            if (
+                not candidate.parts
+                or candidate.is_absolute()
+                or ".." in candidate.parts
+                or ":" in candidate.parts[0]
+            ):
+                raise Exception("Archive contains an unsafe path.")
+        elif line.startswith("Size = "):
+            value = line.removeprefix("Size = ").strip()
+            if value.isdigit():
+                file_count += 1
+                total_size += int(value)
+                if file_count > MAX_ARCHIVE_FILES:
+                    raise Exception("Archive contains too many files.")
+                if total_size > MAX_ARCHIVE_UNPACKED_BYTES:
+                    raise Exception("Archive expands beyond the configured limit.")
+
+
+def _validate_extracted_tree(root: str) -> None:
+    base = pathlib.Path(root).resolve()
+    count = 0
+    total_size = 0
+    for entry in base.rglob("*"):
+        if entry.is_symlink():
+            raise Exception("Archive symlinks are not allowed.")
+        try:
+            entry.resolve().relative_to(base)
+        except ValueError as exc:
+            raise Exception("Archive escaped its temporary directory.") from exc
+        if entry.is_file():
+            count += 1
+            total_size += entry.stat().st_size
+            if count > MAX_ARCHIVE_FILES:
+                raise Exception("Archive contains too many files.")
+            if total_size > MAX_ARCHIVE_UNPACKED_BYTES:
+                raise Exception("Archive expands beyond the configured limit.")
+
+
+async def _inspect_archive(input_path: str) -> None:
+    result = await run_process(
+        ["7z", "l", "-slt", input_path],
+        timeout=30,
+        capture_stdout=True,
+        output_limit=2 * 1024 * 1024,
+    )
+    _validate_archive_listing(result)
 
 async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str, video_opts: str, custom_ffmpeg: str, merge_path: str = None, merge_loop: bool = False):
     cmd = ["ffmpeg", "-y", "-nostdin"]
@@ -183,14 +282,8 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
         has_audio = True
     else:
         try:
-            probe = await asyncio.create_subprocess_exec(
-                "ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error",
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
-            )
-            stdout, _ = await probe.communicate()
-            if stdout.strip():
-                has_audio = True
-        except:
+            has_audio = await _has_audio(input_path)
+        except Exception:
             pass
 
     if vf and has_video: cmd.extend(["-vf", ",".join(vf)])
@@ -209,7 +302,12 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     if custom_ffmpeg:
         try:
             custom_args = shlex.split(custom_ffmpeg)
-            bad_flags = {'-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map'}
+            bad_flags = {
+                '-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v',
+                '-c:a', '-map', '-protocol_whitelist', '-protocol_blacklist',
+                '-filter_script', '-filter_complex_script', '-report',
+                '-passlogfile', '-vstats_file', '-progress',
+            }
             for i, arg in enumerate(custom_args):
                 if any(c in arg for c in ['/', '\\', '..', '&', '|', ';', '$', '`', '<', '>']):
                     raise ValueError("Invalid characters detected in custom FFmpeg flags.")
@@ -228,13 +326,9 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
 
     cmd.append(output_path)
     
-    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
-    try: await asyncio.wait_for(proc.communicate(), timeout=600)
-    except asyncio.TimeoutError:
-        try: proc.kill()
-        except: pass
-        raise Exception("FFmpeg processing timed out.")
-    if proc.returncode != 0:
+    try:
+        await _run_process(*cmd, timeout=600)
+    except Exception as exc:
         raise Exception("FFmpeg engine failure. Verify your custom FFmpeg flags and media constraints.")
 
 async def convert_document(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None, merge_path: str = None, merge_loop: bool = False):
@@ -317,6 +411,18 @@ def _image_convert(input_path: str, output_path: str, to_fmt: str):
         else: img.save(output_path)
 
 
+def _validate_svg_is_local(input_path: str) -> None:
+    content = pathlib.Path(input_path).read_text(encoding="utf-8", errors="replace").lower()
+    external_reference = re.compile(
+        r"(?:href|xlink:href)\s*=\s*[\"']\s*(?:https?:|file:|//)"
+        r"|url\(\s*[\"']?\s*(?:https?:|file:|//)"
+        r"|<!doctype[^>]+(?:system|public)\s+[\"']",
+        re.DOTALL,
+    )
+    if external_reference.search(content):
+        raise Exception("External SVG resources are not allowed.")
+
+
 async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None, merge_path: str = None, merge_loop: bool = False):
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
     if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
@@ -348,12 +454,37 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
     if from_fmt == 'html' and to_fmt == 'pdf':
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            file_uri = pathlib.Path(input_path).resolve().as_uri()
-            await page.goto(file_uri, wait_until="load")
-            await page.add_style_tag(content="body { max-width: none !important; padding: 0 !important; margin: 0 !important; } body > *:first-child { margin-top: 0 !important; }")
-            await page.pdf(path=output_path, format="A4", print_background=True, margin={"top": "1in", "right": "1in", "bottom": "1in", "left": "1in"})
-            await browser.close()
+            try:
+                page = await browser.new_page()
+                allowed_root = pathlib.Path(input_path).resolve().parent
+
+                async def local_resources_only(route):
+                    request_url = route.request.url
+                    if request_url.startswith(("data:", "blob:", "about:")):
+                        await route.continue_()
+                        return
+                    if request_url.startswith("file:"):
+                        from urllib.parse import unquote, urlsplit
+                        from urllib.request import url2pathname
+                        candidate = pathlib.Path(
+                            url2pathname(unquote(urlsplit(request_url).path))
+                        ).resolve()
+                        try:
+                            candidate.relative_to(allowed_root)
+                        except ValueError:
+                            await route.abort()
+                            return
+                        await route.continue_()
+                        return
+                    await route.abort()
+
+                await page.route("**/*", local_resources_only)
+                file_uri = pathlib.Path(input_path).resolve().as_uri()
+                await page.goto(file_uri, wait_until="load")
+                await page.add_style_tag(content="body { max-width: none !important; padding: 0 !important; margin: 0 !important; } body > *:first-child { margin-top: 0 !important; }")
+                await page.pdf(path=output_path, format="A4", print_background=True, margin={"top": "1in", "right": "1in", "bottom": "1in", "left": "1in"})
+            finally:
+                await browser.close()
         return
 
     if from_fmt == 'pdf' and to_fmt in ['html', 'txt']:
@@ -363,11 +494,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
     if to_fmt in ['pdf', 'docx'] and from_fmt in ['doc', 'docx', 'rtf', 'odt', 'txt', 'csv', 'xlsx', 'pptx']:
         outdir = os.path.dirname(output_path)
         cmd = ["libreoffice", "--headless", "--nologo", "--nofirststartwizard", "--convert-to", to_fmt, "--outdir", outdir, input_path]
-        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
-        try: await asyncio.wait_for(proc.communicate(), timeout=300)
-        except asyncio.TimeoutError:
-            try: proc.kill()
-            except: pass
+        await _run_process(*cmd, timeout=300)
         base_name = os.path.basename(input_path).rsplit('.', 1)[0]
         lo_out = os.path.join(outdir, f"{base_name}.{to_fmt}")
         if os.path.exists(lo_out) and lo_out != output_path: os.rename(lo_out, output_path)
@@ -383,17 +510,15 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
     
     if (has_ffmpeg_opts or from_fmt == to_fmt) and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
         if to_fmt in ['mp3', 'ogg', 'wav'] and from_fmt in ['mp4', 'webm'] and not merge_path:
-            proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-            stdout, _ = await proc.communicate()
-            if not stdout.strip(): raise Exception("No audio track found in the video file.")
+            if not await _has_audio(input_path):
+                raise Exception("No audio track found in the video file.")
         await _run_ffmpeg(input_path, output_path, from_fmt, to_fmt, audio_opts, video_opts, custom_ffmpeg, merge_path, merge_loop)
         return
 
     if from_fmt in FFMPEG_MEDIA and to_fmt in FFMPEG_MEDIA:
         if to_fmt in ['mp3', 'ogg'] and from_fmt in ['mp4', 'webm']:
-            proc = await asyncio.create_subprocess_exec("ffprobe", "-i", input_path, "-show_streams", "-select_streams", "a", "-loglevel", "error", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-            stdout, _ = await proc.communicate()
-            if not stdout.strip(): raise Exception("No audio track found in the video file.")
+            if not await _has_audio(input_path):
+                raise Exception("No audio track found in the video file.")
             
         cmd = ["ffmpeg", "-y", "-nostdin", "-i", input_path]
         
@@ -429,6 +554,7 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         return
 
     if from_fmt == 'svg':
+        await asyncio.to_thread(_validate_svg_is_local, input_path)
         if to_fmt == 'png': await asyncio.to_thread(cairosvg.svg2png, url=input_path, write_to=output_path)
         elif to_fmt == 'pdf': await asyncio.to_thread(cairosvg.svg2pdf, url=input_path, write_to=output_path)
         return
@@ -437,8 +563,10 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         return
 
     if from_fmt in ['zip', 'rar', '7z', 'tar', 'gz'] and to_fmt in ['zip', '7z', 'tar', 'gz']:
+        await _inspect_archive(input_path)
         with tempfile.TemporaryDirectory() as tmpdir:
             await _run_process("7z", "x", input_path, f"-o{tmpdir}", "-y", timeout=300)
+            await asyncio.to_thread(_validate_extracted_tree, tmpdir)
             if to_fmt == '7z': 
                 await _run_process("7z", "a", output_path, f"{tmpdir}/*", timeout=300)
             else:

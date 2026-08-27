@@ -1,8 +1,6 @@
 name: another-installer-build
 
 on:
-  repository_dispatch:
-    types: [another-installer]
   workflow_dispatch:
     inputs:
       job_id:
@@ -43,5 +41,5 @@ jobs:
         env:
           ANOTHER_SERVICE_SECRET: ${{ secrets.ANOTHER_SERVICE_SECRET }}
           ANOTHER_ORIGIN_URL: ${{ secrets.ANOTHER_ORIGIN_URL }}
-          INSTALLER_JOB_ID: ${{ github.event.client_payload.job_id || github.event.inputs.job_id }}
+          INSTALLER_JOB_ID: ${{ inputs.job_id }}
         run: python another/control-plane-admin/scripts/run_installer_job.py

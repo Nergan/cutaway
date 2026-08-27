@@ -12,6 +12,7 @@ from starlette.background import BackgroundTask
 
 from formular.core.detector import detect_file_format, get_allowed_targets
 from formular.core.converter import convert_document
+from shared_limits import RateLimiter, body_size_limit
 
 router = APIRouter()
 
@@ -19,7 +20,13 @@ TEMP_DIR = Path(tempfile.gettempdir()) / "formular_sessions"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_BYTES = int(os.environ.get("FORMULAR_MAX_UPLOAD_BYTES", 256 * 1024 * 1024))
+MAX_OUTPUT_BYTES = int(os.environ.get("FORMULAR_MAX_OUTPUT_BYTES", 512 * 1024 * 1024))
 SESSION_TTL_SECONDS = int(os.environ.get("FORMULAR_SESSION_TTL_SECONDS", 3600))
+CONVERSION_SLOTS = asyncio.Semaphore(
+    max(1, int(os.environ.get("FORMULAR_MAX_CONCURRENT_JOBS", "2")))
+)
+UPLOAD_RATE = RateLimiter(limit=10, window_seconds=60)
+CONVERT_RATE = RateLimiter(limit=10, window_seconds=60)
 
 
 def session_dir(raw_id: str) -> Path:
@@ -61,7 +68,7 @@ def _sweep_stale_sessions():
             continue
 
 
-@router.post('/upload', dependencies=[Depends(enforce_upload_limit)])
+@router.post('/upload', dependencies=[Depends(enforce_upload_limit), Depends(UPLOAD_RATE)])
 async def upload_files(files: list[UploadFile] = File(...)):
     try:
         await asyncio.to_thread(_sweep_stale_sessions)
@@ -119,7 +126,10 @@ async def upload_files(files: list[UploadFile] = File(...)):
         })
     return {"files": results}
 
-@router.post('/convert')
+@router.post(
+    '/convert',
+    dependencies=[Depends(body_size_limit(128 * 1024)), Depends(CONVERT_RATE)],
+)
 async def convert_file(
     file_id: str = Form(...), 
     to_format: str = Form(...),
@@ -165,7 +175,26 @@ async def convert_file(
     shutil.copy(input_file, working_input)
     
     try:
-        await convert_document(str(working_input), str(output_path), detected_format, to_format, audio_opts, video_opts, custom_ffmpeg, merge_path, is_merge_loop)
+        async with CONVERSION_SLOTS:
+            await asyncio.wait_for(
+                convert_document(
+                    str(working_input),
+                    str(output_path),
+                    detected_format,
+                    to_format,
+                    audio_opts,
+                    video_opts,
+                    custom_ffmpeg,
+                    merge_path,
+                    is_merge_loop,
+                ),
+                timeout=900,
+            )
+        if not output_path.is_file() or output_path.stat().st_size > MAX_OUTPUT_BYTES:
+            raise ValueError("Converted output exceeds the configured limit.")
+    except asyncio.TimeoutError:
+        shutil.rmtree(task_dir, ignore_errors=True)
+        raise HTTPException(status_code=504, detail="Conversion timed out.")
     except Exception as e:
         shutil.rmtree(task_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(e))

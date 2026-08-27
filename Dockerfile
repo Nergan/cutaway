@@ -1,7 +1,16 @@
 FROM python:3.11-slim
 
+ARG CUTAWAY_PROFILE=hf
+ARG CUTAWAY_ISOLATION=isolated
+
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/user/pw-browsers
+ENV CUTAWAY_PROFILE=${CUTAWAY_PROFILE}
+ENV CUTAWAY_ISOLATION=${CUTAWAY_ISOLATION}
+ENV CUTAWAY_REQUIRE_VENVS=1
+ENV CUTAWAY_VENV_ROOT=/app/.orchestrator/venvs
+ENV CUTAWAY_RUNTIME_DIR=/tmp/cutaway-runtime
 
 # Enable non-free repositories to allow installation of unrar and p7zip-rar
 RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
@@ -52,6 +61,15 @@ RUN sed -i 's/\r$//' start.sh build.sh && chmod +x build.sh start.sh
 
 # 2. И ТОЛЬКО ПОТОМ запускаем сборку
 RUN ./build.sh
+
+# Project code and isolated environments are immutable at runtime. Projects
+# receive separate writable HOME/TMP/cache directories below CUTAWAY_RUNTIME_DIR.
+USER root
+RUN mkdir -p "$CUTAWAY_RUNTIME_DIR" \
+    && chown user:user "$CUTAWAY_RUNTIME_DIR" \
+    && chmod 700 "$CUTAWAY_RUNTIME_DIR" \
+    && chmod -R a-w /app
+USER user
 
 EXPOSE 7860
 

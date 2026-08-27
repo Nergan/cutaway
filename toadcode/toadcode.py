@@ -6,7 +6,6 @@ import urllib.request
 import asyncio
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, Request, HTTPException, Response
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -21,6 +20,7 @@ templates = Jinja2Templates(directory=BASE_DIR)
 sys.path.append(str(BASE_DIR.parent))
 from shared_mongo import get_client
 from shared_limits import RateLimiter, body_size_limit
+from shared_network import NetworkPolicyError, safe_urlopen, validate_outbound_url
 
 db = get_client().toadcode
 codes_collection = db.codes
@@ -68,35 +68,37 @@ async def toad_backgrounds():
 
 PROXY_ALLOWED_HOSTS = (
     "github.com",
-    "codeload.github.com",
+    "*.github.com",
     "githubusercontent.com",
+    "*.githubusercontent.com",
     "huggingface.co",
+    "*.huggingface.co",
     "hf.co",
+    "*.hf.co",
 )
 
 
 def _is_allowed_proxy_target(raw_url: str) -> bool:
     """Without this the endpoint is an open proxy into the container's network."""
-    parsed = urlparse(raw_url)
-    if parsed.scheme not in ("http", "https"):
+    try:
+        validate_outbound_url(
+            raw_url,
+            allowed_hosts=PROXY_ALLOWED_HOSTS,
+            resolve_dns=False,
+        )
+    except NetworkPolicyError:
         return False
-    host = (parsed.hostname or "").lower()
-    return any(host == allowed or host.endswith("." + allowed) for allowed in PROXY_ALLOWED_HOSTS)
+    return True
 
 
 def _fetch_zip(url: str) -> bytes:
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 Toadcode/1.0'})
-    with urllib.request.urlopen(req, timeout=30) as response:
-        # urlopen follows redirects, so whoever answered may not be who we vetted.
-        if not _is_allowed_proxy_target(response.geturl()):
-            raise ValueError("Redirected outside the allowed hosts.")
-        declared = response.headers.get("Content-Length")
-        if declared and declared.isdigit() and int(declared) > MAX_PROXY_BYTES:
-            raise ValueError("Archive exceeds the size limit.")
-        payload = response.read(MAX_PROXY_BYTES + 1)
-    if len(payload) > MAX_PROXY_BYTES:
-        raise ValueError("Archive exceeds the size limit.")
-    return payload
+    return safe_urlopen(
+        req,
+        timeout=30,
+        allowed_hosts=PROXY_ALLOWED_HOSTS,
+        max_bytes=MAX_PROXY_BYTES,
+    )
 
 
 @router.get('/api/proxy-zip', dependencies=[Depends(RateLimiter(limit=30, window_seconds=60))])
@@ -106,7 +108,7 @@ async def proxy_zip(url: str):
         raise HTTPException(status_code=400, detail="Only GitHub and HuggingFace URLs are allowed.")
     try:
         zip_bytes = await asyncio.to_thread(_fetch_zip, url)
-    except ValueError as e:
+    except (ValueError, NetworkPolicyError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         raise HTTPException(status_code=502, detail="Upstream archive could not be fetched.")

@@ -41,8 +41,10 @@ build/
 
 ### Testing (pytest & coverage) ###
 .pytest_cache/
+.pytest-tmp/
 .coverage
 htmlcov/
+.orchestrator/
 
 ### Another (VPN control plane) ###
 # Основные правила — в another/.gitignore (вложенные .gitignore git учитывает),

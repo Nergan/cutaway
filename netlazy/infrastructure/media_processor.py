@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import tempfile
@@ -9,6 +8,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from netlazy.domain.repository import MediaProcessorPort, UnsupportedMediaTypeError, MediaProcessingError
+from shared_runtime import SubprocessFailure, run_process
 
 SUPPORTED_TYPE_PREFIXES = {
     "image": "image",
@@ -43,24 +43,14 @@ class FFmpegMediaProcessor(MediaProcessorPort):
 
     async def _run_ffmpeg(self, args: list) -> None:
         safe_args = ["-protocol_whitelist", "file,crypto,data"] + args
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", *safe_args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
         try:
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=self.timeout_seconds)
-        except asyncio.TimeoutError:
-            try:
-                proc.kill()
-                await proc.communicate()
-            except (ProcessLookupError, Exception):
-                pass
-            logging.error("ffmpeg process timed out and was killed.")
-            raise MediaProcessingError("Media processing timed out")
-
-        if proc.returncode != 0:
-            logging.error(f"ffmpeg failed: {stderr.decode(errors='ignore')}")
+            await run_process(
+                ["ffmpeg", *safe_args],
+                timeout=self.timeout_seconds,
+                capture_stderr=True,
+            )
+        except SubprocessFailure as exc:
+            logging.error("ffmpeg failed or timed out: %s", exc)
             raise MediaProcessingError("Media processing failed")
 
     def _derive_key(self, user_id: str) -> bytes:

@@ -561,7 +561,8 @@
                 
                 document.querySelectorAll('.col[data-plugin]').forEach(col => {
                     const pluginName = col.getAttribute('data-plugin');
-                    if (plugins[pluginName] && plugins[pluginName].status !== 'online') {
+                const unavailable = new Set(['disabled', 'offline', 'circuit_open']);
+                if (plugins[pluginName] && unavailable.has(plugins[pluginName].status)) {
                         col.classList.add('offline');
                     }
                 });

@@ -1,0 +1,6 @@
+# Global kill switch for the dormant VPN control-plane project.
+# CI remains enabled; only build, runtime and deployment are blocked.
+run = true
+build = true
+deploy = true
+reason = "Paused after the Hugging Face Space moderation incident."

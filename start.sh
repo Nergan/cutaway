@@ -1,10 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+PROFILE="${CUTAWAY_PROFILE:-local}"
+VENV_ROOT="${CUTAWAY_VENV_ROOT:-.orchestrator/venvs}"
+HUB_PYTHON="$VENV_ROOT/$PROFILE/hub/bin/python"
+
+if [ ! -x "$HUB_PYTHON" ]; then
+    HUB_PYTHON="${PYTHON:-python}"
 fi
 
-echo "Starting Main Site on port 7860 with native asyncio loop..."
-# Force standard asyncio to bypass the uvloop SSL handshake timeout bug.
-# Added --proxy-headers and --forwarded-allow-ips "*" to recognize HTTPS scheme from the proxy.
-exec uvicorn main:app --host 0.0.0.0 --port 7860 --loop asyncio --proxy-headers --forwarded-allow-ips "*"
+echo "Starting cutaway hub (profile=$PROFILE, isolation=${CUTAWAY_ISOLATION:-profile-default})..."
+exec "$HUB_PYTHON" -m uvicorn main:app \
+    --host 0.0.0.0 \
+    --port "${PORT:-7860}" \
+    --loop asyncio \
+    --proxy-headers \
+    --forwarded-allow-ips "*"

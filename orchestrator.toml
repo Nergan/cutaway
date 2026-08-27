@@ -1,0 +1,341 @@
+schema_version = 1
+default_profile = "local"
+
+[orchestrator]
+worker_host = "127.0.0.1"
+worker_base_port = 8100
+monitor_interval_seconds = 2.0
+shutdown_grace_seconds = 10.0
+global_memory_budget_mb = 12288
+
+[profiles.local]
+isolation = "embedded"
+dependency_isolation = false
+global_memory_budget_mb = 0
+
+[profiles.hf]
+isolation = "isolated"
+dependency_isolation = true
+global_memory_budget_mb = 12288
+
+[profiles.render]
+isolation = "isolated"
+dependency_isolation = true
+global_memory_budget_mb = 16384
+
+[projects.formular]
+directory = "formular"
+entrypoint = "formular.formular"
+prefix = "/formular"
+requirements = "formular/requirements.txt"
+startup = "lazy"
+env_allowlist = [
+  "FORMULAR_MAX_UPLOAD_BYTES",
+  "FORMULAR_MAX_OUTPUT_BYTES",
+  "FORMULAR_SESSION_TTL_SECONDS",
+  "FORMULAR_MAX_CONCURRENT_JOBS",
+  "FORMULAR_MAX_ARCHIVE_FILES",
+  "FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES",
+]
+
+[projects.formular.limits]
+request_rate = 20
+request_window_seconds = 60
+request_bytes = 268435456
+response_bytes = 536870912
+max_concurrency = 2
+queue_timeout_seconds = 5
+request_timeout_seconds = 600
+memory_mb = 4096
+cpu_percent = 180
+cpu_grace_seconds = 30
+max_processes = 16
+max_connections = 32
+temp_mb = 2048
+idle_timeout_seconds = 900
+startup_timeout_seconds = 30
+restart_max = 3
+restart_window_seconds = 300
+restart_backoff_seconds = 5
+nofile = 256
+fsize_mb = 1024
+
+[projects.formular.network]
+allowed_hosts = []
+allow_private = false
+requests_per_minute = 0
+
+[projects.toadcode]
+directory = "toadcode"
+entrypoint = "toadcode.toadcode"
+prefix = "/toadcode"
+requirements = "toadcode/requirements.txt"
+startup = "lazy"
+env_allowlist = ["MONGODB_URI", "MONGO_MAX_POOL_SIZE", "MONGO_TLS", "MONGO_TLS_ALLOW_INVALID_CERTS"]
+
+[projects.toadcode.limits]
+request_rate = 60
+request_window_seconds = 60
+request_bytes = 10485760
+response_bytes = 83886080
+max_concurrency = 8
+request_timeout_seconds = 60
+memory_mb = 768
+cpu_percent = 100
+max_processes = 4
+max_connections = 32
+idle_timeout_seconds = 900
+
+[projects.toadcode.network]
+allowed_hosts = ["github.com", "codeload.github.com", "*.githubusercontent.com", "huggingface.co", "hf.co"]
+allow_private = false
+requests_per_minute = 30
+
+[projects.markbin]
+directory = "markbin"
+entrypoint = "markbin.markbin"
+prefix = "/markbin"
+requirements = "markbin/requirements.txt"
+startup = "lazy"
+env_allowlist = ["MONGODB_URI", "MONGO_MAX_POOL_SIZE", "MONGO_TLS", "MONGO_TLS_ALLOW_INVALID_CERTS"]
+
+[projects.markbin.limits]
+request_rate = 60
+request_window_seconds = 60
+request_bytes = 2097152
+response_bytes = 8388608
+max_concurrency = 8
+request_timeout_seconds = 30
+memory_mb = 512
+cpu_percent = 100
+max_processes = 2
+max_connections = 24
+idle_timeout_seconds = 900
+
+[projects.kanban]
+directory = "kanban"
+entrypoint = "kanban.kanban"
+prefix = "/kanban"
+requirements = "kanban/requirements.txt"
+startup = "lazy"
+
+[projects.kanban.limits]
+request_rate = 120
+request_bytes = 1048576
+response_bytes = 8388608
+max_concurrency = 16
+request_timeout_seconds = 30
+memory_mb = 384
+cpu_percent = 100
+max_processes = 2
+max_connections = 16
+idle_timeout_seconds = 900
+
+[projects.snake]
+directory = "snake"
+entrypoint = "snake.snake"
+prefix = "/snake"
+requirements = "snake/requirements.txt"
+startup = "lazy"
+
+[projects.snake.limits]
+request_rate = 120
+request_bytes = 1048576
+response_bytes = 8388608
+max_concurrency = 16
+request_timeout_seconds = 30
+memory_mb = 384
+cpu_percent = 100
+max_processes = 2
+max_connections = 16
+idle_timeout_seconds = 900
+
+[projects.evenfest]
+directory = "evenfest"
+entrypoint = "evenfest.evenfest"
+prefix = "/evenfest"
+requirements = "evenfest/requirements.txt"
+startup = "lazy"
+env_allowlist = ["MONGODB_URI", "MONGO_MAX_POOL_SIZE", "MONGO_TLS", "MONGO_TLS_ALLOW_INVALID_CERTS"]
+
+[projects.evenfest.limits]
+request_rate = 120
+request_bytes = 1048576
+response_bytes = 8388608
+max_concurrency = 12
+request_timeout_seconds = 30
+memory_mb = 512
+cpu_percent = 100
+max_processes = 2
+max_connections = 24
+idle_timeout_seconds = 900
+
+[projects.yellow_mirror]
+directory = "yellow_mirror"
+entrypoint = "yellow_mirror.yellow_mirror"
+prefix = "/yellow-mirror"
+requirements = "yellow_mirror/requirements.txt"
+startup = "lazy"
+env_allowlist = ["YELLOW_MIRROR_ALLOWED_HOSTS", "YELLOW_MIRROR_MAX_SESSIONS"]
+
+[projects.yellow_mirror.limits]
+request_rate = 30
+request_bytes = 1048576
+response_bytes = 8388608
+max_concurrency = 4
+request_timeout_seconds = 60
+max_websockets = 2
+websocket_message_bytes = 2097152
+websocket_lifetime_seconds = 900
+memory_mb = 4096
+cpu_percent = 180
+cpu_grace_seconds = 20
+max_processes = 48
+max_connections = 192
+temp_mb = 2048
+idle_timeout_seconds = 300
+startup_timeout_seconds = 45
+
+[projects.yellow_mirror.network]
+allowed_hosts = []
+allow_private = false
+requests_per_minute = 30
+
+[projects.dnd]
+directory = "dnd"
+entrypoint = "dnd.main"
+prefix = "/dnd"
+requirements = "dnd/requirements.txt"
+startup = "lazy"
+
+[projects.dnd.limits]
+request_rate = 120
+request_bytes = 1048576
+response_bytes = 16777216
+max_concurrency = 16
+request_timeout_seconds = 30
+memory_mb = 384
+cpu_percent = 100
+max_processes = 2
+max_connections = 16
+idle_timeout_seconds = 900
+
+[projects.netlazy]
+directory = "netlazy"
+entrypoint = "netlazy.main"
+prefix = "/netlazy"
+requirements = "netlazy/requirements.txt"
+npm_build = true
+startup = "lazy"
+env_allowlist = [
+  "MONGODB_URI",
+  "MONGO_MAX_POOL_SIZE",
+  "MONGO_TLS",
+  "MONGO_TLS_ALLOW_INVALID_CERTS",
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+  "ADMIN_API_KEY",
+  "TRUSTED_BOT_IPS",
+  "TRUSTED_PROXY_IPS",
+  "MAX_MEDIA_ITEMS",
+  "MAX_BIO_LENGTH",
+  "MAX_UPLOAD_BYTES",
+  "IMAGE_MAX_DIMENSION",
+  "POW_DIFFICULTY",
+  "BOT_PROTECTION_DELAY",
+  "ENVIRONMENT",
+  "CORS_ORIGINS",
+  "TAGS_YAML_PATH",
+]
+
+[projects.netlazy.limits]
+request_rate = 120
+request_bytes = 26214400
+response_bytes = 67108864
+max_concurrency = 8
+queue_timeout_seconds = 5
+request_timeout_seconds = 120
+memory_mb = 2048
+cpu_percent = 150
+cpu_grace_seconds = 30
+max_processes = 12
+max_connections = 96
+temp_mb = 1024
+idle_timeout_seconds = 900
+startup_timeout_seconds = 45
+nofile = 256
+fsize_mb = 512
+
+[projects.netlazy.network]
+allowed_hosts = ["api.cloudinary.com", "res.cloudinary.com", "*.cloudinary.com", "api.github.com", "cdn.jsdelivr.net"]
+allow_private = false
+requests_per_minute = 60
+
+[projects.another]
+directory = "another"
+entrypoint = "another.main"
+prefix = "/another"
+requirements = "another/requirements.txt"
+startup = "disabled"
+ci = true
+run = false
+build = false
+deploy = false
+reason = "Globally disabled; CI only."
+
+[projects.another.limits]
+request_rate = 0
+request_bytes = 0
+response_bytes = 0
+max_concurrency = 0
+memory_mb = 0
+
+[profiles.hf.projects.formular.env_defaults]
+FORMULAR_MAX_UPLOAD_BYTES = "33554432"
+FORMULAR_MAX_OUTPUT_BYTES = "134217728"
+FORMULAR_SESSION_TTL_SECONDS = "1800"
+FORMULAR_MAX_CONCURRENT_JOBS = "1"
+FORMULAR_MAX_ARCHIVE_FILES = "1000"
+FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES = "134217728"
+
+[profiles.hf.projects.formular.limits]
+request_bytes = 33554432
+response_bytes = 134217728
+max_concurrency = 1
+memory_mb = 3072
+
+[profiles.hf.projects.netlazy.env_defaults]
+MAX_UPLOAD_BYTES = "10485760"
+MAX_MEDIA_ITEMS = "6"
+IMAGE_MAX_DIMENSION = "1280"
+MONGO_MAX_POOL_SIZE = "3"
+
+[profiles.hf.projects.netlazy.limits]
+request_bytes = 12582912
+max_concurrency = 6
+memory_mb = 1536
+
+[profiles.hf.projects.yellow_mirror]
+run = false
+build = false
+deploy = false
+reason = "Remote-browser functionality is not suitable for the Hugging Face Space policy."
+
+[profiles.hf.projects.toadcode.env_defaults]
+MONGO_MAX_POOL_SIZE = "3"
+MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+
+[profiles.hf.projects.markbin.env_defaults]
+MONGO_MAX_POOL_SIZE = "3"
+MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+
+[profiles.hf.projects.evenfest.env_defaults]
+MONGO_MAX_POOL_SIZE = "3"
+MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+
+[profiles.hf.projects.another]
+run = false
+build = false
+deploy = false
+

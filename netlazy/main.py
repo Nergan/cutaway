@@ -20,6 +20,7 @@ from netlazy.database import connect_to_mongo, close_mongo_connection, db_instan
 from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
 from netlazy.presentation.dependencies import tag_service
+from shared_network import safe_urlopen
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
@@ -200,8 +201,13 @@ def fetch_gh_version():
         "https://api.github.com/repos/Nergan/cdn/contents/netlazy/apk",
         headers={"User-Agent": "netlazy-app/1.0"}
     )
-    with urllib.request.urlopen(req, timeout=5) as res:
-        return json.loads(res.read())
+    payload = safe_urlopen(
+        req,
+        timeout=5,
+        allowed_hosts=("api.github.com",),
+        max_bytes=1024 * 1024,
+    )
+    return json.loads(payload)
 
 
 @router.get("/api/app-version")
