@@ -235,6 +235,8 @@
       you: "вы", guest: "гость", follow: "Перейти к",
       copied: "скопировано", copyFirst: "сначала выберите объект",
       imageOk: "картинка на доске", imagesOnly: "сюда можно только картинки",
+      imageWait: "загрузка картинки…",
+      zoom: (n) => "масштаб " + n + "%",
       nickShort: "имя от 2 символов", cursorHidden: "курсор пока не виден",
       panel: "Панель", peopleN: (n) => {
         const n10 = n % 10, n100 = n % 100;
@@ -262,6 +264,8 @@
       you: "you", guest: "guest", follow: "Go to",
       copied: "copied", copyFirst: "select an object first",
       imageOk: "image placed", imagesOnly: "images only",
+      imageWait: "uploading image…",
+      zoom: (n) => "zoom " + n + "%",
       nickShort: "name needs at least 2 characters", cursorHidden: "cursor not visible yet",
       panel: "Panel", peopleN: (n) => n === 1 ? "1 person on the board" : n + " people on the board",
       empty: "draw and drop images — everyone sees the same board",
@@ -299,18 +303,44 @@
     xform: null, eraseGesture: null, chat: [], chatOpen: false, chatPainted: false,
     undo: [], redo: [], clip: null, connected: false,
     ws: null, backoff: 600, imageCache: new Map(), dirty: true, space: false,
-    pointers: new Map(), pinch: null, lastCursor: 0, followAnim: 0, unloading: false,
+    pointers: new Map(), pinch: null, lastCursor: 0, lastDraft: 0, followAnim: 0,
+    unloading: false, uploading: 0, draftFrom: new Map(),
   };
 
   function t(key) {
     const value = I18N[state.lang][key];
     return typeof value === "function" ? value : value;
   }
-  function toast(text) {
+  function toast(text, hold) {
     toastEl.textContent = text;
     toastEl.style.display = "block";
     clearTimeout(toast.tid);
-    toast.tid = setTimeout(() => { toastEl.style.display = "none"; }, 2800);
+    if (!hold) toast.tid = setTimeout(() => { toastEl.style.display = "none"; }, 2800);
+  }
+  function beginUpload() {
+    state.uploading += 1;
+    toast(t("imageWait"), true);
+    updateStatus();
+  }
+  function endUpload(ok) {
+    state.uploading = Math.max(0, state.uploading - 1);
+    if (state.uploading) {
+      toast(t("imageWait"), true);
+    } else if (ok) {
+      toast(t("imageOk"));
+    } else {
+      toastEl.style.display = "none";
+    }
+    updateStatus();
+  }
+  function sendDrafts(list) {
+    const now = performance.now();
+    if (now - state.lastDraft < 40) return;
+    state.lastDraft = now;
+    for (const obj of list) send({ type: "draft", object: obj });
+  }
+  function clearDraft(id) {
+    send({ type: "draft", object: null, id });
   }
   function uid() { return crypto.randomUUID().replace(/-/g, "").slice(0, 12); }
   function toScreen(x, y) {
@@ -681,7 +711,10 @@
     if (copy.y != null) copy.y = mapY(copy.y);
     if (copy.w != null) copy.w = Math.max(mins.w, Math.abs(copy.w * sx));
     if (copy.h != null) copy.h = Math.max(mins.h, Math.abs(copy.h * sy));
-    if (copy.width != null) copy.width = clampNum(copy.width * (Math.abs(sx) + Math.abs(sy)) / 2, 0.5, 80);
+    if (copy.width != null) {
+      const hi = copy.type === "shape" ? 40 : 80;
+      copy.width = clampNum(copy.width * (Math.abs(sx) + Math.abs(sy)) / 2, 0.5, hi);
+    }
     if (copy.size != null) {
       const lo = copy.type === "stamp" ? 16 : 10;
       const hi = copy.type === "stamp" ? 160 : 96;
@@ -986,8 +1019,10 @@
   function updateStatus() {
     const conn = state.connected ? t("online") : t("offline");
     const people = I18N[state.lang].peopleN(state.users.size);
-    const zoom = Math.round(state.camera.scale * 100) + "%";
-    document.getElementById("status-line").textContent = conn + DOT + people + DOT + zoom;
+    const zoom = I18N[state.lang].zoom(Math.round(state.camera.scale * 100));
+    const parts = [conn, people, zoom];
+    if (state.uploading) parts.push(t("imageWait"));
+    document.getElementById("status-line").textContent = parts.join(DOT);
   }
 
   function render() {
@@ -1141,7 +1176,7 @@
       state.objects.delete(obj.id);
       state.selected.delete(obj.id);
       state.drafts.delete(obj.id);
-      send({ type: "draft", object: null, id: obj.id });
+      clearDraft(obj.id);
       return;
     }
     const first = clone(obj);
@@ -1193,8 +1228,8 @@
       undoOps.push({ op: "delete", id });
     }
     if (doOps.length) commitBatch(doOps, undoOps);
-    for (const id of gesture.originals.keys()) send({ type: "draft", object: null, id });
-    for (const id of gesture.created) send({ type: "draft", object: null, id });
+    for (const id of gesture.originals.keys()) clearDraft(id);
+    for (const id of gesture.created) clearDraft(id);
   }
 
   function onDown(ev) {
@@ -1300,7 +1335,7 @@
         ? applyRotate(origin, w.x, w.y)
         : applyResize(origin, state.xform.handle, w.x, w.y, ratioLock(ev));
       state.objects.set(next.id, next);
-      send({ type: "draft", object: next });
+      sendDrafts([next]);
       state.dirty = true;
       return;
     }
@@ -1331,11 +1366,13 @@
     if (state.moving && state.last && state.selected.size) {
       const prev = toWorld(state.last.x, state.last.y);
       const dx = w.x - prev.x, dy = w.y - prev.y;
+      const movedList = [];
       for (const obj of selectedObjects()) {
         const moved = translate(obj, dx, dy);
         state.objects.set(moved.id, moved);
-        send({ type: "draft", object: moved });
+        movedList.push(moved);
       }
+      sendDrafts(movedList);
       state.last = p; state.dirty = true; return;
     }
     if (!state.drawing || state.tool !== "pen") return;
@@ -1349,7 +1386,7 @@
       color: state.color, width: state.width, alpha: state.alpha, rot: 0, z: maxZ() + 1,
     };
     state.drafts.set(draft.id, draft);
-    send({ type: "draft", object: draft });
+    sendDrafts([draft]);
     state.dirty = true;
   }
   function onUp(ev) {
@@ -1364,7 +1401,7 @@
     if (last && state.xform) {
       const origin = state.xform.origin;
       const obj = state.objects.get(origin.id);
-      send({ type: "draft", object: null, id: origin.id });
+      clearDraft(origin.id);
       if (obj) commit({ op: "update", object: obj }, { op: "update", object: origin });
       state.xform = null;
     }
@@ -1391,11 +1428,15 @@
     }
     if (last && state.moving) state.pendingToggle = null;
     if (last && state.moving && state.selected.size) {
+      const doOps = [], undoOps = [];
       for (const obj of selectedObjects()) {
-        send({ type: "draft", object: null, id: obj.id });
+        clearDraft(obj.id);
         const origin = state.moveOrigins.get(obj.id);
-        if (origin) commit({ op: "update", object: obj }, { op: "update", object: origin });
+        if (!origin) continue;
+        doOps.push({ op: "update", object: clone(obj) });
+        undoOps.push({ op: "update", object: origin });
       }
+      if (doOps.length) commitBatch(doOps, undoOps);
       state.moving = false; state.moveOrigins.clear();
     }
     if (!last || !state.drawing) return;
@@ -1406,7 +1447,7 @@
         color: state.color, width: state.width, alpha: state.alpha, rot: 0, z: maxZ() + 1,
       };
       state.drafts.delete(obj.id);
-      send({ type: "draft", object: null, id: obj.id });
+      clearDraft(obj.id);
       commit({ op: "add", object: obj }, { op: "delete", id: obj.id });
     }
     state.points = []; state.draftId = null;
@@ -1433,9 +1474,10 @@
     return res.json();
   }
   async function placeMedia(blob, filename, wx, wy) {
+    beginUpload();
     try {
       const meta = await uploadBlob(blob, filename);
-      if (meta.kind !== "image") { toast(t("imagesOnly")); return; }
+      if (meta.kind !== "image") { endUpload(false); toast(t("imagesOnly")); return; }
       const id = uid();
       const img = new Image();
       img.onload = () => {
@@ -1447,23 +1489,30 @@
         };
         commit({ op: "add", object: obj }, { op: "delete", id });
         state.selected = new Set([id]);
+        endUpload(true);
       };
+      img.onerror = () => { endUpload(false); toast(t("uploadFail")); };
       img.src = mediaUrl(meta.id);
       state.imageCache.set(meta.id, img);
-      toast(t("imageOk"));
-    } catch (err) { toast(String(err.message || err)); }
+    } catch (err) {
+      endUpload(false);
+      toast(String(err.message || err));
+    }
   }
   function pasteObjects(items, wx, wy) {
     let dx = 16, dy = 16;
     const first = bounds(items[0]);
     if (first) { dx = wx - first.x; dy = wy - first.y; }
     const ids = [];
+    const doOps = [], undoOps = [];
     items.forEach((obj) => {
       const copy = clone(obj); copy.id = uid(); copy.z = maxZ() + 1;
       const next = translate(copy, dx, dy);
-      commit({ op: "add", object: next }, { op: "delete", id: next.id });
+      doOps.push({ op: "add", object: next });
+      undoOps.push({ op: "delete", id: next.id });
       ids.push(next.id);
     });
+    commitBatch(doOps, undoOps);
     state.selected = new Set(ids);
   }
   function copySelected() {
@@ -1507,6 +1556,10 @@
         state.me = { id: msg.id, name: msg.name, color: msg.color };
         state.objects = new Map((msg.objects || []).map((obj) => [obj.id, obj]));
         state.users = new Map();
+        state.drafts = new Map();
+        state.draftFrom = new Map();
+        state.undo = [];
+        state.redo = [];
         state.chat = Array.isArray(msg.chat) ? msg.chat.slice(-300) : [];
         state.chatPainted = false;
         nickEl.value = msg.name || "";
@@ -1518,10 +1571,12 @@
       } else if (msg.type === "op") {
         applyLocal(msg); state.dirty = true;
       } else if (msg.type === "draft") {
-        if (msg.object) state.drafts.set(msg.object.id, msg.object);
-        else state.drafts.delete(msg.id);
-        if (msg.object && state.objects.has(msg.object.id) && !state.moveOrigins.has(msg.object.id)) {
-          state.objects.set(msg.object.id, clone(msg.object));
+        if (msg.object) {
+          state.drafts.set(msg.object.id, msg.object);
+          if (msg.from) state.draftFrom.set(msg.object.id, msg.from);
+        } else {
+          state.drafts.delete(msg.id);
+          state.draftFrom.delete(msg.id);
         }
         state.dirty = true;
       } else if (msg.type === "presence") {
@@ -1536,6 +1591,12 @@
           });
         }
         state.users = next;
+        for (const [id, from] of [...state.draftFrom]) {
+          if (!next.has(from)) {
+            state.drafts.delete(id);
+            state.draftFrom.delete(id);
+          }
+        }
         renderPeople(); state.dirty = true;
       } else if (msg.type === "cursor") {
         const user = state.users.get(msg.id);
@@ -1547,8 +1608,12 @@
         if (state.chat.length > 300) state.chat.splice(0, state.chat.length - 300);
         renderChat();
       } else if (msg.type === "error") {
-        toast(msg.message);
-        if (msg.id) { state.objects.delete(msg.id); state.selected.delete(msg.id); state.dirty = true; }
+        if (msg.message !== "Slow down.") toast(msg.message);
+        if (msg.id && msg.op === "add") {
+          state.objects.delete(msg.id);
+          state.selected.delete(msg.id);
+          state.dirty = true;
+        }
       }
     };
   }

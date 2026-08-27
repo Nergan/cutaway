@@ -302,7 +302,10 @@ def apply_op(store: dict[str, dict[str, Any]], msg: dict[str, Any]) -> dict[str,
     if op == "update":
         obj = validate_object(msg.get("object"))
         if obj["id"] not in store:
-            raise ValueError("Unknown object.")
+            if len(store) >= MAX_OBJECTS:
+                raise ValueError("Board is full.")
+            store[obj["id"]] = obj
+            return {"op": "add", "object": obj}
         store[obj["id"]] = obj
         return {"op": "update", "object": obj}
     if op == "delete":
@@ -645,13 +648,14 @@ async def _run_socket(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "pong"})
                 continue
             now = asyncio.get_running_loop().time()
-            bucket = [stamp for stamp in bucket if now - stamp < 1.0]
-            if len(bucket) >= 40:
-                await websocket.send_json(
-                    {"type": "error", "message": "Slow down."}
-                )
-                continue
-            bucket.append(now)
+            if kind not in {"cursor", "draft"}:
+                bucket = [stamp for stamp in bucket if now - stamp < 1.0]
+                if len(bucket) >= 40:
+                    await websocket.send_json(
+                        {"type": "error", "message": "Slow down."}
+                    )
+                    continue
+                bucket.append(now)
 
             if kind == "hello":
                 async with state.lock:
@@ -724,7 +728,11 @@ async def _run_socket(websocket: WebSocket) -> None:
                     try:
                         canonical = apply_op(state.objects, message)
                     except ValueError as exc:
-                        rejected = {"type": "error", "message": str(exc)}
+                        rejected = {
+                            "type": "error",
+                            "message": str(exc),
+                            "op": message.get("op"),
+                        }
                         obj = message.get("object")
                         if isinstance(obj, dict) and isinstance(obj.get("id"), str):
                             rejected["id"] = obj["id"]

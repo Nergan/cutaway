@@ -109,6 +109,25 @@ def test_apply_op_add_update_delete_and_board_cap():
     apply_op(store, {"op": "delete", "id": "abcd1234efgh"})
     assert store == {}
 
+    revived = apply_op(
+        store,
+        {
+            "op": "update",
+            "object": {
+                "id": "abcd1234efgh",
+                "type": "text",
+                "x": 3,
+                "y": 4,
+                "text": "back",
+                "color": "#e5e1db",
+                "size": 18,
+                "z": 1,
+            },
+        },
+    )
+    assert revived["op"] == "add"
+    assert store["abcd1234efgh"]["text"] == "back"
+
 
 def test_claim_name_rejects_duplicates_and_short_values():
     presence = {"a": {"name": "Рыжий-лис"}}
