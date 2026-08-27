@@ -46,11 +46,16 @@
     .section-title { font-size: 8pt; color: var(--muted); }
     .marquee {
       position: absolute; z-index: 4; display: none; pointer-events: none;
-      box-sizing: border-box; border: 1px solid Highlight; background: transparent;
+      box-sizing: border-box;
+      border: 1px dashed Highlight;
+      background: color-mix(in srgb, Highlight 22%, transparent);
     }
-    .marquee::before {
-      content: ""; position: absolute; inset: 0; pointer-events: none;
-      background: Highlight; opacity: 0.28;
+    @supports not (background: color-mix(in srgb, Highlight 22%, transparent)) {
+      .marquee { background: transparent; }
+      .marquee::before {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: Highlight; opacity: 0.22;
+      }
     }
     .tool-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
     .icon-btn {
@@ -1692,7 +1697,6 @@
   window.addEventListener("pointerup", onUp);
   window.addEventListener("pointercancel", onUp);
   canvas.addEventListener("wheel", onWheel, { passive: false });
-  canvas.addEventListener("contextmenu", (ev) => ev.preventDefault());
   chatLogEl.addEventListener("wheel", (ev) => ev.stopPropagation(), { passive: true });
   chatEl.addEventListener("focusout", (ev) => {
     const next = ev.relatedTarget;
