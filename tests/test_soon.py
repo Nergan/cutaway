@@ -1,6 +1,6 @@
 from bson import ObjectId
 
-from soon.soon import apply_op, claim_name, normalize_room, sniff_mime, validate_object
+from soon.soon import apply_op, claim_name, normalize_room, session_id, sniff_mime, validate_object
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
@@ -44,6 +44,10 @@ def test_validate_stroke_and_reject_javascript_link():
     )
     assert faded["color"] == "#d4a373"
     assert faded["alpha"] == 0.0
+    assert stroke["rot"] == 0.0
+
+    turned = validate_object({**stroke, "rot": 45})
+    assert turned["rot"] == 45.0
 
     try:
         validate_object(
@@ -146,3 +150,27 @@ def test_validate_image_rotation():
 
     wrapped = validate_object({**obj, "rot": -45})
     assert wrapped["rot"] == 315.0
+
+
+def test_validate_stroke_and_note_keep_rotation():
+    note = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "note",
+            "x": 0,
+            "y": 0,
+            "w": 180,
+            "h": 120,
+            "text": "hi",
+            "rot": 30,
+            "z": 1,
+        }
+    )
+    assert note["rot"] == 30.0
+
+
+def test_session_id_accepts_client_sid():
+    assert session_id("abcd1234efgh") == "abcd1234efgh"
+    fresh = session_id("../nope")
+    assert len(fresh) == 16
+    assert session_id(None) != session_id("")

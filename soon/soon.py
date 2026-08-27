@@ -59,6 +59,7 @@ MAX_POINTS = 200
 MAX_TEXT = 2000
 MAX_CHAT = 300
 MAX_CHAT_TEXT = 240
+WS_IDLE = 40.0
 MAX_MEDIA_BYTES = 1_500_000
 MAX_COORD = 1_000_000.0
 DEFAULT_ROOM = "board"
@@ -217,6 +218,7 @@ def validate_object(raw: Any) -> dict[str, Any]:
         "id": _oid(raw.get("id")),
         "type": obj_type,
         "z": _int(raw.get("z", 1), 0, 1_000_000),
+        "rot": round(_finite(raw.get("rot", 0), -360, 360) % 360, 2),
     }
     if obj_type == "stroke":
         points = raw.get("points")
@@ -265,9 +267,6 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["h"] = _finite(raw.get("h", 180), 24, 2400)
         obj["media_id"] = _media_id(raw.get("media_id"))
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
-        if obj_type == "image":
-            rot = _finite(raw.get("rot", 0), -360, 360)
-            obj["rot"] = round(rot % 360, 2)
         if obj_type == "file":
             obj["filename"] = _text(raw.get("filename", "file"), 180)
             mime = raw.get("mime")
@@ -410,6 +409,12 @@ def claim_name(presence: dict[str, dict[str, Any]], client_id: str, raw: Any) ->
     return name
 
 
+def session_id(raw: Any) -> str:
+    if isinstance(raw, str) and ID_RE.fullmatch(raw):
+        return raw
+    return secrets.token_hex(8)
+
+
 def _guest_color(seed: str) -> str:
     palette = (
         "#d4a373", "#d98a59", "#e65c5c", "#a3e09d",
@@ -427,9 +432,18 @@ async def _broadcast(room: Room, payload: dict[str, Any], skip: str | None = Non
             await websocket.send_json(payload)
         except Exception:
             dead.append(client_id)
+    dropped = False
     for client_id in dead:
-        room.clients.pop(client_id, None)
+        stale = room.clients.pop(client_id, None)
+        if stale is not None:
+            dropped = True
+            try:
+                await stale.close(code=1001)
+            except Exception:
+                pass
         room.presence.pop(client_id, None)
+    if dropped and payload.get("type") != "presence":
+        await _presence(room)
 
 
 async def _presence(room: Room) -> None:
@@ -569,22 +583,35 @@ async def board_socket_legacy(websocket: WebSocket, room: str) -> None:
 async def _run_socket(websocket: WebSocket) -> None:
     name = DEFAULT_ROOM
     await websocket.accept()
-    client_id = secrets.token_hex(8)
+    client_id = session_id(websocket.query_params.get("sid"))
     state = await hub.room(name)
-    name_hint = _guest_name(taken_names(state.presence))
     color = _guest_color(client_id)
     bucket: list[float] = []
+    old: WebSocket | None = None
 
     async with state.lock:
+        old = state.clients.get(client_id)
         state.clients[client_id] = websocket
-        state.presence[client_id] = {
-            "name": name_hint,
-            "color": color,
-            "x": None,
-            "y": None,
-        }
+        if client_id not in state.presence:
+            state.presence[client_id] = {
+                "name": _guest_name(taken_names(state.presence)),
+                "color": color,
+                "x": None,
+                "y": None,
+            }
+        info = state.presence[client_id]
+        name_hint = info.get("name") or _guest_name(taken_names(state.presence))
+        color = info.get("color") or color
+        info["name"] = name_hint
+        info["color"] = color
         snapshot = list(state.objects.values())
         chat = list(state.chat)
+
+    if old is not None and old is not websocket:
+        try:
+            await asyncio.wait_for(old.close(code=1001), timeout=1.0)
+        except Exception:
+            pass
 
     try:
         await websocket.send_json(
@@ -601,7 +628,16 @@ async def _run_socket(websocket: WebSocket) -> None:
         )
         await _presence(state)
         while True:
-            message = await websocket.receive_json()
+            try:
+                message = await asyncio.wait_for(
+                    websocket.receive_json(), timeout=WS_IDLE
+                )
+            except TimeoutError:
+                try:
+                    await websocket.close(code=1001)
+                except Exception:
+                    pass
+                break
             if not isinstance(message, dict):
                 continue
             kind = message.get("type")
@@ -707,7 +743,11 @@ async def _run_socket(websocket: WebSocket) -> None:
     except Exception:
         logger.exception("soon: socket failed")
     finally:
+        dropped = False
         async with state.lock:
-            state.clients.pop(client_id, None)
-            state.presence.pop(client_id, None)
-        await _presence(state)
+            if state.clients.get(client_id) is websocket:
+                state.clients.pop(client_id, None)
+                state.presence.pop(client_id, None)
+                dropped = True
+        if dropped:
+            await _presence(state)
