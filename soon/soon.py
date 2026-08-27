@@ -288,7 +288,7 @@ def validate_object(raw: Any) -> dict[str, Any]:
         obj["y"] = _finite(raw.get("y", 0))
         obj["text"] = _text(raw.get("text", ""))
         obj["color"] = _color(raw.get("color", "#d4a373"))
-        obj["size"] = _finite(raw.get("size", 18), 1, 240)
+        obj["size"] = _finite(raw.get("size", 18), 1, MAX_COORD)
         obj["alpha"] = _finite(raw.get("alpha", 1), 0, 1)
         size = obj["size"]
         if raw.get("w") is None:

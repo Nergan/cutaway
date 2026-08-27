@@ -273,6 +273,24 @@ def test_validate_text_box_and_legacy_without_size_box():
     assert small["w"] == 12.0
     assert small["h"] == 10.0
 
+    huge = validate_object(
+        {
+            "id": "abcd1234efgh",
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "w": 4000,
+            "h": 2000,
+            "text": "big",
+            "color": "#6fbf4a",
+            "size": 5000,
+            "z": 1,
+        }
+    )
+    assert huge["size"] == 5000.0
+    assert huge["w"] == 4000.0
+    assert huge["h"] == 2000.0
+
     legacy = validate_object(
         {
             "id": "abcd1234efgh",

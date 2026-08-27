@@ -225,7 +225,7 @@
   const SCALE_MAX = 8;
   const DRAG_PX = 5;
   const MAX_STROKE_POINTS = 1000;
-  const TEXT_SIZE_MUL = 3;
+  const TEXT_SIZE_MUL = 10;
   const I18N = {
     ru: {
       tools: "инструменты",
@@ -945,7 +945,7 @@
     }
     if (copy.size != null) {
       const lo = copy.type === "stamp" ? 16 : copy.type === "text" ? 1 : 10;
-      const hi = copy.type === "stamp" ? 160 : copy.type === "text" ? 240 : 96;
+      const hi = copy.type === "stamp" ? 160 : copy.type === "text" ? 1e6 : 96;
       const factor = copy.type === "text" ? (Math.abs(sx) + Math.abs(sy)) / 2 : Math.abs(sy);
       copy.size = clampNum(copy.size * factor, lo, hi);
     }
