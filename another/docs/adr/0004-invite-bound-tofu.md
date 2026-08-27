@@ -13,7 +13,10 @@
 
 ## Решение
 Укрепляем TOFU, ключ в бинарник **не** кладём. В per-client build — token,
-client_id, entrypoints. Сборка из админки — да; сайт самообслуживания — нет.
+client_id, entrypoints. Сборка из админки — да. Сайт самообслуживания
+(портал `/another/`, код инвайта → очередь GitHub Actions → скачать zip) —
+**в скоупе**, см. [user-portal-plan.md](../user-portal-plan.md). Ключ по-прежнему
+не в exe.
 
 Полный разбор угроз: [provisioning.md](../provisioning.md).
 

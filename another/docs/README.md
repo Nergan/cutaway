@@ -18,6 +18,7 @@
 | Какая инфраструктура реально есть | [infrastructure.md](infrastructure.md) |
 | Как устроена аутентификация (админ и клиент) | [auth-spec.md](auth-spec.md) |
 | Как выдаётся доступ устройствам | [provisioning.md](provisioning.md) |
+| Портал `/another`, инвайт-код, скачивание сборки | [user-portal-plan.md](user-portal-plan.md) — ТЗ; реализация в origin + Actions + ядре |
 | Будет ли VPN работать в РФ / КНР / при вайтлистах | [circumvention.md](circumvention.md) |
 | Монитор, логи, алерты | [observability.md](observability.md) |
 | Почему принято конкретное решение | [adr/](adr/) |
@@ -34,6 +35,7 @@ docs/
 ├── infrastructure.md         доступные узлы и как их складывать
 ├── auth-spec.md              PQ-аутентификация админа и клиента (корректная)
 ├── provisioning.md           TOFU + invite, не ключ в бинарнике
+├── user-portal-plan.md       ТЗ портала (Grok 4.6); код — origin/Actions/ядро
 ├── circumvention.md          ТСПУ / вайтлисты / GFW / что брать из экосистемы
 ├── observability.md          монитор, компактные логи, оповещения
 ├── adr/                      architecture decision records

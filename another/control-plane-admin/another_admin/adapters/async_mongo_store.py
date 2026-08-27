@@ -55,6 +55,7 @@ class AsyncMongoStore:
         self.settings = db["settings"]
         self.events = db["events"]
         self.sessions = db["sessions"]
+        self.installer_jobs = db["installer_jobs"]
 
     @classmethod
     def from_client(
@@ -75,6 +76,8 @@ class AsyncMongoStore:
         await self.sessions.create_index("session_id", unique=True)
         await self.sessions.create_index("client_id")
         await self.sessions.create_index("last_seen", expireAfterSeconds=900)
+        await self.installer_jobs.create_index("job_id", unique=True)
+        await self.installer_jobs.create_index("expires_at", expireAfterSeconds=0)
         existing = await self._db.list_collection_names()
         if "events" not in existing:
             try:
@@ -417,3 +420,29 @@ class AsyncMongoStore:
             {"_id": "investigation", "enabled": bool(enabled)},
             upsert=True,
         )
+
+    async def create_installer_job(self, job: dict[str, Any]) -> str:
+        job_id = str(job.get("job_id") or uuid.uuid4())
+        stored = {**job, "job_id": job_id}
+        await self.installer_jobs.insert_one(stored)
+        return job_id
+
+    async def get_installer_job(self, job_id: str) -> dict[str, Any] | None:
+        doc = await self.installer_jobs.find_one({"job_id": job_id})
+        if doc is None:
+            return None
+        doc.pop("_id", None)
+        return doc
+
+    async def update_installer_job(self, job_id: str, fields: dict[str, Any]) -> bool:
+        unset = {k: "" for k, v in list(fields.items()) if v is None}
+        sets = {k: v for k, v in fields.items() if v is not None}
+        update: dict[str, Any] = {}
+        if sets:
+            update["$set"] = sets
+        if unset:
+            update["$unset"] = unset
+        if not update:
+            return False
+        result = await self.installer_jobs.update_one({"job_id": job_id}, update)
+        return result.matched_count == 1

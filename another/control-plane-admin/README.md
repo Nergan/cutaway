@@ -2,8 +2,8 @@
 
 CLI (Typer) — аварийный канал и keygen. FastAPI origin — REST-прокси для
 Worker (`/internal/v1`) и админ-API (`/admin/v1`, [auth-spec.md](../docs/auth-spec.md)).
-Web-монитор: `/admin/` (сессии, алерты, invite/reissue/сборка). Telegram-бот
-в дереве, **не развивается**.
+Web-монитор: `/admin/` (сессии, алерты, invite/reissue). Публичный портал
+инсталлятора: `/` (на Space — `/another/`). Telegram-бот в дереве, **не развивается**.
 
 PyMongo **Async** в API, не `motor`. Синхронный pymongo остаётся в CLI.
 
@@ -17,7 +17,8 @@ export MONGO_URI=mongodb://127.0.0.1:27017
 export ANOTHER_SERVICE_SECRET=dev-secret
 python -m another_admin.api
 # http://127.0.0.1:8080/health
-# http://127.0.0.1:8080/admin/
+# http://127.0.0.1:8080/          портал (код → zip)
+# http://127.0.0.1:8080/admin/    админка
 ```
 
 Первый админ:
@@ -31,7 +32,7 @@ another-admin keygen --admin-id root --output ./root.another-admin-key --registe
 
 ```
 pip install -r requirements-dev.txt                            → ok (cryptography 48, fastapi, pymongo async)
-pytest -v                                                      → 44/44 зелёные (2026-08-26), вкл. sessions/alerts/build
+pytest -v                                                      → 57/57 зелёные (2026-08-27), вкл. portal/redeem/jobs
 another-admin --help                                           → invite/revoke/list/report/reissue/keygen/admin-register
 ```
 

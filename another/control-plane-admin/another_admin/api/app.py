@@ -6,18 +6,21 @@ import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pymongo import AsyncMongoClient
 
 from another_admin.adapters.async_mongo_store import AsyncMongoStore
+from another_admin.adapters.github_dispatch import dispatch_installer
 from another_admin.api.admin_routes import router as admin_router
 from another_admin.api.config import ApiConfig
 from another_admin.api.internal_routes import router as internal_router
+from another_admin.api.public_routes import router as public_router
 from another_admin.ports.control_plane_store import ControlPlaneStore
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+PORTAL_DIR = Path(__file__).resolve().parent / "portal"
 
 # StaticFiles определяет Content-Type через mimetypes, а тот на Windows берёт
 # типы из реестра, где .js часто прописан как text/plain. Браузер отказывается
@@ -96,16 +99,30 @@ def create_app(
 
     application.include_router(internal_router)
     application.include_router(admin_router)
+    application.include_router(public_router)
 
     @application.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "service": "another-control-plane"}
 
     @application.get("/")
-    async def root(request: Request) -> RedirectResponse:
-        # root_path непустой, когда приложение смонтировано под префиксом (/another).
-        return RedirectResponse(f"{request.scope.get('root_path', '')}/admin/")
+    async def root() -> FileResponse:
+        return FileResponse(PORTAL_DIR / "index.html")
 
+    @application.get("/index.html")
+    async def portal_index() -> FileResponse:
+        return FileResponse(PORTAL_DIR / "index.html")
+
+    def _dispatch(job_id: str) -> bool:
+        runtime = application.state.cfg
+        if runtime is None:
+            return False
+        return dispatch_installer(runtime, job_id)
+
+    application.state.dispatch_installer = _dispatch
+
+    if PORTAL_DIR.is_dir():
+        application.mount("/portal", StaticFiles(directory=PORTAL_DIR), name="portal")
     if STATIC_DIR.is_dir():
         application.mount("/admin", StaticFiles(directory=STATIC_DIR, html=True), name="admin-ui")
 

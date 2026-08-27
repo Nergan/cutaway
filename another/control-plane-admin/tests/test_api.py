@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,7 +24,7 @@ from another_admin.domain.admin_auth import (
 )
 
 
-def _cfg() -> ApiConfig:
+def _cfg(build_dir: str) -> ApiConfig:
     return ApiConfig(
         mongo_uri="memory",
         mongo_db_name="another",
@@ -29,13 +32,21 @@ def _cfg() -> ApiConfig:
         control_plane_url="https://cf-worker.another.example",
         edge_internal_url="",
         events_capped_bytes=1024,
+        build_dir=build_dir,
     )
+
+
+def _build_dir() -> str:
+    path = Path(__file__).resolve().parent.parent / "var" / "test-builds"
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
 
 
 @pytest.fixture
 def api():
     store = InMemoryControlPlaneStore()
-    app = create_app(store=store, cfg=_cfg())
+    app = create_app(store=store, cfg=_cfg(_build_dir()))
+    app.state.dispatch_installer = lambda _job_id: True
     with TestClient(app) as client:
         yield client, store
 
@@ -150,6 +161,7 @@ def test_admin_invite_list_revoke_via_signed_commands(api):
     assert invite.json()["result"]["invite_ttl_hours"] == 24
     assert invite.json()["result"]["enrollment_expires_at"]
     chain_after_invite = invite.json()["chain_head_hex"]
+    assert asyncio.run(store.list_events()) == []
 
     replay = signed_command(1, chain_before_invite, invite_body)
     assert replay.status_code == 200
@@ -182,6 +194,7 @@ def test_admin_invite_list_revoke_via_signed_commands(api):
     listed_after = signed_command(6, chain, {"op": "list_devices"})
     assert listed_after.status_code == 200
     assert listed_after.json()["result"]["devices"] == []
+    assert asyncio.run(store.list_events()) == []
 
     missing = signed_command(7, listed_after.json()["chain_head_hex"], {"op": "delete", "client_id": client_id})
     assert missing.status_code == 404
@@ -354,3 +367,157 @@ def test_build_installer_returns_ldflags_and_reissues(api):
     platforms = {a["platform"] for a in result["artifacts"]}
     assert platforms == {"linux/amd64", "android/arm64"}
     assert all(a["compiled"] is False for a in result["artifacts"])
+
+
+def test_revoke_skips_loopback_edge_invalidate():
+    store = InMemoryControlPlaneStore()
+    cfg = ApiConfig(
+        mongo_uri="memory",
+        mongo_db_name="another",
+        service_secret="test-secret",
+        control_plane_url="https://cf-worker.another.example",
+        edge_internal_url="http://127.0.0.1:8787",
+        events_capped_bytes=1024,
+    )
+    app = create_app(store=store, cfg=cfg)
+    with TestClient(app) as client:
+        kp, chain = _boot_admin(client, store)
+        invite = _signed(client, kp, 1, chain, {"op": "invite", "comment": "loopback", "quota_limit_bytes": 1})
+        client_id = invite.json()["result"]["client_id"]
+        chain = invite.json()["chain_head_hex"]
+        revoked = _signed(client, kp, 2, chain, {"op": "revoke", "client_id": client_id})
+        assert revoked.status_code == 200
+        assert asyncio.run(store.list_events()) == []
+
+
+def test_revoke_edge_http_error_is_ops_not_anomaly():
+    store = InMemoryControlPlaneStore()
+    cfg = ApiConfig(
+        mongo_uri="memory",
+        mongo_db_name="another",
+        service_secret="test-secret",
+        control_plane_url="https://cf-worker.another.example",
+        edge_internal_url="https://edge.example",
+        events_capped_bytes=1024,
+    )
+    app = create_app(store=store, cfg=cfg)
+
+    class _Resp:
+        status_code = 500
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, *args, **kwargs):
+            return _Resp()
+
+    with patch("another_admin.api.admin_routes.httpx.AsyncClient", _Client):
+        with TestClient(app) as client:
+            kp, chain = _boot_admin(client, store)
+            invite = _signed(
+                client, kp, 1, chain, {"op": "invite", "comment": "ops", "quota_limit_bytes": 1}
+            )
+            client_id = invite.json()["result"]["client_id"]
+            chain = invite.json()["chain_head_hex"]
+            revoked = _signed(client, kp, 2, chain, {"op": "revoke", "client_id": client_id})
+            assert revoked.status_code == 200
+            events = asyncio.run(store.list_events())
+            assert len(events) == 1
+            assert events[0]["category"] == "ops"
+            assert events[0]["detail"]["type"] == "edge_ban_invalidate_failed"
+            assert events[0]["detail"]["status"] == 500
+
+
+def test_portal_root_is_not_admin_redirect(api):
+    client, _ = api
+    home = client.get("/", follow_redirects=False)
+    assert home.status_code == 200
+    assert "Установщик" in home.text
+    index = client.get("/index.html", follow_redirects=False)
+    assert index.status_code == 200
+    assert "Установщик" in index.text
+    js = client.get("/portal/portal.js")
+    assert js.status_code == 200
+    assert "public/v1/redeem" in js.text
+    admin = client.get("/admin/", follow_redirects=False)
+    assert admin.status_code == 200
+    assert "ANOTHER" in admin.text
+
+
+def test_redeem_invalid_token_is_generic(api):
+    client, _ = api
+    res = client.post(
+        "/public/v1/redeem",
+        json={"token": "ffffffffffffffffffffffffffffffff", "platform": "windows/amd64"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "invalid or expired invite"
+
+
+def test_redeem_upload_and_download(api):
+    client, store = api
+    kp, chain = _boot_admin(client, store)
+    invite = _signed(client, kp, 1, chain, {"op": "invite", "comment": "портал", "quota_limit_bytes": 0})
+    assert invite.status_code == 200, invite.text
+    token = invite.json()["result"]["enrollment_token"]
+    redeem = client.post(
+        "/public/v1/redeem",
+        json={"token": token, "platform": "windows/amd64"},
+    )
+    assert redeem.status_code == 200, redeem.text
+    body = redeem.json()
+    assert "enrollment_token" not in body
+    pending = asyncio.run(
+        store.find_enrollment_by_token_hash(hashlib.sha256(token.encode("utf-8")).hexdigest())
+    )
+    assert pending is not None
+    job_id = body["job_id"]
+    secret = body["download_secret"]
+    headers = {"X-Another-Proxy-Secret": "test-secret"}
+    payload = client.get(f"/internal/v1/installer-jobs/{job_id}", headers=headers)
+    assert payload.status_code == 200, payload.text
+    assert payload.json()["enrollment_token"] == token
+    assert "cf-worker.another.example" in payload.json()["nodes_json"]
+    zip_bytes = b"PK\x03\x04fake-installer-zip"
+    uploaded = client.put(
+        f"/internal/v1/installer-jobs/{job_id}/artifact",
+        content=zip_bytes,
+        headers=headers,
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    wiped = client.get(f"/internal/v1/installer-jobs/{job_id}", headers=headers)
+    assert wiped.json()["enrollment_token"] == ""
+    status = client.get(f"/public/v1/installer-jobs/{job_id}", params={"secret": secret})
+    assert status.json()["status"] == "ready"
+    downloaded = client.get(
+        f"/public/v1/installer-jobs/{job_id}/download",
+        params={"secret": secret},
+    )
+    assert downloaded.status_code == 200
+    assert downloaded.content == zip_bytes
+    denied = client.get(
+        f"/public/v1/installer-jobs/{job_id}/download",
+        params={"secret": "nope"},
+    )
+    assert denied.status_code == 404
+
+
+def test_redeem_without_github_dispatch_is_503():
+    store = InMemoryControlPlaneStore()
+    app = create_app(store=store, cfg=_cfg(_build_dir()))
+    with TestClient(app) as client:
+        kp, chain = _boot_admin(client, store)
+        invite = _signed(client, kp, 1, chain, {"op": "invite", "comment": "нет ci", "quota_limit_bytes": 0})
+        token = invite.json()["result"]["enrollment_token"]
+        redeem = client.post(
+            "/public/v1/redeem",
+            json={"token": token, "platform": "windows/amd64"},
+        )
+        assert redeem.status_code == 503

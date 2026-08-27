@@ -1,8 +1,12 @@
 # Первый запуск: от админки до трафика
 
-Этот документ отвечает на один вопрос: «всё задеплоено, я одновременно
-администратор и пользователь — что мне делать, чтобы через это пошёл мой
-трафик». Про сам деплой (Space, воркер, секреты) — [DEPLOY.md](DEPLOY.md).
+Этот документ — **лабораторный** прогон протокола через curl и локальный
+`another-core.exe`. Продуктовый цикл (инвайт → код на `/another/` → скачать
+zip → приложение само enroll+VPN) описан в
+[docs/user-portal-plan.md](docs/user-portal-plan.md) и реализован в портале
+и ядре. Curl ниже нужен, чтобы отладить воркер без сборки инсталлятора.
+
+Про сам деплой (Space, воркер, секреты) — [DEPLOY.md](DEPLOY.md).
 
 Здесь описано только то, что проверено на работающем коде. Там, где что-то не
 работает или работает частично, это сказано прямо, а не спрятано.
@@ -16,7 +20,7 @@
 
 | Часть         | Где                                    | За что отвечает                                                                           |
 | ------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Control plane | Hugging Face Space, префикс `/another` | База (MongoDB), админка, внутренний API для воркера. Трафик через себя **не** пропускает. |
+| Control plane | Hugging Face Space, префикс `/another` | Mongo, **портал** `/another/`, админка `/another/admin/`, внутренний API. Трафик через себя **не** пропускает. |
 | Edge          | Cloudflare Worker                      | И авторизация (`/enroll`, `/nonce`, `/auth`), и **сам VPN-трафик** (`/proxy`).            |
 | Клиент        | ваша машина                            | Go-бинарник `core/cmd/desktop`. Локальный HTTP API на `127.0.0.1:47821`.                  |
 
@@ -141,6 +145,11 @@ go build -trimpath -o another-core.exe .\cmd\desktop
 это хвост от `go build .\cmd\desktop` без `-o` (Go берёт имя из папки
 `cmd/desktop`). Тот же бинарник, его можно удалить.
 
+После `git pull` собирайте **заново** и перезапускайте процесс: уже лежащий
+exe и окно, в котором он запущен, новый код не подхватывают. В первой строке
+лога `starting another-core` поле `control_plane=` должно быть `$WORKER`,
+а не `http://127.0.0.1:8787`.
+
 ### Шаг 4. Запустить ядро без прав администратора
 
 Начинать стоит именно так: без TUN и без kill switch. Тогда ядро не трогает
@@ -149,7 +158,9 @@ go build -trimpath -o another-core.exe .\cmd\desktop
 туннеля.
 
 ```powershell
+$WORKER = "https://another-edge.ВАШ-SUBDOMAIN.workers.dev"
 $env:ANOTHER_ALLOW_NOOP_TUN = "1"
+$env:ANOTHER_CONTROL_PLANE_URL = $WORKER
 .\another-core.exe
 ```
 
@@ -226,11 +237,14 @@ $raw
 ```powershell
 $enroll = ($raw -split "`nHTTP_CODE:")[0] | ConvertFrom-Json
 $enroll | ConvertTo-Json -Depth 5
+$enroll.nodes[0].control_plane
 ```
 
 Здесь должны быть `ok: true`, `client_id`, `vless_user_id` и список `nodes`.
-В `nodes` поле `host` — реальный адрес воркера, `control_plane` не пустой.
+В `nodes` поле `host` — реальный адрес воркера, `control_plane` — `$WORKER`.
 Если там `another.example` — воркер не переразвёртывали, вернитесь к шагу 0.
+Если там `127.0.0.1:8787` — `/enroll` ушёл на wrangler dev, а не на `$WORKER`.
+Новый токен и шаг 6 заново; в шаг 7 этот `control_plane` не копируйте.
 
 Если `HTTP_CODE` не 200 — это не успех. Частые случаи:
 
@@ -250,15 +264,20 @@ $enroll | ConvertTo-Json -Depth 5
 вместо полного VPN (`connect_usecase.go:51-52`).
 
 ```powershell
-# PowerShell 5.1 сворачивает массив из одного узла в объект. Собираем JSON руками,
-# чтобы nodes всегда был массивом с control_plane на воркер, а не на :8787.
-$node = @($enroll.nodes)[0]
-$nodesJson = '[' + ($node | ConvertTo-Json -Depth 6 -Compress) + ']'
-$connectJson = '{"client_id":"' + $enroll.client_id + '","nodes":' + $nodesJson + ',"dest_host":"example.com","dest_port":443}'
+# Не пересобирайте nodes из $enroll.nodes: если enroll был на wrangler dev,
+# там будет http://127.0.0.1:8787, и ядро так и пойдёт. Host и control_plane
+# всегда берём из $WORKER.
+$WORKER = "https://another-edge.ВАШ-SUBDOMAIN.workers.dev"
+$hostName = ([uri]$WORKER).Host
+$clientId = $enroll.client_id
+if (-not $clientId) { $clientId = "nu-ya-XXXXXX" }  # из админки, статус ENROLLED
+$clientId
+$connectJson = '{"client_id":"' + $clientId + '","nodes":[{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"' + $hostName + '","port":443,"path":"/proxy","priority":1,"control_plane":"' + $WORKER + '"}],"dest_host":"example.com","dest_port":443}'
 
 $connectFile = Join-Path $env:TEMP "another-connect.json"
 $utf8 = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($connectFile, $connectJson, $utf8)
+$connectJson   # client_id не пустой, control_plane без 127.0.0.1:8787
 
 curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
   -H "Content-Type: application/json" `
@@ -267,17 +286,13 @@ curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connec
 curl.exe -s http://127.0.0.1:47821/status
 ```
 
-Перед этим в том же окне должны жить `$enroll` (шаг 6) и `$WORKER`. Если окно новое и `$enroll` пуст, узлы можно собрать из адреса воркера — **не** из дефолта ядра `http://127.0.0.1:8787`:
+`$enroll` живёт только в том окне PowerShell, где вы делали шаг 6. Новое окно — переменная пустая, в JSON попадёт `"client_id":""`, ядро уйдёт как `dev-device`, Space ответит `404` на `/clients/find`, воркер — `403 authentication failed`. Тогда `$clientId` возьмите из админки (строка **ENROLLED**, не PENDING). PENDING значит, что `/enroll` ещё не был — сначала шаг 6.
 
-```powershell
-$WORKER = "https://another-edge.ВАШ-SUBDOMAIN.workers.dev"
-$clientId = "nu-ya-754619"   # client_id из админки / шага 6
-$hostName = ([uri]$WORKER).Host
-$nodesJson = '[{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"' + $hostName + '","port":443,"path":"/proxy","priority":1,"control_plane":"' + $WORKER + '"}]'
-$connectJson = '{"client_id":"' + $clientId + '","nodes":' + $nodesJson + ',"dest_host":"example.com","dest_port":443}'
-```
+`$WORKER` — тот же, что в шаге 0, `https://another-edge.<subdomain>.workers.dev`.
 
-Не используйте `@{ nodes = $enroll.nodes } | ConvertTo-Json`: в Windows PowerShell 5.1 один узел превращается в объект, поле `nodes` пропадает или ломается, и ядро подставляет `ANOTHER_CONTROL_PLANE_URL` по умолчанию — `http://127.0.0.1:8787` (порт wrangler dev). Отсюда `dial tcp 127.0.0.1:8787: actively refused`.
+Если в `$connectJson` всё ещё `:8787`, enroll был не на прод-воркер: задайте `$WORKER` заново и повторите шаг 6 новым токеном.
+
+Не используйте `@{ nodes = $enroll.nodes } | ConvertTo-Json` и не копируйте `control_plane` из ответа `/enroll`, если там localhost.
 
 Снова не используйте `-d $connect`: PowerShell ломает JSON так же, как на шаге 6,
 и ядро отвечает текстом `invalid request body` без поля `ok`. В `$enroll`
@@ -322,9 +337,8 @@ cd another\core
 ```powershell
 $vpnFile = Join-Path $env:TEMP "another-connect.json"
 $utf8 = New-Object System.Text.UTF8Encoding $false
-$node = @($enroll.nodes)[0]
-$nodesJson = '[' + ($node | ConvertTo-Json -Depth 6 -Compress) + ']'
-$vpnJson = '{"client_id":"' + $enroll.client_id + '","nodes":' + $nodesJson + '}'
+$hostName = ([uri]$WORKER).Host
+$vpnJson = '{"client_id":"' + $clientId + '","nodes":[{"name":"cf-worker","tier":"tier1-bootstrap","transport":"vless-ws","host":"' + $hostName + '","port":443,"path":"/proxy","priority":1,"control_plane":"' + $WORKER + '"}]}'
 [System.IO.File]::WriteAllText($vpnFile, $vpnJson, $utf8)
 curl.exe -sS -w "`nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:47821/connect `
   -H "Content-Type: application/json" --data-binary "@$vpnFile"
@@ -361,7 +375,8 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 | `/enroll` → `403 enrollment token expired`                         | То же самое, но срок истёк явно                                                                                                    |
 | В `nodes` адрес `another.example`                                  | Воркер работает на старой версии, сделайте `wrangler deploy`                                                                       |
 | `/connect` → `invalid request body`                                | PowerShell сломал JSON в `-d`. Пишите тело в файл и `--data-binary "@файл"`                                                        |
-| `/connect` → `dial tcp 127.0.0.1:8787`                             | В запрос не попали `nodes` из `/enroll`. Ядро взяло дефолт wrangler dev. Соберите JSON как в шаге 7, с `control_plane` = `$WORKER` |
+| `/connect` → `dial tcp 127.0.0.1:8787`                             | Ядро ходит на wrangler dev. Чаще всего не пересобран exe, в JSON попал `control_plane` из старого enroll, или не задан `$env:ANOTHER_CONTROL_PLANE_URL`. Пересоберите, перезапустите с `$WORKER`, JSON шага 7 не копируйте из `$enroll.nodes` |
+| `"client_id":""` / Space `404` `/clients/find` / воркер `403`      | `$enroll` пуст в этом окне. Подставьте `client_id` ENROLLED-устройства из админки. PENDING — сначала шаг 6 |
 | `/connect` → HTTP 200 и `"ok":false`                               | Так и задумано у локального API. Смотрите `error` и `GET /status`                                                                  |
 | В админке `ENROLLED`, `/status` = `failed`                         | Ключ в Mongo есть, сессии нет. Enroll ≠ connect                                                                                    |
 | `/connect` → `http_challenge: ... unexpected status 500`           | Упал воркер на `POST /auth` (не отказ в подписи). Нужен свежий `wrangler deploy` edge; в логах воркера будет `unhandled error`     |
@@ -387,10 +402,6 @@ curl.exe -s -X POST http://127.0.0.1:47821/disconnect
 - **UDP.** Сейчас всё, кроме DNS, ломается молча: клиент запрашивает UDP, а
   получает TCP. Честнее либо реализовать UDP в воркере, либо явно отклонять
   такие потоки с внятной ошибкой вместо подмены протокола.
-- **Автоматический enrollment в ядре.** Токен уже умеет встраиваться в бинарник
-  через ldflags, но `cmd/desktop` его для `/enroll` не использует — шаг 6
-  приходится делать руками. Это же уберёт необходимость в Flutter для
-  первого запуска.
 - **Второй узел.** Failover реализован и работает, но переключаться некуда:
   живой узел ровно один. Второй появится вместе с data plane из
   `deploy/origin/` на Render или VPS.

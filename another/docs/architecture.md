@@ -641,7 +641,7 @@ control-plane-admin/          # CLI + FastAPI origin (`another_admin.api`) + к�
 Отдельный репозиторий `control-plane-api/` не завёлся: origin живёт рядом с
 domain. Полноценный SPA — позже; сейчас статика в `another_admin/api/static/`.
 
-Монитор, логи, алерты: [observability.md](observability.md). Сборка инсталлятора — кнопка в админке; сайт самообслуживания — вне скоупа.
+Монитор, логи, алерты: [observability.md](observability.md). Сборка инсталлятора — кнопка в админке (reissue) и публичный портал `/another/` (invite-код → GitHub Actions → zip), см. [user-portal-plan.md](user-portal-plan.md).
 
 Псевдокод приглашения тот же (`create_invite`); вместо «бот шлёт QR в Telegram» — API отдаёт token/QR, UI показывает, опционально запускает per-client build с **встроенным token**, не с приватным ключом.
 

@@ -25,6 +25,7 @@ class InMemoryControlPlaneStore:
         self.sessions: dict[str, dict[str, Any]] = {}
         self.alert_thresholds: dict[str, Any] = {}
         self.investigation_mode = False
+        self.installer_jobs: dict[str, dict[str, Any]] = {}
 
     def _iter_clients(self) -> list[tuple[dict[str, Any], dict[str, Any]]]:
         out: list[tuple[dict[str, Any], dict[str, Any]]] = []
@@ -315,3 +316,24 @@ class InMemoryControlPlaneStore:
 
     async def set_investigation_mode(self, enabled: bool) -> None:
         self.investigation_mode = bool(enabled)
+
+    async def create_installer_job(self, job: dict[str, Any]) -> str:
+        job_id = str(job.get("job_id") or uuid.uuid4())
+        stored = {**job, "job_id": job_id}
+        self.installer_jobs[job_id] = stored
+        return job_id
+
+    async def get_installer_job(self, job_id: str) -> dict[str, Any] | None:
+        found = self.installer_jobs.get(job_id)
+        return dict(found) if found is not None else None
+
+    async def update_installer_job(self, job_id: str, fields: dict[str, Any]) -> bool:
+        current = self.installer_jobs.get(job_id)
+        if current is None:
+            return False
+        for key, value in fields.items():
+            if value is None:
+                current.pop(key, None)
+            else:
+                current[key] = value
+        return True

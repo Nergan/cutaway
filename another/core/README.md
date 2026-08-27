@@ -40,6 +40,7 @@ go build ./...    → успешно для нативной платформы
 | VLESS-Reality сервер | `reality_server.go` + `cmd/reality-origin` | ✅ round-trip тест; прод — когда будет IP |
 | Пробник RTT | `internal/adapters/probe/` | ✅ |
 | Embed token+nodes | `internal/adapters/provisioning/` | ldflags, не private key |
+| Auto-enroll + receipt | `cmd/desktop` + `adapters/enroll` | первый запуск с embedded token |
 
 Dev без прав: `ANOTHER_ALLOW_NOOP_TUN=1` (тогда это снова «библиотека протоколов», не VPN).
 
@@ -74,9 +75,12 @@ Dev без прав: `ANOTHER_ALLOW_NOOP_TUN=1` (тогда это снова «
 ```bash
 cd core
 cp ../.env.example .env
-# без админа:
+# без админа (лаборатория, без embedded token):
 #   ANOTHER_ALLOW_NOOP_TUN=1
+#   ANOTHER_SKIP_AUTO_START=1   # если в .env случайно есть enrollment token
 go run ./cmd/desktop
+# Сборка с ldflags (портал/Actions): при первом запуске ядро само
+# POST /enroll и поднимает VPN без curl. Повторный запуск читает enrolled.json.
 # VPN (перехват TUN), не один dest:
 curl -X POST http://127.0.0.1:47821/connect -d '{}'
 curl http://127.0.0.1:47821/status

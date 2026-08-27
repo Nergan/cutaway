@@ -195,24 +195,40 @@ def _invite_payload(result) -> dict[str, Any]:
 
 async def _invalidate_edge_ban(request: Request, client_id: str) -> None:
     cfg = request.app.state.cfg
-    if not cfg.edge_internal_url:
+    base = (cfg.edge_internal_url or "").rstrip("/")
+    if not base or _is_loopback_url(base):
         return
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
-                f"{cfg.edge_internal_url}/internal/ban-invalidate",
+            res = await client.post(
+                f"{base}/internal/ban-invalidate",
                 json={"client_id": client_id},
                 headers={"X-Another-Proxy-Secret": cfg.service_secret},
             )
-    except httpx.HTTPError:
-        await _store(request).append_event(
-            {
-                "category": "anomaly",
-                "client_id": client_id,
-                "detail": {"type": "edge_ban_invalidate_failed"},
-                "source": "admin-api",
-            }
-        )
+        if res.status_code < 400:
+            return
+        detail: dict[str, Any] = {
+            "type": "edge_ban_invalidate_failed",
+            "status": res.status_code,
+        }
+    except httpx.HTTPError as err:
+        detail = {
+            "type": "edge_ban_invalidate_failed",
+            "error": str(err)[:240],
+        }
+    await _store(request).append_event(
+        {
+            "category": "ops",
+            "client_id": client_id,
+            "detail": detail,
+            "source": "admin-api",
+        }
+    )
+
+
+def _is_loopback_url(url: str) -> bool:
+    lowered = url.lower()
+    return "127.0.0.1" in lowered or "localhost" in lowered or "[::1]" in lowered
 
 
 async def _execute_op(request: Request, body: dict[str, Any]) -> dict[str, Any]:

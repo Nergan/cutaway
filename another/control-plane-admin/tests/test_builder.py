@@ -1,4 +1,4 @@
-from another_admin.domain.builder import EMBED_PKG, plan_installer, try_compile
+from another_admin.domain.builder import EMBED_PKG, nodes_json_for_control_plane, plan_installer, try_compile
 
 
 def test_plan_contains_ldflags_not_private_key():
@@ -31,3 +31,10 @@ def test_try_compile_skipped_when_disabled():
     )
     out = try_compile(plan, enabled=False)
     assert all(not a.compiled for a in out.artifacts)
+
+
+def test_nodes_json_pins_worker_not_loopback():
+    raw = nodes_json_for_control_plane("https://another-edge.example.workers.dev")
+    assert "another-edge.example.workers.dev" in raw
+    assert "127.0.0.1" not in raw
+    assert "control_plane" in raw

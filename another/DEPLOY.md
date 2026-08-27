@@ -64,10 +64,11 @@ git push (main)
 
 | Адрес | Что там |
 | --- | --- |
-| `https://nargan-projects.hf.space/another/` | редирект на админку |
+| `https://nargan-projects.hf.space/another/` | публичный портал: ввод invite-кода, скачивание сборки |
 | `https://nargan-projects.hf.space/another/admin/` | веб-админка (ключ живёт только в памяти вкладки) |
 | `https://nargan-projects.hf.space/another/admin/v1/*` | admin API, гибридные подписи Ed25519 + ML-DSA-65 |
-| `https://nargan-projects.hf.space/another/internal/v1/*` | REST-прокси к Mongo, только для воркера |
+| `https://nargan-projects.hf.space/another/public/v1/*` | redeem / статус / скачивание zip, без админ-ключа |
+| `https://nargan-projects.hf.space/another/internal/v1/*` | REST-прокси к Mongo: воркер и build runner |
 | `https://nargan-projects.hf.space/another/health` | проверка живости |
 
 Карточки на главной странице `cutaway` у `another` нет намеренно: проект не
@@ -77,44 +78,90 @@ git push (main)
 текстом причины (а не `500`) и не роняет остальные плагины хаба. При этом
 админка и `/health` всё равно открываются — по ним и видно, чего не хватает.
 
+## Space на паузе / Restart даёт 503
+
+Origin на HF **не гоняет VPN**. Трафик туннеля идёт через Cloudflare Worker.
+Логи вида `POST /another/admin/v1/command 200` — это открытая вкладка админки
+(раньше админка сама слала command каждые 10 с). Затем `Shutting down` — Hugging Face сам послал
+SIGTERM контейнеру.
+
+Если в runtime Space стоит `PAUSED` и `errorMessage: Flagged as abusive`,
+кнопки Restart / Rebuild **не поднимут** его: платформа считает Space
+нарушением и держит hardware выключенным. Это не OOM и не «прокси на вашей
+машине». Снять флаг может только Hugging Face (форма на странице Space или
+[huggingface.co/support](https://huggingface.co/support)): частная админка
+control plane, не открытый прокси; автополлинг админки выключен.
+
+Пока Space на паузе портал, Invite и внутренний API недоступны. Воркер при
+этом может жить отдельно.
+
 ---
 
 ## Шаг 1. Секреты в HF Space
 
-Открыть Space `Nargan/projects` → Settings → Variables and secrets. Добавлять
-именно как **secrets**, не как variables:
+Открыть https://huggingface.co/spaces/Nargan/projects → **Settings** →
+**Variables and secrets**. Каждая строка — **Secret** (замочек), не Variable:
+Variable виден всем, у кого есть доступ к репо Space.
 
-| Ключ | Что положить | Как получить |
+HF **не показывает** уже сохранённый секрет повторно. Если админка и
+`ping-targets` уже отвечали 200, `ANOTHER_SERVICE_SECRET` уже задан — **не
+генерируйте новый**, иначе придётся обновить его ещё в Cloudflare и в GitHub.
+
+| Ключ | Что это | Откуда взять значение |
 | --- | --- | --- |
-| `ANOTHER_SERVICE_SECRET` | случайная строка на 32+ байта | `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `EDGE_INTERNAL_URL` | `https://another-edge.<субдомен>.workers.dev` | появится после шага 3 |
-| `ANOTHER_CONTROL_PLANE_URL` | тот же адрес воркера | то же |
+| `ANOTHER_SERVICE_SECRET` | общий пароль origin ↔ воркер ↔ GitHub Actions | **Уже должен быть.** Искать в таком порядке: (1) `another/.env` на этой машине, строка `ANOTHER_SERVICE_SECRET=`; (2) то, что вводили в `npx wrangler secret put ANOTHER_SERVICE_SECRET`; (3) менеджер паролей. Если нигде нет — сгенерировать **один** раз `python -c "import secrets; print(secrets.token_hex(32))"` и записать в Space, Cloudflare и GitHub **одинаково**. |
+| `EDGE_INTERNAL_URL` | публичный URL воркера, без `/` на конце | Cloudflare Dashboard → Workers & Pages → **another-edge** → справа **Preview** / Visit. Вид `https://another-edge.<ваш-аккаунт>.workers.dev`. Не `127.0.0.1:8787`. |
+| `ANOTHER_CONTROL_PLANE_URL` | тот же URL, что `EDGE_INTERNAL_URL` | Скопировать ту же строку. Origin подставляет её в nodes zip; loopback сюда класть нельзя. |
+| `GITHUB_REPO` | куда origin шлёт `repository_dispatch` | Буквально `Nergan/cutaway` (owner/name репозитория на github.com). Это не токен. |
+| `GITHUB_DISPATCH_TOKEN` | PAT, которым Space стучится в GitHub API | См. ниже «Как сделать PAT». |
 
-`MONGO_URI` задавать **не нужно**. Плагин переиспользует уже существующий
-секрет `MONGODB_URI` того же кластера, а имя базы по умолчанию — `another`.
-Создавать базу `another` руками тоже не нужно: `ensure_schema()` сам создаст
-и её, и все индексы при первом обращении.
+`MONGO_URI` **не задавать**. Плагин копирует уже существующий секрет Space
+`MONGODB_URI`. База `another` создаётся сама при первом запросе.
+
+### Как сделать `GITHUB_DISPATCH_TOKEN`
+
+Нужен доступ писать «dispatch event» в репозиторий `Nergan/cutaway`. Права
+**Actions: write** недостаточно — GitHub требует **Contents**.
+
+**Fine-grained (предпочтительно):**
+
+1. Войти в github.com тем аккаунтом, у которого есть push в `Nergan/cutaway`.
+2. https://github.com/settings/personal-access-tokens → **Fine-grained tokens** → Generate new token.
+3. Token name: `another-space-dispatch`. Expiration: 90 дней или Custom.
+4. Resource owner: тот, кому принадлежит `cutaway` (скорее всего `Nergan`).
+5. Repository access: **Only select repositories** → `cutaway`.
+6. Permissions → Repository:
+   - **Contents:** Read and write
+   - **Metadata:** Read (включится сам)
+7. Generate token → сразу скопировать `github_pat_…` (второй раз GitHub его не покажет) → вставить в Secret Space `GITHUB_DISPATCH_TOKEN`.
+
+**Classic, если fine-grained недоступен:**
+
+1. https://github.com/settings/tokens → **Tokens (classic)** → Generate new token (classic).
+2. Note: `another-space-dispatch`. Scope: **`repo`** (целиком).
+3. Generate → скопировать `ghp_…` → тот же Secret на Space.
+
+Этот PAT живёт **только на Space**. В GitHub Actions его класть не надо.
 
 ## Шаг 2. Секреты в GitHub
 
-Репозиторий → Settings → Secrets and variables → Actions:
+Репозиторий https://github.com/Nergan/cutaway → **Settings** → **Secrets and
+variables** → **Actions** → **New repository secret**.
 
-| Ключ | Где взять |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | dash.cloudflare.com → My Profile → API Tokens → Create Token → шаблон **Edit Cloudflare Workers** |
-| `CLOUDFLARE_ACCOUNT_ID` | dash.cloudflare.com → Workers & Pages → Account ID в правой колонке |
+Кладём на **репозиторий**, не только в Environment `production`. Environment
+`production` нужен workflow деплоя воркера; сборка zip environment не
+использует. Локальный `cutaway/.env` Actions **не читает**.
 
-Токену нужны права `Account → Workers Scripts → Edit`,
-`Account → Workers KV Storage → Edit` и `Account → Account Settings → Read`.
-Шаблон «Edit Cloudflare Workers» выдаёт ровно их, вручную ничего добавлять не
-надо.
+| Ключ | Что положить | Откуда взять |
+| --- | --- | --- |
+| `ANOTHER_SERVICE_SECRET` | **та же** строка, что Secret на Space | см. шаг 1. Runner с ней ходит на origin за ldflags. Если сгенерируете другую — zip-сборка получит 401. |
+| `ANOTHER_ORIGIN_URL` | `https://nargan-projects.hf.space/another` | Буквально эта строка, **без** хвостового `/`. Это не секрет в криптосмысле, но так его не засветят в логах checkout. |
+| `CLOUDFLARE_API_TOKEN` | токен Cloudflare для `wrangler deploy` | dash.cloudflare.com → справа вверху → My Profile → **API Tokens** → Create Token → шаблон **Edit Cloudflare Workers** → Continue → Create Token. Скопировать сразу (`cfat` / длинная hex-строка). Права шаблона: Workers Scripts Edit, Workers KV Edit, Account Settings Read. |
+| `CLOUDFLARE_ACCOUNT_ID` | id аккаунта Cloudflare | dash.cloudflare.com → Workers & Pages → в правом сайдбаре **Account ID** → Copy. Это 32 hex-символа, не токен. |
 
-Workflow деплоит из GitHub Environment с именем `production`. Секреты можно
-положить либо на этот environment (тогда доступны required reviewers и прочие
-protection rules), либо просто на репозиторий — джоб увидит и те, и другие.
-Локальный `cutaway/.env` сюда **не** подхватывается: если токен есть только
-там, ручной `another-edge-deploy` упадёт с
-`it's necessary to set a CLOUDFLARE_API_TOKEN environment variable`.
+Если `CLOUDFLARE_*` уже стоят и воркер деплоился — **не трогать**. Для портала
+добавить нужно только `ANOTHER_SERVICE_SECRET` (если ещё нет) и
+`ANOTHER_ORIGIN_URL`.
 
 ## Шаг 3. Первый деплой воркера — один раз руками
 

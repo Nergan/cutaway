@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>another</title>
+  <link rel="stylesheet" href="portal/portal.css" />
+</head>
+<body>
+  <main class="card">
+    <p class="brand">ANOTHER</p>
+    <h1>Установщик</h1>
+    <p class="lead">Вставьте одноразовый код от оператора. На время установки выключите другие сетевые клиенты. Нужны права администратора Windows; драйвер лежит в zip.</p>
+    <label>
+      Код приглашения
+      <input id="token" type="text" autocomplete="off" spellcheck="false" />
+    </label>
+    <label>
+      Система
+      <select id="platform">
+        <option value="windows/amd64" selected>Windows 10/11, 64-bit</option>
+        <option value="linux/amd64">Linux x64</option>
+      </select>
+    </label>
+    <button id="go" type="button">Собрать и скачать</button>
+    <p id="status" class="status" hidden></p>
+    <a id="download" class="download" hidden>Скачать zip</a>
+    <p class="foot"><a href="admin/">вход для оператора</a></p>
+  </main>
+  <script src="portal/portal.js"></script>
+</body>
+</html>

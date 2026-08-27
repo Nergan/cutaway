@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -15,11 +16,13 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 EMBED_PKG = "github.com/another-vpn/another/core/internal/adapters/provisioning"
 
 DEFAULT_PLATFORMS = ("windows/amd64", "linux/amd64")
 ANDROID_PLATFORM = "android/arm64"
+ALLOWED_DESKTOP_PLATFORMS = ("windows/amd64", "linux/amd64")
 
 
 @dataclass(frozen=True)
@@ -78,6 +81,31 @@ def ldflags_for(
         f"-X {EMBED_PKG}.embeddedNodesJSON={nodes_json}",
     ]
     return " ".join(parts)
+
+
+def nodes_json_for_control_plane(control_plane_url: str) -> str:
+    """Один Tier1-узел на прод-воркер. Host и control_plane не loopback."""
+    url = (control_plane_url or "").rstrip("/")
+    host = urlparse(url).hostname or ""
+    return json.dumps(
+        [
+            {
+                "name": "cf-worker",
+                "tier": "tier1-bootstrap",
+                "transport": "vless-ws",
+                "host": host,
+                "port": 443,
+                "path": "/proxy",
+                "priority": 1,
+                "control_plane": url,
+            }
+        ],
+        separators=(",", ":"),
+    )
+
+
+def artifact_filename(platform: str) -> str:
+    return f"another-{platform.replace('/', '-')}.zip"
 
 
 def plan_installer(

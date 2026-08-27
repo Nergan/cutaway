@@ -22,6 +22,7 @@ core/**/*.jar
 core/bin/
 core/dist/
 *.exe
+*.exe~
 *.test
 *.out
 # Go `go mod vendor` в корне another/, не статика админки.
@@ -95,4 +96,5 @@ docs/private/
 dist-installers/
 **/another-installer-*
 control-plane-admin/var/
+wintun.dll
 

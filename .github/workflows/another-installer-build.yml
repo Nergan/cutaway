@@ -1,0 +1,47 @@
+name: another-installer-build
+
+on:
+  repository_dispatch:
+    types: [another-installer]
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: installer job_id from origin
+        required: true
+        type: string
+
+concurrency:
+  group: another-installer-build
+  cancel-in-progress: false
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: another/core/go.sum
+
+      - name: Check origin credentials
+        env:
+          ANOTHER_SERVICE_SECRET: ${{ secrets.ANOTHER_SERVICE_SECRET }}
+          ANOTHER_ORIGIN_URL: ${{ secrets.ANOTHER_ORIGIN_URL }}
+        run: |
+          missing=""
+          if [ -z "$ANOTHER_SERVICE_SECRET" ]; then missing="$missing ANOTHER_SERVICE_SECRET"; fi
+          if [ -z "$ANOTHER_ORIGIN_URL" ]; then missing="$missing ANOTHER_ORIGIN_URL"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::GitHub secrets are empty:$missing. See another/DEPLOY.md."
+            exit 1
+          fi
+
+      - name: Build and upload zip
+        env:
+          ANOTHER_SERVICE_SECRET: ${{ secrets.ANOTHER_SERVICE_SECRET }}
+          ANOTHER_ORIGIN_URL: ${{ secrets.ANOTHER_ORIGIN_URL }}
+          INSTALLER_JOB_ID: ${{ github.event.client_payload.job_id || github.event.inputs.job_id }}
+        run: python another/control-plane-admin/scripts/run_installer_job.py

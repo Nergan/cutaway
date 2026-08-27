@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from another_admin.api.config import ApiConfig
+from another_admin.api.public_routes import MAX_ARTIFACT_BYTES, artifact_path
 from another_admin.ports.control_plane_store import ControlPlaneStore
 
 
@@ -216,3 +217,70 @@ async def close_session(
         bytes_delta=body.bytes_delta,
     )
     return {"ok": ok}
+
+
+@router.get("/installer-jobs/{job_id}")
+async def get_installer_job(job_id: str, request: Request) -> dict[str, Any]:
+    job = await _store(request).get_installer_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="not found")
+    if str(job.get("status")) == "queued":
+        await _store(request).update_installer_job(job_id, {"status": "building"})
+        job["status"] = "building"
+    created = job.get("created_at")
+    expires = job.get("expires_at")
+    return {
+        "job_id": job["job_id"],
+        "client_id": job.get("client_id"),
+        "platform": job.get("platform"),
+        "status": job.get("status"),
+        "enrollment_token": job.get("enrollment_token") or "",
+        "nodes_json": job.get("nodes_json") or "[]",
+        "ldflags": job.get("ldflags") or "",
+        "build_id": job.get("build_id") or "",
+        "filename": job.get("filename"),
+        "created_at": created.isoformat() if hasattr(created, "isoformat") else created,
+        "expires_at": expires.isoformat() if hasattr(expires, "isoformat") else expires,
+    }
+
+
+class InstallerStatusBody(BaseModel):
+    status: str
+    error: str | None = None
+
+
+@router.post("/installer-jobs/{job_id}/status")
+async def set_installer_status(
+    job_id: str, body: InstallerStatusBody, request: Request
+) -> dict[str, bool]:
+    if body.status not in {"queued", "building", "ready", "failed"}:
+        raise HTTPException(status_code=400, detail="invalid status")
+    fields: dict[str, Any] = {"status": body.status, "error": body.error}
+    ok = await _store(request).update_installer_job(job_id, fields)
+    if not ok:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
+
+
+@router.put("/installer-jobs/{job_id}/artifact")
+async def put_installer_artifact(job_id: str, request: Request) -> dict[str, bool]:
+    job = await _store(request).get_installer_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="not found")
+    data = await request.body()
+    if not data or len(data) > MAX_ARTIFACT_BYTES:
+        raise HTTPException(status_code=413, detail="artifact too large")
+    path = artifact_path(_cfg(request), job_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    ok = await _store(request).update_installer_job(
+        job_id,
+        {
+            "status": "ready",
+            "error": None,
+            "enrollment_token": None,
+        },
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}

@@ -28,6 +28,10 @@ const API_BASE = (() => {
   return match ? match[1] : "";
 })();
 
+function portalHome() {
+  return `${window.location.origin}${API_BASE}/`;
+}
+
 let session = {
   keyfile: null,
   passphrase: "",
@@ -45,7 +49,6 @@ function showError(err) {
 
 let busyDepth = 0;
 let busyLabel = "";
-let pollTick = false;
 let lastBusyError = false;
 
 function renderBusy() {
@@ -61,11 +64,6 @@ function renderBusy() {
   } else if (lastBusyError) {
     beacon.dataset.state = "error";
     label.textContent = t("busyError");
-    bar.classList.remove("is-on");
-    document.body.classList.remove("is-busy");
-  } else if (pollTick) {
-    beacon.dataset.state = "poll";
-    label.textContent = t("busyPoll");
     bar.classList.remove("is-on");
     document.body.classList.remove("is-busy");
   } else if (session.seeds) {
@@ -430,6 +428,14 @@ function tickInviteClocks() {
   }
 }
 
+let inviteClockTimer = null;
+
+function startInviteClocks() {
+  tickInviteClocks();
+  if (inviteClockTimer) return;
+  inviteClockTimer = setInterval(tickInviteClocks, 1000);
+}
+
 function statusBadge(device) {
   if (device.is_banned) return `<span class="badge badge-danger">${esc(t("banned"))}</span>`;
   if (device.is_enrolled) return `<span class="badge badge-ok">${esc(t("enrolled"))}</span>`;
@@ -501,6 +507,11 @@ function renderDevices(devices) {
           await refreshDevices();
         }),
         deviceBtn(t("assemble"), "btn btn-sm", async () => {
+          const ok = await askConfirm({
+            text: t("assembleConfirm"),
+            okLabel: t("assemble"),
+          });
+          if (!ok) return;
           const result = await sendCommand({
             op: "build_installer",
             client_id: d.client_id,
@@ -554,10 +565,12 @@ async function invite() {
   const gb = Number($("invite-quota").value);
   const quota = gb > 0 ? Math.floor(gb * GIGABYTE) : 0;
   const result = await sendCommand({ op: "invite", comment, quota_limit_bytes: quota });
+  const portal = portalHome();
   showReveal(
     `${esc(t("client"))} ${codeCopy(result.client_id)} · ${esc(t("token"))} ${codeCopy(result.enrollment_token)}` +
       ` — ${esc(t("shownOnce"))}` +
-      `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>`,
+      `<div class="reveal-ttl">${esc(inviteExpiryLine(result.enrollment_expires_at, result.invite_ttl_hours))}</div>` +
+      `<div class="reveal-ttl">${esc(t("giveCodeAtPortal", { url: portal }))}</div>`,
   );
   await refreshDevices();
 }
@@ -690,35 +703,6 @@ async function evaluateAlerts() {
   await loadEvents();
 }
 
-let pollTimer = null;
-let pollTicks = 0;
-
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTicks = 0;
-  tickInviteClocks();
-  pollTimer = setInterval(async () => {
-    if (!session.seeds || busyDepth > 0 || pollTick) return;
-    pollTicks += 1;
-    pollTick = true;
-    renderBusy();
-    tickInviteClocks();
-    try {
-      await refreshSessions();
-      if (pollTicks % 6 === 0) {
-        await sendCommand({ op: "evaluate_alerts" });
-      }
-      await loadEvents();
-      lastBusyError = false;
-    } catch {
-      /* сеть/seq — покажем при ручном действии */
-    } finally {
-      pollTick = false;
-      renderBusy();
-    }
-  }, 10000);
-}
-
 function bind(id, labelKey, fn) {
   $(id).onclick = async () => {
     try {
@@ -766,7 +750,7 @@ bind("btn-unlock", "unlock", async () => {
   await loadThresholds();
   setBusyLabel(t("busyLoadEvents"));
   await loadEvents();
-  startPolling();
+  startInviteClocks();
 });
 bind("btn-refresh", "devices", refreshDevices);
 bind("btn-invite", "invite", invite);

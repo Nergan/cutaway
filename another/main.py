@@ -33,6 +33,18 @@ if _shared_mongo_uri and not os.environ.get("MONGO_URI"):
     os.environ["MONGO_URI"] = _shared_mongo_uri
 os.environ.setdefault("MONGO_DB_NAME", "another")
 
+# Ban-invalidate и QR ходят на воркер. Если на Space задан только
+# ANOTHER_CONTROL_PLANE_URL — копируем его в EDGE_INTERNAL_URL. Loopback
+# (wrangler dev) с HF недоступен, его не подставляем.
+_public_edge = (
+    os.environ.get("EDGE_INTERNAL_URL")
+    or os.environ.get("ANOTHER_CONTROL_PLANE_URL")
+    or ""
+).rstrip("/")
+if _public_edge and "127.0.0.1" not in _public_edge and "localhost" not in _public_edge.lower():
+    os.environ.setdefault("EDGE_INTERNAL_URL", _public_edge)
+    os.environ.setdefault("ANOTHER_CONTROL_PLANE_URL", _public_edge)
+
 from fastapi.responses import JSONResponse  # noqa: E402
 
 from another_admin.api.app import create_app  # noqa: E402
@@ -43,7 +55,9 @@ _app = create_app()
 def _needs_store(path: str) -> bool:
     """Статика админки и healthcheck обходятся без Mongo — пусть открываются
     даже когда control plane не сконфигурирован, чтобы было видно причину."""
-    if path in ("", "/") or path.startswith("/health"):
+    if path in ("", "/", "/index.html") or path.startswith("/health"):
+        return False
+    if path.startswith("/portal"):
         return False
     if path.startswith("/admin") and not path.startswith("/admin/v1"):
         return False

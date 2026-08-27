@@ -42,6 +42,10 @@ class ApiConfig:
     core_src: str = ""
     build_dir: str = ""
     build_enabled: bool = False
+    github_repo: str = ""
+    github_dispatch_token: str = ""
+    github_dispatch_event: str = "another-installer"
+    public_redeem_per_hour: int = 20
 
     @staticmethod
     def from_env() -> ApiConfig:
@@ -60,4 +64,8 @@ class ApiConfig:
             core_src=os.environ.get("ANOTHER_CORE_DIR") or _default_core_src(),
             build_dir=os.environ.get("ANOTHER_BUILD_DIR") or _default_build_dir(),
             build_enabled=os.environ.get("ANOTHER_BUILD_ENABLED", "") == "1",
+            github_repo=os.environ.get("GITHUB_REPO", ""),
+            github_dispatch_token=os.environ.get("GITHUB_DISPATCH_TOKEN", ""),
+            github_dispatch_event=os.environ.get("ANOTHER_INSTALLER_EVENT", "another-installer"),
+            public_redeem_per_hour=int(os.environ.get("ANOTHER_PUBLIC_REDEEM_PER_HOUR", "20")),
         )

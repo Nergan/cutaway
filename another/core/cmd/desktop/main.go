@@ -14,13 +14,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strings"
 
 	"github.com/another-vpn/another/core/internal/adapters/auth"
+	"github.com/another-vpn/another/core/internal/adapters/enroll"
 	"github.com/another-vpn/another/core/internal/adapters/keystore"
 	"github.com/another-vpn/another/core/internal/adapters/killswitch"
 	"github.com/another-vpn/another/core/internal/adapters/probe"
@@ -29,6 +33,7 @@ import (
 	"github.com/another-vpn/another/core/internal/adapters/transport"
 	"github.com/another-vpn/another/core/internal/adapters/tun"
 	"github.com/another-vpn/another/core/internal/app"
+	"github.com/another-vpn/another/core/internal/bootstrap"
 	"github.com/another-vpn/another/core/internal/config"
 	"github.com/another-vpn/another/core/internal/domain"
 	"github.com/another-vpn/another/core/internal/ports"
@@ -37,7 +42,9 @@ import (
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	_ = config.LoadDotEnv(".env") // только для локальной разработки, см. config.go
+	_ = config.LoadDotEnv(".env")
+	_ = config.LoadDotEnv(filepath.Join("..", ".env"))
+	_ = config.LoadDotEnv(filepath.Join("..", "..", ".env"))
 	cfg := config.Load()
 
 	logger.Info("starting another-core (desktop)",
@@ -61,19 +68,46 @@ func main() {
 		clientID = bundle.ClientID
 	}
 
-	connectUC := app.NewConnectUseCase(session, ks, authAdapter, muxTransport, tunAdapter, killSwitch, limiter, clientID, logger)
-	connectUC.Prober = probe.NewTCPProber()
-	disconnectUC := app.NewDisconnectUseCase(session, tunAdapter, killSwitch, logger)
-	switchUC := app.NewSwitchNodeUseCase(session, ks, authAdapter, muxTransport, tunAdapter, clientID, logger)
-
-	// Список узлов в v1 — статический, задаётся при старте. В v2 должен
-	// приходить с control-plane при онбординге (§7.1 спецификации).
 	policy := domain.NewFailoverPolicy(defaultNodes(cfg))
 	if len(bundle.Entrypoints) > 0 {
 		policy = domain.NewFailoverPolicy(bundle.Entrypoints)
 	}
 
+	prepared, prepErr := bootstrap.PrepareSession(context.Background(), logger, ks, enroll.New(), cfg.KeyStoreDir, bundle, cfg.ControlPlaneURL)
+	if prepErr != nil {
+		logger.Error("auto-start prepare failed", "error", prepErr)
+	} else {
+		if prepared.ClientID != "" {
+			clientID = prepared.ClientID
+		}
+		if prepared.Policy != nil && len(prepared.Policy.Ordered()) > 0 {
+			policy = prepared.Policy
+		}
+	}
+
+	connectUC := app.NewConnectUseCase(session, ks, authAdapter, muxTransport, tunAdapter, killSwitch, limiter, clientID, logger)
+	connectUC.Prober = probe.NewTCPProber()
+	disconnectUC := app.NewDisconnectUseCase(session, tunAdapter, killSwitch, logger)
+	switchUC := app.NewSwitchNodeUseCase(session, ks, authAdapter, muxTransport, tunAdapter, clientID, logger)
+
+	if prepared.AutoConnect && prepared.Policy != nil && os.Getenv("ANOTHER_SKIP_AUTO_START") != "1" {
+		go func() {
+			logger.Info("auto-connect")
+			if err := connectUC.Execute(context.Background(), prepared.Policy, "", 0); err != nil {
+				logger.Error("auto-connect failed", "error", err)
+			}
+		}()
+	}
+
 	srv := newControlServer(connectUC, disconnectUC, switchUC, session, policy, ks, logger)
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt)
+		<-ch
+		logger.Info("interrupt, disconnecting")
+		_ = disconnectUC.Execute(context.Background())
+		os.Exit(0)
+	}()
 	logger.Info("local control API listening", "addr", cfg.LocalAPIAddr)
 	if err := http.ListenAndServe(cfg.LocalAPIAddr, srv); err != nil {
 		logger.Error("control API server failed", "error", err)
@@ -194,6 +228,23 @@ func (s *controlServer) handleConnect(w http.ResponseWriter, r *http.Request) {
 	if req.ClientID != "" {
 		s.connect.ClientID = req.ClientID
 		s.switchNode.ClientID = req.ClientID
+	}
+	if clientID := strings.TrimSpace(s.connect.ClientID); clientID == "" || clientID == "dev-device" {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": false,
+			"error": "client_id is empty (PowerShell lost $enroll). " +
+				"Copy the ENROLLED client_id from the admin panel, or re-run step 6 in this window.",
+		})
+		return
+	}
+	if policyUsesLoopbackControlPlane(policy) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": false,
+			"error": "control_plane is wrangler dev (127.0.0.1:8787). " +
+				"Enroll against the production worker and set nodes[].control_plane to $WORKER, " +
+				"or set ANOTHER_CONTROL_PLANE_URL before starting another-core.exe.",
+		})
+		return
 	}
 
 	if err := s.connect.Execute(r.Context(), policy, req.DestHost, req.DestPort); err != nil {

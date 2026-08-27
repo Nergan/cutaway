@@ -33,7 +33,7 @@ another-admin-api = "another_admin.api.__main__:main"
 include = ["another_admin*"]
 
 [tool.setuptools.package-data]
-another_admin = ["api/static/*"]
+another_admin = ["api/static/**/*", "api/portal/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
