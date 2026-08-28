@@ -42,6 +42,10 @@
             </h1>
             
             <div class="d-flex gap-2 align-items-center position-relative flex-nowrap" id="toolbarActions">
+                <button id="previewBtn" class="action-btn text-nowrap d-none flex-shrink-0" title="Toggle Preview">
+                    <i class="bi bi-eye"></i> Preview
+                </button>
+                
                 {% if not code_id %}
                     <input type="file" id="folderInput" webkitdirectory directory multiple class="d-none">
                     <input type="file" id="filesInput" multiple class="d-none">
@@ -107,7 +111,12 @@
                     <p class="small opacity-50 custom-font text-center px-3">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
                 </div>
                 
-                <textarea id="codeInput" class="code-editor w-100 h-100 d-none z-1" spellcheck="false" {% if code_id %}readonly{% endif %}></textarea>
+                <div id="editorContainer" class="w-100 h-100 d-none z-1 position-relative">
+                    <textarea id="codeInput" class="code-editor w-100 h-100" spellcheck="false" {% if code_id %}readonly{% endif %}></textarea>
+                </div>
+                
+                <div id="mdPreview" class="w-100 h-100 d-none z-2 overflow-auto p-4 custom-font" style="background: rgba(0,0,0,0.25); color: white; word-wrap: break-word;"></div>
+                <iframe id="htmlPreview" class="w-100 h-100 d-none z-2 border-0" sandbox="allow-scripts" style="background: rgba(255,255,255,0.9);"></iframe>
                 
                 <!-- Bottom Info Bar attached directly to Editor Section -->
                 <div class="footer mt-1 d-flex justify-content-between align-items-center text-muted small flex-shrink-0 z-2" style="height: 24px;">
@@ -151,6 +160,8 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <script>
         window.IS_READONLY = {{ 'true' if code_id else 'false' }};
         window.CODE_ID = "{{ code_id if code_id else '' }}";

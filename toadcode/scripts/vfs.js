@@ -13,6 +13,7 @@
     let historyIndex = -1;
     let typingTimer = null;
     let dragDebounceTimer = null;
+    let isPreviewMode = false;
     
     const ui = {
         dropZone: document.getElementById('dropZone'),
@@ -38,7 +39,11 @@
         sidebar: document.getElementById('sidebar'),
         resizer: document.getElementById('sidebarResizer'),
         toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
+        editorContainer: document.getElementById('editorContainer'),
         codeInput: document.getElementById('codeInput'),
+        mdPreview: document.getElementById('mdPreview'),
+        htmlPreview: document.getElementById('htmlPreview'),
+        previewBtn: document.getElementById('previewBtn'),
         noFileScreen: document.getElementById('noFileScreen'),
         currentFilePath: document.getElementById('currentFilePath'),
         charCount: document.getElementById('charCount'),
@@ -80,7 +85,10 @@
                 ui.codeInput.value = f.content || '';
                 ui.codeInput.dispatchEvent(new Event('input'));
                 updateCurrentFilePathUI(f.path);
-                if (state.cursor) {
+                if (isPreviewMode) {
+                    const fileType = getFileTypeByContent(f.path, f.content);
+                    if (fileType) renderPreview(f, fileType);
+                } else if (state.cursor) {
                     ui.codeInput.focus();
                     ui.codeInput.setSelectionRange(state.cursor.start, state.cursor.end);
                 }
@@ -159,7 +167,9 @@
     };
 
     const showNoFile = () => {
-        ui.codeInput.classList.add('d-none');
+        ui.editorContainer.classList.add('d-none');
+        ui.mdPreview.classList.add('d-none');
+        ui.htmlPreview.classList.add('d-none');
         ui.noFileScreen.style.display = 'flex';
         ui.currentFilePath.innerHTML = `<i class="bi bi-terminal me-1"></i> Ready`;
         ui.downloadCurrentFileBtn.classList.add('d-none');
@@ -626,7 +636,7 @@
         const input = document.createElement('input');
         input.type = 'text';
         input.value = originalName;
-        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 ms-1 custom-font flex-grow-1';
+        input.className = 'inline-edit-input form-control form-control-sm text-white border-secondary p-0 px-1 ms-1 custom-font flex-grow-1';
         input.style.height = '20px';
         input.style.minWidth = '50px';
         
@@ -680,7 +690,7 @@
         
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'inline-edit-input form-control form-control-sm bg-dark text-white border-secondary p-0 px-1 custom-font flex-grow-1';
+        input.className = 'inline-edit-input form-control form-control-sm text-white border-secondary p-0 px-1 custom-font flex-grow-1';
         input.style.height = '20px';
         input.placeholder = isDir ? 'Folder Name' : 'File Name';
         div.appendChild(input);
@@ -987,6 +997,25 @@
 
         ui.downloadZip.addEventListener('click', e => { e.preventDefault(); downloadZip(); });
         ui.downloadMd.addEventListener('click', e => { e.preventDefault(); downloadMd(); });
+        const togglePreviewMode = () => {
+            if (!activeFilePath) return;
+            const file = vfs.find(f => f.path === activeFilePath);
+            if (!file) return;
+
+            isPreviewMode = !isPreviewMode;
+            if (isPreviewMode) {
+                ui.previewBtn.innerHTML = '<i class="bi bi-code-slash"></i> Code';
+                ui.previewBtn.classList.add('text-success');
+                renderPreview(file);
+            } else {
+                ui.previewBtn.innerHTML = '<i class="bi bi-eye"></i> Preview';
+                ui.previewBtn.classList.remove('text-success');
+                hidePreview();
+            }
+        };
+
+        ui.previewBtn?.addEventListener('click', togglePreviewMode);
+
         ui.downloadCurrentFileBtn.addEventListener('click', () => {
             if(activeFilePath) {
                 const file = vfs.find(f => f.path === activeFilePath);
@@ -1059,15 +1088,76 @@
         }
     };
 
+    const getFileTypeByContent = (filename, content) => {
+        const lowerName = filename.toLowerCase();
+        if (lowerName.endsWith('.md') || lowerName.endsWith('.markdown')) return 'markdown';
+        if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) return 'html';
+        
+        const trimmed = content.trim();
+        if (trimmed.startsWith('<!DOCTYPE html>') || /^<html[\s>]/i.test(trimmed)) return 'html';
+        
+        return null;
+    };
+
+    const renderPreview = (file, fileType) => {
+        ui.editorContainer.classList.add('d-none');
+        
+        if (!fileType) fileType = getFileTypeByContent(file.path, file.content);
+        
+        if (fileType === 'markdown') {
+            ui.mdPreview.classList.remove('d-none');
+            ui.htmlPreview.classList.add('d-none');
+            if (window.marked && window.DOMPurify) {
+                const rawHtml = window.marked.parse(file.content);
+                ui.mdPreview.innerHTML = window.DOMPurify.sanitize(rawHtml);
+            } else {
+                ui.mdPreview.innerHTML = '<p class="text-danger">Markdown parser not loaded.</p>';
+            }
+        } else if (fileType === 'html') {
+            ui.htmlPreview.classList.remove('d-none');
+            ui.mdPreview.classList.add('d-none');
+            ui.htmlPreview.srcdoc = file.content;
+        }
+    };
+
+    const hidePreview = () => {
+        ui.mdPreview.classList.add('d-none');
+        ui.htmlPreview.classList.add('d-none');
+        ui.htmlPreview.srcdoc = '';
+        ui.mdPreview.innerHTML = '';
+        if (activeFilePath) {
+            ui.editorContainer.classList.remove('d-none');
+        }
+    };
+
     const openFile = (path) => {
         const file = vfs.find(f => f.path === path);
         if (file && !file.is_dir) {
             activeFilePath = path;
             ui.noFileScreen.style.display = 'none';
             ui.codeInput.value = file.content;
-            ui.codeInput.classList.remove('d-none');
+            
             updateCurrentFilePathUI(path);
             ui.charCount.textContent = `${file.content.length} characters`;
+            
+            const fileType = getFileTypeByContent(file.path, file.content);
+            if (fileType) {
+                ui.previewBtn.classList.remove('d-none');
+                if (isPreviewMode) {
+                    renderPreview(file, fileType);
+                } else {
+                    ui.editorContainer.classList.remove('d-none');
+                    hidePreview();
+                }
+            } else {
+                ui.previewBtn.classList.add('d-none');
+                isPreviewMode = false;
+                ui.previewBtn.innerHTML = '<i class="bi bi-eye"></i> Preview';
+                ui.previewBtn.classList.remove('text-success');
+                ui.editorContainer.classList.remove('d-none');
+                hidePreview();
+            }
+
             ui.codeInput.dispatchEvent(new Event('input')); 
             
             Array.from(ui.fileTree.querySelectorAll('.tree-item')).forEach(i => {

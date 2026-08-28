@@ -53,6 +53,13 @@
 .publish-btn:hover { background: rgba(0,255,0,0.1); }
 .publish-btn.btn-danger { border-color: #dc3545 !important; color: #dc3545 !important; }
 
+.inline-edit-input {
+    background: rgba(0, 0, 0, 0.25) !important;
+    backdrop-filter: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+}
+
 .inline-edit-input:focus {
     box-shadow: none !important;
     border-color: lime !important;
