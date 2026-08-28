@@ -43,6 +43,7 @@ html, body {
 .editor-section {
     min-width: 0;
     min-height: 0; /* Critical fix for flexbox scrolling inside the editor */
+    width: 0; /* Prevents flex blowout from wide content in Markdown/HTML */
 }
 
 .sidebar {

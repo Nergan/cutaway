@@ -1006,11 +1006,11 @@
             isPreviewMode = !isPreviewMode;
             if (isPreviewMode) {
                 ui.previewBtn.innerHTML = '<i class="bi bi-code-slash"></i> Code';
-                ui.previewBtn.classList.add('text-success');
+                ui.previewBtn.classList.add('btn-code-mode');
                 renderPreview(file);
             } else {
                 ui.previewBtn.innerHTML = '<i class="bi bi-eye"></i> Preview';
-                ui.previewBtn.classList.remove('text-success');
+                ui.previewBtn.classList.remove('btn-code-mode');
                 hidePreview();
             }
         };
@@ -1165,7 +1165,7 @@
                 ui.previewBtn.classList.add('d-none');
                 isPreviewMode = false;
                 ui.previewBtn.innerHTML = '<i class="bi bi-eye"></i> Preview';
-                ui.previewBtn.classList.remove('text-success');
+                ui.previewBtn.classList.remove('btn-code-mode');
                 ui.editorContainer.classList.remove('d-none');
                 hidePreview();
             }

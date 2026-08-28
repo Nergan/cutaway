@@ -61,3 +61,10 @@
     border-color: rgba(220, 53, 69, 0.4);
     color: #dc3545;
 }
+
+.btn-code-mode {
+    color: lime !important;
+    border-color: lime !important;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.4);
+    background: rgba(0, 255, 0, 0.1) !important;
+}
