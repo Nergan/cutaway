@@ -111,12 +111,12 @@
                     <p class="small opacity-50 custom-font text-center px-3">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
                 </div>
                 
-                <div id="editorContainer" class="w-100 h-100 d-none z-1 position-relative">
+                <div id="editorContainer" class="flex-grow-1 d-none z-1 position-relative" style="min-width: 0; min-height: 0;">
                     <textarea id="codeInput" class="code-editor w-100 h-100" spellcheck="false" {% if code_id %}readonly{% endif %}></textarea>
                 </div>
                 
-                <div id="mdPreview" class="w-100 h-100 d-none z-2 overflow-auto p-4 custom-font" style="background: rgba(0,0,0,0.25); color: white; word-wrap: break-word;"></div>
-                <iframe id="htmlPreview" class="w-100 h-100 d-none z-2 border-0" sandbox="allow-scripts" style="background: rgba(255,255,255,0.9);"></iframe>
+                <div id="mdPreview" class="flex-grow-1 d-none z-2 overflow-auto p-4 custom-font" style="min-width: 0; min-height: 0; background: rgba(0,0,0,0.25); color: white; word-wrap: break-word;"></div>
+                <iframe id="htmlPreview" class="flex-grow-1 d-none z-2 border-0" sandbox="allow-scripts" style="min-width: 0; min-height: 0; background: rgba(255,255,255,0.9);"></iframe>
                 
                 <!-- Bottom Info Bar attached directly to Editor Section -->
                 <div class="footer mt-1 d-flex justify-content-between align-items-center text-muted small flex-shrink-0 z-2" style="height: 24px;">

@@ -14,6 +14,7 @@
     let typingTimer = null;
     let dragDebounceTimer = null;
     let isPreviewMode = false;
+    let currentHtmlPreviewUrl = null;
     
     const ui = {
         dropZone: document.getElementById('dropZone'),
@@ -1116,14 +1117,25 @@
         } else if (fileType === 'html') {
             ui.htmlPreview.classList.remove('d-none');
             ui.mdPreview.classList.add('d-none');
-            ui.htmlPreview.srcdoc = file.content;
+            
+            if (currentHtmlPreviewUrl) {
+                URL.revokeObjectURL(currentHtmlPreviewUrl);
+            }
+            const blob = new Blob([file.content], { type: 'text/html' });
+            currentHtmlPreviewUrl = URL.createObjectURL(blob);
+            ui.htmlPreview.src = currentHtmlPreviewUrl;
         }
     };
 
     const hidePreview = () => {
         ui.mdPreview.classList.add('d-none');
         ui.htmlPreview.classList.add('d-none');
-        ui.htmlPreview.srcdoc = '';
+        
+        if (currentHtmlPreviewUrl) {
+            URL.revokeObjectURL(currentHtmlPreviewUrl);
+            currentHtmlPreviewUrl = null;
+        }
+        ui.htmlPreview.src = '';
         ui.mdPreview.innerHTML = '';
         if (activeFilePath) {
             ui.editorContainer.classList.remove('d-none');
