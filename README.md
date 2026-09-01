@@ -1,6 +1,6 @@
 ---
 title: Nargan
-emoji: 🧩
+emoji: 🫠
 colorFrom: blue
 colorTo: purple
 sdk: docker
