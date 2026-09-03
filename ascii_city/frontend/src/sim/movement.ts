@@ -10,6 +10,9 @@ import {
   ANIMATION_IDLE,
   ANIMATION_RUN,
   ANIMATION_WALK,
+  EYE_HEIGHT_M,
+  GRAVITY_MS2,
+  JUMP_SPEED_MS,
   PLAYER_RADIUS_M,
   RUN_SPEED_MS,
   WALK_SPEED_MS,
@@ -23,6 +26,8 @@ export const MAX_STEP_SECONDS = 0.1
 export interface MovableState {
   x: number
   y: number
+  z: number
+  velocityZ: number
   yaw: number
   pitch: number
   animation: number
@@ -37,6 +42,15 @@ export function movePlayer(
   const step = Math.min(Math.max(dt, 0), MAX_STEP_SECONDS)
   state.yaw = command.yaw
   state.pitch = command.pitch
+
+  const grounded = state.z <= EYE_HEIGHT_M + 0.02 && state.velocityZ <= 0.01
+  if (command.jump && grounded) state.velocityZ = JUMP_SPEED_MS
+  state.velocityZ -= GRAVITY_MS2 * step
+  state.z += state.velocityZ * step
+  if (state.z < EYE_HEIGHT_M) {
+    state.z = EYE_HEIGHT_M
+    state.velocityZ = 0
+  }
 
   let forward = command.forward
   let strafe = command.strafe

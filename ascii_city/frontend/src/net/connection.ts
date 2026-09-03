@@ -13,6 +13,7 @@ import {
   encodeChat,
   encodeInput,
   encodePing,
+  encodeRename,
   type InputCommand,
   type ServerFrame,
 } from './wire'
@@ -77,6 +78,10 @@ export class Connection {
 
   sendChat(scope: 'global' | 'proximity', text: string): void {
     this.send(encodeChat(scope, text))
+  }
+
+  sendRename(nickname: string): void {
+    this.send(encodeRename(nickname))
   }
 
   private send(payload: Uint8Array): void {

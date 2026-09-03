@@ -39,6 +39,7 @@ class InputCommand:
     yaw: float
     pitch: float
     sprint: bool
+    jump: bool
     client_time: int
 
     @classmethod
@@ -50,6 +51,7 @@ class InputCommand:
         yaw: float,
         pitch: float,
         sprint: bool,
+        jump: bool,
         client_time: int,
     ) -> "InputCommand":
         """Clamp every field into its legal range before the simulation sees it."""
@@ -60,6 +62,7 @@ class InputCommand:
             yaw=normalise_yaw(yaw),
             pitch=clamp(pitch, -MAX_PITCH_RAD, MAX_PITCH_RAD) if math.isfinite(pitch) else 0.0,
             sprint=bool(sprint),
+            jump=bool(jump),
             client_time=client_time & 0xFFFFFFFF,
         )
 
@@ -78,6 +81,7 @@ class PlayerState:
     pitch: float = 0.0
     velocity_x: float = 0.0
     velocity_y: float = 0.0
+    velocity_z: float = 0.0
     animation: int = ANIMATION_IDLE
     last_input_sequence: int = 0
     joined_at: float = 0.0

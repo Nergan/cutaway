@@ -77,6 +77,8 @@ PLAYER_RADIUS_M: Final[float] = 0.35
 EYE_HEIGHT_M: Final[float] = 1.7
 WALK_SPEED_MS: Final[float] = 3.4
 RUN_SPEED_MS: Final[float] = 6.2
+JUMP_SPEED_MS: Final[float] = 5.6
+GRAVITY_MS2: Final[float] = 22.0
 
 MAX_PITCH_RAD: Final[float] = 1.2
 """Roughly 69 degrees. Beyond that the raycaster horizon leaves the viewport."""

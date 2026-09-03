@@ -50,6 +50,16 @@ export function App() {
     sessionRef.current?.sendChat(scope, text)
   }, [])
 
+  const sendRename = useCallback((nickname: string) => {
+    sessionRef.current?.sendRename(nickname)
+  }, [])
+
+  const rosterColors = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const member of view?.roster ?? []) map.set(member.id, member.color)
+    return map
+  }, [view?.roster])
+
   const setChatFocused = useCallback((focused: boolean) => {
     sessionRef.current?.setChatFocused(focused)
   }, [])
@@ -78,6 +88,7 @@ export function App() {
           <Chat
             messages={view.messages}
             selfId={view.player?.id ?? 0}
+            rosterColors={rosterColors}
             onSend={sendChat}
             onFocusChange={setChatFocused}
           />
@@ -88,9 +99,11 @@ export function App() {
 
       {settingsOpen && view ? (
         <Settings
+          nickname={view.player?.nickname ?? ''}
           onClose={() => setSettingsOpen(false)}
           onQuality={(preset) => sessionRef.current?.setQuality(preset)}
           onFieldOfView={(degrees) => sessionRef.current?.setFieldOfView(degrees)}
+          onRename={sendRename}
           stats={view.stats}
         />
       ) : null}

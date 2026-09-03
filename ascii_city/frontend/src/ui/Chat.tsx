@@ -7,6 +7,7 @@ import { PLAYER_COLORS } from '../render/palette'
 interface Props {
   messages: ChatMessage[]
   selfId: number
+  rosterColors: ReadonlyMap<number, number>
   onSend: (scope: 'global' | 'proximity', text: string) => void
   onFocusChange: (focused: boolean) => void
 }
@@ -15,7 +16,7 @@ interface Props {
  * Chat is rendered into text nodes, never into markup, so the angle brackets
  * the sanitiser deliberately preserves stay harmless.
  */
-export function Chat({ messages, selfId, onSend, onFocusChange }: Props) {
+export function Chat({ messages, selfId, rosterColors, onSend, onFocusChange }: Props) {
   const [draft, setDraft] = useState('')
   const [scope, setScope] = useState<'global' | 'proximity'>('global')
   const [open, setOpen] = useState(false)
@@ -29,10 +30,11 @@ export function Chat({ messages, selfId, onSend, onFocusChange }: Props) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Enter' && !open) {
+      const tag = (event.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if ((event.code === 'Enter' || event.code === 'KeyT') && !open) {
         event.preventDefault()
         setOpen(true)
-        // Focus lands after the input mounts, so defer a frame.
         requestAnimationFrame(() => inputRef.current?.focus())
       } else if (event.code === 'Escape' && open) {
         setOpen(false)
@@ -67,7 +69,7 @@ export function Chat({ messages, selfId, onSend, onFocusChange }: Props) {
               <>
                 <span
                   className="who"
-                  style={{ color: colorFor(message.senderId, message.senderId === selfId) }}
+                  style={{ color: colorFor(message.senderId, message.senderId === selfId, rosterColors) }}
                 >
                   {message.nickname}
                 </span>
@@ -98,14 +100,20 @@ export function Chat({ messages, selfId, onSend, onFocusChange }: Props) {
           />
         </form>
       ) : (
-        <div className="chat-hint">Enter to talk</div>
+        <div className="chat-hint">T or Enter to talk</div>
       )}
     </div>
   )
 }
 
-function colorFor(senderId: number, isSelf: boolean): string {
+function colorFor(
+  senderId: number,
+  isSelf: boolean,
+  rosterColors: ReadonlyMap<number, number>,
+): string {
   if (isSelf) return '#ffffff'
-  const color = PLAYER_COLORS[senderId % PLAYER_COLORS.length]
+  const rosterColor = rosterColors.get(senderId)
+  const index = rosterColor ?? senderId
+  const color = PLAYER_COLORS[index % PLAYER_COLORS.length]
   return `rgb(${color[0]},${color[1]},${color[2]})`
 }

@@ -11,6 +11,7 @@ export interface Intent {
   forward: number
   strafe: number
   sprint: boolean
+  jump: boolean
   yaw: number
   pitch: number
 }
@@ -19,7 +20,7 @@ const MOUSE_SENSITIVITY = 0.0022
 const TOUCH_LOOK_SENSITIVITY = 0.006
 const JOYSTICK_RADIUS_PX = 56
 
-type Action = 'forward' | 'back' | 'left' | 'right' | 'sprint'
+type Action = 'forward' | 'back' | 'left' | 'right' | 'sprint' | 'jump'
 
 const KEYS: Record<string, Action> = {
   KeyW: 'forward',
@@ -30,8 +31,9 @@ const KEYS: Record<string, Action> = {
   ArrowLeft: 'left',
   KeyD: 'right',
   ArrowRight: 'right',
-  ShiftLeft: 'sprint',
-  ShiftRight: 'sprint',
+  ControlLeft: 'sprint',
+  ControlRight: 'sprint',
+  Space: 'jump',
 }
 
 export class InputController {
@@ -39,6 +41,7 @@ export class InputController {
   private yaw = 0
   private pitch = 0
   private sprintKey = false
+  private jumpQueued = false
   /** Set while a text field owns the keyboard. */
   private suspended = false
   private pointerLocked = false
@@ -99,7 +102,7 @@ export class InputController {
 
   read(): Intent {
     if (this.suspended) {
-      return { forward: 0, strafe: 0, sprint: false, yaw: this.yaw, pitch: this.pitch }
+      return { forward: 0, strafe: 0, sprint: false, jump: false, yaw: this.yaw, pitch: this.pitch }
     }
     let forward = (this.held.has('forward') ? 1 : 0) - (this.held.has('back') ? 1 : 0)
     let strafe = (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0)
@@ -112,10 +115,13 @@ export class InputController {
       forward /= magnitude
       strafe /= magnitude
     }
+    const jump = this.jumpQueued
+    this.jumpQueued = false
     return {
       forward,
       strafe,
       sprint: this.sprintKey || magnitude > 0.92,
+      jump,
       yaw: this.yaw,
       pitch: this.pitch,
     }
@@ -127,7 +133,7 @@ export class InputController {
   }
 
   private applyLook(dx: number, dy: number, sensitivity: number): void {
-    this.yaw = (((this.yaw + dx * sensitivity) % TAU) + TAU) % TAU
+    this.yaw = (((this.yaw - dx * sensitivity) % TAU) + TAU) % TAU
     this.pitch = clampPitch(this.pitch - dy * sensitivity)
   }
 
@@ -137,6 +143,7 @@ export class InputController {
     if (this.suspended) return
     event.preventDefault()
     if (action === 'sprint') this.sprintKey = true
+    else if (action === 'jump') this.jumpQueued = true
     else this.held.add(action)
   }
 
@@ -150,6 +157,7 @@ export class InputController {
   private readonly releaseAll = () => {
     this.held.clear()
     this.sprintKey = false
+    this.jumpQueued = false
     this.stickPointer = null
     this.stick.x = 0
     this.stick.y = 0

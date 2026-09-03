@@ -26,11 +26,11 @@ export interface RendererStats {
 }
 
 /** Cell width in CSS pixels for each rung of the quality ladder. */
-const LADDER = [7, 8, 9, 11, 13, 16]
+const LADDER = [3, 4, 5, 6, 8, 10]
 const CELL_ASPECT = 2
 
 const TARGET_FRAME_MS = 1000 / 60
-const RELAX_FRAME_MS = 1000 / 45
+const RELAX_FRAME_MS = 1000 / 50
 
 export class Renderer {
   private readonly atlas: GlyphAtlas
@@ -39,7 +39,7 @@ export class Renderer {
   private backend: WebGLCellRenderer | CanvasCellRenderer
   private readonly backendName: 'webgl2' | 'canvas2d'
 
-  private rung = 1
+  private rung = 0
   private preset: QualityPreset = 'auto'
   private frameMs = TARGET_FRAME_MS
   private sinceAdjust = 0
@@ -97,7 +97,7 @@ export class Renderer {
 
     // Render at exactly one atlas cell per character: sharper than the CSS
     // size and still far below the cost of a full-resolution framebuffer.
-    const deviceCell = this.backendName === 'webgl2' ? 12 : Math.round(cell)
+    const deviceCell = this.backendName === 'webgl2' ? 8 : Math.max(6, Math.round(cell * 0.75))
     this.canvas.width = columns * deviceCell
     this.canvas.height = rows * deviceCell * CELL_ASPECT
     this.canvas.style.width = `${this.cssWidth}px`
@@ -142,8 +142,8 @@ export class Renderer {
   /** Coarser grids also get shorter draw distance and fewer silhouettes. */
   private applyRung(): void {
     const quality = this.raycaster.quality
-    quality.layers = this.rung <= 1 ? 6 : this.rung <= 3 ? 4 : 2
-    quality.viewDistance = this.rung <= 1 ? 220 : this.rung <= 3 ? 160 : 110
+    quality.layers = this.rung <= 1 ? 8 : this.rung <= 3 ? 5 : 3
+    quality.viewDistance = this.rung <= 1 ? 240 : this.rung <= 3 ? 190 : 140
     quality.groundDetail = this.rung <= 4
     if (this.backend instanceof WebGLCellRenderer) {
       this.backend.glow = this.rung <= 2 ? 0.55 : 0.35

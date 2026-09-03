@@ -51,7 +51,7 @@ which language produced it.
 | 6 | `i8` | strafe axis, hundredths |
 | 7 | `u16` | yaw |
 | 9 | `i8` | pitch |
-| 10 | `u8` | flags: bit 0 = sprint |
+| 10 | `u8` | flags: bit 0 = sprint, bit 1 = jump |
 | 11 | `u32` | client timestamp in milliseconds, echoed in nothing — it exists for the client's own latency bookkeeping |
 
 The server applies at most `MAX_QUEUED_INPUTS = 8` inputs per player per tick
@@ -80,6 +80,18 @@ error. Text is NFC-normalised, stripped of control characters and truncated to
 | --- | --- | --- |
 | 0 | `u8` | `0x03` |
 | 1 | `u32` | client timestamp in milliseconds |
+
+### `0x04` RENAME — 3 + *n* bytes
+
+| Offset | Type | Field |
+| --- | --- | --- |
+| 0 | `u8` | `0x04` |
+| 1 | `u16` | UTF-8 byte length |
+| 3 | bytes | nickname, UTF-8 |
+
+The server validates the nickname the same way it does on join. A successful
+rename updates the roster and broadcasts `0x89` ROSTER_UPDATE to everyone in the
+room.
 
 ## Server to client
 
@@ -174,14 +186,15 @@ colour and simply stops drawing them.
 | `u16` | text byte length |
 | bytes | text, UTF-8, truncated to 512 bytes |
 
-### `0x85` / `0x86` / `0x87` ROSTER
+### `0x85` / `0x86` / `0x87` / `0x89` ROSTER
 
-The roster is the name-and-colour directory; it changes only on join and leave,
-which is why it is not repeated inside every snapshot.
+The roster is the name-and-colour directory; it changes on join, leave, and
+rename, which is why it is not repeated inside every snapshot.
 
 `0x85` ROSTER SYNC: `u16` count, then that many entries.
 `0x86` ROSTER ADD: exactly one entry.
 `0x87` ROSTER REMOVE: `u16` player id.
+`0x89` ROSTER UPDATE: exactly one entry when a nickname or colour changes.
 
 An entry is `u16` player id, `u8` colour index, `u8` nickname byte length,
 then the nickname.

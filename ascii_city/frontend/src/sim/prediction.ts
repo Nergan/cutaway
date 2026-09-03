@@ -7,7 +7,7 @@
  * a few frames so a correction reads as a nudge rather than a teleport.
  */
 
-import { POSITION_SCALE } from '../domain/constants'
+import { EYE_HEIGHT_M, POSITION_SCALE } from '../domain/constants'
 import type { CollisionGrid } from '../world/collisionGrid'
 import type { InputCommand } from '../net/wire'
 import { movePlayer, type MovableState } from './movement'
@@ -55,7 +55,7 @@ export class Predictor {
    * `dt` is the fixed simulation step, because that is what the server used.
    */
   reconcile(
-    authoritative: { x: number; y: number },
+    authoritative: { x: number; y: number; z?: number },
     ackSequence: number,
     grid: CollisionGrid,
     dt: number,
@@ -69,6 +69,10 @@ export class Predictor {
 
     this.state.x = authoritative.x
     this.state.y = authoritative.y
+    if (authoritative.z !== undefined) {
+      this.state.z = authoritative.z
+      this.state.velocityZ = 0
+    }
     for (const command of this.pending) movePlayer(this.state, command, grid, dt)
 
     const errorX = predictedX - this.state.x
@@ -88,19 +92,25 @@ export class Predictor {
   }
 
   /** Position to render this frame: authoritative plus the decaying error. */
-  view(dt: number): { x: number; y: number } {
+  view(dt: number): { x: number; y: number; z: number } {
     const decay = Math.exp(-CORRECTION_PER_SECOND * Math.max(dt, 0))
     this.offset.x *= decay
     this.offset.y *= decay
     if (Math.abs(this.offset.x) < 1e-4) this.offset.x = 0
     if (Math.abs(this.offset.y) < 1e-4) this.offset.y = 0
-    return { x: this.state.x + this.offset.x, y: this.state.y + this.offset.y }
+    return {
+      x: this.state.x + this.offset.x,
+      y: this.state.y + this.offset.y,
+      z: this.state.z,
+    }
   }
 
-  reset(x: number, y: number): void {
+  reset(x: number, y: number, z = EYE_HEIGHT_M): void {
     this.pending.length = 0
     this.state.x = x
     this.state.y = y
+    this.state.z = z
+    this.state.velocityZ = 0
     this.offset.x = 0
     this.offset.y = 0
     this.lastCorrectionM = 0

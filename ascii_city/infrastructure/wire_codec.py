@@ -28,6 +28,10 @@ TAU = math.tau
 MSG_INPUT = 0x01
 MSG_CHAT = 0x02
 MSG_PING = 0x03
+MSG_RENAME = 0x04
+
+INPUT_FLAG_SPRINT = 0x01
+INPUT_FLAG_JUMP = 0x02
 
 # Server to client.
 MSG_WELCOME = 0x81
@@ -38,6 +42,7 @@ MSG_ROSTER_SYNC = 0x85
 MSG_ROSTER_ADD = 0x86
 MSG_ROSTER_REMOVE = 0x87
 MSG_PONG = 0x88
+MSG_ROSTER_UPDATE = 0x89
 
 NOTICE_INFO = 0
 NOTICE_WARNING = 1
@@ -92,7 +97,12 @@ class PingRequest:
     client_time: int
 
 
-ClientFrame = InputCommand | ChatRequest | PingRequest
+@dataclass(frozen=True, slots=True)
+class RenameRequest:
+    nickname: str
+
+
+ClientFrame = InputCommand | ChatRequest | PingRequest | RenameRequest
 
 
 def decode_client_frame(payload: bytes) -> ClientFrame:
@@ -119,7 +129,8 @@ def decode_client_frame(payload: bytes) -> ClientFrame:
             strafe=strafe / 100.0,
             yaw=decode_yaw(yaw),
             pitch=decode_pitch(pitch),
-            sprint=bool(flags & 0x01),
+            sprint=bool(flags & INPUT_FLAG_SPRINT),
+            jump=bool(flags & INPUT_FLAG_JUMP),
             client_time=client_time,
         )
 
@@ -143,6 +154,19 @@ def decode_client_frame(payload: bytes) -> ClientFrame:
         if len(body) != 4:
             raise ProtocolError("Malformed ping frame.")
         return PingRequest(client_time=int.from_bytes(body, "little"))
+
+    if kind == MSG_RENAME:
+        if len(body) < 2:
+            raise ProtocolError("Malformed rename frame.")
+        length = int.from_bytes(body[0:2], "little")
+        raw = body[2 : 2 + length]
+        if len(raw) != length:
+            raise ProtocolError("Rename frame is truncated.")
+        try:
+            nickname = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ProtocolError("Nickname is not valid UTF-8.") from exc
+        return RenameRequest(nickname=nickname)
 
     raise ProtocolError(f"Unknown frame type 0x{kind:02x}.")
 
@@ -267,6 +291,22 @@ def encode_roster_add(player: PlayerState) -> bytes:
     out = bytearray()
     out.append(MSG_ROSTER_ADD)
     _roster_entry(out, player)
+    return bytes(out)
+
+
+def encode_roster_update(player: PlayerState) -> bytes:
+    out = bytearray()
+    out.append(MSG_ROSTER_UPDATE)
+    _roster_entry(out, player)
+    return bytes(out)
+
+
+def encode_rename(nickname: str) -> bytes:
+    payload = nickname.encode("utf-8")
+    out = bytearray()
+    out.append(MSG_RENAME)
+    out += len(payload).to_bytes(2, "little")
+    out += payload
     return bytes(out)
 
 

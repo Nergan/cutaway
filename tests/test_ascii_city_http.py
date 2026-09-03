@@ -63,6 +63,14 @@ def client(request):
     root = FastAPI(lifespan=lifespan)
     root.mount(BASE, asgi_app)
     with TestClient(root) as test_client:
+        deadline = time.monotonic() + 45
+        while time.monotonic() < deadline:
+            payload = test_client.get(f"{BASE}/healthz").json()
+            if payload["status"] == "ok":
+                break
+            time.sleep(0.05)
+        else:
+            pytest.fail(f"District did not become ready: {payload}")
         yield test_client
     reset_container(Container(small_settings()))
 

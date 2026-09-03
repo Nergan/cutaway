@@ -38,7 +38,7 @@ export function Overlay({ view, fatal, onEnter }: Props) {
     action = { label: 'Reload', run: () => window.location.reload() }
   } else if (phase === 'online') {
     title = 'ASCII CITY'
-    body = 'Click to look around. WASD to walk, Shift to run, Enter to talk.'
+    body = 'Click to look around. WASD to walk, Ctrl to run, Space to jump, T to talk.'
     action = { label: 'Enter the street', run: onEnter }
   }
 

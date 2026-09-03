@@ -116,6 +116,8 @@ export class GameSession {
     this.predictor = new Predictor({
       x: loaded.grid.widthM / 2,
       y: loaded.grid.heightM / 2,
+      z: EYE_HEIGHT_M,
+      velocityZ: 0,
       yaw: 0,
       pitch: 0,
       animation: 0,
@@ -149,6 +151,12 @@ export class GameSession {
     const trimmed = text.trim()
     if (!trimmed) return
     this.connection?.sendChat(scope, trimmed)
+  }
+
+  sendRename(nickname: string): void {
+    const trimmed = nickname.trim()
+    if (!trimmed) return
+    this.connection?.sendRename(trimmed)
   }
 
   setChatFocused(focused: boolean): void {
@@ -196,6 +204,7 @@ export class GameSession {
         yaw: intent.yaw,
         pitch: intent.pitch,
         sprint: intent.sprint,
+        jump: intent.jump,
         clientTime: now(),
       }
       this.sequence = (this.sequence + 1) >>> 0
@@ -208,7 +217,7 @@ export class GameSession {
     const camera = {
       x: position.x,
       y: position.y,
-      z: EYE_HEIGHT_M,
+      z: position.z,
       yaw: intent.yaw,
       pitch: intent.pitch,
     }
@@ -259,7 +268,7 @@ export class GameSession {
           nickname: frame.nickname,
           color: frame.color,
         })
-        this.predictor?.reset(frame.x, frame.y)
+        this.predictor?.reset(frame.x, frame.y, frame.z)
         this.input?.setOrientation(frame.yaw, 0)
         this.interpolation.clear()
         this.patch({
@@ -280,7 +289,12 @@ export class GameSession {
       }
       case 'snapshot': {
         if (this.grid && this.predictor) {
-          this.predictor.reconcile(frame, frame.ackSequence, this.grid, TICK_SECONDS)
+          this.predictor.reconcile(
+            { x: frame.x, y: frame.y, z: frame.z },
+            frame.ackSequence,
+            this.grid,
+            TICK_SECONDS,
+          )
         }
         // The viewer is excluded from the entry list by the server.
         this.interpolation.ingest(frame.entries, performance.now())
@@ -312,6 +326,18 @@ export class GameSession {
         this.roster.delete(frame.id)
         this.interpolation.forget(frame.id)
         this.patch({ roster: [...this.roster.values()], population: this.roster.size })
+        return
+      }
+      case 'roster-update': {
+        this.roster.set(frame.member.id, frame.member)
+        if (this.view.player?.id === frame.member.id) {
+          this.patch({
+            player: { ...this.view.player, nickname: frame.member.nickname, color: frame.member.color },
+            roster: [...this.roster.values()],
+          })
+        } else {
+          this.patch({ roster: [...this.roster.values()] })
+        }
         return
       }
       default:

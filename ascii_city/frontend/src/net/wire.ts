@@ -12,6 +12,10 @@ import type { ChatMessage, ChatScope } from '../domain/types'
 export const MSG_INPUT = 0x01
 export const MSG_CHAT = 0x02
 export const MSG_PING = 0x03
+export const MSG_RENAME = 0x04
+
+export const INPUT_FLAG_SPRINT = 0x01
+export const INPUT_FLAG_JUMP = 0x02
 
 // Server to client.
 export const MSG_WELCOME = 0x81
@@ -22,6 +26,7 @@ export const MSG_ROSTER_SYNC = 0x85
 export const MSG_ROSTER_ADD = 0x86
 export const MSG_ROSTER_REMOVE = 0x87
 export const MSG_PONG = 0x88
+export const MSG_ROSTER_UPDATE = 0x89
 
 export const NOTICE_INFO = 0
 export const NOTICE_WARNING = 1
@@ -81,6 +86,7 @@ export interface InputCommand {
   yaw: number
   pitch: number
   sprint: boolean
+  jump: boolean
   clientTime: number
 }
 
@@ -99,7 +105,10 @@ export function encodeInput(command: InputCommand): Uint8Array {
   view.setInt8(6, clampAxis(command.strafe))
   view.setUint16(7, encodeYaw(command.yaw), true)
   view.setInt8(9, encodePitch(command.pitch))
-  view.setUint8(10, command.sprint ? 1 : 0)
+  let flags = 0
+  if (command.sprint) flags |= INPUT_FLAG_SPRINT
+  if (command.jump) flags |= INPUT_FLAG_JUMP
+  view.setUint8(10, flags)
   view.setUint32(11, command.clientTime >>> 0, true)
   return frame
 }
@@ -123,6 +132,16 @@ export function encodePing(clientTime: number): Uint8Array {
   const view = new DataView(frame.buffer)
   view.setUint8(0, MSG_PING)
   view.setUint32(1, clientTime >>> 0, true)
+  return frame
+}
+
+export function encodeRename(nickname: string): Uint8Array {
+  const payload = encoder.encode(nickname)
+  const frame = new Uint8Array(3 + payload.byteLength)
+  const view = new DataView(frame.buffer)
+  view.setUint8(0, MSG_RENAME)
+  view.setUint16(1, payload.byteLength, true)
+  frame.set(payload, 3)
   return frame
 }
 
@@ -200,6 +219,11 @@ export interface RosterRemoveFrame {
   id: number
 }
 
+export interface RosterUpdateFrame {
+  kind: 'roster-update'
+  member: RosterMember
+}
+
 export interface PongFrame {
   kind: 'pong'
   clientTime: number
@@ -214,6 +238,7 @@ export type ServerFrame =
   | RosterSyncFrame
   | RosterAddFrame
   | RosterRemoveFrame
+  | RosterUpdateFrame
   | PongFrame
 
 function readString(bytes: Uint8Array, at: number, length: number): string {
@@ -243,6 +268,8 @@ export function decodeServerFrame(payload: ArrayBuffer | Uint8Array): ServerFram
       return decodeRosterSync(bytes, view)
     case MSG_ROSTER_ADD:
       return { kind: 'roster-add', member: readRosterEntry(bytes, view, 1).member }
+    case MSG_ROSTER_UPDATE:
+      return { kind: 'roster-update', member: readRosterEntry(bytes, view, 1).member }
     case MSG_ROSTER_REMOVE:
       return { kind: 'roster-remove', id: view.getUint16(1, true) }
     case MSG_PONG:

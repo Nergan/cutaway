@@ -18,6 +18,9 @@ from ..domain.constants import (
     ANIMATION_IDLE,
     ANIMATION_RUN,
     ANIMATION_WALK,
+    EYE_HEIGHT_M,
+    GRAVITY_MS2,
+    JUMP_SPEED_MS,
     PLAYER_RADIUS_M,
     RUN_SPEED_MS,
     WALK_SPEED_MS,
@@ -40,6 +43,15 @@ def move_player(
     step = min(max(dt, 0.0), MAX_STEP_SECONDS)
     state.yaw = command.yaw
     state.pitch = command.pitch
+
+    grounded = state.z <= EYE_HEIGHT_M + 0.02 and state.velocity_z <= 0.01
+    if command.jump and grounded:
+        state.velocity_z = JUMP_SPEED_MS
+    state.velocity_z -= GRAVITY_MS2 * step
+    state.z += state.velocity_z * step
+    if state.z < EYE_HEIGHT_M:
+        state.z = EYE_HEIGHT_M
+        state.velocity_z = 0.0
 
     forward = command.forward
     strafe = command.strafe

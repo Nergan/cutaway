@@ -217,6 +217,22 @@ def test_roster_frames():
     sync = wire.encode_roster_sync([player, a_player(10)])
     assert sync[0] == wire.MSG_ROSTER_SYNC
     assert int.from_bytes(sync[1:3], "little") == 2
+    update = wire.encode_roster_update(player)
+    assert update[0] == wire.MSG_ROSTER_UPDATE
+
+
+def test_rename_frame_decodes():
+    nick = "NeonFox-2044".encode("utf-8")
+    payload = bytes([wire.MSG_RENAME]) + len(nick).to_bytes(2, "little") + nick
+    frame = wire.decode_client_frame(payload)
+    assert isinstance(frame, wire.RenameRequest)
+    assert frame.nickname == "NeonFox-2044"
+
+
+def test_input_jump_flag_decodes():
+    frame = wire.decode_client_frame(encode_input(flags=wire.INPUT_FLAG_JUMP | wire.INPUT_FLAG_SPRINT))
+    assert frame.jump is True
+    assert frame.sprint is True
 
 
 def test_notice_is_length_bounded():

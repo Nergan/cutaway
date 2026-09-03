@@ -59,6 +59,8 @@ export const PLAYER_RADIUS_M = 0.35
 export const EYE_HEIGHT_M = 1.7
 export const WALK_SPEED_MS = 3.4
 export const RUN_SPEED_MS = 6.2
+export const JUMP_SPEED_MS = 5.6
+export const GRAVITY_MS2 = 22.0
 export const MAX_PITCH_RAD = 1.2
 
 // --- Simulation timing -----------------------------------------------------

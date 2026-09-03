@@ -46,9 +46,10 @@ hot-reloads.
 | Input | Action |
 | --- | --- |
 | `W` `A` `S` `D` or arrows | Walk |
-| `Shift` | Run |
+| `Ctrl` | Run |
+| `Space` | Jump |
 | Mouse | Look (click the viewport to capture the pointer) |
-| `Enter` | Open the chat line; `Enter` again sends, `Escape` cancels |
+| `T` or `Enter` | Open the chat line; press again to send, `Escape` cancels |
 | Left half of a touchscreen | Virtual stick |
 | Right half of a touchscreen | Look |
 

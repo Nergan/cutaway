@@ -311,6 +311,36 @@ button:hover {
   accent-color: var(--neon);
 }
 
+.rename-row {
+  margin: 0;
+}
+
+.rename-input {
+  display: flex;
+  gap: 6px;
+}
+
+.rename-input input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--dim);
+  padding: 4px 8px;
+}
+
+.rename-input button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rename-input button:disabled:hover {
+  color: var(--ink);
+  background: transparent;
+  border-color: var(--dim);
+}
+
 .diagnostics {
   display: grid;
   grid-template-columns: auto 1fr;

@@ -38,7 +38,7 @@ def player_at(x: float, y: float) -> PlayerState:
     return PlayerState(id=1, nickname="Tester-1000", color=0, x=x, y=y)
 
 
-def command(forward=0.0, strafe=0.0, yaw=0.0, sprint=False, sequence=1) -> InputCommand:
+def command(forward=0.0, strafe=0.0, yaw=0.0, sprint=False, jump=False, sequence=1) -> InputCommand:
     return InputCommand.sanitised(
         sequence=sequence,
         forward=forward,
@@ -46,6 +46,7 @@ def command(forward=0.0, strafe=0.0, yaw=0.0, sprint=False, sequence=1) -> Input
         yaw=yaw,
         pitch=0.0,
         sprint=sprint,
+        jump=jump,
         client_time=0,
     )
 
@@ -175,6 +176,7 @@ def test_non_finite_input_is_neutralised():
             yaw=float("nan"),
             pitch=float("-inf"),
             sprint=False,
+            jump=False,
             client_time=0,
         ),
         grid,

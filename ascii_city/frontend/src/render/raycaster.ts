@@ -8,7 +8,7 @@
  * pixels.
  */
 
-import { CELL_ROAD, CELL_SIDEWALK, CELL_WATER, unpackStyle } from '../domain/constants'
+import { CELL_INTERACTIVE, CELL_ROAD, CELL_SIDEWALK, CELL_WATER, unpackStyle } from '../domain/constants'
 import type { CollisionGrid } from '../world/collisionGrid'
 import {
   RAMP,
@@ -278,6 +278,10 @@ export class Raycaster {
         background = GROUND_SIDEWALK
         glyphIndex = ROAD_GLYPHS.sidewalk[Math.floor(grain * 3) % 3]
         foreground = scale(GROUND_SIDEWALK, 1.9)
+      } else if (code === CELL_INTERACTIVE) {
+        background = mix(GROUND_SIDEWALK, NEON[1], 0.2)
+        glyphIndex = WINDOWS[Math.floor(grain * WINDOWS.length) % WINDOWS.length]
+        foreground = scale(NEON[1], 1.4)
       } else if (code === CELL_WATER) {
         background = mix(GROUND_WET, VOID, 0.3)
         glyphIndex = ROAD_GLYPHS.marking
@@ -324,8 +328,9 @@ export class Raycaster {
     const facade = FACADE[style.category]
     const neon = NEON[style.category]
     const fogAmount = 1 - Math.exp(-distance / FOG_DISTANCE_M)
-    // A cheap two-sided light so corners read without any real shading.
-    const sideShade = hit.side === 0 ? 0.78 : 1.0
+    // Stronger side contrast and a little distance falloff read as volume.
+    const sideShade = hit.side === 0 ? 0.58 : 1.12
+    const depthShade = 0.72 + 0.28 * Math.exp(-distance / 90)
     // A facade alternates glazed bands with structural ones. Which is which
     // depends on world position, so the pattern holds still as you walk past.
     const bandIndex = Math.floor(hit.along / WINDOW_PITCH_M)
@@ -343,7 +348,7 @@ export class Raycaster {
 
       let glyphIndex: number
       let foreground: Rgb
-      let background = scale(facade, sideShade)
+      let background = scale(facade, sideShade * depthShade)
       let effect = EFFECT_NONE
 
       const isTopRow = row === first && top > 0
@@ -358,9 +363,15 @@ export class Raycaster {
           foreground = [255, 90, 90]
         }
       } else if (withinFloor < 0.42) {
-        // Slab between floors.
-        glyphIndex = STRUCTURE.ledge
-        foreground = scale(facade, 1.9 * sideShade)
+        // Slab between floors — brighter on sun-facing bands for contour.
+        const edge = hash3(hit.cellX, hit.cellY, bandIndex) > 0.82
+        glyphIndex = edge ? STRUCTURE.pillar : STRUCTURE.ledge
+        foreground = scale(facade, (edge ? 2.2 : 1.9) * sideShade * depthShade)
+      } else if (worldZ < 1.2 && bandIndex === 0) {
+        // Street-level plinth: darker base anchors the facade to the ground.
+        glyphIndex = STRUCTURE.pillar
+        foreground = scale(facade, 1.05 * sideShade)
+        background = mix(background, VOID, 0.25)
       } else if (glazed && withinFloor > 0.8 && withinFloor < 2.5 && worldZ > 1.0) {
         if (lit < windowChance) {
           const strength = Math.floor(lit * 1000) % WINDOWS.length

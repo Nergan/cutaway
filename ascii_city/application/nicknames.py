@@ -43,8 +43,25 @@ class NicknameFactory:
         self._taken.add(candidate)
         return candidate
 
+    def claim(self, nickname: str) -> bool:
+        """Reserve a player-chosen nickname if it passes policy and is free."""
+        cleaned = nickname.strip()
+        if not is_safe_nickname(cleaned) or cleaned in self._taken:
+            return False
+        self._taken.add(cleaned)
+        return True
+
     def release(self, nickname: str) -> None:
         self._taken.discard(nickname)
+
+    def rename(self, old: str, new: str) -> bool:
+        """Atomically swap a nickname when the new one is valid and unused."""
+        cleaned = new.strip()
+        if not is_safe_nickname(cleaned) or cleaned in self._taken:
+            return False
+        self._taken.discard(old)
+        self._taken.add(cleaned)
+        return True
 
     @staticmethod
     def _compose() -> str:
@@ -62,3 +79,21 @@ def is_safe_nickname(value: str) -> bool:
 def pick_color(player_id: int) -> int:
     """Spread colours across the palette so neighbours rarely match."""
     return (player_id * 5) % PLAYER_COLOR_COUNT
+
+
+class ColorAllocator:
+    """Hand out palette indices so two online players rarely share a colour."""
+
+    def __init__(self) -> None:
+        self._used: set[int] = set()
+
+    def issue(self, player_id: int) -> int:
+        for offset in range(PLAYER_COLOR_COUNT):
+            candidate = (player_id + offset) % PLAYER_COLOR_COUNT
+            if candidate not in self._used:
+                self._used.add(candidate)
+                return candidate
+        return pick_color(player_id)
+
+    def release(self, color: int) -> None:
+        self._used.discard(color)

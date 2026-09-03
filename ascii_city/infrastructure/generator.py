@@ -43,6 +43,7 @@ from ..domain.world import (
     WorldTile,
 )
 from .canvas import Canvas, pack_style, slice_into_tiles
+from .district_features import enrich_district
 from .rng import Mulberry32
 
 __all__ = ["DistrictGenerator", "pack_style"]
@@ -53,8 +54,8 @@ MIN_BLOCK_SIDE = 8
 MAX_FOOTPRINT_SIDE = 8
 # Cells between parallel roads. Twenty to thirty-two cells is 40-64 m, which
 # reads as a real city block from street level instead of a maze.
-STREET_SPACING = (20, 32)
-AVENUE_SPACING = (56, 84)
+STREET_SPACING = (16, 28)
+AVENUE_SPACING = (48, 72)
 
 PROP_LAMP = 0
 PROP_TREE = 1
@@ -99,10 +100,13 @@ class DistrictGenerator(WorldGeneratorPort):
 
         downtown = self._downtown(root.fork(0x3), width, height)
         buildings = self._fill_blocks(canvas, bands_x, bands_y, root.fork(0x4), downtown)
+        buildings, extra_props = enrich_district(
+            canvas, buildings, bands_x, bands_y, root.fork(0x7)
+        )
         self._paint_sidewalks(canvas)
 
         roads = self._road_records(bands_x, bands_y, width, height)
-        props = self._props(canvas, root.fork(0x5))
+        props = self._props(canvas, root.fork(0x5)) + extra_props
         spawns = self._spawn_points(canvas, root.fork(0x6))
         return slice_into_tiles(descriptor, canvas, buildings, roads, props, spawns)
 
@@ -281,14 +285,14 @@ class DistrictGenerator(WorldGeneratorPort):
     def _pick_category(rng: Mulberry32, norm: float) -> int:
         roll = rng.next_float()
         if norm < 0.22:
-            return CATEGORY_SKYSCRAPER if roll < 0.55 else CATEGORY_OFFICE
+            return CATEGORY_SKYSCRAPER if roll < 0.62 else CATEGORY_OFFICE
         if norm < 0.45:
-            if roll < 0.10:
+            if roll < 0.08:
                 return CATEGORY_SKYSCRAPER
-            if roll < 0.50:
+            if roll < 0.42:
                 return CATEGORY_OFFICE
-            if roll < 0.85:
-                return CATEGORY_APARTMENT
+            if roll < 0.72:
+                return CATEGORY_SHOP if roll < 0.58 else CATEGORY_APARTMENT
             return CATEGORY_SHOP
         if norm < 0.75:
             if roll < 0.40:

@@ -1,19 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { QualityPreset, RendererStats } from '../render/renderer'
 
 interface Props {
   stats: RendererStats | null
+  nickname: string
   onClose: () => void
   onQuality: (preset: QualityPreset) => void
   onFieldOfView: (degrees: number) => void
+  onRename: (nickname: string) => void
 }
 
 const PRESETS: QualityPreset[] = ['auto', 'high', 'balanced', 'low']
 
-export function Settings({ stats, onClose, onQuality, onFieldOfView }: Props) {
+export function Settings({ stats, nickname, onClose, onQuality, onFieldOfView, onRename }: Props) {
   const [preset, setPreset] = useState<QualityPreset>('auto')
   const [fov, setFov] = useState(78)
+  const [draftNick, setDraftNick] = useState(nickname)
+
+  const submitNick = (event: React.FormEvent) => {
+    event.preventDefault()
+    const trimmed = draftNick.trim()
+    if (trimmed && trimmed !== nickname) onRename(trimmed)
+  }
+
+  useEffect(() => {
+    setDraftNick(nickname)
+  }, [nickname])
 
   return (
     <div className="settings">
@@ -23,6 +36,23 @@ export function Settings({ stats, onClose, onQuality, onFieldOfView }: Props) {
           close
         </button>
       </header>
+
+      <form className="rename-row" onSubmit={submitNick}>
+        <label>
+          <span>nickname</span>
+          <div className="rename-input">
+            <input
+              value={draftNick}
+              maxLength={32}
+              onChange={(event) => setDraftNick(event.target.value)}
+              placeholder="your name in the district"
+            />
+            <button type="submit" disabled={!draftNick.trim() || draftNick.trim() === nickname}>
+              save
+            </button>
+          </div>
+        </label>
+      </form>
 
       <label>
         <span>resolution</span>
@@ -72,9 +102,9 @@ export function Settings({ stats, onClose, onQuality, onFieldOfView }: Props) {
       ) : null}
 
       <p className="muted">
-        WASD or arrows to walk. Shift to run. Mouse to look. Enter to talk, Escape to stop
-        talking. On a phone, the left half of the screen is a stick and the right half looks
-        around.
+        WASD or arrows to walk. Ctrl to run. Space to jump. Mouse to look. T or Enter to talk,
+        Escape to stop talking. On a phone, the left half of the screen is a stick and the right
+        half looks around.
       </p>
     </div>
   )

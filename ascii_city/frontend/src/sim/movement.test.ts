@@ -37,13 +37,14 @@ function command(overrides: Partial<InputCommand> = {}): InputCommand {
     yaw: 0,
     pitch: 0,
     sprint: false,
+    jump: false,
     clientTime: 0,
     ...overrides,
   }
 }
 
 function player(x = 10, y = 10) {
-  return { x, y, yaw: 0, pitch: 0, animation: ANIMATION_IDLE }
+  return { x, y, z: 1.7, velocityZ: 0, yaw: 0, pitch: 0, animation: ANIMATION_IDLE }
 }
 
 describe('walking', () => {

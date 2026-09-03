@@ -10,11 +10,28 @@ function grid(): CollisionGrid {
 }
 
 function command(sequence: number, forward = 1): InputCommand {
-  return { sequence, forward, strafe: 0, yaw: 0, pitch: 0, sprint: false, clientTime: 0 }
+  return {
+    sequence,
+    forward,
+    strafe: 0,
+    yaw: 0,
+    pitch: 0,
+    sprint: false,
+    jump: false,
+    clientTime: 0,
+  }
 }
 
 function predictor(x = 20, y = 20): Predictor {
-  return new Predictor({ x, y, yaw: 0, pitch: 0, animation: ANIMATION_IDLE })
+  return new Predictor({
+    x,
+    y,
+    z: 1.7,
+    velocityZ: 0,
+    yaw: 0,
+    pitch: 0,
+    animation: ANIMATION_IDLE,
+  })
 }
 
 describe('prediction', () => {
@@ -110,7 +127,7 @@ describe('prediction', () => {
     subject.push(command(1), world, TICK_SECONDS)
     subject.reset(5, 6)
     expect(subject.pendingCount).toBe(0)
-    expect(subject.view(0)).toEqual({ x: 5, y: 6 })
+    expect(subject.view(0)).toEqual({ x: 5, y: 6, z: 1.7 })
   })
 })
 

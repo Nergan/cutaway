@@ -33,7 +33,7 @@ from ..infrastructure import wire_codec as wire
 from .chat_service import ChatService
 from .interest import visible_players, within_radius
 from .movement import find_safe_position, move_player
-from .nicknames import NicknameFactory, pick_color
+from .nicknames import ColorAllocator, NicknameFactory, is_safe_nickname
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,7 @@ class CityRoom:
         self._max_clients = max_clients
         self._members: dict[int, Member] = {}
         self._nicknames = NicknameFactory()
+        self._colors = ColorAllocator()
         self._next_id = 1
         self._spawn_cursor = 0
         self._tick = 0
@@ -151,7 +152,7 @@ class CityRoom:
             state = PlayerState(
                 id=player_id,
                 nickname=self._nicknames.issue(),
-                color=pick_color(player_id),
+                color=self._colors.issue(player_id),
                 x=spawn_x,
                 y=spawn_y,
                 z=EYE_HEIGHT_M,
@@ -200,6 +201,7 @@ class CityRoom:
         member.alive = False
         self._members.pop(member.state.id, None)
         self._nicknames.release(member.state.nickname)
+        self._colors.release(member.state.color)
         self._chat.forget(member.state.id)
         logger.info("%s left %s (%d online)", member.state.nickname, self.room_id, len(self._members))
         # leave() usually runs in the departing socket's task, which the ASGI
@@ -255,7 +257,32 @@ class CityRoom:
             )
             return
 
+        if isinstance(frame, wire.RenameRequest):
+            await self._handle_rename(member, frame.nickname)
+            return
+
         await self._handle_chat(member, frame.scope, frame.text)
+
+    async def _handle_rename(self, member: Member, nickname: str) -> None:
+        cleaned = nickname.strip()
+        if not is_safe_nickname(cleaned):
+            await self._send(
+                member,
+                wire.encode_notice(
+                    wire.NOTICE_WARNING,
+                    "Nicknames are 6-24 characters: letters, digits and hyphens.",
+                ),
+            )
+            return
+        if cleaned == member.state.nickname:
+            return
+        if not self._nicknames.rename(member.state.nickname, cleaned):
+            await self._send(member, wire.encode_notice(wire.NOTICE_WARNING, "That nickname is taken."))
+            return
+        old = member.state.nickname
+        member.state.nickname = cleaned
+        await self._broadcast(wire.encode_roster_update(member.state))
+        await self._announce(f"{old} is now {cleaned}.")
 
     async def _handle_chat(self, member: Member, scope: ChatScope, text: str) -> None:
         try:
