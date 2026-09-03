@@ -1,0 +1,173 @@
+/**
+ * The other people in the street.
+ *
+ * Avatars are billboarded glyph stamps depth-tested against the wall pass, so
+ * someone standing behind a tower is correctly hidden by it. Nameplates only
+ * appear once a player is close enough for the text to be readable.
+ */
+
+import { ANIMATION_IDLE, ANIMATION_RUN } from '../domain/constants'
+import { AVATAR_ROWS, CHARSET } from './charset'
+import { CellBuffer, EFFECT_GLOW } from './cellBuffer'
+import { fade, playerColor, scale, type Rgb } from './palette'
+import type { Camera } from './raycaster'
+
+export interface Sprite {
+  id: number
+  x: number
+  y: number
+  animation: number
+  nickname: string
+  color: number
+}
+
+const AVATAR_HEIGHT_M = 1.8
+const AVATAR_WIDTH_M = 0.9
+const NAMEPLATE_DISTANCE_M = 42
+const FOG_DISTANCE_M = 90
+
+export function renderSprites(
+  buffer: CellBuffer,
+  camera: Camera,
+  sprites: Sprite[],
+  fov: number,
+  time: number,
+): void {
+  const { columns, rows } = buffer
+  const half = columns / 2
+  const tanHalfFov = Math.tan(fov / 2)
+  const projColumns = half / tanHalfFov
+  const projRows = projColumns * 0.5
+  const horizon = rows * 0.5 + Math.tan(camera.pitch) * projRows
+
+  const dirX = Math.cos(camera.yaw)
+  const dirY = Math.sin(camera.yaw)
+  const rightX = dirY
+  const rightY = -dirX
+
+  // Farthest first, so a nearer avatar stamps over one behind it.
+  const ordered = sprites
+    .map((sprite) => {
+      const dx = sprite.x - camera.x
+      const dy = sprite.y - camera.y
+      return { sprite, depth: dx * dirX + dy * dirY, lateral: dx * rightX + dy * rightY }
+    })
+    .filter((entry) => entry.depth > 0.5)
+    .sort((a, b) => b.depth - a.depth)
+
+  for (const { sprite, depth, lateral } of ordered) {
+    const centre = half * (1 + lateral / (depth * tanHalfFov))
+    const scaleRows = projRows / depth
+    const feet = horizon + scaleRows * camera.z
+    const head = horizon - scaleRows * (AVATAR_HEIGHT_M - camera.z)
+    const heightRows = feet - head
+    if (heightRows < 1.2) continue
+
+    const widthColumns = Math.max(1, (projColumns * AVATAR_WIDTH_M) / depth)
+    const left = Math.round(centre - widthColumns / 2)
+    const right = Math.round(centre + widthColumns / 2)
+    const fogAmount = 1 - Math.exp(-depth / FOG_DISTANCE_M)
+    const base = playerColor(sprite.color)
+    // A subtle bob so a walking figure is distinguishable from a standing one.
+    const bob =
+      sprite.animation === ANIMATION_IDLE
+        ? 0
+        : Math.sin(time * (sprite.animation === ANIMATION_RUN ? 11 : 7) + sprite.id) * 0.35
+
+    for (let column = left; column <= right; column += 1) {
+      if (column < 0 || column >= columns) continue
+      if (depth > buffer.depth[column]) continue
+      const withinX = widthColumns <= 1 ? 0.5 : (column - left) / (right - left || 1)
+      const glyphColumn = Math.min(2, Math.max(0, Math.round(withinX * 2)))
+
+      for (let row = Math.floor(head + bob); row <= Math.ceil(feet); row += 1) {
+        if (row < 0 || row >= rows) continue
+        const withinY = (row - (head + bob)) / Math.max(1, heightRows)
+        if (withinY < 0 || withinY > 1) continue
+        const glyphRow = Math.min(
+          AVATAR_ROWS.length - 1,
+          Math.floor(withinY * AVATAR_ROWS.length),
+        )
+        const stamp = AVATAR_ROWS[glyphRow]
+        const glyphIndex = stamp[Math.min(stamp.length - 1, glyphColumn)]
+        if (glyphIndex === 0) continue
+
+        const foreground = fade(scale(base, 1.15), fogAmount * 0.7)
+        const at = (row * columns + column) * 8
+        buffer.set(
+          column,
+          row,
+          glyphIndex,
+          foreground[0],
+          foreground[1],
+          foreground[2],
+          // Keep whatever the world painted behind the figure as its backdrop.
+          buffer.data[at + 5],
+          buffer.data[at + 6],
+          buffer.data[at + 7],
+          EFFECT_GLOW,
+        )
+      }
+    }
+
+    if (depth < NAMEPLATE_DISTANCE_M) {
+      drawNameplate(
+        buffer,
+        sprite.nickname,
+        Math.round(centre),
+        Math.floor(head + bob) - 1,
+        base,
+        depth,
+      )
+    }
+  }
+}
+
+function drawNameplate(
+  buffer: CellBuffer,
+  nickname: string,
+  centre: number,
+  row: number,
+  color: Rgb,
+  depth: number,
+): void {
+  if (row < 0 || row >= buffer.rows) return
+  const text = nickname.length > 18 ? `${nickname.slice(0, 17)}\u2026` : nickname
+  const start = centre - Math.floor(text.length / 2)
+  for (let index = 0; index < text.length; index += 1) {
+    const column = start + index
+    if (column < 0 || column >= buffer.columns) continue
+    // A name must not float through a facade any more than its owner does.
+    if (depth > buffer.depth[column]) continue
+    buffer.set(
+      column,
+      row,
+      asciiGlyph(text[index]),
+      color[0],
+      color[1],
+      color[2],
+      4,
+      7,
+      12,
+      EFFECT_GLOW,
+    )
+  }
+}
+
+const ASCII_TABLE = buildAsciiTable()
+
+function buildAsciiTable(): Int16Array {
+  const table = new Int16Array(128).fill(-1)
+  CHARSET.forEach((character, index) => {
+    const code = character.charCodeAt(0)
+    if (code < 128) table[code] = index
+  })
+  return table
+}
+
+/** Nicknames are ASCII by construction; anything else becomes a dot. */
+function asciiGlyph(character: string): number {
+  const code = character.charCodeAt(0)
+  const found = code < 128 ? ASCII_TABLE[code] : -1
+  return found >= 0 ? found : 1
+}

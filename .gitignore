@@ -22,6 +22,11 @@ npm-debug.log*
 dist/
 .vite/
 
+### ASCII City Frontend ###
+# The client is built by build.sh, so the bundle is not committed.
+ascii_city/static/
+ascii_city/node_modules/
+
 ### Capacitor & Native Mobile Platforms ###
 # android/
 netlazy/android/app/src/main/ic_launcher-playstore.png
@@ -78,6 +83,7 @@ plan.md
 
 ### Tooling (Repomix) ###
 repomix.config.json
+.repomixignore
 code.md
 tmp.md
 *.bak

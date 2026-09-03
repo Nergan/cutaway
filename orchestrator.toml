@@ -311,6 +311,57 @@ allowed_hosts = ["api.cloudinary.com", "res.cloudinary.com", "*.cloudinary.com",
 allow_private = false
 requests_per_minute = 60
 
+[projects.ascii_city]
+directory = "ascii_city"
+entrypoint = "ascii_city.main"
+prefix = "/ascii-city"
+requirements = "ascii_city/requirements.txt"
+npm_build = true
+startup = "lazy"
+env_allowlist = [
+  "MONGODB_URI",
+  "MONGO_MAX_POOL_SIZE",
+  "MONGO_TLS",
+  "MONGO_TLS_ALLOW_INVALID_CERTS",
+  "ASCII_CITY_WORLD_ID",
+  "ASCII_CITY_WORLD_SEED",
+  "ASCII_CITY_WORLD_VERSION",
+  "ASCII_CITY_TILES_X",
+  "ASCII_CITY_TILES_Y",
+  "ASCII_CITY_ROOM_ID",
+  "ASCII_CITY_MAX_CLIENTS",
+  "ASCII_CITY_USE_MONGO",
+  "ASCII_CITY_BASE_PATH",
+]
+
+# A full room is fifty players at twenty snapshots per second, which the binary
+# protocol keeps near 9 MB per minute. Tiles are immutable and cached by the
+# browser, so HTTP traffic is dominated by the one-time client download.
+[projects.ascii_city.limits]
+request_rate = 240
+request_window_seconds = 60
+request_bytes = 65536
+response_bytes = 8388608
+traffic_bytes_per_minute = 268435456
+max_concurrency = 16
+queue_timeout_seconds = 5
+request_timeout_seconds = 30
+max_websockets = 64
+websocket_message_bytes = 65536
+websocket_lifetime_seconds = 3600
+memory_mb = 512
+cpu_percent = 120
+cpu_grace_seconds = 30
+max_processes = 2
+max_connections = 160
+idle_timeout_seconds = 900
+startup_timeout_seconds = 30
+
+[projects.ascii_city.network]
+allowed_hosts = []
+allow_private = false
+requests_per_minute = 0
+
 [projects.another]
 directory = "another"
 entrypoint = "another.main"
@@ -376,6 +427,16 @@ MONGO_TLS_ALLOW_INVALID_CERTS = "0"
 [profiles.hf.projects.soon.env_defaults]
 MONGO_MAX_POOL_SIZE = "3"
 MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+
+[profiles.hf.projects.ascii_city.env_defaults]
+MONGO_MAX_POOL_SIZE = "3"
+MONGO_TLS_ALLOW_INVALID_CERTS = "0"
+ASCII_CITY_MAX_CLIENTS = "24"
+
+[profiles.hf.projects.ascii_city.limits]
+max_websockets = 32
+max_connections = 96
+memory_mb = 384
 
 [profiles.hf.projects.another]
 run = false

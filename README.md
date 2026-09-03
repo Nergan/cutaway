@@ -84,6 +84,11 @@ See [the orchestrator guide](docs/orchestrator.md) for configuration and operati
 * **Description:** An unauthenticated collaborative board. Everyone in the same room draws on one canvas; there is no landing-page card, the route is `/soon`.
 * **Core Capabilities:** Live strokes and named cursors over WebSocket, image paste/drag-and-drop stored on Cloudinary with hash dedup, a collapsible sidebar, and jump-to-user edge hints. One shared room at `/soon`.
 
+#### 10. [ASCII City](./ascii_city/) (Multiplayer ASCII Cityscape)
+
+* **Description:** A first-person cyberpunk city rendered entirely as glowing ASCII, walked by everyone who opens the page. The district is generated procedurally from a seed and every position in it belongs to the server.
+* **Core Capabilities:** Authoritative 20 Hz simulation with client-side prediction and reconciliation, a ten-byte-per-player binary WebSocket protocol, interest management, proximity and district chat. A WebGL2 raycaster draws the character grid in one instanced call against a glyph atlas that carries its own neon bleed, with a Canvas2D fallback and adaptive quality. Binary 256 m tiles are decoded in a Web Worker and cached in MongoDB; a second implementation of the world port imports tagged GeoJSON from OpenStreetMap into the identical tile format.
+
 ---
 
 ## Deployment & Setup

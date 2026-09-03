@@ -36,6 +36,7 @@ def test_hf_profile_disables_policy_sensitive_projects():
         "evenfest",
         "dnd",
         "netlazy",
+        "ascii_city",
     }
 
 

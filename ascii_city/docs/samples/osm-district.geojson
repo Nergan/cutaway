@@ -1,0 +1,193 @@
+{
+  "type": "FeatureCollection",
+  "name": "ascii-city-sample-district",
+  "note": "A hand-written stand-in for an osmium export, shaped like one. Tag spellings are deliberately varied so the height ladder in docs/osm-import.md is exercised end to end: explicit metres, imperial feet, levels with a separate roof, and nothing at all.",
+  "license": "Sample geometry is invented, not extracted. Real OSM data carries ODbL 1.0 and requires attribution to OpenStreetMap contributors.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1001",
+        "highway": "primary",
+        "name": "Grand Avenue",
+        "lanes": "4"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[37.6100, 55.75100], [37.6140, 55.75100]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1002",
+        "highway": "residential",
+        "name": "Lantern Street"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[37.6100, 55.75050], [37.6140, 55.75050]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1003",
+        "highway": "secondary",
+        "name": "Ninth Avenue",
+        "width": "18 m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[37.61200, 55.75020], [37.61200, 55.75200]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1004",
+        "highway": "footway",
+        "name": "Cutaway Passage"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[37.61085, 55.75020], [37.61085, 55.75200]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2001",
+        "building": "apartments",
+        "building:levels": "9",
+        "name": "Conduit Housing"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61030, 55.75125], [37.61080, 55.75125],
+          [37.61080, 55.75165], [37.61030, 55.75165],
+          [37.61030, 55.75125]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2002",
+        "building": "office",
+        "height": "64",
+        "name": "Meridian Tower"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61095, 55.75125], [37.61165, 55.75125],
+          [37.61165, 55.75175], [37.61095, 55.75175],
+          [37.61095, 55.75125]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2003",
+        "building": "house",
+        "roof:shape": "gabled"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61230, 55.75120], [37.61265, 55.75120],
+          [37.61265, 55.75145], [37.61230, 55.75145],
+          [37.61230, 55.75120]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2004",
+        "building": "retail",
+        "height": "40 ft",
+        "name": "Kiosk Row"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61290, 55.75120], [37.61350, 55.75120],
+          [37.61350, 55.75150], [37.61290, 55.75150],
+          [37.61290, 55.75120]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2005",
+        "building": "warehouse",
+        "building:levels": "2",
+        "roof:height": "3"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61230, 55.75155], [37.61340, 55.75155],
+          [37.61340, 55.75180], [37.61230, 55.75180],
+          [37.61230, 55.75155]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2006",
+        "building": "yes",
+        "height": "12.5",
+        "min_height": "2"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61030, 55.75062], [37.61075, 55.75062],
+          [37.61075, 55.75085], [37.61030, 55.75085],
+          [37.61030, 55.75062]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2007",
+        "building": "train_station",
+        "building:levels": "3",
+        "name": "Cutaway Terminal"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61110, 55.75062], [37.61170, 55.75062],
+          [37.61170, 55.75088], [37.61110, 55.75088],
+          [37.61110, 55.75062]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/2008",
+        "building": "skyscraper",
+        "height": "120 m",
+        "name": "Violet Spire"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [37.61250, 55.75058], [37.61330, 55.75058],
+          [37.61330, 55.75092], [37.61250, 55.75092],
+          [37.61250, 55.75058]
+        ]]
+      }
+    }
+  ]
+}
