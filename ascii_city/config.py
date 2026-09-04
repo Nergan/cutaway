@@ -63,7 +63,7 @@ def load_settings() -> Settings:
     return Settings(
         world_id=world_id,
         world_seed=_int("ASCII_CITY_WORLD_SEED", DEFAULT_SEED) & 0xFFFFFFFF,
-        world_version=max(1, _int("ASCII_CITY_WORLD_VERSION", 2)),
+        world_version=max(1, _int("ASCII_CITY_WORLD_VERSION", 3)),
         tiles_x=tiles_x,
         tiles_y=tiles_y,
         tile_cells=TILE_CELLS,

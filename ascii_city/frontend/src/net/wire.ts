@@ -67,6 +67,10 @@ export function decodeYaw(value: number): number {
   return (value / ANGLE_SCALE) * TAU
 }
 
+export function decodeVelocity(value: number): number {
+  return value / POSITION_SCALE
+}
+
 export function encodePitch(value: number): number {
   const scaled = Math.round(value * PITCH_SCALE)
   return scaled < -127 ? -127 : scaled > 127 ? 127 : scaled
@@ -190,6 +194,8 @@ export interface SnapshotFrame {
   x: number
   y: number
   z: number
+  /** Vertical speed, so a jump replays exactly instead of being flattened. */
+  velocityZ: number
   entries: SnapshotEntry[]
 }
 
@@ -339,10 +345,11 @@ function decodeSnapshot(bytes: Uint8Array, view: DataView): SnapshotFrame {
   const x = decodePosition(view.getUint16(9, true))
   const y = decodePosition(view.getUint16(11, true))
   const z = decodePosition(view.getUint16(13, true))
-  const count = view.getUint8(15)
+  const velocityZ = decodeVelocity(view.getInt16(15, true))
+  const count = view.getUint8(17)
   const entries: SnapshotEntry[] = []
   for (let index = 0; index < count; index += 1) {
-    const at = 16 + index * SNAPSHOT_ENTRY_BYTES
+    const at = 18 + index * SNAPSHOT_ENTRY_BYTES
     if (at + SNAPSHOT_ENTRY_BYTES > bytes.byteLength) {
       throw new WireError('Snapshot is truncated.')
     }
@@ -357,7 +364,7 @@ function decodeSnapshot(bytes: Uint8Array, view: DataView): SnapshotFrame {
       simplified: (flags & SNAPSHOT_FLAG_SIMPLIFIED) !== 0,
     })
   }
-  return { kind: 'snapshot', tick, ackSequence, x, y, z, entries }
+  return { kind: 'snapshot', tick, ackSequence, x, y, z, velocityZ, entries }
 }
 
 function decodeChat(bytes: Uint8Array, view: DataView): ChatFrame {

@@ -7,7 +7,14 @@
  */
 
 import { ANIMATION_IDLE, ANIMATION_RUN } from '../domain/constants'
-import { AVATAR_ROWS, CHARSET, avatarGlyph } from './charset'
+import {
+  AVATAR_FACE_COLUMN,
+  AVATAR_FACE_ROW,
+  AVATAR_ROWS,
+  CHARSET,
+  G_SPACE,
+  avatarGlyph,
+} from './charset'
 import { CellBuffer, EFFECT_GLOW } from './cellBuffer'
 import { fade, mix, playerColor, scale, type Rgb } from './palette'
 import type { Camera } from './raycaster'
@@ -34,6 +41,9 @@ const NAMEPLATE_DISTANCE_M = 42
 const OCCLUDED_NAMEPLATE_DISTANCE_M = 16
 
 const FOG_DISTANCE_M = 90
+
+/** What a body's own shadow leaves of whatever it stands in front of. */
+const SHADOW: Rgb = [6, 9, 14]
 
 export function renderSprites(
   buffer: CellBuffer,
@@ -87,7 +97,8 @@ export function renderSprites(
       if (column < 0 || column >= columns) continue
       if (depth > buffer.depth[column]) continue
       const withinX = widthColumns <= 1 ? 0.5 : (column - left) / (right - left || 1)
-      const glyphColumn = Math.min(2, Math.max(0, Math.round(withinX * 2)))
+      const lastColumn = AVATAR_ROWS[0].length - 1
+      const glyphColumn = Math.min(lastColumn, Math.max(0, Math.round(withinX * lastColumn)))
 
       for (let row = Math.floor(head + bob); row <= Math.ceil(feet); row += 1) {
         if (row < 0 || row >= rows) continue
@@ -98,13 +109,23 @@ export function renderSprites(
           Math.floor(withinY * AVATAR_ROWS.length),
         )
         const stamp = AVATAR_ROWS[glyphRow]
-        // The head cell is where the chosen face goes; the rest is the body.
+        // One cell of the stamp is the head, and that is where the chosen face
+        // goes. Everything else is the body.
         const glyphIndex =
-          glyphRow === 0 ? avatarGlyph(sprite.avatar) : stamp[Math.min(stamp.length - 1, glyphColumn)]
-        if (glyphIndex === 0) continue
+          glyphRow === AVATAR_FACE_ROW && glyphColumn === AVATAR_FACE_COLUMN
+            ? avatarGlyph(sprite.avatar)
+            : stamp[Math.min(stamp.length - 1, glyphColumn)]
+        if (glyphIndex === G_SPACE) continue
 
         const foreground = fade(scale(base, 1.15), fogAmount * 0.7)
         const at = (row * columns + column) * 8
+        // A body blocks the light behind it. Without this the figure vanishes
+        // the moment it crosses a lit shopfront, which is most of the street.
+        const behind = mix(
+          [buffer.data[at + 5], buffer.data[at + 6], buffer.data[at + 7]],
+          SHADOW,
+          0.72,
+        )
         buffer.set(
           column,
           row,
@@ -112,10 +133,9 @@ export function renderSprites(
           foreground[0],
           foreground[1],
           foreground[2],
-          // Keep whatever the world painted behind the figure as its backdrop.
-          buffer.data[at + 5],
-          buffer.data[at + 6],
-          buffer.data[at + 7],
+          behind[0],
+          behind[1],
+          behind[2],
           EFFECT_GLOW,
         )
       }

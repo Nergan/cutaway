@@ -54,7 +54,7 @@ MAX_FRAME_BYTES = 4096
 """Anything larger than this from a client is dropped before parsing."""
 
 _INPUT = struct.Struct("<IbbHbBI")
-_SNAPSHOT_HEAD = struct.Struct("<IIHHH")
+_SNAPSHOT_HEAD = struct.Struct("<IIHHHh")
 _SNAPSHOT_ENTRY = struct.Struct("<HHHHbB")
 _PONG = struct.Struct("<II")
 
@@ -76,6 +76,21 @@ def encode_yaw(value: float) -> int:
 
 def decode_yaw(value: int) -> float:
     return value / ANGLE_SCALE * TAU
+
+
+def encode_velocity(value: float) -> int:
+    """Vertical speed as signed centimetres per second.
+
+    The client replays its unacknowledged input from the authoritative state,
+    and without the vertical velocity that replay has to guess, which turns
+    every jump into a stutter as each snapshot flattens the arc.
+    """
+    scaled = round_half_up(value * POSITION_SCALE)
+    return -32768 if scaled < -32768 else 32767 if scaled > 32767 else scaled
+
+
+def decode_velocity(value: int) -> float:
+    return value / POSITION_SCALE
 
 
 def encode_pitch(value: float) -> int:
@@ -242,6 +257,7 @@ def encode_snapshot(
         encode_position(viewer.x),
         encode_position(viewer.y),
         encode_position(viewer.z),
+        encode_velocity(viewer.velocity_z),
     )
     out.append(min(255, len(entries)))
     for state, simplified in entries[:255]:

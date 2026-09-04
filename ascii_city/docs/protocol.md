@@ -153,7 +153,12 @@ Sent every tick to every player.
 | `u16` | your authoritative x |
 | `u16` | your authoritative y |
 | `u16` | your authoritative z |
+| `i16` | your vertical velocity, in centimetres per second |
 | `u8` | entry count, capped at 255 |
+
+The vertical velocity is here because the client replays its unacknowledged
+input from this state. Without it the replay has to assume zero, which flattens
+the arc of a jump twenty times a second.
 
 Then one 10-byte entry per visible player:
 
@@ -226,7 +231,7 @@ nickname byte length, then the nickname.
 
 ## Bandwidth
 
-A snapshot to a player who can see 49 others is `1 + 14 + 1 + 49 × 10 = 506`
+A snapshot to a player who can see 49 others is `1 + 16 + 1 + 49 × 10 = 508`
 bytes. At 20 Hz that is about 10 kB/s down per player, and a full 50-player
 room costs roughly 10 MB per minute in total — an order of magnitude below the
 traffic the orchestrator budgets for this project. Upstream is 15 bytes per

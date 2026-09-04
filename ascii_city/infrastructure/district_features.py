@@ -29,10 +29,18 @@ from ..domain.world import Building, Prop
 from .canvas import Canvas, pack_style
 from .rng import Mulberry32
 
-PROP_LAMP = 0
-PROP_TREE = 1
-PROP_KIOSK = 2
-PROP_SIGN = 3
+from ..domain.constants import (
+    PROP_BANNER,
+    PROP_BENCH,
+    PROP_KIOSK,
+    PROP_LAMP,
+    PROP_PLANTER,
+    PROP_SIGN,
+    PROP_TREE,
+    PROP_VENDING,
+)
+
+__all__ = ["enrich_district", "PROP_KIOSK", "PROP_LAMP", "PROP_SIGN", "PROP_TREE"]
 
 INTERIOR_CATEGORIES = {CATEGORY_SHOP, CATEGORY_APARTMENT, CATEGORY_OFFICE}
 
@@ -45,18 +53,27 @@ def enrich_district(
     rng: Mulberry32,
 ) -> tuple[list[Building], list[Prop]]:
     """Return updated buildings and extra props to merge into the district."""
-    buildings = carve_interiors(canvas, buildings, rng.fork(0xA11))
+    buildings, interior_props = carve_interiors(canvas, buildings, rng.fork(0xA11))
     paint_covered_arcades(canvas, bands_x, bands_y, rng.fork(0xA12))
     paint_pedestrian_bridges(canvas, bands_x, bands_y, rng.fork(0xA13))
     paint_torii_gates(canvas, bands_x, bands_y, rng.fork(0xA14))
     paint_narrow_alleys(canvas, rng.fork(0xA15))
     props = add_neon_signage(canvas, buildings, rng.fork(0xA16))
-    return buildings, props
+    return buildings, props + interior_props
 
 
-def carve_interiors(canvas: Canvas, buildings: list[Building], rng: Mulberry32) -> list[Building]:
-    """Hollow large footprints and punch a door on the street-facing edge."""
+def carve_interiors(
+    canvas: Canvas, buildings: list[Building], rng: Mulberry32
+) -> tuple[list[Building], list[Prop]]:
+    """Hollow large footprints, punch a street-facing door, and furnish them.
+
+    An empty black box is worse than a solid one: it invites you in and then
+    shows you nothing. Every carved room therefore gets a floor the renderer
+    can tell from open ground, a lamp, and something along its walls.
+    """
     updated: list[Building] = []
+    furniture: list[Prop] = []
+    next_id = 20_000
     for building in buildings:
         xs = building.footprint[0::2]
         ys = building.footprint[1::2]
@@ -65,17 +82,24 @@ def carve_interiors(canvas: Canvas, buildings: list[Building], rng: Mulberry32) 
         width = x1 - x0
         height = y1 - y0
         chance = {
-            CATEGORY_SHOP: 0.72,
-            CATEGORY_APARTMENT: 0.38,
-            CATEGORY_OFFICE: 0.22,
+            CATEGORY_SHOP: 0.85,
+            CATEGORY_APARTMENT: 0.5,
+            CATEGORY_OFFICE: 0.35,
         }.get(building.category, 0.0)
         if width < 4 or height < 4 or not rng.chance(chance):
             updated.append(building)
             continue
 
+        floor_style = pack_style(building.category, 2, 1)
         for y in range(y0 + 1, y1 - 1):
             for x in range(x0 + 1, x1 - 1):
-                canvas.paint(x, y, CELL_FREE, 0, 0)
+                # An interior floor is walkable and lit, which is exactly what
+                # CELL_INTERACTIVE already means to both simulation and client.
+                canvas.paint(x, y, CELL_INTERACTIVE, 0, floor_style)
+
+        for prop in _furnish(x0, y0, x1, y1, building.category, rng, next_id):
+            furniture.append(prop)
+            next_id += 1
 
         door_x, door_y = _pick_door(canvas, x0, y0, x1, y1, rng)
         canvas.paint(door_x, door_y, CELL_INTERACTIVE, 0, pack_style(building.category, 2, 1))
@@ -98,7 +122,30 @@ def carve_interiors(canvas: Canvas, buildings: list[Building], rng: Mulberry32) 
                 interior_id=f"{interior_kind}-{building.id}",
             )
         )
-    return updated
+    return updated, furniture
+
+
+def _furnish(
+    x0: int, y0: int, x1: int, y1: int, category: int, rng: Mulberry32, first_id: int
+) -> list[Prop]:
+    """Light the room, then line its walls with whatever it sells."""
+    props = [Prop(id=first_id, x=(x0 + x1) // 2, y=(y0 + y1) // 2, kind=PROP_LAMP)]
+    against_wall = {
+        CATEGORY_SHOP: (PROP_VENDING, PROP_SIGN),
+        CATEGORY_APARTMENT: (PROP_PLANTER, PROP_BENCH),
+        CATEGORY_OFFICE: (PROP_PLANTER, PROP_BANNER),
+    }.get(category, (PROP_PLANTER,))
+    next_id = first_id + 1
+    for y in range(y0 + 1, y1 - 1):
+        for x in range(x0 + 1, x1 - 1):
+            on_wall = x in (x0 + 1, x1 - 2) or y in (y0 + 1, y1 - 2)
+            if not on_wall or not rng.chance(0.22):
+                continue
+            props.append(
+                Prop(id=next_id, x=x, y=y, kind=against_wall[rng.below(len(against_wall))])
+            )
+            next_id += 1
+    return props
 
 
 def _pick_door(
@@ -202,15 +249,18 @@ def add_neon_signage(canvas: Canvas, buildings: list[Building], rng: Mulberry32)
     for building in buildings:
         if building.category not in (CATEGORY_SHOP, CATEGORY_SKYSCRAPER, CATEGORY_APARTMENT):
             continue
-        if not rng.chance(0.35 if building.category == CATEGORY_SHOP else 0.12):
+        if not rng.chance(0.75 if building.category == CATEGORY_SHOP else 0.35):
             continue
         xs = building.footprint[0::2]
         ys = building.footprint[1::2]
         x = int(sum(xs) / len(xs))
-        y = min(ys)
-        if canvas.get(x, y) in (CELL_SIDEWALK, CELL_ROAD, CELL_INTERACTIVE):
-            props.append(Prop(id=next_id, x=x, y=y, kind=PROP_SIGN))
-            next_id += 1
+        # The sign hangs off the facade, so it goes on the free cell in front
+        # of the wall rather than inside the building it advertises.
+        for y in (min(ys) - 1, max(ys) + 1):
+            if canvas.get(x, y) in (CELL_SIDEWALK, CELL_ROAD, CELL_FREE, CELL_INTERACTIVE):
+                props.append(Prop(id=next_id, x=x, y=y, kind=PROP_SIGN))
+                next_id += 1
+                break
     for _ in range(rng.between(8, 20)):
         x = rng.between(2, canvas.width - 3)
         y = rng.between(2, canvas.height - 3)

@@ -20,6 +20,22 @@ export const CELL_ROAD = 4
 export const CELL_SIDEWALK = 5
 export const CELL_INTERACTIVE = 6
 
+// --- Street furniture ------------------------------------------------------
+// Mirrors the PROP_* block in domain/constants.py; the index is what travels
+// inside every tile, so entries may only ever be appended.
+export const PROP_LAMP = 0
+export const PROP_TREE = 1
+export const PROP_KIOSK = 2
+export const PROP_SIGN = 3
+export const PROP_BENCH = 4
+export const PROP_VENDING = 5
+export const PROP_TRAFFIC_LIGHT = 6
+export const PROP_BOLLARD = 7
+export const PROP_PLANTER = 8
+export const PROP_STALL = 9
+export const PROP_BANNER = 10
+export const PROP_KIND_COUNT = 11
+
 export function isSolidCode(code: number): boolean {
   return code === CELL_BUILDING || code === CELL_WATER || code === CELL_BLOCKED
 }

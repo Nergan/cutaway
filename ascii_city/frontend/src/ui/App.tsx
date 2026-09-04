@@ -28,6 +28,7 @@ export function App() {
   const [view, setView] = useState<SessionView | null>(null)
   const [fatal, setFatal] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   // Mounting the session is an effect, so a plain ref would not re-render the
   // children that need it. This state hands it over exactly once.
   const [session, setSession] = useState<GameSession | null>(null)
@@ -72,6 +73,7 @@ export function App() {
   }, [view?.roster])
 
   const setChatFocused = useCallback((focused: boolean) => {
+    setChatOpen(focused)
     sessionRef.current?.setChatFocused(focused)
   }, [])
 
@@ -79,7 +81,46 @@ export function App() {
     sessionRef.current?.requestPointerLock()
   }, [])
 
+  // Clicking the world is how you get back to playing: it dismisses whatever
+  // panel is holding the mouse, and only then re-captures the pointer.
+  const onViewportClick = useCallback(() => {
+    if (chatOpen) setChatFocused(false)
+    if (settingsOpen) setSettingsOpen(false)
+    if (!chatOpen && !settingsOpen) grabPointer()
+  }, [chatOpen, settingsOpen, setChatFocused, grabPointer])
+
   const online = view?.status.phase === 'online'
+
+  // Anything the player is meant to click needs a visible mouse, and a locked
+  // pointer has none. Releasing it here is what makes the chat and the
+  // settings panel usable without leaving the game.
+  const uiWantsMouse = chatOpen || settingsOpen
+  const hadMouseUi = useRef(false)
+  useEffect(() => {
+    if (uiWantsMouse) sessionRef.current?.releasePointerLock()
+    else if (hadMouseUi.current && online) sessionRef.current?.requestPointerLock()
+    hadMouseUi.current = uiWantsMouse
+  }, [uiWantsMouse, online])
+
+  useEffect(() => {
+    if (!online) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      const tag = (event.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (event.code === 'Escape') {
+        // Chat owns Escape while it is open, so this only fires once the
+        // chat has closed and the key genuinely means "show me the menu".
+        if (chatOpen) return
+        event.preventDefault()
+        setSettingsOpen((open) => !open)
+      } else if (event.code === 'Digit5' || event.code === 'Numpad5' || event.key === '5') {
+        event.preventDefault()
+        sessionRef.current?.toggleCamera()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [online, chatOpen])
   const showOverlay = useMemo(() => {
     if (fatal) return true
     if (!view) return true
@@ -87,8 +128,8 @@ export function App() {
   }, [fatal, view])
 
   return (
-    <div className="app">
-      <div className="viewport" ref={surfaceRef} onClick={online ? grabPointer : undefined}>
+    <div className={`app${uiWantsMouse ? ' app-cursor' : ''}`}>
+      <div className="viewport" ref={surfaceRef} onClick={online ? onViewportClick : undefined}>
         <canvas ref={canvasRef} className="screen" />
         {online && view?.player ? <div className="reticle">+</div> : null}
       </div>
@@ -102,8 +143,9 @@ export function App() {
             messages={view.messages}
             selfId={view.player?.id ?? 0}
             rosterColors={rosterColors}
+            open={chatOpen}
             onSend={sendChat}
-            onFocusChange={setChatFocused}
+            onOpenChange={setChatFocused}
           />
         </>
       ) : null}

@@ -38,9 +38,17 @@ import {
   VOID,
   fade,
   mix,
+  rgb,
   scale,
   type Rgb,
 } from './palette'
+
+/** The colour a sodium street lamp throws onto the pavement. */
+const LAMP_POOL: Rgb = rgb(0xffc879)
+/** Indoors: a low ceiling and the boards under it. */
+const CEILING: Rgb = rgb(0x0d1016)
+const CEILING_LIT: Rgb = rgb(0x1c222c)
+const INTERIOR_FLOOR: Rgb = rgb(0x232830)
 
 export interface Camera {
   x: number
@@ -98,6 +106,15 @@ export class Raycaster {
   /** Seconds since the world loaded; drives beacons and signage flicker. */
   time = 0
 
+  /**
+   * Per-cell pavement light baked from the street furniture, or null before a
+   * world is loaded. Lamps that light nothing are just poles.
+   */
+  light: Float32Array | null = null
+
+  /** Whether the camera is standing inside a carved interior this frame. */
+  private indoors = false
+
   constructor(public quality: RaycastQuality = { ...DEFAULT_QUALITY }) {}
 
   render(buffer: CellBuffer, grid: CollisionGrid, camera: Camera): void {
@@ -117,6 +134,14 @@ export class Raycaster {
     const planeY = -dirX * tanHalfFov
 
     buffer.depth.fill(Infinity)
+
+    // Standing in a shop, what is overhead is a ceiling, not the night sky.
+    // One lookup per frame buys the difference between a room and a courtyard.
+    this.indoors =
+      grid.codeAt(
+        Math.floor(camera.x / grid.cellSize),
+        Math.floor(camera.y / grid.cellSize),
+      ) === CELL_INTERACTIVE
 
     for (let column = 0; column < columns; column += 1) {
       const cameraX = (2 * column) / columns - 1
@@ -204,6 +229,49 @@ export class Raycaster {
     const rows = buffer.rows
     const skyBottom = Math.min(rows, Math.ceil(horizon))
 
+    if (this.indoors) {
+      for (let row = 0; row < skyBottom; row += 1) {
+        // Nearer the horizon the ceiling is further away and catches less of
+        // the room's light, which is what gives it depth.
+        const altitude = (horizon - row) / Math.max(1, horizon)
+        const panel = hash3(Math.round(rayX * 24), Math.round(rayY * 24), row) > 0.86
+        const color = mix(CEILING, CEILING_LIT, altitude * 0.8)
+        const ink = panel ? scale(CEILING_LIT, 1.6) : scale(color, 1.4)
+        buffer.set(
+          column,
+          row,
+          panel ? ROAD_GLYPHS.marking : SKY_GLYPHS.empty,
+          ink[0],
+          ink[1],
+          ink[2],
+          color[0],
+          color[1],
+          color[2],
+        )
+      }
+    } else {
+      this.paintSky(buffer, column, rayX, rayY, horizon, skyBottom)
+    }
+
+    const groundTop = Math.max(0, Math.ceil(horizon))
+    if (!this.quality.groundDetail) {
+      for (let row = groundTop; row < rows; row += 1) {
+        buffer.set(column, row, G_SPACE, 0, 0, 0, VOID[0], VOID[1], VOID[2])
+      }
+      return
+    }
+
+    this.paintFloor(buffer, grid, camera, column, rayX, rayY, horizon, projRows, groundTop)
+  }
+
+  private paintSky(
+    buffer: CellBuffer,
+    column: number,
+    rayX: number,
+    rayY: number,
+    horizon: number,
+    skyBottom: number,
+  ): void {
     for (let row = 0; row < skyBottom; row += 1) {
       const altitude = (horizon - row) / Math.max(1, horizon)
       const base = mix(SKY_LOW, SKY_HIGH, Math.min(1, altitude * 1.35))
@@ -231,15 +299,21 @@ export class Raycaster {
         color[2],
       )
     }
+  }
 
-    const groundTop = Math.max(0, Math.ceil(horizon))
-    if (!this.quality.groundDetail) {
-      for (let row = groundTop; row < rows; row += 1) {
-        buffer.set(column, row, G_SPACE, 0, 0, 0, VOID[0], VOID[1], VOID[2])
-      }
-      return
-    }
-
+  /** Floor casting: one world sample per row below the horizon. */
+  private paintFloor(
+    buffer: CellBuffer,
+    grid: CollisionGrid,
+    camera: Camera,
+    column: number,
+    rayX: number,
+    rayY: number,
+    horizon: number,
+    projRows: number,
+    groundTop: number,
+  ): void {
+    const rows = buffer.rows
     for (let row = groundTop; row < rows; row += 1) {
       const offset = row - horizon
       if (offset <= 0.001) {
@@ -279,9 +353,12 @@ export class Raycaster {
         glyphIndex = ROAD_GLYPHS.sidewalk[Math.floor(grain * 3) % 3]
         foreground = scale(GROUND_SIDEWALK, 1.9)
       } else if (code === CELL_INTERACTIVE) {
-        background = mix(GROUND_SIDEWALK, NEON[1], 0.2)
-        glyphIndex = WINDOWS[Math.floor(grain * WINDOWS.length) % WINDOWS.length]
-        foreground = scale(NEON[1], 1.4)
+        // A shop floor: tiled, and tinted by whatever the place is.
+        const accent = NEON[unpackStyle(grid.styleAt(cellX, cellY)).category]
+        background = mix(INTERIOR_FLOOR, accent, 0.12)
+        const tile = (cellX + cellY) & 1
+        glyphIndex = tile ? ROAD_GLYPHS.sidewalk[1] : ROAD_GLYPHS.marking
+        foreground = mix(scale(INTERIOR_FLOOR, 2.4), accent, 0.35)
       } else if (code === CELL_WATER) {
         background = mix(GROUND_WET, VOID, 0.3)
         glyphIndex = ROAD_GLYPHS.marking
@@ -290,6 +367,15 @@ export class Raycaster {
         background = VOID
         glyphIndex = grain > 0.8 ? RAMP[1] : G_SPACE
         foreground = scale(GROUND_SIDEWALK, 1.3)
+      }
+
+      // A pool of lamplight on wet asphalt is most of what sells a night
+      // street, and the map that produces it was baked at load time.
+      const lamp = this.lightAt(grid, cellX, cellY)
+      if (lamp > 0.01) {
+        background = mix(scale(background, 1 + lamp * 0.9), LAMP_POOL, lamp * 0.22)
+        foreground = mix(scale(foreground, 1 + lamp * 1.1), LAMP_POOL, lamp * 0.3)
+        if (glyphIndex === G_SPACE && lamp > 0.5) glyphIndex = RAMP[1]
       }
 
       const litBackground = fade(background, fogAmount)
@@ -306,6 +392,13 @@ export class Raycaster {
         litBackground[2],
       )
     }
+  }
+
+  private lightAt(grid: CollisionGrid, cellX: number, cellY: number): number {
+    const map = this.light
+    if (!map) return 0
+    if (cellX < 0 || cellY < 0 || cellX >= grid.width || cellY >= grid.height) return 0
+    return map[cellY * grid.width + cellX]
   }
 
   private paintWall(

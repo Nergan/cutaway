@@ -138,8 +138,9 @@ export function Settings({
 
       <p className="muted">
         WASD or arrows to walk. Ctrl to run. Space to jump. Mouse to look. T or Enter to talk,
-        Escape to stop talking. Hold Tab for the player list. On a phone, the left half of the
-        screen is a stick and the right half looks around.
+        Escape to stop talking. Escape again for this panel. Hold Tab for the player list. 5
+        steps the camera behind you. On a phone, the left half of the screen is a stick and the
+        right half looks around.
       </p>
     </div>
   )

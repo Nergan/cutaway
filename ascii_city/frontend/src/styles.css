@@ -154,6 +154,16 @@ button:hover {
   touch-action: none;
 }
 
+/* Chat or settings are open: the mouse is back, so stop pretending the
+   viewport is a gunsight and let the panels read as clickable. */
+.app-cursor .viewport {
+  cursor: default;
+}
+
+.app-cursor .reticle {
+  opacity: 0.15;
+}
+
 .screen {
   display: block;
   width: 100%;

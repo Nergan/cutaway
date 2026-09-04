@@ -25,6 +25,7 @@ import {
   type ServerFrame,
 } from '../net/wire'
 import { buildMinimap, type MinimapSource } from '../render/minimap'
+import { bakeLightMap, collectProps } from '../render/props'
 import { Renderer, type QualityPreset, type RendererStats } from '../render/renderer'
 import type { Sprite } from '../render/sprites'
 import { InputController } from '../sim/input'
@@ -32,6 +33,21 @@ import { InterpolationBuffer } from '../sim/interpolation'
 import { Predictor } from '../sim/prediction'
 import type { CollisionGrid } from '../world/collisionGrid'
 import { WorldClient, type LoadProgress } from '../world/worldClient'
+
+export type CameraMode = 'first' | 'third'
+
+/** How far the third-person camera trails the player, in metres. */
+const THIRD_PERSON_DISTANCE_M = 4.2
+const THIRD_PERSON_LIFT_M = 0.7
+/** Keeps the trailing camera from ending up inside the wall behind you. */
+const CAMERA_CLEARANCE_M = 0.45
+/**
+ * Backed into a doorway there is nowhere to pull back to, and honouring that
+ * would make the key look broken. Clipping a facade for a vanity camera is the
+ * lesser evil, so the pull-back never drops below the distance that keeps the
+ * figure in frame.
+ */
+const MIN_THIRD_PERSON_M = 1.4
 
 /** Everything the minimap and the roster panel need, sampled every frame. */
 export interface LiveState {
@@ -51,6 +67,7 @@ export interface SessionView {
   /** Metres the last reconciliation had to correct. Useful when debugging. */
   correctionM: number
   pointerLocked: boolean
+  cameraMode: CameraMode
   notice: string | null
 }
 
@@ -68,6 +85,7 @@ const EMPTY_VIEW: SessionView = {
   stats: null,
   correctionM: 0,
   pointerLocked: false,
+  cameraMode: 'first',
   notice: null,
 }
 
@@ -81,6 +99,7 @@ export class GameSession {
     others: [],
   }
   private minimapSource: MinimapSource | null = null
+  private cameraMode: CameraMode = 'first'
 
   private renderer: Renderer | null = null
   private input: InputController | null = null
@@ -137,7 +156,13 @@ export class GameSession {
     this.minimapSource = buildMinimap(loaded.grid)
     this.patch({ metadata: loaded.metadata })
 
+    const props = collectProps(loaded.tiles, loaded.grid.cellSize)
+
     this.renderer = new Renderer(canvas)
+    this.renderer.setWorldDressing(
+      props,
+      bakeLightMap(props, loaded.grid.width, loaded.grid.height, loaded.grid.cellSize),
+    )
     this.input = new InputController(surface)
     this.input.onPointerLockChange = (pointerLocked) => this.patch({ pointerLocked })
     this.input.attach()
@@ -202,6 +227,21 @@ export class GameSession {
     this.input?.requestPointerLock()
   }
 
+  /** Hand the mouse back so the player can click the interface. */
+  releasePointerLock(): void {
+    this.input?.releasePointerLock()
+  }
+
+  get camera(): CameraMode {
+    return this.cameraMode
+  }
+
+  toggleCamera(): CameraMode {
+    this.cameraMode = this.cameraMode === 'first' ? 'third' : 'first'
+    this.patch({ cameraMode: this.cameraMode })
+    return this.cameraMode
+  }
+
   setQuality(preset: QualityPreset): void {
     this.renderer?.setPreset(preset)
   }
@@ -231,7 +271,7 @@ export class GameSession {
     while (this.accumulator >= TICK_SECONDS && steps < 5) {
       this.accumulator -= TICK_SECONDS
       steps += 1
-      const intent = input.read()
+      const intent = input.consume()
       const command: InputCommand = {
         sequence: this.sequence,
         forward: intent.forward,
@@ -247,7 +287,7 @@ export class GameSession {
       this.connection?.sendInput(command)
     }
 
-    const intent = input.read()
+    const intent = input.peek()
     const position = predictor.view(dt)
     const camera = {
       x: position.x,
@@ -273,7 +313,29 @@ export class GameSession {
       others.push({ id: other.id, x: other.x, y: other.y })
     }
 
-    this.live.camera = camera
+    // The minimap and the roster want where the player is, not where the
+    // camera happens to be looking from, so they are told before the pull-back.
+    this.live.camera = { ...camera }
+
+    if (this.cameraMode === 'third') {
+      const back = Math.max(
+        MIN_THIRD_PERSON_M,
+        freeDistanceBehind(grid, position.x, position.y, intent.yaw),
+      )
+      camera.x -= Math.cos(intent.yaw) * back
+      camera.y -= Math.sin(intent.yaw) * back
+      camera.z += THIRD_PERSON_LIFT_M * (back / THIRD_PERSON_DISTANCE_M)
+      sprites.push({
+        id: this.view.player?.id ?? 0,
+        x: position.x,
+        y: position.y,
+        animation: predictor.state.animation,
+        nickname: this.view.player?.nickname ?? '',
+        color: this.view.player?.color ?? 0,
+        avatar: this.view.player?.avatar ?? 0,
+      })
+    }
+
     this.live.others = others
 
     renderer.render(grid, camera, sprites, dt)
@@ -288,11 +350,11 @@ export class GameSession {
           nickname: this.view.player?.nickname ?? '',
           color: this.view.player?.color ?? 0,
           avatar: this.view.player?.avatar ?? 0,
-          x: camera.x,
-          y: camera.y,
-          z: camera.z,
-          yaw: camera.yaw,
-          pitch: camera.pitch,
+          x: position.x,
+          y: position.y,
+          z: position.z,
+          yaw: intent.yaw,
+          pitch: intent.pitch,
           animation: predictor.state.animation,
         },
         population: this.roster.size,
@@ -334,7 +396,7 @@ export class GameSession {
       case 'snapshot': {
         if (this.grid && this.predictor) {
           this.predictor.reconcile(
-            { x: frame.x, y: frame.y, z: frame.z },
+            { x: frame.x, y: frame.y, z: frame.z, velocityZ: frame.velocityZ },
             frame.ackSequence,
             this.grid,
             TICK_SECONDS,
@@ -425,4 +487,21 @@ export class GameSession {
     this.view = { ...this.view, ...changes }
     for (const listener of this.listeners) listener(this.view)
   }
+}
+
+/**
+ * How far the camera can trail behind before it would end up inside a wall.
+ *
+ * Sampling along the ray rather than trusting the full distance is what stops
+ * the third-person view from clipping through the building you back into.
+ */
+function freeDistanceBehind(grid: CollisionGrid, x: number, y: number, yaw: number): number {
+  const backX = -Math.cos(yaw)
+  const backY = -Math.sin(yaw)
+  let travelled = 0
+  for (let probe = 0.2; probe <= THIRD_PERSON_DISTANCE_M; probe += 0.2) {
+    if (!grid.isFreeCircle(x + backX * probe, y + backY * probe, CAMERA_CLEARANCE_M)) break
+    travelled = probe
+  }
+  return travelled
 }

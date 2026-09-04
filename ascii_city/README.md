@@ -51,6 +51,8 @@ hot-reloads.
 | Mouse | Look (click the viewport to capture the pointer) |
 | `T` or `Enter` | Open the chat line; press again to send, `Escape` cancels |
 | `Tab` (hold) | Player list, with distances |
+| `Escape` | Settings |
+| `5` | Third-person view |
 | Left half of a touchscreen | Virtual stick |
 | Right half of a touchscreen | Look |
 

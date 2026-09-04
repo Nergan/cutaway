@@ -65,6 +65,13 @@ class PlayerConnection(ABC):
         ...
 
 
+def _sequence_is_newer(candidate: int, seen: int) -> bool:
+    """Compare u32 sequences on the short arc, so wrapping is not a rollback."""
+    if seen == 0:
+        return True
+    return 0 < ((candidate - seen) & 0xFFFFFFFF) < 0x80000000
+
+
 @dataclass(slots=True)
 class Member:
     state: PlayerState
@@ -74,6 +81,8 @@ class Member:
     alive: bool = True
     last_frame_at: float = 0.0
     spawn_index: int = 0
+    highest_sequence: int = 0
+    """Newest input sequence accepted, so a duplicate cannot move anyone."""
 
 
 class CityRoom:
@@ -252,6 +261,12 @@ class CityRoom:
             return
 
         if isinstance(frame, InputCommand):
+            # A replayed or reordered frame would move the player a second time
+            # and, worse, walk last_input_sequence backwards, which makes the
+            # client re-apply input it had already retired.
+            if not _sequence_is_newer(frame.sequence, member.highest_sequence):
+                return
+            member.highest_sequence = frame.sequence
             if len(member.inputs) >= MAX_QUEUED_INPUTS:
                 member.inputs.popleft()  # keep the freshest intent, drop the stale one
             member.inputs.append(frame)

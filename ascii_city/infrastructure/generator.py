@@ -11,6 +11,7 @@ import math
 from dataclasses import dataclass
 from typing import Sequence
 
+from ..domain import constants
 from ..domain.constants import (
     CATEGORY_APARTMENT,
     CATEGORY_HOUSE,
@@ -57,9 +58,9 @@ MAX_FOOTPRINT_SIDE = 8
 STREET_SPACING = (16, 28)
 AVENUE_SPACING = (48, 72)
 
-PROP_LAMP = 0
-PROP_TREE = 1
-PROP_KIOSK = 2
+PROP_LAMP = constants.PROP_LAMP
+PROP_TREE = constants.PROP_TREE
+PROP_KIOSK = constants.PROP_KIOSK
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +74,27 @@ class _Band:
     @property
     def end(self) -> int:
         return self.start + self.width
+
+
+def _park_props(
+    canvas: Canvas, furniture: Sequence[tuple[int, int, int]], first_id: int
+) -> list[Prop]:
+    """Turn recorded park furniture into props, skipping paved-over cells.
+
+    The sidewalk pass runs after the parks are laid out and claims the ring
+    next to the road, so a tree can find itself standing on a pavement.
+    """
+    props: list[Prop] = []
+    for offset, (x, y, kind) in enumerate(furniture):
+        if canvas.get(x, y) not in (CELL_FREE, CELL_SIDEWALK):
+            continue
+        props.append(Prop(id=first_id + offset, x=x, y=y, kind=kind))
+    return props
+
+
+def _is_corner(roads: list[tuple[int, int]]) -> bool:
+    """True when the roads touching a cell run on both axes, not just one."""
+    return any(dx for dx, _ in roads) and any(dy for _, dy in roads)
 
 
 def _height_ceiling_for_area(cells: int) -> int:
@@ -99,7 +121,9 @@ class DistrictGenerator(WorldGeneratorPort):
         self._paint_roads(canvas, bands_x, bands_y)
 
         downtown = self._downtown(root.fork(0x3), width, height)
-        buildings = self._fill_blocks(canvas, bands_x, bands_y, root.fork(0x4), downtown)
+        buildings, park_furniture = self._fill_blocks(
+            canvas, bands_x, bands_y, root.fork(0x4), downtown
+        )
         buildings, extra_props = enrich_district(
             canvas, buildings, bands_x, bands_y, root.fork(0x7)
         )
@@ -107,6 +131,7 @@ class DistrictGenerator(WorldGeneratorPort):
 
         roads = self._road_records(bands_x, bands_y, width, height)
         props = self._props(canvas, root.fork(0x5)) + extra_props
+        props += _park_props(canvas, park_furniture, len(props) + 50_000)
         spawns = self._spawn_points(canvas, root.fork(0x6))
         return slice_into_tiles(descriptor, canvas, buildings, roads, props, spawns)
 
@@ -167,8 +192,9 @@ class DistrictGenerator(WorldGeneratorPort):
         bands_y: Sequence[_Band],
         rng: Mulberry32,
         downtown: tuple[float, float],
-    ) -> list[Building]:
+    ) -> tuple[list[Building], list[tuple[int, int, int]]]:
         buildings: list[Building] = []
+        park_furniture: list[tuple[int, int, int]] = []
         next_id = 1
         radius = 0.5 * min(canvas.width, canvas.height)
         for x0, x1 in self._gaps(bands_x, canvas.width):
@@ -179,7 +205,7 @@ class DistrictGenerator(WorldGeneratorPort):
                     continue
                 roll = rng.next_float()
                 if roll < 0.07:
-                    self._make_park(canvas, inner, rng)
+                    park_furniture.extend(self._make_park(canvas, inner, rng))
                     continue
                 if roll < 0.12:
                     canvas.fill(*inner, CELL_SIDEWALK)
@@ -191,7 +217,7 @@ class DistrictGenerator(WorldGeneratorPort):
                     if building is not None:
                         buildings.append(building)
                         next_id += 1
-        return buildings
+        return buildings, park_furniture
 
     def _subdivide(
         self, rect: tuple[int, int, int, int], rng: Mulberry32, depth: int = 0
@@ -219,14 +245,33 @@ class DistrictGenerator(WorldGeneratorPort):
 
     def _make_park(
         self, canvas: Canvas, rect: tuple[int, int, int, int], rng: Mulberry32
-    ) -> None:
+    ) -> list[tuple[int, int, int]]:
+        """Clear a block and return where its trees and benches stand.
+
+        Trees used to be solid cells, which made a park a field of boxes you
+        could neither see through nor walk around. They are furniture now, so
+        the park is an open square you can cross.
+        """
         x0, y0, x1, y1 = rect
         canvas.fill(x0, y0, x1, y1, CELL_FREE)
-        style = pack_style(CATEGORY_OTHER, 0, 0)
-        for _ in range((x1 - x0) * (y1 - y0) // 12):
+        furniture: list[tuple[int, int, int]] = []
+        taken: set[tuple[int, int]] = set()
+        for _ in range((x1 - x0) * (y1 - y0) // 9):
             tx = rng.between(x0, x1 - 1)
             ty = rng.between(y0, y1 - 1)
-            canvas.paint(tx, ty, CELL_BLOCKED, rng.between(5, 9), style)
+            if (tx, ty) in taken:
+                continue
+            taken.add((tx, ty))
+            roll = rng.next_float()
+            kind = (
+                constants.PROP_BENCH
+                if roll < 0.18
+                else constants.PROP_LAMP
+                if roll < 0.30
+                else PROP_TREE
+            )
+            furniture.append((tx, ty, kind))
+        return furniture
 
     def _make_building(
         self,
@@ -397,25 +442,72 @@ class DistrictGenerator(WorldGeneratorPort):
         return roads
 
     def _props(self, canvas: Canvas, rng: Mulberry32) -> list[Prop]:
-        """Street lamps on pavement corners, plus the odd kiosk."""
+        """Dress every pavement: lamps, benches, vending, planters, stalls.
+
+        Placement is driven by what a cell is next to rather than by a uniform
+        sprinkle, because street furniture is only legible when it sits where
+        it would in life — lamps on the kerb, vending against a wall, traffic
+        lights on the corner.
+
+        Nothing placed here touches the collision grid. Furniture you cannot
+        see but cannot walk through is the worst of both worlds.
+        """
         props: list[Prop] = []
         next_id = 1
-        step = 7
-        for y in range(1, canvas.height - 1, step):
-            for x in range(1, canvas.width - 1, step):
+        occupied: set[tuple[int, int]] = set()
+
+        def place(x: int, y: int, kind: int) -> None:
+            nonlocal next_id
+            if (x, y) in occupied:
+                return
+            occupied.add((x, y))
+            props.append(Prop(id=next_id, x=x, y=y, kind=kind))
+            next_id += 1
+
+        for y in range(1, canvas.height - 1):
+            for x in range(1, canvas.width - 1):
                 if canvas.get(x, y) != CELL_SIDEWALK:
                     continue
-                touches_road = any(
-                    canvas.get(x + dx, y + dy) == CELL_ROAD
+                neighbours = {
+                    (dx, dy): canvas.get(x + dx, y + dy)
                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
-                )
-                if not touches_road or not rng.chance(0.55):
+                }
+                roads = [offset for offset, code in neighbours.items() if code == CELL_ROAD]
+                walls = [offset for offset, code in neighbours.items() if code == CELL_BUILDING]
+
+                if _is_corner(roads):
+                    # Two roads meeting: the one place a signal belongs.
+                    place(x, y, constants.PROP_TRAFFIC_LIGHT)
                     continue
-                kind = PROP_KIOSK if rng.chance(0.08) else PROP_LAMP
-                if kind == PROP_KIOSK:
-                    canvas.paint(x, y, CELL_INTERACTIVE, 3, pack_style(CATEGORY_OTHER, 1, 0))
-                props.append(Prop(id=next_id, x=x, y=y, kind=kind))
-                next_id += 1
+                # Lamps march down the kerb on a fixed rhythm. Anything random
+                # here reads as litter rather than as a street.
+                if roads and (x + y * 3) % 9 == 0:
+                    place(x, y, PROP_LAMP)
+                    continue
+                if walls:
+                    # A pavement cell almost always has the road on one side
+                    # and a facade on the other, and what belongs against a
+                    # wall is not what belongs on a kerb.
+                    roll = rng.next_float()
+                    if roll < 0.06:
+                        place(x, y, constants.PROP_VENDING)
+                    elif roll < 0.13:
+                        place(x, y, constants.PROP_BENCH)
+                    elif roll < 0.20:
+                        place(x, y, constants.PROP_BANNER)
+                    elif roll < 0.23:
+                        canvas.paint(x, y, CELL_INTERACTIVE, 3, pack_style(CATEGORY_OTHER, 1, 0))
+                        place(x, y, PROP_KIOSK)
+                    continue
+                if roads:
+                    if (x + y * 3) % 9 == 4 and rng.chance(0.5):
+                        place(x, y, constants.PROP_BOLLARD)
+                    elif rng.chance(0.06):
+                        place(x, y, constants.PROP_PLANTER)
+                    continue
+                if rng.chance(0.05):
+                    place(x, y, constants.PROP_STALL if rng.chance(0.25) else constants.PROP_TREE)
+
         return props
 
     def _spawn_points(self, canvas: Canvas, rng: Mulberry32) -> list[SpawnPoint]:

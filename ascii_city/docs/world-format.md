@@ -143,6 +143,28 @@ centroid, so a shared building is not double-counted in the world summary.
 
 `u16` count, then 7 bytes each: `u16` id, `u16` x, `u16` y, `u8` kind.
 
+| Kind | Meaning |
+| --- | --- |
+| 0 | street lamp |
+| 1 | tree |
+| 2 | kiosk |
+| 3 | hanging shop sign |
+| 4 | bench |
+| 5 | vending machine |
+| 6 | traffic light |
+| 7 | bollard |
+| 8 | planter |
+| 9 | food stall |
+| 10 | vertical banner |
+
+Props are decoration, not geometry: they never block movement, so the server's
+collision test ignores them entirely and only the client reads them. The client
+draws them as billboards and bakes the light-emitting kinds (lamp, sign, stall,
+vending machine) into a per-cell light map that tints the pavement.
+
+A tile carries a few thousand of them, which is most of its compressed size —
+positions are near-random, so they compress far worse than the cell layers.
+
 ### Spawn points
 
 `u16` count, then 6 bytes each: `u16` x, `u16` y, `u16` heading as a fraction

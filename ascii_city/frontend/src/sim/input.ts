@@ -88,7 +88,21 @@ export class InputController {
   }
 
   requestPointerLock(): void {
-    if (!this.pointerLocked) void this.surface.requestPointerLock?.()
+    if (this.pointerLocked) return
+    // Chrome refuses a re-lock for about a second after Escape released it,
+    // and rejects without a gesture. Either way the click handler is still
+    // there, so a refusal is not worth an unhandled rejection.
+    try {
+      const result = this.surface.requestPointerLock?.() as Promise<void> | undefined
+      if (result && typeof result.catch === 'function') result.catch(() => {})
+    } catch {
+      /* the player can always click the viewport */
+    }
+  }
+
+  /** Give the mouse back to the page so the interface can be clicked. */
+  releasePointerLock(): void {
+    if (this.pointerLocked) document.exitPointerLock?.()
   }
 
   get isPointerLocked(): boolean {
@@ -100,7 +114,24 @@ export class InputController {
     return { x: this.stick.x, y: this.stick.y, active: this.stickPointer !== null }
   }
 
-  read(): Intent {
+  /**
+   * The intent for one simulation step. Edge-triggered actions are consumed,
+   * so exactly one command can carry a given key press.
+   */
+  consume(): Intent {
+    const intent = this.peek()
+    this.jumpQueued = false
+    return intent
+  }
+
+  /**
+   * The same intent without consuming anything, for the render path.
+   *
+   * The camera samples orientation every frame while the simulation steps
+   * twenty times a second, so most frames read without stepping. Consuming
+   * here would throw away roughly two out of three jumps.
+   */
+  peek(): Intent {
     if (this.suspended) {
       return { forward: 0, strafe: 0, sprint: false, jump: false, yaw: this.yaw, pitch: this.pitch }
     }
@@ -115,13 +146,11 @@ export class InputController {
       forward /= magnitude
       strafe /= magnitude
     }
-    const jump = this.jumpQueued
-    this.jumpQueued = false
     return {
       forward,
       strafe,
       sprint: this.sprintKey || magnitude > 0.92,
-      jump,
+      jump: this.jumpQueued,
       yaw: this.yaw,
       pitch: this.pitch,
     }

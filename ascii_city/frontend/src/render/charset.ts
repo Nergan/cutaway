@@ -108,13 +108,26 @@ export function avatarGlyph(index: number): number {
   return AVATAR_GLYPHS[((index % count) + count) % count]
 }
 
-/** The standing figure other players are drawn as, below the head row. */
+/**
+ * The standing figure a player is drawn as.
+ *
+ * Five columns rather than three, and mostly blank, because the stamp is
+ * stretched over however many screen cells the figure projects onto. A dense
+ * stamp seen from two metres away magnifies into a solid slab; a sparse one
+ * keeps its silhouette at any size.
+ */
 export const AVATAR_ROWS = [
-  ['\u25cf'],
-  ['/', '|', '\\'],
-  [' ', '|', ' '],
-  ['/', ' ', '\\'],
-].map((row) => row.map(glyph))
+  '  .  ',
+  ' /|\\ ',
+  '  |  ',
+  '  |  ',
+  ' / \\ ',
+  ' /  \\',
+].map((row) => [...row].map(glyph))
+
+/** Where in {@link AVATAR_ROWS} the player's chosen face is stamped. */
+export const AVATAR_FACE_ROW = 0
+export const AVATAR_FACE_COLUMN = 2
 
 export const ROOF_GLYPHS = {
   flat: glyph('\u2500'),

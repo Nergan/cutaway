@@ -29,6 +29,22 @@ CELL_SIDEWALK: Final[int] = 5
 CELL_INTERACTIVE: Final[int] = 6
 
 SOLID_CELLS: Final[frozenset[int]] = frozenset({CELL_BUILDING, CELL_WATER, CELL_BLOCKED})
+
+# --- Street furniture ------------------------------------------------------
+# The index travels on the wire inside every tile, so this list may only ever
+# grow at the end. The client mirrors it in `frontend/src/domain/constants.ts`.
+PROP_LAMP: Final[int] = 0
+PROP_TREE: Final[int] = 1
+PROP_KIOSK: Final[int] = 2
+PROP_SIGN: Final[int] = 3
+PROP_BENCH: Final[int] = 4
+PROP_VENDING: Final[int] = 5
+PROP_TRAFFIC_LIGHT: Final[int] = 6
+PROP_BOLLARD: Final[int] = 7
+PROP_PLANTER: Final[int] = 8
+PROP_STALL: Final[int] = 9
+PROP_BANNER: Final[int] = 10
+PROP_KIND_COUNT: Final[int] = 11
 WALKABLE_CELLS: Final[frozenset[int]] = frozenset(
     {CELL_FREE, CELL_ROAD, CELL_SIDEWALK, CELL_INTERACTIVE}
 )

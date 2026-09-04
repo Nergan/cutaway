@@ -8,18 +8,21 @@ interface Props {
   messages: ChatMessage[]
   selfId: number
   rosterColors: ReadonlyMap<number, number>
+  open: boolean
   onSend: (scope: 'global' | 'proximity', text: string) => void
-  onFocusChange: (focused: boolean) => void
+  onOpenChange: (open: boolean) => void
 }
 
 /**
  * Chat is rendered into text nodes, never into markup, so the angle brackets
  * the sanitiser deliberately preserves stay harmless.
+ *
+ * Whether the chat is open is owned by the app, because that single flag also
+ * decides who holds the mouse: the game or the interface.
  */
-export function Chat({ messages, selfId, rosterColors, onSend, onFocusChange }: Props) {
+export function Chat({ messages, selfId, rosterColors, open, onSend, onOpenChange }: Props) {
   const [draft, setDraft] = useState('')
   const [scope, setScope] = useState<'global' | 'proximity'>('global')
-  const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const logRef = useRef<HTMLDivElement | null>(null)
 
@@ -34,28 +37,32 @@ export function Chat({ messages, selfId, rosterColors, onSend, onFocusChange }: 
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if ((event.code === 'Enter' || event.code === 'KeyT') && !open) {
         event.preventDefault()
-        setOpen(true)
-        requestAnimationFrame(() => inputRef.current?.focus())
+        onOpenChange(true)
       } else if (event.code === 'Escape' && open) {
-        setOpen(false)
-        inputRef.current?.blur()
+        onOpenChange(false)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open])
+  }, [open, onOpenChange])
 
+  // The caret follows the panel. Waiting a frame lets the input exist first,
+  // and lets the pointer unlock settle before focus lands.
   useEffect(() => {
-    onFocusChange(open)
-  }, [open, onFocusChange])
+    if (!open) {
+      inputRef.current?.blur()
+      return
+    }
+    const handle = requestAnimationFrame(() => inputRef.current?.focus())
+    return () => cancelAnimationFrame(handle)
+  }, [open])
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
     const text = draft.trim()
     if (text) onSend(scope, text)
     setDraft('')
-    setOpen(false)
-    inputRef.current?.blur()
+    onOpenChange(false)
   }
 
   return (
@@ -99,7 +106,6 @@ export function Chat({ messages, selfId, rosterColors, onSend, onFocusChange }: 
             maxLength={CHAT_MAX_LENGTH}
             placeholder="say something"
             onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => setOpen(false)}
           />
         </form>
       ) : (

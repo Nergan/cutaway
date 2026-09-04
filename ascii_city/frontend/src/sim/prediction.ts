@@ -15,8 +15,14 @@ import { movePlayer, type MovableState } from './movement'
 /**
  * Positions arrive quantised to centimetres, so a mismatch below the
  * quantisation step is noise, not a divergence.
+ *
+ * Rounding two axes can be off by `sqrt(2) / 2` centimetres, and the replay
+ * amplifies that: a rewind that lands half a centimetre on the wrong side of a
+ * cell boundary flips `isFreeCircle`, which rejects a whole step instead of
+ * part of one. The threshold therefore sits well above the rounding rather
+ * than at it, and inside it the client keeps its own unrounded position.
  */
-const IGNORED_ERROR_M = 1 / POSITION_SCALE
+const IGNORED_ERROR_M = 3 / POSITION_SCALE
 
 /** Past this the client is provably wrong (packet loss, a nudge, a respawn). */
 const SNAP_ERROR_M = 2.5
@@ -55,7 +61,7 @@ export class Predictor {
    * `dt` is the fixed simulation step, because that is what the server used.
    */
   reconcile(
-    authoritative: { x: number; y: number; z?: number },
+    authoritative: { x: number; y: number; z?: number; velocityZ?: number },
     ackSequence: number,
     grid: CollisionGrid,
     dt: number,
@@ -66,13 +72,13 @@ export class Predictor {
 
     const predictedX = this.state.x
     const predictedY = this.state.y
+    const predictedZ = this.state.z
+    const predictedVelocityZ = this.state.velocityZ
 
     this.state.x = authoritative.x
     this.state.y = authoritative.y
-    if (authoritative.z !== undefined) {
-      this.state.z = authoritative.z
-      this.state.velocityZ = 0
-    }
+    if (authoritative.z !== undefined) this.state.z = authoritative.z
+    if (authoritative.velocityZ !== undefined) this.state.velocityZ = authoritative.velocityZ
     for (const command of this.pending) movePlayer(this.state, command, grid, dt)
 
     const errorX = predictedX - this.state.x
@@ -80,8 +86,23 @@ export class Predictor {
     const error = Math.hypot(errorX, errorY)
     this.lastCorrectionM = error
 
-    if (error <= IGNORED_ERROR_M || error > SNAP_ERROR_M) {
-      // Either indistinguishable or too large to hide; show the truth.
+    if (error <= IGNORED_ERROR_M) {
+      // The server confirmed what we already had. Adopting its rounded value
+      // would push our float off the server's by half a centimetre for good,
+      // and near a facade that is the difference between sliding along the
+      // wall and being refused the step entirely.
+      this.state.x = predictedX
+      this.state.y = predictedY
+      if (Math.abs(predictedZ - this.state.z) <= IGNORED_ERROR_M) {
+        this.state.z = predictedZ
+        this.state.velocityZ = predictedVelocityZ
+      }
+      this.offset.x = 0
+      this.offset.y = 0
+      return
+    }
+    if (error > SNAP_ERROR_M) {
+      // Too large to hide; show the truth.
       this.offset.x = 0
       this.offset.y = 0
       return

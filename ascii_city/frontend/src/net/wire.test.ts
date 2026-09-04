@@ -256,7 +256,8 @@ describe('hostile input', () => {
   it('rejects a snapshot that promises more entries than it carries', () => {
     const honest = bytes(fixtures.serverFrames.snapshot.encoded)
     const lying = honest.slice()
-    lying[15] = 200
+    // Byte 17 is the entry count: type, tick, ack, x, y, z, velocityZ.
+    lying[17] = 200
     expect(() => decodeServerFrame(lying)).toThrow(WireError)
   })
 

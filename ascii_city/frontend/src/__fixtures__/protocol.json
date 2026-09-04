@@ -144,7 +144,7 @@
       }
     },
     "snapshot": {
-      "encoded": "gmJgAQCSEAAA8isZGaoAAgIASCaKG1m3WgEDADB1sAQAAAAG",
+      "encoded": "gmJgAQCSEAAA8isZGaoAAAACAgBIJoobWbdaAQMAMHWwBAAAAAY=",
       "expected": {
         "tick": 90210,
         "ackSequence": 4242,

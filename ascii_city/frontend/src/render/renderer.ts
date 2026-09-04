@@ -10,6 +10,7 @@ import type { CollisionGrid } from '../world/collisionGrid'
 import { CellBuffer } from './cellBuffer'
 import { CanvasCellRenderer } from './canvasRenderer'
 import { buildGlyphAtlas, type GlyphAtlas } from './glyphAtlas'
+import { renderProps, type WorldProp } from './props'
 import { DEFAULT_QUALITY, Raycaster, type Camera, type RaycastQuality } from './raycaster'
 import { renderSprites, type Sprite } from './sprites'
 import { WebGLCellRenderer } from './webglRenderer'
@@ -39,6 +40,7 @@ export class Renderer {
   private backend: WebGLCellRenderer | CanvasCellRenderer
   private readonly backendName: 'webgl2' | 'canvas2d'
 
+  private props: readonly WorldProp[] = []
   private rung = 0
   private preset: QualityPreset = 'auto'
   private frameMs = TARGET_FRAME_MS
@@ -83,6 +85,15 @@ export class Renderer {
     this.resize(this.cssWidth, this.cssHeight)
   }
 
+  /**
+   * Hand over the district's street furniture and its baked pavement light.
+   * Both are immutable for the life of a world, so this happens once.
+   */
+  setWorldDressing(props: readonly WorldProp[], light: Float32Array): void {
+    this.props = props
+    this.raycaster.light = light
+  }
+
   setFieldOfView(degrees: number): void {
     this.raycaster.quality.fov = (Math.min(110, Math.max(55, degrees)) * Math.PI) / 180
   }
@@ -108,6 +119,9 @@ export class Renderer {
     const started = performance.now()
     this.raycaster.time += dt
     this.raycaster.render(this.buffer, grid, camera)
+    // Walls, then furniture, then people: each pass is allowed to stamp over
+    // the one before it, which is the whole depth ordering.
+    renderProps(this.buffer, camera, this.props, this.raycaster.quality.fov, this.raycaster.time)
     renderSprites(this.buffer, camera, sprites, this.raycaster.quality.fov, this.raycaster.time)
     this.backend.draw(this.buffer)
 
