@@ -102,10 +102,34 @@ export interface EdgeLocal {
 }
 
 /**
+ * How close to a whole tile counts as being on it. Mirror of `SEAM_TOLERANCE_TILES`.
+ *
+ * A corridor's direction is a normalised vector, and normalising rounds: an edge running due
+ * east has a y component of -6.1e-17 rather than zero. Projecting a point back through it
+ * lands a hair off the value it was projected out from, and on a lane boundary a hair decides
+ * the whole answer — `Math.floor` sends -8e-19 to lane -1 instead of lane 0. Lane -1 does not
+ * exist until the accordion widens, so the point reads as outside the world, which the
+ * predictor treats as a wall: an invisible barrier one float wide down the corridor's centre
+ * line, over ground that draws as open.
+ *
+ * This has to match the server's tolerance exactly. A client that snaps where the server does
+ * not disagrees about which tile a player stands on, and the disagreement is a correction
+ * every frame the player walks the centre line.
+ */
+const SEAM_TOLERANCE_TILES = 1e-9
+
+/** Pull a value already within rounding error of a whole tile onto it. */
+function snapToTile(value: number): number {
+  const nearest = Math.round(value)
+  return Math.abs(value - nearest) < SEAM_TOLERANCE_TILES ? nearest : value
+}
+
+/**
  * Layer 3 to layer 2, the inverse of {@link edgeToWorld}.
  *
  * Tile coordinates come back normalised into `[0, CHUNK_TILES)` using floor division, so a
- * negative lane lands on the correct chunk instead of rounding towards zero.
+ * negative lane lands on the correct chunk instead of rounding towards zero. Both projections
+ * are snapped first; see {@link SEAM_TOLERANCE_TILES} for what goes wrong without it.
  */
 export function worldToEdge(edge: EdgeDefinition, point: Point): EdgeLocal {
   const direction = edgeDirection(edge)
@@ -115,8 +139,8 @@ export function worldToEdge(edge: EdgeDefinition, point: Point): EdgeLocal {
 
   const dx = point.x - origin.x
   const dy = point.y - origin.y
-  const along = dx * direction.x + dy * direction.y
-  const across = dx * nx + dy * ny
+  const along = snapToTile(dx * direction.x + dy * direction.y)
+  const across = snapToTile(dx * nx + dy * ny)
 
   const segmentIndex = Math.floor(along / CHUNK_TILES)
   const laneOffset = Math.floor(across / CHUNK_TILES)

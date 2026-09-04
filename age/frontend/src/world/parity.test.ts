@@ -261,81 +261,122 @@ describe('the chunk generator', () => {
 
 // --- passability -------------------------------------------------------------
 
-describe('the ground a player may stand on', () => {
-  // The generator suite above proves the two sides agree about tiles once they are
-  // looking at the same tile. This proves they look at the same tile — which is the half
-  // that broke. A point resolved to the wrong chunk, or one cell past the end of the
-  // right one, reads as no terrain at all, and no terrain means blocked: the player
-  // stops dead on ground the renderer has drawn as open.
-  const passability = fixtures.passability
-  const layout = buildWorld(passability.edgeId, passability.segments)
-  const store = new ChunkStore(new WorldGenerator(WORLD_SEED), layout.hubs, layout.edges)
-  store.setTopology(passability.activeChunks, passability.retiringChunks)
+/**
+ * One probe set, checked against the topology it was recorded on.
+ *
+ * Run over more than one topology because the answers depend on it. A point on the
+ * corridor's centre line is inside the world once the accordion has widened and outside it
+ * before, so a probe set that is always widened first cannot see a lane boundary go wrong —
+ * it just lands in the neighbouring lane, which by then exists.
+ */
+function describePassability(
+  name: string,
+  passability: (typeof fixtures)['passability'],
+): void {
+  describe(name, () => {
+    const layout = buildWorld(passability.edgeId, passability.segments)
+    const store = new ChunkStore(new WorldGenerator(WORLD_SEED), layout.hubs, layout.edges)
+    store.setTopology(passability.activeChunks, passability.retiringChunks)
 
-  it('resolves every probe to the chunk the server resolved it to', () => {
-    // Reported as a list rather than one assertion per probe: a projection bug hits a
-    // whole family of points at once, and the shape of the family is what names it.
-    const wrong = passability.probes
-      .filter((probe) => probe.chunk !== null)
-      .filter((probe) => {
-        const located = locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)
-        return located === undefined || chunkKey(located.address) !== probe.chunk
-      })
-      .map((probe) => `(${probe.x}, ${probe.y}) belongs to ${probe.chunk}`)
+    it('resolves every probe to the chunk the server resolved it to', () => {
+      // Reported as a list rather than one assertion per probe: a projection bug hits a
+      // whole family of points at once, and the shape of the family is what names it.
+      const wrong = passability.probes
+        .filter((probe) => probe.chunk !== null)
+        .filter((probe) => {
+          const located = locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)
+          return located === undefined || chunkKey(located.address) !== probe.chunk
+        })
+        .map((probe) => `(${probe.x}, ${probe.y}) belongs to ${probe.chunk}`)
 
-    expect(wrong).toEqual([])
+      expect(wrong).toEqual([])
+    })
+
+    it('resolves every probe to the same tile within that chunk', () => {
+      const wrong = passability.probes
+        .filter((probe) => probe.chunk !== null)
+        .filter(
+          (probe) =>
+            locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)?.index !== probe.index,
+        )
+        .map((probe) => `(${probe.x}, ${probe.y}) is tile ${probe.index} of ${probe.chunk}`)
+
+      expect(wrong).toEqual([])
+    })
+
+    it('reads the same tile the server reads', () => {
+      for (const probe of passability.probes) {
+        if (probe.chunk === null) continue
+        expect(store.tileAtPoint({ x: probe.x, y: probe.y }), `(${probe.x}, ${probe.y})`).toBe(
+          probe.tile,
+        )
+      }
+    })
+
+    it('agrees with the server about what blocks a player', () => {
+      const wrong = passability.probes
+        .filter((probe) => store.walkable(probe.x, probe.y) !== probe.walkable)
+        .map((probe) => `(${probe.x}, ${probe.y}) ${probe.walkable ? 'is open' : 'is solid'}`)
+
+      expect(wrong).toEqual([])
+    })
+
+    it('reports no terrain where the server has none, rather than inventing it', () => {
+      // Outside the active topology the two answers have to stay distinguishable: the local
+      // player is stopped, but a remote entity standing there is still drawn where the
+      // server says it is. Collapsing the two is what turns a closed lane into a wall the
+      // client cannot explain.
+      for (const probe of passability.probes) {
+        if (probe.chunk !== null) continue
+        expect(
+          store.tileAtPoint({ x: probe.x, y: probe.y }),
+          `(${probe.x}, ${probe.y})`,
+        ).toBeUndefined()
+        expect(store.walkable(probe.x, probe.y)).toBe(false)
+      }
+    })
   })
+}
 
-  it('resolves every probe to the same tile within that chunk', () => {
-    const wrong = passability.probes
-      .filter((probe) => probe.chunk !== null)
-      .filter(
-        (probe) => locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)?.index !== probe.index,
-      )
-      .map((probe) => `(${probe.x}, ${probe.y}) is tile ${probe.index} of ${probe.chunk}`)
+// The generator suite above proves the two sides agree about tiles once they are looking at
+// the same tile. This proves they look at the same tile — which is the half that broke. A
+// point resolved to the wrong chunk, or one cell past the end of the right one, reads as no
+// terrain at all, and no terrain means blocked: the player stops dead on ground the renderer
+// has drawn as open.
+describePassability('the ground a player may stand on', fixtures.passability)
+describePassability(
+  'the ground a player may stand on before the world widens',
+  fixtures.narrowPassability,
+)
 
-    expect(wrong).toEqual([])
-  })
-
-  it('reads the same tile the server reads', () => {
-    for (const probe of passability.probes) {
-      if (probe.chunk === null) continue
-      expect(store.tileAtPoint({ x: probe.x, y: probe.y }), `(${probe.x}, ${probe.y})`).toBe(
-        probe.tile,
-      )
-    }
-  })
-
-  it('agrees with the server about what blocks a player', () => {
-    const wrong = passability.probes
-      .filter((probe) => store.walkable(probe.x, probe.y) !== probe.walkable)
-      .map((probe) => `(${probe.x}, ${probe.y}) ${probe.walkable ? 'is open' : 'is solid'}`)
-
-    expect(wrong).toEqual([])
-  })
-
-  it('reports no terrain where the server has none, rather than inventing it', () => {
-    // Outside the active topology the two answers have to stay distinguishable: the local
-    // player is stopped, but a remote entity standing there is still drawn where the
-    // server says it is. Collapsing the two is what turns a closed lane into a wall the
-    // client cannot explain.
-    for (const probe of passability.probes) {
-      if (probe.chunk !== null) continue
-      expect(store.tileAtPoint({ x: probe.x, y: probe.y }), `(${probe.x}, ${probe.y})`).toBeUndefined()
-      expect(store.walkable(probe.x, probe.y)).toBe(false)
-    }
-  })
+describe('the probe sets themselves', () => {
+  // A parity fixture is worth exactly the ground it reaches, and both of these blind spots
+  // have already cost us a bug. Asserting the reach means a future edit that narrows the
+  // probes fails here rather than going quiet.
 
   it('covers the flanking lanes, which only exist above tier 0', () => {
-    // The fixture is only worth anything if it reaches the chunks whose tier_min is not
-    // zero. Those are the ones a client that defaults the tier addresses wrongly, and a
-    // probe set that stayed in the centre lane would pass while the corridor was solid.
-    expect(passability.currentTier).toBeGreaterThan(0)
-    const flanking = passability.probes.filter(
+    // Chunks whose tier_min is not zero are the ones a client that defaults the tier
+    // addresses wrongly, and a probe set that stayed in the centre lane would pass while
+    // the corridor was solid.
+    expect(fixtures.passability.currentTier).toBeGreaterThan(0)
+    const flanking = fixtures.passability.probes.filter(
       (probe) => probe.chunk !== null && /^edge:[^:]+:\d+:-?[1-9]/.test(probe.chunk),
     )
     expect(flanking.length).toBeGreaterThan(0)
     expect(flanking.every((probe) => probe.chunk?.endsWith(':1'))).toBe(true)
+  })
+
+  it('reaches the centre line while it is still the only lane', () => {
+    // The opposite blind spot, and the one that hid a wall. On the widened world a point
+    // that slips off lane 0 lands in lane -1, which exists, so it resolves and the probe
+    // passes. Only before the world widens does slipping off lane 0 mean falling out of
+    // the world altogether.
+    const narrow = fixtures.narrowPassability
+    expect(narrow.currentTier).toBe(0)
+
+    const centre = narrow.probes.filter((probe) => /^edge:[^:]+:\d+:0:0$/.test(probe.chunk ?? ''))
+    expect(centre.length).toBeGreaterThan(0)
+    expect(narrow.probes.every((probe) => probe.chunk !== null)).toBe(true)
   })
 })
 

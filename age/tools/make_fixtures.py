@@ -285,18 +285,20 @@ def _passability_points(world: World) -> list[WorldPoint]:
     return points
 
 
-def _passability_vectors() -> dict[str, object]:
-    """The server's verdict on the ground under each probe.
+def _passability_section(world: World, points: list[WorldPoint]) -> dict[str, object]:
+    """The server's verdict on the ground under each probe, plus the topology it holds.
 
     Three answers per point rather than one. The chunk key and the tile index are what
     actually broke: a client that resolves a point to the wrong chunk, or one tile past
     the end of the right one, reads no terrain at all and stops the player dead on
     ground that renders as open. Recording all three means a failure says which of the
     three steps disagreed instead of only that the ground did.
+
+    The topology travels with the probes because the answers only mean anything against
+    it: the same point is inside the world at one tier and outside it at another.
     """
-    world = _passability_world()
     probes: list[dict[str, object]] = []
-    for point in _passability_points(world):
+    for point in points:
         index = world._tile_index(point)
         probes.append(
             {
@@ -319,6 +321,41 @@ def _passability_vectors() -> dict[str, object]:
         "retiringChunks": [],
         "probes": probes,
     }
+
+
+def _passability_vectors() -> dict[str, object]:
+    """Passability on the widened world, where all three lanes exist."""
+    world = _passability_world()
+    return _passability_section(world, _passability_points(world))
+
+
+def _narrow_passability_vectors() -> dict[str, object]:
+    """Passability on the world as it actually starts: one lane, nothing beside it.
+
+    A separate section because the widened world cannot test this and quietly looks as
+    though it does. Lane 0's near edge is where the inverse projection comes out at zero,
+    and zero is the boundary between lane 0 and lane -1. The projection carries a rounding
+    error, so it can land a hair below zero and floor into lane -1 — which above tier 0 is
+    a real lane, so the point still resolves and the probe still passes. At tier 0 lane -1
+    does not exist, the point reads as outside the world, and outside the world is
+    impassable. That was a wall one float wide down the length of the corridor's centre
+    line, over ground that draws as open, and every probe set we had was widened first.
+    """
+    world = build_default_world(
+        world_seed=WORLD_SEED, clock=ManualClock(start=0.0), generator=WorldGenerator(WORLD_SEED)
+    )
+    world.topology.bootstrap(0.0)
+
+    edge = world.edge
+    # Walking the centre line, plus the segment seams along it: tile_y of 0 is the lane
+    # boundary and tile_x of 0 the segment boundary, and both cancel in the inverse.
+    points = [
+        edge_to_world(edge, segment, 0, tile_x, tile_y)
+        for segment in range(min(3, world.topology.segments))
+        for tile_x in (0.0, 0.25, 0.5, 16.0, 16.5, 31.0, 31.5)
+        for tile_y in (0.0, 0.5, 16.5, 31.5)
+    ]
+    return _passability_section(world, points)
 
 
 def _client_packets() -> dict[str, object]:
@@ -631,6 +668,7 @@ def build() -> dict[str, object]:
         "noise": _noise_vectors(),
         "chunks": _chunk_vectors(),
         "passability": _passability_vectors(),
+        "narrowPassability": _narrow_passability_vectors(),
         "clientPackets": _client_packets(),
         "serverPackets": _server_packets(),
     }

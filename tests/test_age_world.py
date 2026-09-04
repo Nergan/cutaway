@@ -2657,6 +2657,33 @@ def test_a_seam_reads_ground_rather_than_nothing(world: World):
         assert 0 <= resolved[1] < CHUNK_TILES * CHUNK_TILES, f"{point} is past the end"
 
 
+def test_the_corridor_centre_line_is_inside_the_world_before_it_widens(world: World):
+    """The same seams on the world as it actually starts: one lane, nothing beside it.
+
+    This is the case that matters and the one that is easy to lose, because widening the
+    world first makes it pass for the wrong reason. Lane 0's near edge is where ``across``
+    comes out at zero, and zero is the boundary between lane 0 and lane -1. The projection
+    is not exact — the direction vector is normalised, so it carries a rounding error — and
+    an ``across`` of -8e-19 floors into lane -1. At tier 0 lane -1 does not exist yet, so
+    the point reads as outside the world, and outside the world is impassable.
+
+    The result was a wall one float wide running the length of the corridor's centre line,
+    over ground that draws as open grass. Asserting the lane rather than just "resolved to
+    something" is deliberate: activating lane -1 at tier 0 would also make this point
+    resolve, and would be a different world, not a fix.
+    """
+    assert world.topology.current_tier == 0
+
+    for segment in range(world.topology.segments):
+        for tile_x in (0.0, 0.5, 16.0, 31.5):
+            point = coordinates.edge_to_world(world.edge, segment, 0, tile_x, 0.0)
+            resolved = world._tile_index(point)
+
+            assert resolved is not None, f"{point} on the centre line fell out of the world"
+            assert resolved[0].lane_offset == 0, f"{point} was pushed off the only lane"
+            assert world.contains(point)
+
+
 def test_a_hub_chunk_boundary_splits_the_same_way_on_both_axes(world: World):
     """One floor then an exact split, not a floor of the chunk and a floor of the rest.
 
@@ -2841,6 +2868,41 @@ def test_the_description_is_serialisable(world: World):
 
 
 # --- coordinates ------------------------------------------------------------
+
+
+def test_a_corridor_tile_projects_out_and_back_to_itself(world: World):
+    """``world_to_edge`` is declared the inverse of ``edge_to_world``, so check that it is.
+
+    Floating point makes an exact inverse unavailable: the direction vector is normalised,
+    so a corridor running due east has a y component of -6.1e-17 and every projection
+    through it carries a little error. Everywhere except a boundary that error is harmless,
+    because it lands well inside the tile it belongs to. On a boundary it decides which side
+    the point falls on, and one of those sides can be a lane the world has not opened.
+
+    The two halves of the answer are held to different standards, and deliberately so. The
+    segment and the lane are discrete: they name a chunk, a chunk key is looked up in the
+    topology, and being one out is the whole bug — so they have to come back exactly. The
+    tile offsets are continuous and only have to be accurate; a millionth of a tile off is
+    a position, not a different tile. Halves are in the sample as a control, to show the
+    snap does not reach into the middle of a tile to tidy values that were never at risk.
+    """
+    interesting = (0.0, 0.5, 1.0, 16.0, 31.0, 31.5)
+
+    for segment in range(world.topology.segments):
+        for lane in (-1, 0, 1):
+            for tile_x in interesting:
+                for tile_y in interesting:
+                    point = coordinates.edge_to_world(world.edge, segment, lane, tile_x, tile_y)
+                    back_segment, back_lane, back_x, back_y = coordinates.world_to_edge(
+                        world.edge, point
+                    )
+                    where = f"segment {segment} lane {lane} tile ({tile_x}, {tile_y})"
+
+                    assert (back_segment, back_lane) == (segment, lane), (
+                        f"{where} came back addressing chunk ({back_segment}, {back_lane})"
+                    )
+                    assert back_x == pytest.approx(tile_x, abs=1e-9), f"{where} moved across"
+                    assert back_y == pytest.approx(tile_y, abs=1e-9), f"{where} moved along"
 
 
 def test_a_hub_location_round_trips_through_the_plane(world: World):

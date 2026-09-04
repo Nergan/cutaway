@@ -1747,8 +1747,8 @@
       {
         "x": -96.5,
         "y": 2.1584399834972098e-14,
-        "chunk": "edge:emberhold-rookmarch:0:-1:1",
-        "index": 1023,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 31,
         "tile": 7,
         "walkable": true
       },
@@ -1763,8 +1763,8 @@
       {
         "x": -127.5,
         "y": 32.00000000000002,
-        "chunk": "edge:emberhold-rookmarch:0:0:0",
-        "index": 992,
+        "chunk": "edge:emberhold-rookmarch:0:1:1",
+        "index": 0,
         "tile": 1,
         "walkable": true
       },
@@ -1787,10 +1787,10 @@
       {
         "x": -111.5,
         "y": 32.00000000000002,
-        "chunk": "edge:emberhold-rookmarch:0:0:0",
-        "index": 1008,
-        "tile": 1,
-        "walkable": true
+        "chunk": "edge:emberhold-rookmarch:0:1:1",
+        "index": 16,
+        "tile": 15,
+        "walkable": false
       },
       {
         "x": -111.5,
@@ -1883,16 +1883,16 @@
       {
         "x": -96.0,
         "y": 2.1553783664993414e-14,
-        "chunk": "edge:emberhold-rookmarch:1:-1:1",
-        "index": 992,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
         "tile": 7,
         "walkable": true
       },
       {
         "x": -95.5,
         "y": 2.152316749501473e-14,
-        "chunk": "edge:emberhold-rookmarch:1:-1:1",
-        "index": 992,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
         "tile": 7,
         "walkable": true
       },
@@ -1939,18 +1939,18 @@
       {
         "x": -64.5,
         "y": 1.9624964956336333e-14,
-        "chunk": "edge:emberhold-rookmarch:1:-1:1",
-        "index": 1023,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 31,
         "tile": 7,
         "walkable": true
       },
       {
         "x": -96.0,
         "y": 32.00000000000002,
-        "chunk": "edge:emberhold-rookmarch:0:1:1",
-        "index": 31,
-        "tile": 1,
-        "walkable": true
+        "chunk": "edge:emberhold-rookmarch:1:1:1",
+        "index": 0,
+        "tile": 15,
+        "walkable": false
       },
       {
         "x": -95.5,
@@ -1963,10 +1963,10 @@
       {
         "x": -96.0,
         "y": 32.50000000000002,
-        "chunk": "edge:emberhold-rookmarch:0:1:1",
-        "index": 31,
-        "tile": 1,
-        "walkable": true
+        "chunk": "edge:emberhold-rookmarch:1:1:1",
+        "index": 0,
+        "tile": 15,
+        "walkable": false
       },
       {
         "x": -95.5,
@@ -2006,6 +2006,696 @@
         "chunk": "edge:emberhold-rookmarch:1:1:1",
         "index": 31,
         "tile": 3,
+        "walkable": true
+      }
+    ]
+  },
+  "narrowPassability": {
+    "edgeId": "emberhold-rookmarch",
+    "segments": 8,
+    "currentTier": 0,
+    "activeChunks": [
+      "edge:emberhold-rookmarch:0:0:0",
+      "edge:emberhold-rookmarch:1:0:0",
+      "edge:emberhold-rookmarch:2:0:0",
+      "edge:emberhold-rookmarch:3:0:0",
+      "edge:emberhold-rookmarch:4:0:0",
+      "edge:emberhold-rookmarch:5:0:0",
+      "edge:emberhold-rookmarch:6:0:0",
+      "edge:emberhold-rookmarch:7:0:0"
+    ],
+    "retiringChunks": [],
+    "probes": [
+      {
+        "x": -128.0,
+        "y": 2.351321854362918e-14,
+        "chunk": "hub:0:4:-1",
+        "index": 992,
+        "tile": 3,
+        "walkable": true
+      },
+      {
+        "x": -128.0,
+        "y": 0.5000000000000235,
+        "chunk": "hub:0:4:0",
+        "index": 0,
+        "tile": 8,
+        "walkable": true
+      },
+      {
+        "x": -128.0,
+        "y": 16.500000000000025,
+        "chunk": "hub:0:4:0",
+        "index": 512,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -128.0,
+        "y": 31.500000000000025,
+        "chunk": "hub:0:4:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -127.75,
+        "y": 2.3497910458639838e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -127.75,
+        "y": 0.5000000000000235,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -127.75,
+        "y": 16.500000000000025,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 512,
+        "tile": 6,
+        "walkable": true
+      },
+      {
+        "x": -127.75,
+        "y": 31.500000000000025,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -127.5,
+        "y": 2.3482602373650496e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -127.5,
+        "y": 0.5000000000000235,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -127.5,
+        "y": 16.500000000000025,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 512,
+        "tile": 6,
+        "walkable": true
+      },
+      {
+        "x": -127.5,
+        "y": 31.500000000000025,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -112.0,
+        "y": 2.25335011043113e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -112.0,
+        "y": 0.5000000000000225,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -112.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 528,
+        "tile": 6,
+        "walkable": true
+      },
+      {
+        "x": -112.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 1008,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -111.5,
+        "y": 2.2502884934332615e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -111.5,
+        "y": 0.5000000000000225,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -111.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 528,
+        "tile": 6,
+        "walkable": true
+      },
+      {
+        "x": -111.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 1008,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -97.0,
+        "y": 2.1615016004950782e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -97.0,
+        "y": 0.5000000000000216,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -97.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -97.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 1023,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -96.5,
+        "y": 2.1584399834972098e-14,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -96.5,
+        "y": 0.5000000000000215,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -96.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -96.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:0:0:0",
+        "index": 1023,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -96.0,
+        "y": 2.1553783664993414e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -96.0,
+        "y": 0.5000000000000215,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -96.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 512,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -96.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -95.75,
+        "y": 2.1538475580004073e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -95.75,
+        "y": 0.5000000000000215,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -95.75,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 512,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -95.75,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -95.5,
+        "y": 2.152316749501473e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -95.5,
+        "y": 0.5000000000000215,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -95.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 512,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -95.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 992,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -80.0,
+        "y": 2.0574066225675533e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -80.0,
+        "y": 0.5000000000000205,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -80.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 528,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -80.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 1008,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -79.5,
+        "y": 2.054345005569685e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -79.5,
+        "y": 0.5000000000000205,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 16,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -79.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 528,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -79.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 1008,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -65.0,
+        "y": 1.9655581126315017e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -65.0,
+        "y": 0.5000000000000197,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -65.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -65.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 1023,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -64.5,
+        "y": 1.9624964956336333e-14,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -64.5,
+        "y": 0.5000000000000197,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 31,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -64.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -64.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:1:0:0",
+        "index": 1023,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -64.0,
+        "y": 1.959434878635765e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -64.0,
+        "y": 0.5000000000000195,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -64.0,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 512,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -64.0,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 992,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -63.75,
+        "y": 1.9579040701368307e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -63.75,
+        "y": 0.5000000000000195,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -63.75,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 512,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -63.75,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 992,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -63.5,
+        "y": 1.9563732616378965e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -63.5,
+        "y": 0.5000000000000195,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 0,
+        "tile": 7,
+        "walkable": true
+      },
+      {
+        "x": -63.5,
+        "y": 16.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 512,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -63.5,
+        "y": 31.50000000000002,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 992,
+        "tile": 15,
+        "walkable": false
+      },
+      {
+        "x": -48.0,
+        "y": 1.8614631347039768e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 16,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -48.0,
+        "y": 0.5000000000000187,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 16,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -48.0,
+        "y": 16.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 528,
+        "tile": 3,
+        "walkable": true
+      },
+      {
+        "x": -48.0,
+        "y": 31.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 1008,
+        "tile": 3,
+        "walkable": true
+      },
+      {
+        "x": -47.5,
+        "y": 1.8584015177061084e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 16,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -47.5,
+        "y": 0.5000000000000185,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 16,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -47.5,
+        "y": 16.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 528,
+        "tile": 3,
+        "walkable": true
+      },
+      {
+        "x": -47.5,
+        "y": 31.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 1008,
+        "tile": 3,
+        "walkable": true
+      },
+      {
+        "x": -33.0,
+        "y": 1.7696146247679254e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 31,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -33.0,
+        "y": 0.5000000000000177,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 31,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -33.0,
+        "y": 16.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -33.0,
+        "y": 31.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 1023,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -32.5,
+        "y": 1.766553007770057e-14,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 31,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -32.5,
+        "y": 0.5000000000000177,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 31,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -32.5,
+        "y": 16.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 543,
+        "tile": 1,
+        "walkable": true
+      },
+      {
+        "x": -32.5,
+        "y": 31.500000000000018,
+        "chunk": "edge:emberhold-rookmarch:2:0:0",
+        "index": 1023,
+        "tile": 1,
         "walkable": true
       }
     ]

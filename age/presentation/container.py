@@ -99,6 +99,34 @@ class Container:
         except Exception as exc:
             logger.warning("MongoDB adapters unavailable, using in-memory storage: %s", exc)
 
+    def _fall_back_to_memory(self, reason: str) -> None:
+        """Drop the Mongo adapters. Used when the client constructed but cannot talk.
+
+        ``shared_mongo.get_client()`` succeeds against a URI; it does not mean a
+        server is listening. Without this check every join waits out a ten-second
+        selection timeout and then refuses to create a character — a demo that
+        cannot be entered because the free-tier cluster is asleep.
+        """
+        if self.storage_backend == "memory":
+            return
+        logger.warning("MongoDB unreachable (%s), using in-memory storage.", reason)
+        self._overlays = MemoryTerrainOverlayRepository()
+        self._characters = MemoryCharacterRepository()
+        self._topology = MemoryTopologyRepository()
+        self.storage_backend = "memory"
+
+    async def _confirm_storage(self) -> None:
+        """Ping storage with the same budget as a restore, then fall back if silent."""
+        if self.storage_backend != "mongodb":
+            return
+        try:
+            async with asyncio.timeout(STORAGE_READ_BUDGET_SECONDS):
+                await self._topology.load("__age_storage_probe__")
+        except TimeoutError:
+            self._fall_back_to_memory("ping timed out")
+        except Exception as exc:
+            self._fall_back_to_memory(str(exc))
+
     async def _prepare(self) -> None:
         """Build the world, restore what was persisted, and start ticking."""
         generator = WorldGenerator(world_seed=self.settings.world_seed)
@@ -109,6 +137,10 @@ class Container:
             segments=self.settings.corridor_segments,
         )
         self._world = world
+
+        # Confirm the client can actually talk before anyone joins. Constructing
+        # the adapters is not that: get_client() only parses a URI.
+        await self._confirm_storage()
 
         manager = WorldManager(
             world,

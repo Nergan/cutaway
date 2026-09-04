@@ -243,20 +243,47 @@ def edge_to_world(
     )
 
 
+# How close to a whole tile counts as being on it, when projecting a point back into
+# corridor-local coordinates.
+#
+# A corridor's direction is a normalised vector, and normalising rounds: an edge that runs
+# due east has a y component of -6.1e-17 rather than zero. Projecting a point back through
+# that vector therefore lands a hair off the value it was projected out from, and on a lane
+# boundary a hair decides the whole answer — `floor` sends -8e-19 to lane -1 instead of
+# lane 0. Lane -1 does not exist until the accordion widens, so the point reads as outside
+# the world, and outside the world is impassable: an invisible wall one float wide running
+# the length of the corridor's centre line, over ground that draws as open.
+#
+# The tolerance sits in the wide gap between the two scales involved. The error is around
+# 1e-13 at the far end of the longest corridor; a tile is 1.0. A billionth of a tile is
+# four orders of magnitude above the noise and nine below anything a player can stand on,
+# so this can only ever move a value that was already meant to be whole.
+SEAM_TOLERANCE_TILES = 1e-9
+
+
+def _snap_to_tile(value: float) -> float:
+    """Pull a value already within rounding error of a whole tile onto it."""
+    nearest = round(value)
+    return float(nearest) if abs(value - nearest) < SEAM_TOLERANCE_TILES else value
+
+
 def world_to_edge(edge: EdgeDefinition, point: WorldPoint) -> tuple[int, int, float, float]:
     """Layer 3 to layer 2. Inverse of :func:`edge_to_world`.
 
     Returns ``(segment_index, lane_offset, tile_x, tile_y)`` with the tile pair
     normalised into ``[0, CHUNK_TILES)`` using floor division, so negative lanes
     land on the correct chunk rather than rounding towards zero.
+
+    Both projections are snapped first: see :data:`SEAM_TOLERANCE_TILES` for why an
+    exact inverse is not available and what goes wrong without the snap.
     """
     ux, uy = edge.direction
     nx, ny = -uy, ux
     origin = edge.start
 
     dx, dy = point.x - origin.x, point.y - origin.y
-    along = dx * ux + dy * uy
-    across = dx * nx + dy * ny
+    along = _snap_to_tile(dx * ux + dy * uy)
+    across = _snap_to_tile(dx * nx + dy * ny)
 
     segment_index = math.floor(along / CHUNK_TILES)
     lane_offset = math.floor(across / CHUNK_TILES)
