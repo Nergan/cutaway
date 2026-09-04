@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 
 from age.config import Settings
 from age.domain.constants import PROTOCOL_VERSION
+from age.domain.items import EQUIPMENT_SLOTS, INVENTORY_SLOTS, ITEMS
 from age.infrastructure import wire
 from age.presentation import container as container_module
 from age.presentation import ws_routes
@@ -147,10 +148,24 @@ def _server_frame(payload: bytes) -> dict[str, object]:
         return {"kind": "pong", "clientTime": reader.f64(), "serverTime": reader.f64()}
     if kind == wire.SERVER_ERROR:
         return {"kind": "error", "code": reader.u8(), "detail": reader.text(160)}
+    if kind == wire.SERVER_INVENTORY:
+        capacity = reader.u8()
+        stacks = [(reader.u16(), reader.u16()) for _ in range(reader.u8())]
+        equipped = [(reader.u8(), reader.u16()) for _ in range(reader.u8())]
+        return {
+            "kind": "inventory",
+            "capacity": capacity,
+            "stacks": stacks,
+            "equipped": equipped,
+            "maxHealth": reader.u16(),
+            "maxResource": reader.u16(),
+            "bonusDamage": reader.u16(),
+            "moveSpeed": reader.u16() / wire.SPEED_SCALE,
+        }
     return {"kind": wire.MESSAGE_NAMES.get(kind, hex(kind))}
 
 
-def _await_frame(socket, kind: str, *, limit: int = 12) -> dict[str, object]:
+def _await_frame(socket, kind: str, *, limit: int = 16) -> dict[str, object]:
     """Read frames until one of ``kind`` arrives.
 
     The server is free to interleave chat backlog and snapshots with whatever a test
@@ -315,6 +330,34 @@ def test_every_class_arrives_with_a_castable_kit(client: TestClient):
         for ability in entry["abilities"]:
             assert ability["cooldownMs"] > 0
             assert ability["damage"] or ability["healing"] or ability["kind"] in (4, 5)
+
+
+def test_the_item_catalogue_arrives_with_the_world_rather_than_on_every_packet(
+    client: TestClient,
+):
+    """Names and stats are static, so the inventory packet only carries ids and counts."""
+    payload = client.get("/api/world").json()
+
+    assert payload["inventorySlots"] == INVENTORY_SLOTS
+    assert len(payload["items"]) == len(ITEMS)
+    assert len(payload["equipmentSlots"]) == len(EQUIPMENT_SLOTS)
+
+    for item in payload["items"]:
+        assert set(item) >= {"itemId", "key", "name", "kind", "slot", "rarity"}
+        assert item["itemId"] > 0
+        assert item["name"]
+
+
+def test_every_item_the_pack_can_hold_can_be_looked_up_by_the_id_on_the_wire(
+    client: TestClient,
+):
+    """The client draws a stack from its id alone; an id with no entry draws nothing."""
+    payload = client.get("/api/world").json()
+    by_id = {item["itemId"]: item for item in payload["items"]}
+
+    assert len(by_id) == len(payload["items"])
+    for item in ITEMS.values():
+        assert by_id[item.item_id]["key"] == item.key
 
 
 def test_the_debug_endpoint_exposes_the_accordion(client: TestClient):
@@ -769,7 +812,67 @@ def test_a_character_keeps_its_identity_across_a_reconnect(client: TestClient):
     assert again["entityId"] > 0
 
 
+def test_the_handshake_tells_a_character_what_it_is_carrying(client: TestClient):
+    """Without this the pack is empty until something changes it, which reads as lost."""
+    with client.websocket_connect("/ws") as socket:
+        _join(socket)
+        inventory = _await_frame(socket, "inventory")
+
+    assert inventory["capacity"] == INVENTORY_SLOTS
+    assert inventory["maxHealth"] > 0
+    assert inventory["moveSpeed"] > 0
+
+
+def test_the_pack_is_private_to_its_owner(client: TestClient):
+    """Loadouts are not broadcast: a second player's frames must never mention one."""
+    with client.websocket_connect("/ws") as first:
+        _join(first, "Rowan")
+        _await_frame(first, "inventory")
+
+        with client.websocket_connect("/ws") as second:
+            _join(second, "Bruna")
+            _await_frame(second, "inventory")
+
+            # Anything the first player is sent about the newcomer is public state.
+            for _ in range(20):
+                frame = _server_frame(first.receive_bytes())
+                assert frame["kind"] != "inventory", (
+                    "a second inventory frame here would be somebody else's"
+                )
+
+
+def test_wearing_something_raises_the_health_the_server_reports(client: TestClient):
+    """The round trip the character sheet is drawn from, through the real socket."""
+    with client.websocket_connect("/ws") as socket:
+        _join(socket)
+        before = _await_frame(socket, "inventory")
+
+        entity = _entity_of(client, "Rowan")
+        entity.give("stone_plated_vest", 1)
+        index = next(
+            slot
+            for slot, stack in enumerate(entity.inventory)
+            if stack.key == "stone_plated_vest"
+        )
+        socket.send_bytes(
+            wire.Writer(wire.CLIENT_INVENTORY).u8(wire.INVENTORY_EQUIP).u8(index).u16(1).build()
+        )
+        after = _await_frame(socket, "inventory", limit=60)
+
+    assert after["equipped"], "the vest has to come back as worn"
+    assert after["maxHealth"] > before["maxHealth"]
+
+
 # --- helpers ----------------------------------------------------------------
+
+
+def _entity_of(client: TestClient, name: str):
+    """The live entity behind a joined character, for tests that need to arrange one."""
+    world = get_container().world
+    for entity in world.entities.values():
+        if entity.name == name:
+            return entity
+    raise AssertionError(f"no entity named {name} is in the world")
 
 
 def _png_size(data: bytes) -> tuple[int, int]:

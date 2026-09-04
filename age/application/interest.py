@@ -36,13 +36,19 @@ class ClientUpdate:
     spawns: list[bytes] = field(default_factory=list)
     despawns: list[bytes] = field(default_factory=list)
     snapshot: bytes | None = None
+    tiles: list[bytes] = field(default_factory=list)
     chunk_keys_added: list[str] = field(default_factory=list)
     chunk_keys_removed: list[str] = field(default_factory=list)
 
     @property
     def frames(self) -> list[bytes]:
-        """Spawns before the snapshot: a delta for an unknown entity is useless."""
+        """Terrain first, then spawns, then the snapshot.
+
+        Spawns before the snapshot because a delta for an unknown entity is useless,
+        and terrain before both because an entity is drawn standing on it.
+        """
         frames = list(self.despawns)
+        frames.extend(self.tiles)
         frames.extend(self.spawns)
         if self.snapshot is not None:
             frames.append(self.snapshot)
@@ -124,9 +130,18 @@ def build_update(
     wanted = chunks_in_view(world, viewer, AOI_PRELOAD_RADIUS_CHUNKS)
     keepable = chunks_in_view(world, viewer, AOI_UNLOAD_RADIUS_CHUNKS)
 
+    # A chunk the client generates for itself is only right while nobody has touched
+    # it. Edits live in an overlay the seed cannot reproduce, and the live delta that
+    # carried each one went solely to the clients already holding the chunk, so every
+    # edit made before this chunk entered view is a tile the server has and the client
+    # does not: a wall built last week, or a tree that regrew overnight, standing
+    # invisible on ground the client draws as open.
     for key in wanted - session.loaded_chunks:
         update.chunk_keys_added.append(key)
         session.loaded_chunks.add(key)
+        overlay = world.overlay_by_key(key)
+        if overlay:
+            update.tiles.append(wire.encode_tiles(key, overlay))
 
     for key in list(session.loaded_chunks):
         if key not in keepable:
@@ -158,6 +173,7 @@ def build_update(
                     facing=entity.facing,
                     health_percent=wire.encode_percent(entity.health, entity.max_health),
                     level=entity.level,
+                    state=_state_byte(entity),
                     appearance=entity.appearance.pack(),
                 )
             )

@@ -11,6 +11,7 @@ point: the in-memory path is exercised constantly rather than rotting.
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from copy import deepcopy
 
 
@@ -24,6 +25,13 @@ class MemoryTerrainOverlayRepository:
 
     async def load(self, chunk_key: str) -> dict[int, int]:
         return dict(self._overlays.get(chunk_key, {}))
+
+    async def load_many(self, chunk_keys: Sequence[str]) -> dict[str, dict[int, int]]:
+        return {
+            chunk_key: dict(self._overlays[chunk_key])
+            for chunk_key in chunk_keys
+            if self._overlays.get(chunk_key)
+        }
 
     async def save_batch(self, overlays: dict[str, dict[int, int]]) -> None:
         for chunk_key, changes in overlays.items():

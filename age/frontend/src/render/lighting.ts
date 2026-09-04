@@ -14,11 +14,21 @@
  * changes character between noon and midnight from one uniform. Without normals all of that
  * is a radial gradient laid over the art.
  *
+ * This is a full-screen quad rather than a Pixi filter, and that is the whole point of the
+ * rewrite. A filter's fragment coordinates live in the space of a pool-allocated input
+ * texture whose origin is the filtered container's bounds, not the screen. Sampling a
+ * screen-sized normal buffer with those coordinates reads the normals at an offset, which
+ * showed up in game as ghostly copies of lanterns and roads hanging above themselves. A
+ * quad the size of the screen has no such indirection: its own vertices carry both the
+ * screen pixel and the buffer UV, so albedo, normal, and light positions are all in one
+ * frame by construction. It also stops Pixi computing the global bounds of a container
+ * holding thousands of sprites once per frame just to size the filter.
+ *
  * Reference: the technique is the standard "2D deferred lighting with normal maps" from the
  * Sprite Lamp and Sprite DLight write-ups cited by TDD 11.4.
  */
 
-import { Filter, GlProgram } from 'pixi.js'
+import { Buffer, BufferUsage, Container, Geometry, Mesh, Shader, type TextureSource } from 'pixi.js'
 
 /** The most lights one pass will consider. Beyond this the nearest are kept. */
 export const MAX_LIGHTS = 24
@@ -43,36 +53,33 @@ export interface Light {
 
 const VERTEX = `
 in vec2 aPosition;
-out vec2 vTextureCoord;
+in vec2 aUV;
 
-uniform vec4 uInputSize;
-uniform vec4 uOutputFrame;
-uniform vec4 uOutputTexture;
+out vec2 vScreen;
+out vec2 vUV;
 
-vec4 filterVertexPosition(void) {
-    vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-    position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
-    position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
-    return vec4(position, 0.0, 1.0);
-}
-
-vec2 filterTextureCoord(void) {
-    return aPosition * (uOutputFrame.zw * uInputSize.zw);
-}
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
 
 void main(void) {
-    gl_Position = filterVertexPosition();
-    vTextureCoord = filterTextureCoord();
+    mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+    gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+
+    // Positions are already screen pixels, so the light maths downstream needs no mapping.
+    vScreen = aPosition;
+    vUV = aUV;
 }
 `
 
 const FRAGMENT = `
 precision highp float;
 
-in vec2 vTextureCoord;
+in vec2 vScreen;
+in vec2 vUV;
 out vec4 finalColor;
 
-uniform sampler2D uTexture;      // albedo: the scene as drawn
+uniform sampler2D uAlbedo;       // the scene as drawn
 uniform sampler2D uNormalMap;    // tangent-space normals of the same scene
 
 uniform vec3 uAmbient;           // day/night tint, already multiplied by its own strength
@@ -80,11 +87,10 @@ uniform int uLightCount;
 uniform vec3 uLightPosition[${MAX_LIGHTS}];   // xy in pixels, z is height
 uniform vec4 uLightColour[${MAX_LIGHTS}];     // rgb, a is intensity
 uniform float uLightRadius[${MAX_LIGHTS}];
-uniform vec2 uResolution;
 uniform float uSaturation;
 
 void main(void) {
-    vec4 albedo = texture(uTexture, vTextureCoord);
+    vec4 albedo = texture(uAlbedo, vUV);
 
     // Nothing was drawn here. Returning early keeps the sky out of the lighting maths and
     // saves the loop entirely on a screen that is mostly empty.
@@ -95,7 +101,7 @@ void main(void) {
 
     // 'packed' is a reserved word in GLSL ES — naming this sample that silently fails to
     // compile, and Pixi swallows the link error, which shows up as a black screen.
-    vec4 encoded = texture(uNormalMap, vTextureCoord);
+    vec4 encoded = texture(uNormalMap, vUV);
 
     // An unwritten normal decodes to (0,0,-1), which faces away from everything. Treat a
     // transparent normal as flat-facing-out instead, so a sprite without a normal map is
@@ -104,13 +110,12 @@ void main(void) {
         ? normalize(encoded.rgb * 2.0 - 1.0)
         : vec3(0.0, 0.0, 1.0);
 
-    vec2 fragment = vTextureCoord * uResolution;
     vec3 light = uAmbient;
 
     for (int i = 0; i < ${MAX_LIGHTS}; i++) {
         if (i >= uLightCount) break;
 
-        vec3 toLight = vec3(uLightPosition[i].xy - fragment, uLightPosition[i].z);
+        vec3 toLight = vec3(uLightPosition[i].xy - vScreen, uLightPosition[i].z);
 
         // Distance in the ground plane only: the height must not shrink the footprint, or
         // raising a light to get better shading would also shrink its pool of light.
@@ -149,52 +154,91 @@ void main(void) {
 /**
  * The full-screen lighting pass.
  *
- * A Pixi filter rather than a custom render pipeline: filters already get the
- * draw-to-texture, bind, and full-screen quad for free, and the only thing this needs
- * beyond that is a second sampler.
+ * Owns the quad it draws on, so a resize is a buffer rewrite rather than a rebuild.
  */
-export class LightingFilter extends Filter {
-  private readonly positions = new Float32Array(MAX_LIGHTS * 3)
-  private readonly colours = new Float32Array(MAX_LIGHTS * 4)
-  private readonly radii = new Float32Array(MAX_LIGHTS)
+export class LightingPass {
+  readonly root = new Container()
 
-  constructor(normalTexture: { source: unknown }) {
-    super({
-      glProgram: GlProgram.from({ vertex: VERTEX, fragment: FRAGMENT }),
+  private readonly positions = new Float32Array(8)
+  private readonly positionBuffer: Buffer
+  private readonly shader: Shader
+  private readonly uniforms: LightingUniforms
+
+  private readonly lightPositions = new Float32Array(MAX_LIGHTS * 3)
+  private readonly lightColours = new Float32Array(MAX_LIGHTS * 4)
+  private readonly lightRadii = new Float32Array(MAX_LIGHTS)
+
+  constructor(albedo: TextureSource, normals: TextureSource) {
+    this.positionBuffer = new Buffer({
+      data: this.positions,
+      usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+    })
+
+    const geometry = new Geometry({
+      attributes: {
+        aPosition: this.positionBuffer,
+        // The buffers are rendered top-down and sampled top-down, so the UVs run with the
+        // vertices rather than flipped.
+        aUV: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+      },
+      indexBuffer: new Uint16Array([0, 1, 2, 0, 2, 3]),
+    })
+
+    this.shader = Shader.from({
+      gl: { vertex: VERTEX, fragment: FRAGMENT },
       resources: {
-        uNormalMap: normalTexture.source,
+        uAlbedo: albedo,
+        uNormalMap: normals,
         lightingUniforms: {
           uAmbient: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
           uLightCount: { value: 0, type: 'i32' },
-          uLightPosition: { value: new Float32Array(MAX_LIGHTS * 3), type: 'vec3<f32>', size: MAX_LIGHTS },
-          uLightColour: { value: new Float32Array(MAX_LIGHTS * 4), type: 'vec4<f32>', size: MAX_LIGHTS },
-          uLightRadius: { value: new Float32Array(MAX_LIGHTS), type: 'f32', size: MAX_LIGHTS },
-          uResolution: { value: new Float32Array([1, 1]), type: 'vec2<f32>' },
+          uLightPosition: {
+            value: new Float32Array(MAX_LIGHTS * 3),
+            type: 'vec3<f32>',
+            size: MAX_LIGHTS,
+          },
+          uLightColour: {
+            value: new Float32Array(MAX_LIGHTS * 4),
+            type: 'vec4<f32>',
+            size: MAX_LIGHTS,
+          },
+          uLightRadius: {
+            value: new Float32Array(MAX_LIGHTS),
+            type: 'f32',
+            size: MAX_LIGHTS,
+          },
           uSaturation: { value: 0.35, type: 'f32' },
         },
       },
     })
+
+    this.uniforms = this.shader.resources.lightingUniforms.uniforms as LightingUniforms
+    this.root.addChild(new Mesh({ geometry, shader: this.shader }))
   }
 
-  /** Point the pass at a new normal buffer, after a resize reallocates it. */
-  setNormalSource(source: unknown): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(this.resources as any).uNormalMap = source
-  }
+  /** Stretch the quad to the screen, and rebind buffers a resize has reallocated. */
+  resize(width: number, height: number, albedo: TextureSource, normals: TextureSource): void {
+    this.positions[0] = 0
+    this.positions[1] = 0
+    this.positions[2] = width
+    this.positions[3] = 0
+    this.positions[4] = width
+    this.positions[5] = height
+    this.positions[6] = 0
+    this.positions[7] = height
+    this.positionBuffer.update()
 
-  setResolution(width: number, height: number): void {
-    const uniforms = this.resources.lightingUniforms.uniforms
-    uniforms.uResolution[0] = width
-    uniforms.uResolution[1] = height
+    const resources = this.shader.resources as Record<string, unknown>
+    resources.uAlbedo = albedo
+    resources.uNormalMap = normals
   }
 
   /** Ambient colour, already scaled by strength, plus how much colour survives darkness. */
   setAmbient(colour: readonly [number, number, number], saturationFloor: number): void {
-    const uniforms = this.resources.lightingUniforms.uniforms
-    uniforms.uAmbient[0] = colour[0]
-    uniforms.uAmbient[1] = colour[1]
-    uniforms.uAmbient[2] = colour[2]
-    uniforms.uSaturation = saturationFloor
+    this.uniforms.uAmbient[0] = colour[0]
+    this.uniforms.uAmbient[1] = colour[1]
+    this.uniforms.uAmbient[2] = colour[2]
+    this.uniforms.uSaturation = saturationFloor
   }
 
   /**
@@ -218,20 +262,28 @@ export class LightingFilter extends Filter {
 
     for (let i = 0; i < chosen.length; i += 1) {
       const light = chosen[i]
-      this.positions[i * 3] = light.x
-      this.positions[i * 3 + 1] = light.y
-      this.positions[i * 3 + 2] = light.height
-      this.colours[i * 4] = light.colour[0]
-      this.colours[i * 4 + 1] = light.colour[1]
-      this.colours[i * 4 + 2] = light.colour[2]
-      this.colours[i * 4 + 3] = light.intensity
-      this.radii[i] = light.radius
+      this.lightPositions[i * 3] = light.x
+      this.lightPositions[i * 3 + 1] = light.y
+      this.lightPositions[i * 3 + 2] = light.height
+      this.lightColours[i * 4] = light.colour[0]
+      this.lightColours[i * 4 + 1] = light.colour[1]
+      this.lightColours[i * 4 + 2] = light.colour[2]
+      this.lightColours[i * 4 + 3] = light.intensity
+      this.lightRadii[i] = light.radius
     }
 
-    const uniforms = this.resources.lightingUniforms.uniforms
-    uniforms.uLightCount = chosen.length
-    uniforms.uLightPosition.set(this.positions)
-    uniforms.uLightColour.set(this.colours)
-    uniforms.uLightRadius.set(this.radii)
+    this.uniforms.uLightCount = chosen.length
+    this.uniforms.uLightPosition.set(this.lightPositions)
+    this.uniforms.uLightColour.set(this.lightColours)
+    this.uniforms.uLightRadius.set(this.lightRadii)
   }
+}
+
+interface LightingUniforms {
+  uAmbient: Float32Array
+  uSaturation: number
+  uLightCount: number
+  uLightPosition: Float32Array
+  uLightColour: Float32Array
+  uLightRadius: Float32Array
 }

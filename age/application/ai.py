@@ -17,7 +17,7 @@ import math
 
 from ..domain.constants import AI_DECISION_DIVISOR, CHUNK_TILES, TICK_SECONDS
 from ..domain.coordinates import ChunkAddress, WorldPoint
-from ..domain.entities import DirtyField, Entity, EntityId
+from ..domain.entities import Appearance, DirtyField, Entity, EntityId
 from ..domain.hashing import combine, unit_float
 from ..domain.npc import (
     AISnapshot,
@@ -41,7 +41,38 @@ PATROL_RADIUS_TILES = 10.0
 BASE_SPAWN_COUNT = 3
 
 # Guards per hub, spread around the plaza.
-GUARDS_PER_HUB = 4
+GUARDS_PER_HUB = 6
+
+# Where the hub's townsfolk stand, in hub-local tiles, with the archetype for each.
+#
+# Hand-placed rather than scattered, and mirroring the decor layout in
+# `frontend/src/render/decor.ts`: the merchants belong behind the stalls on the market
+# row at y = -9, the smith by the yard fire, and the rest are distributed so that no
+# two are the same distance from the fountain. A ring of evenly spaced villagers reads
+# as a ritual.
+#
+# These are duplicated between here and the decor table by hand, which is a real
+# weakness — move a stall and its merchant stays put. Both tables belong in the
+# authored location file the Atelier's location editor is meant to produce, and this is
+# what that file will contain.
+TOWNSFOLK: tuple[tuple[str, float, float], ...] = (
+    ("merchant", -8.0, -10.5),
+    ("merchant", -3.0, -10.5),
+    ("merchant", 3.0, -10.5),
+    ("merchant", 9.0, -10.5),
+    ("smith", 7.0, 7.0),
+    ("villager", -5.0, -4.0),
+    ("villager", 2.0, -2.0),
+    ("villager", 4.0, 4.0),
+    ("villager", -3.0, 5.0),
+    ("villager", -10.0, 2.0),
+    ("villager", 11.0, -3.0),
+    ("villager", 0.0, 11.0),
+    ("villager", -6.0, -7.0),
+    ("child", 1.0, 3.0),
+    ("child", -2.0, -6.0),
+    ("child", 6.0, -5.0),
+)
 
 
 def spawn_for_chunk(world: World, address: ChunkAddress, now: float) -> list[Entity]:
@@ -81,13 +112,19 @@ def spawn_for_chunk(world: World, address: ChunkAddress, now: float) -> list[Ent
 
 
 def spawn_hub_guards(world: World, now: float) -> list[Entity]:
-    """Place guards around each hub plaza.
+    """Place guards and townsfolk around each hub plaza.
 
     Guards are what make the safe zone feel enforced rather than merely declared
     (GDD 11.1). They never flee and never leave their hub.
+
+    The townsfolk are here for a different reason. The hub was correct and lifeless:
+    the plaza was paved, the streets were lit, and the only things on it were four
+    guards standing at compass points, which reads as a checkpoint rather than a town.
+    Populating it is the cheapest change with the largest effect on whether the place
+    looks like somewhere people live.
     """
-    archetype = ARCHETYPES_BY_KEY["guard"]
     spawned: list[Entity] = []
+    guard = ARCHETYPES_BY_KEY["guard"]
 
     for hub in world.hubs.values():
         centre = hub.centre
@@ -97,7 +134,13 @@ def spawn_hub_guards(world: World, now: float) -> list[Entity]:
                 world,
                 WorldPoint(centre.x + math.cos(angle) * 9.0, centre.y + math.sin(angle) * 9.0),
             )
-            spawned.append(_make_npc(world, archetype, point, now))
+            spawned.append(_make_npc(world, guard, point, now))
+
+        for key, local_x, local_y in TOWNSFOLK:
+            point = find_walkable_near(
+                world, WorldPoint(centre.x + local_x, centre.y + local_y)
+            )
+            spawned.append(_make_npc(world, ARCHETYPES_BY_KEY[key], point, now))
 
     return spawned
 
@@ -119,12 +162,48 @@ def _make_npc(
         name=archetype.name,
         class_id=archetype.npc_id,
         archetype=archetype,
+        appearance=_appearance_for(archetype, point),
         speed=archetype.patrol_speed,
         radius=0.35,
         patrol_anchor=point,
         ai_state_entered_at=now,
     )
     return world.add_entity(entity)
+
+
+def _appearance_for(archetype: NpcArchetype, point: WorldPoint) -> Appearance:
+    """Pick the five appearance bytes for an NPC.
+
+    NPCs were left on the default all-zero appearance, so every guard in the world was
+    the same man and so was every villager: at a glance the hub looked like it had one
+    inhabitant standing in several places. The bytes are hashed from the spawn position
+    rather than the entity id, because ids are allocated in sequence and a warm restart
+    would otherwise shuffle everyone's face.
+
+    Outfit is pinned per archetype and only the rest varies. A guard whose outfit rolled
+    the same ramp as a villager's is not a guard any more — the uniform is the entire
+    silhouette cue at this sprite size — so what varies is build, hair and skin.
+    """
+    seed = combine(int(point.x * 4.0), int(point.y * 4.0), archetype.npc_id)
+    return Appearance(
+        body=int(unit_float(combine(seed, 1)) * 3.0),
+        hair=int(unit_float(combine(seed, 2)) * 4.0),
+        palette=int(unit_float(combine(seed, 3)) * 3.0),
+        outfit=OUTFIT_BY_ARCHETYPE.get(archetype.key, 0),
+        accent=int(unit_float(combine(seed, 4)) * 4.0),
+    )
+
+
+# Which outfit ramp each archetype wears. Indices into `atelier.character.OUTFIT_RAMPS`.
+OUTFIT_BY_ARCHETYPE: dict[str, int] = {
+    "guard": 0,
+    "merchant": 1,
+    "smith": 2,
+    "villager": 3,
+    "child": 3,
+    "bandit": 2,
+    "archer": 1,
+}
 
 
 def despawn_for_chunk(world: World, chunk_key: str) -> list[EntityId]:
@@ -158,6 +237,20 @@ def tick(world: World, now: float, delta_time: float, events) -> None:
 
 def _decide(world: World, entity: Entity, archetype: NpcArchetype, now: float) -> None:
     """Acquire a target if needed, then apply the transition table."""
+    if not archetype.hostile:
+        # Townsfolk never acquire, so they only ever alternate between IDLE and PATROL.
+        # Short-circuited before the spatial query rather than relying on a zero
+        # detection radius, because the query is the expensive half and there are more
+        # townsfolk in a hub than there are guards.
+        entity.ai_target = None
+        if (
+            entity.ai_state is AIState.IDLE
+            and now - entity.ai_state_entered_at >= archetype.idle_duration_s
+        ):
+            entity.enter_ai_state(AIState.PATROL, now)
+            entity.patrol_target = None
+        return
+
     target = world.entities.get(entity.ai_target) if entity.ai_target else None
 
     if target is None or not target.is_alive:
@@ -212,7 +305,19 @@ def _execute(
         return
 
     if state is AIState.PATROL:
-        if entity.patrol_target is None or entity.position.distance_to(entity.patrol_target) < 0.8:
+        arrived = (
+            entity.patrol_target is not None
+            and entity.position.distance_to(entity.patrol_target) < 0.8
+        )
+        if arrived and not archetype.hostile:
+            # Townsfolk stop when they get where they were going. A hostile patrol picks
+            # a new point immediately and paces forever, which is right for something
+            # guarding a stretch of road and wrong for a person: what makes a crowd read
+            # as a crowd is that most of it is standing still at any moment.
+            entity.enter_ai_state(AIState.IDLE, now)
+            entity.patrol_target = None
+            return
+        if entity.patrol_target is None or arrived:
             entity.patrol_target = _pick_patrol_point(world, entity, now)
             if entity.patrol_target is None:
                 entity.enter_ai_state(AIState.IDLE, now)
@@ -281,10 +386,11 @@ def _pick_patrol_point(world: World, entity: Entity, now: float) -> WorldPoint |
     """A random walkable point near the spawn anchor."""
     anchor = entity.patrol_anchor or entity.position
     seed = combine(entity.entity_id, int(now * 4.0), 0x9A71)
+    reach = entity.archetype.patrol_radius_tiles if entity.archetype else PATROL_RADIUS_TILES
 
     for attempt in range(6):
         angle = unit_float(combine(seed, attempt, 1)) * math.tau
-        radius = 2.0 + unit_float(combine(seed, attempt, 2)) * PATROL_RADIUS_TILES
+        radius = 1.0 + unit_float(combine(seed, attempt, 2)) * reach
         candidate = WorldPoint(
             anchor.x + math.cos(angle) * radius, anchor.y + math.sin(angle) * radius
         )

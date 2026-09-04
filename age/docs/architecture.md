@@ -51,7 +51,8 @@ Pure rules, no I/O, no async.
 | `topology.py` | The accordion state machine: chunk lifecycle, tier, `topology_version` |
 | `classes.py` | 4 base classes composing into 14, and their ability catalogue |
 | `npc.py` | Archetypes and the AI state machine as a pure `next_state` function |
-| `entities.py` | Entity records and the `DirtyField` mask that drives delta snapshots |
+| `items.py` | The item catalogue, the equipment slots, drop tables, and what a loadout is worth |
+| `entities.py` | Entity records, the bounded pack and worn slots, and the `DirtyField` mask that drives delta snapshots |
 | `ports.py` | The Protocols the application depends on |
 
 The topology FSM is worth calling out. A chunk moves

@@ -36,7 +36,7 @@ from ..domain.coordinates import (
 from ..domain.entities import Entity, EntityId, EntityIdAllocator, PlayerSession
 from ..domain.ports import ChunkGenerator, Clock
 from ..domain.tiles import Biome, Tile, blocks_sight, is_walkable
-from ..domain.topology import ChunkState, TopologyState
+from ..domain.topology import ChunkState, TopologyState, tier_min_for_lane
 
 
 @dataclass(slots=True)
@@ -256,6 +256,17 @@ class World:
         view.overlay.update(overlay)
         view.dirty = False
 
+    def overlay_by_key(self, chunk_key: str) -> dict[int, int]:
+        """The edits standing on one loaded chunk, or nothing.
+
+        Keyed by string because the callers hold keys: area-of-interest sets are
+        keys, and asking by key avoids parsing one back into an address only to
+        turn it into a key again. An unloaded or untouched chunk answers the same
+        empty dictionary, since neither has edits to report.
+        """
+        view = self._chunks.get(chunk_key)
+        return {} if view is None or not view.overlay else view.snapshot_overlay()
+
     def unload_chunk(self, address: ChunkAddress) -> ChunkView | None:
         """Drop a chunk from memory. The caller must have flushed it first."""
         return self._chunks.pop(address.key, None)
@@ -298,7 +309,7 @@ class World:
 
         lane = location.lane_offset or 0
         segment = location.segment_index or 0
-        tier_min = 0 if lane == 0 else 1
+        tier_min = tier_min_for_lane(lane)
         if tier_min > self.topology.current_tier:
             return None
         if segment < 0 or segment >= self.topology.segments:

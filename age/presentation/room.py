@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 
 from ..application.chat import ChatDecision
 from ..application.interest import ClientUpdate
+from ..application.movement import speed_for
 from ..application.simulation import Simulation, TickReport
 from ..domain.constants import (
     CHANNEL_SYSTEM,
@@ -31,11 +32,60 @@ from ..domain.constants import (
     SNAPSHOT_INTERVAL_SECONDS,
     TICK_SECONDS,
 )
-from ..domain.entities import EntityId
+from ..domain.entities import Entity, EntityId
+from ..domain.items import INVENTORY_SLOTS, ITEMS
 from ..infrastructure import wire
 from .connection import Connection
 
 logger = logging.getLogger(__name__)
+
+
+def inventory_frame(entity: Entity) -> bytes:
+    """What this character is carrying, wearing, and what it adds up to.
+
+    A free function for the same reason :func:`progress_frame` is: the handshake
+    sends it once so a returning player sees their pack before they move, and the
+    tick loop sends it again whenever a kill, a harvest, or an equip makes it stale.
+
+    Items travel as ids. The names, slots, rarities and stat lines are static and
+    already served by ``/api/world``, so putting them in every snapshot would be
+    sending the catalogue thirty times a session to describe the same twenty items.
+    """
+    return wire.encode_inventory(
+        capacity=INVENTORY_SLOTS,
+        stacks=[
+            (ITEMS[stack.key].item_id, stack.count)
+            for stack in entity.inventory
+            if stack.key in ITEMS
+        ],
+        equipped=[
+            (slot, ITEMS[key].item_id) for slot, key in sorted(entity.equipment.items())
+            if key in ITEMS
+        ],
+        max_health=entity.max_health,
+        max_resource=entity.max_resource,
+        bonus_damage=entity.bonus_damage,
+        # Walking rather than running: the sheet states a baseline, and the number a
+        # player compares two pairs of boots with has to be the same number both times.
+        move_speed=speed_for(entity, running=False),
+    )
+
+
+def progress_frame(entity: Entity) -> bytes:
+    """The character's level, experience, and current kit.
+
+    A free function because two callers need it and neither owns it: the handshake
+    sends it once on join, and the tick loop sends it again whenever a level or a
+    class change makes it stale.
+    """
+    return wire.encode_progress(
+        level=entity.level,
+        experience=entity.experience,
+        next_level_at=entity.experience_to_next_level,
+        class_id=entity.class_id,
+        compose_available=entity.can_compose,
+        ability_ids=[ability.ability_id for ability in entity.character_class.abilities],
+    )
 
 # How far behind the world a tick may fall before the loop stops trying to catch up.
 # Replaying a long backlog at full speed would teleport everyone; skipping to the
@@ -303,6 +353,26 @@ class Room:
             if connection is not None:
                 connection.enqueue(wire.encode_error(code))
 
+        # Levels and class changes go only to their owner: nobody else's HUD has a
+        # place to put them, and the snapshot already carries what others can see.
+        for entity_id in report.progressed:
+            entity = self.simulation.world.entities.get(entity_id)
+            if entity is None:
+                continue
+            connection = self._by_entity.get(entity_id)
+            if connection is not None:
+                connection.enqueue(progress_frame(entity))
+
+        # Private state, and the one packet that is deliberately never broadcast: a
+        # bag is the owner's business and nobody else's client has a place to draw it.
+        for entity_id in dict.fromkeys(report.inventories):
+            entity = self.simulation.world.entities.get(entity_id)
+            if entity is None:
+                continue
+            connection = self._by_entity.get(entity_id)
+            if connection is not None:
+                connection.enqueue(inventory_frame(entity))
+
         for entity_id, reason in events.despawned:
             frame = wire.encode_despawn(entity_id, reason)
             for connection in self._connections.values():
@@ -350,9 +420,10 @@ class Room:
             connection.enqueue(frame)
             self.stats.bytes_sent += len(frame)
 
-        # Retired chunks are worth telling the client about so it can free the
-        # tiles; added chunks it generates itself from the seed, so they cost
-        # nothing to announce and are left implicit.
+        # Retired chunks are worth telling the client about so it can free the tiles.
+        # An empty change set is the signal to forget one, which is why this is not
+        # folded into the tile frames above: those carry the edits an arriving chunk
+        # already has, and an arriving chunk with no edits needs no frame at all.
         if update.chunk_keys_removed:
             for chunk_key in update.chunk_keys_removed:
                 connection.enqueue(wire.encode_tiles(chunk_key, {}))

@@ -87,10 +87,15 @@ def _fits(world: World, x: float, y: float, radius: float) -> bool:
 
 
 def speed_for(entity: Entity, running: bool) -> float:
-    """An entity's current speed, class multiplier included."""
+    """An entity's current speed: class multiplier first, then what it is wearing.
+
+    Boots add after the multiplier rather than into it, so a pair is worth the same
+    to a rogue as to a warrior. Floored well above zero because a loadout of nothing
+    but heavy plate must still be able to walk home.
+    """
     base = RUN_SPEED_TILES_S if running else WALK_SPEED_TILES_S
     if entity.is_player:
-        return base * entity.character_class.speed_multiplier
+        return max(1.0, base * entity.character_class.speed_multiplier + entity.bonus_speed)
     return entity.speed
 
 

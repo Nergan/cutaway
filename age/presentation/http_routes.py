@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from ..atelier import importers, png, recipes, sheet
 from ..atelier.canvas import Canvas
+from ..atelier.character import APPEARANCE_RANGES
 from ..atelier.character import Appearance as CharacterAppearance
 from ..atelier.character import Facing as CharacterFacing
 from ..atelier.character import Pose as CharacterPose
@@ -27,6 +28,7 @@ from ..atelier.character import bake as bake_character
 from ..atelier.normals import to_normal_map
 from ..domain.classes import CLASSES
 from ..domain.constants import PROTOCOL_VERSION
+from ..domain.items import EQUIPMENT_SLOTS, INVENTORY_SLOTS, ITEMS, SLOT_NAMES
 from ..domain.tiles import BIOME_PROFILES
 from .container import get_container
 
@@ -111,6 +113,10 @@ async def world_info() -> JSONResponse:
             "cdnBase": container.settings.cdn_base,
             "dayPhase": round(world.day_phase, 4),
             "weather": world.weather,
+            # For the character creation sliders. Sent with the world rather than with the
+            # atlas index, even though it is art metadata, because creation happens before
+            # the renderer exists and this is the payload that screen already has.
+            "appearanceRanges": dict(APPEARANCE_RANGES),
             "hubs": [
                 {
                     "hubId": hub.hub_id,
@@ -129,6 +135,11 @@ async def world_info() -> JSONResponse:
                     "role": int(entry.role),
                     "fantasy": entry.fantasy,
                     "isPure": entry.is_pure,
+                    # The client needs both to build its menus: only base classes may
+                    # be created, and the halves say which pairing a class came from.
+                    "isBase": entry.is_base,
+                    "origin": int(entry.origin),
+                    "chosen": None if entry.chosen is None else int(entry.chosen),
                     "abilities": [
                         {
                             "abilityId": ability.ability_id,
@@ -155,6 +166,31 @@ async def world_info() -> JSONResponse:
                     "danger": profile.danger,
                 }
                 for profile in BIOME_PROFILES.values()
+            ],
+            # The static half of the item system. The inventory packet carries ids
+            # and counts; everything a tooltip needs comes from here, once.
+            "inventorySlots": INVENTORY_SLOTS,
+            "equipmentSlots": [
+                {"slot": int(slot), "name": SLOT_NAMES[slot]} for slot in EQUIPMENT_SLOTS
+            ],
+            "items": [
+                {
+                    "itemId": item.item_id,
+                    "key": item.key,
+                    "name": item.name,
+                    "kind": int(item.kind),
+                    "slot": int(item.slot),
+                    "rarity": int(item.rarity),
+                    "stackLimit": item.stack_limit,
+                    "description": item.description,
+                    "bonusHealth": item.bonus_health,
+                    "bonusResource": item.bonus_resource,
+                    "bonusDamage": item.bonus_damage,
+                    "bonusSpeed": item.bonus_speed,
+                    "restoresHealth": item.restores_health,
+                    "restoresResource": item.restores_resource,
+                }
+                for item in ITEMS.values()
             ],
         }
     )

@@ -262,6 +262,122 @@ def test_two_hubs_do_not_share_terrain():
     assert first != second
 
 
+def _tile_frames(frames: list[bytes]) -> dict[str, dict[int, int]]:
+    """Decode the tile overlays out of an update, the way the client decodes them."""
+    out: dict[str, dict[int, int]] = {}
+    for payload in frames:
+        if payload[0] != wire.SERVER_TILES:
+            continue
+        reader = wire.Reader(payload, 1)
+        changes = out.setdefault(reader.text(96), {})
+        for _ in range(reader.u16()):
+            index = reader.u16()
+            changes[index] = reader.u8()
+    return out
+
+
+def test_a_chunk_arriving_in_view_carries_the_edits_already_on_it():
+    """The one thing the client cannot derive from the seed is what has been changed.
+
+    Terrain parity makes the client's generated tiles trustworthy, and everywhere
+    else in this suite that is enough. It stops being enough the moment somebody
+    builds: an edit lives in an overlay, and an overlay is precisely the part of a
+    chunk the world seed does not describe. Tile deltas are broadcast only to the
+    clients already holding the chunk, so an edit made while a chunk was out of view
+    reaches nobody who arrives later. Both sides then behave correctly on their own
+    terms and disagree about whether there is a wall in front of you.
+
+    Asserted on the encoded frames rather than on the update's fields, because the
+    bug was not that the server failed to notice the chunk — it listed it as added
+    all along — but that nothing it sent said what the chunk looked like.
+    """
+    from age.application.interest import build_update
+    from age.application.world import build_default_world
+    from age.domain.constants import ENTITY_PLAYER
+    from age.domain.coordinates import WorldPoint
+    from age.domain.entities import Entity, PlayerSession
+    from age.domain.tiles import Tile, is_walkable
+    from age.infrastructure.clock import ManualClock
+    from age.infrastructure.generator import WorldGenerator
+
+    seed = 0xA6E5EED
+    clock = ManualClock(start=1000.0)
+    world = build_default_world(
+        world_seed=seed, clock=clock, generator=WorldGenerator(seed), segments=2
+    )
+    world.topology.bootstrap(clock.now())
+
+    spawn = world.spawn_point_for(world.hubs[0])
+    built = WorldPoint(spawn.x + 2.5, spawn.y + 2.5)
+    address = world.chunk_address_at(built)
+    placed = world.set_tile_at(built, int(Tile.WALL_STONE))
+    assert placed is not None, "The probe has to land on ground the server owns."
+    chunk_key, tile_index = placed
+
+    # The premise: this is a wall the client would never generate for itself, which is
+    # what makes it invisible rather than merely undrawn.
+    assert is_walkable(world.chunk(address).base[tile_index])
+    assert not world.is_walkable_at(built)
+
+    arriving = world.add_entity(
+        Entity(
+            entity_id=world.allocate_entity_id(),
+            kind=ENTITY_PLAYER,
+            position=spawn,
+            name="Latecomer",
+        )
+    )
+    session = PlayerSession(
+        session_id="s1", entity_id=arriving.entity_id, character_name=arriving.name
+    )
+
+    update = build_update(world, session, arriving, tick=1, server_time=clock.now())
+
+    assert chunk_key in update.chunk_keys_added
+    assert _tile_frames(update.frames).get(chunk_key, {}).get(tile_index) == int(Tile.WALL_STONE)
+
+
+def test_an_untouched_chunk_arriving_in_view_costs_nothing():
+    """The counterpart: paying for terrain the seed already describes.
+
+    Every player crossing a chunk boundary adds chunks, and almost none of them have
+    ever been edited. If an empty overlay produced a frame the corridor would cost a
+    packet per chunk per player for nothing, and an empty change set is also how a
+    retired chunk is announced, so sending one here would tell the client to forget
+    terrain it just started using.
+    """
+    from age.application.interest import build_update
+    from age.application.world import build_default_world
+    from age.domain.constants import ENTITY_PLAYER
+    from age.domain.entities import Entity, PlayerSession
+    from age.infrastructure.clock import ManualClock
+    from age.infrastructure.generator import WorldGenerator
+
+    seed = 0xA6E5EED
+    clock = ManualClock(start=1000.0)
+    world = build_default_world(
+        world_seed=seed, clock=clock, generator=WorldGenerator(seed), segments=2
+    )
+    world.topology.bootstrap(clock.now())
+
+    viewer = world.add_entity(
+        Entity(
+            entity_id=world.allocate_entity_id(),
+            kind=ENTITY_PLAYER,
+            position=world.spawn_point_for(world.hubs[0]),
+            name="Tester",
+        )
+    )
+    session = PlayerSession(
+        session_id="s1", entity_id=viewer.entity_id, character_name=viewer.name
+    )
+
+    update = build_update(world, session, viewer, tick=1, server_time=clock.now())
+
+    assert update.chunk_keys_added, "A joining client has to be given some terrain."
+    assert _tile_frames(update.frames) == {}
+
+
 def test_coarse_sampling_did_not_flatten_the_world(fixtures: dict):
     """Interpolation is allowed to smooth the fields, not to erase the biomes.
 
@@ -365,6 +481,12 @@ def test_every_client_fixture_decodes_back_into_python(fixtures: dict):
     assert isinstance(ping, wire.PingRequest)
     assert ping.client_time == packets["ping"]["clientTime"]
 
+    inventory = wire.decode_client_packet(base64.b64decode(packets["inventory"]["encoded"]))
+    assert isinstance(inventory, wire.InventoryCommand)
+    assert inventory.action == packets["inventory"]["action"]
+    assert inventory.slot == packets["inventory"]["slot"]
+    assert inventory.count == packets["inventory"]["count"]
+
 
 def test_negative_tile_coordinates_survive_the_build_round_trip(fixtures: dict):
     """Hub-local coordinates are signed, so an unsigned field here would wrap.
@@ -389,10 +511,30 @@ def test_server_fixtures_carry_the_type_byte_the_client_switches_on(fixtures: di
         "tiles": wire.SERVER_TILES,
         "pong": wire.SERVER_PONG,
         "error": wire.SERVER_ERROR,
+        "inventory": wire.SERVER_INVENTORY,
     }
     for name, message_type in expected.items():
         payload = base64.b64decode(fixtures["serverPackets"][name]["encoded"])
         assert payload[0] == message_type, f"The {name} fixture has the wrong type byte."
+
+
+def test_the_inventory_fixture_length_matches_the_counts_it_declares(fixtures: dict):
+    """Two variable-length runs back to back, so a width mistake shifts everything after.
+
+    The derived stats sit at the end, and a decoder that read a count as the wrong
+    width would still find four plausible-looking numbers there.
+    """
+    inventory = fixtures["serverPackets"]["inventory"]
+    expected = (
+        1  # type
+        + 1  # capacity
+        + 1
+        + 4 * len(inventory["stacks"])
+        + 1
+        + 3 * len(inventory["equipped"])
+        + 8  # max health, max resource, damage bonus, move speed
+    )
+    assert len(base64.b64decode(inventory["encoded"])) == expected
 
 
 def test_the_snapshot_fixture_exercises_every_dirty_field(fixtures: dict):
@@ -466,6 +608,7 @@ def test_a_moving_player_costs_thirteen_bytes():
         facing=0.0,
         health_percent=255,
         level=1,
+        state=1,
         appearance=(0, 0, 0, 0, 0),
     )
     assert len(full) > 2 * cost(DirtyField.POSITION)

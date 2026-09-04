@@ -14,6 +14,7 @@ instead of fifteen minutes, and nothing in this file sleeps or flakes.
 from __future__ import annotations
 
 import asyncio
+from math import inf, nextafter
 
 import pytest
 
@@ -21,7 +22,7 @@ from age.application import ai, chat, combat, movement, session, terrain, weathe
 from age.application.accordion import WorldManager
 from age.application.events import EventQueue
 from age.application.world import World, build_default_world
-from age.domain import classes, coordinates, hashing
+from age.domain import classes, coordinates, hashing, items
 from age.domain.constants import (
     BASE_MAX_HEALTH,
     CHANNEL_GLOBAL,
@@ -30,12 +31,15 @@ from age.domain.constants import (
     CHAT_MAX_LENGTH,
     CHAT_RATE_LIMIT,
     CHUNK_TILES,
+    COMPOSE_LEVEL,
     CONTRACTION_PLAYER_THRESHOLD,
     CORRIDOR_SEGMENTS,
     ENTITY_NPC,
     ENTITY_PLAYER,
     EXPANSION_PLAYER_THRESHOLD,
+    HEALTH_PER_LEVEL,
     HUB_RADIUS_TILES,
+    MAX_LEVEL,
     MAX_NAME_LENGTH,
     MAX_TIER,
     REGROWTH_STAGE_SECONDS,
@@ -46,6 +50,7 @@ from age.domain.constants import (
 )
 from age.domain.coordinates import ChunkAddress, LocationRef, SpaceType, WorldPoint
 from age.domain.entities import Appearance, DirtyField, Entity
+from age.domain.items import INVENTORY_SLOTS
 from age.domain.npc import (
     AGGRO_RELEASE_FACTOR,
     ARCHETYPES,
@@ -62,6 +67,7 @@ from age.domain.topology import (
     TopologyState,
     chunks_for_tier,
     lanes_for_tier,
+    tier_min_for_lane,
 )
 from age.infrastructure.clock import ManualClock
 from age.infrastructure.generator import WorldGenerator
@@ -971,12 +977,700 @@ def test_a_hybrid_holds_both_halves_plus_its_signature():
     keys = {ability.key for ability in paladin.abilities}
 
     assert not paladin.is_pure
-    assert keys == {"cleave", "mend", "consecrate"}
+    # The origin half brings its whole pair, the added half its opener, and the
+    # pairing its signature — on top of the basic attack every class has.
+    assert keys == {"strike", "cleave", "shield_bash", "mend", "consecrate"}
+
+
+def test_only_the_four_base_classes_are_offered_at_creation():
+    """GDD 6.3: hybrids are earned at level-up, not chosen from a menu."""
+    assert [entry.key for entry in classes.BASE_CLASSES] == [
+        "warrior",
+        "healer",
+        "mage",
+        "rogue",
+    ]
+    assert all(entry.chosen is None for entry in classes.BASE_CLASSES)
+
+
+@pytest.mark.parametrize("entry", classes.CLASSES, ids=lambda entry: entry.key)
+def test_every_class_has_between_three_and_five_abilities(entry):
+    """GDD 7.2 budgets 3-5 per class, and counts the basic attack among them."""
+    abilities = entry.abilities
+
+    assert 3 <= len(abilities) <= 5
+    assert len(set(abilities)) == len(abilities), "no ability twice in one kit"
+    assert abilities[0].resource_cost == 0, "the basic attack is free"
+    assert abilities[0] is classes.BASIC_ATTACK[entry.origin]
+
+
+def test_a_base_class_composes_into_the_pairing_class():
+    warrior = classes.CLASSES_BY_KEY["warrior"]
+
+    assert classes.compose(warrior.class_id, classes.BaseClass.HEALER).key == "paladin"
+    assert classes.compose(warrior.class_id, classes.BaseClass.WARRIOR).key == "warmaster"
+
+
+def test_a_pairing_is_the_same_class_from_either_side():
+    """A warrior who studies healing and a healer who takes up the sword agree."""
+    from_warrior = classes.compose(classes.CLASSES_BY_KEY["warrior"].class_id, classes.BaseClass.HEALER)
+    from_healer = classes.compose(classes.CLASSES_BY_KEY["healer"].class_id, classes.BaseClass.WARRIOR)
+
+    assert from_warrior is from_healer
+
+
+def test_an_already_composed_class_cannot_compose_again():
+    """The MVP has two halves, so there is exactly one composition per character."""
+    paladin = classes.CLASSES_BY_KEY["paladin"]
+
+    assert classes.compose(paladin.class_id, classes.BaseClass.MAGE) is None
+
+
+def test_a_hybrid_class_id_requested_at_creation_collapses_to_its_origin():
+    """A client that offers the wrong menu must not be able to skip the level-up."""
+    shaman = classes.CLASSES_BY_KEY["shaman"]
+
+    resolved = classes.base_class_or_default(shaman.class_id)
+
+    assert resolved.key == "healer", "Shaman is Healer + Mage, so it starts as a Healer."
+    assert resolved.is_base
 
 
 def test_an_unknown_class_id_falls_back_rather_than_raising():
     """It arrives from an untrusted client or a stale row; neither is fatal."""
     assert classes.get_class(9999).class_id == 0
+
+
+# --- levelling and the composition choice ------------------------------------
+
+
+def _character(**overrides) -> Entity:
+    """A bare player entity. No world needed: progression touches nothing but the entity."""
+    base = {
+        "entity_id": 1,
+        "kind": ENTITY_PLAYER,
+        "position": WorldPoint(0.0, 0.0),
+        "name": "Rowan",
+        "class_id": 0,
+    }
+    base.update(overrides)
+    return Entity(**base)
+
+
+def test_a_fresh_character_is_not_yet_owed_a_class_choice():
+    assert not _character(level=1).can_compose
+
+
+def test_the_first_level_up_owes_the_character_a_class_choice():
+    assert _character(level=COMPOSE_LEVEL).can_compose
+
+
+def test_a_composed_character_is_never_owed_the_choice_again():
+    """Derived from the class rather than stored, so it cannot be spent twice."""
+    paladin = classes.CLASSES_BY_KEY["paladin"]
+
+    assert not _character(level=COMPOSE_LEVEL + 5, class_id=paladin.class_id).can_compose
+
+
+def test_an_npc_is_never_owed_a_class_choice():
+    assert not _character(kind=ENTITY_NPC, level=9).can_compose
+
+
+def _simulation(world: World):
+    from age.application.simulation import Simulation
+
+    events = EventQueue()
+    return Simulation(
+        world=world,
+        manager=WorldManager(world, events, cooldown_seconds=TIER_COOLDOWN_SECONDS),
+        sessions=session.SessionService(world),
+        chat=chat.ChatService(),
+        events=events,
+    )
+
+
+def test_experience_accumulates_without_a_level_up_below_the_threshold(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character()
+    report = TickReport(tick=0)
+
+    sim.grant_experience(entity, 10, report)
+
+    assert entity.level == 1
+    assert entity.experience == 10
+    assert entity.entity_id in report.progressed
+
+
+def test_filling_the_bar_levels_up_and_carries_the_remainder(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character()
+    threshold = classes.experience_for_level(1)
+
+    sim.grant_experience(entity, threshold + 7, TickReport(tick=0))
+
+    assert entity.level == 2
+    assert entity.experience == 7, "the overflow counts towards the next level"
+
+
+def test_one_grant_can_cross_several_levels(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character()
+    enough = classes.experience_for_level(1) + classes.experience_for_level(2)
+
+    sim.grant_experience(entity, enough, TickReport(tick=0))
+
+    assert entity.level == 3
+
+
+def test_levelling_never_passes_the_cap(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character()
+
+    sim.grant_experience(entity, 10_000_000, TickReport(tick=0))
+
+    assert entity.level == MAX_LEVEL
+
+
+def test_killing_an_npc_pays_its_experience_and_drops_its_loot(world: World):
+    """The whole reward path, end to end, through the real action handler.
+
+    The combat tests above stop at :func:`combat.resolve_action` and the progression tests
+    below start at :meth:`grant_experience`, and the join between the two was where a real
+    bug lived: the kill branch passed the wrong number of arguments on to
+    ``grant_experience``, so the first time anything actually died the tick raised. Nothing
+    covered that one line, because no test went in through the command queue.
+
+    In the corridor rather than the hub, since a hub refuses anything harmful.
+    """
+    corridor = world.chunk_centre(ChunkAddress.edge(world.edge.edge_id, 0, 0, 0))
+    _open_ground(world, corridor, span=8)
+
+    sim = _simulation(world)
+
+    async def scenario():
+        return await sim.sessions.join(
+            session_id="s-kill", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+
+    attacker = _run(scenario).entity
+    attacker.move_to(corridor.x, corridor.y)
+    world.reindex(attacker)
+
+    victim = _npc(world, "slime", WorldPoint(corridor.x + 1.0, corridor.y))
+    victim.health = 1
+
+    sim.enqueue(
+        "s-kill",
+        wire.ActionCommand(
+            sequence=1,
+            topology_version=world.topology.topology_version,
+            ability_id=classes.get_class(attacker.class_id).abilities[0].ability_id,
+            target_entity=victim.entity_id,
+            target_x=victim.position.x,
+            target_y=victim.position.y,
+        ),
+    )
+    report = sim.tick()
+
+    assert not victim.is_alive, "a one-health target hit by a basic attack has to die"
+    assert attacker.experience > 0, "a kill has to pay experience"
+    assert attacker.inventory, "a kill has to drop the archetype's loot"
+    assert attacker.entity_id in report.progressed
+    assert attacker.entity_id in report.inventories, (
+        "the owner has to be told their pack changed, or the loot is invisible"
+    )
+
+
+def test_an_ability_reaches_the_client_as_a_combat_event_and_a_spent_cooldown(world: World):
+    """The complaint was that skills do nothing, so this covers every link at once.
+
+    Command queue in, damage out, and — the part that was actually missing — a combat
+    event on the tick report for the transport to send. The server was resolving casts
+    correctly all along and telling nobody, which from a player's seat is the same
+    thing as not resolving them.
+    """
+    corridor = world.chunk_centre(ChunkAddress.edge(world.edge.edge_id, 0, 0, 0))
+    _open_ground(world, corridor, span=8)
+
+    sim = _simulation(world)
+
+    async def scenario():
+        return await sim.sessions.join(
+            session_id="s-cast", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+
+    caster = _run(scenario).entity
+    caster.move_to(corridor.x, corridor.y)
+    world.reindex(caster)
+
+    victim = _npc(world, "golem", WorldPoint(corridor.x + 1.0, corridor.y))
+    ability = classes.get_class(caster.class_id).abilities[0]
+    before = caster.resource
+
+    sim.enqueue(
+        "s-cast",
+        wire.ActionCommand(
+            sequence=1,
+            topology_version=world.topology.topology_version,
+            ability_id=ability.ability_id,
+            target_entity=victim.entity_id,
+            target_x=victim.position.x,
+            target_y=victim.position.y,
+        ),
+    )
+    report = sim.tick()
+
+    assert report.actions_resolved == 1
+    assert not report.rejections
+    assert victim.health < victim.max_health, "the cast has to actually land"
+
+    hits = [event for event in report.events.combat if event.damage > 0]
+    assert hits, "a hit that is never reported is a skill that does nothing"
+    assert hits[0].attacker_id == caster.entity_id
+    assert hits[0].target_id == victim.entity_id
+    assert hits[0].ability_id == ability.ability_id
+
+    assert caster.cooldowns[ability.ability_id] > world.now, (
+        "the button has nothing to sweep without a cooldown to sweep over"
+    )
+    if ability.resource_cost > 0:
+        assert caster.resource == before - ability.resource_cost
+
+
+def test_a_missed_ability_is_still_reported(world: World):
+    """Otherwise a bad aim is indistinguishable from a broken skill."""
+    corridor = world.chunk_centre(ChunkAddress.edge(world.edge.edge_id, 0, 0, 0))
+    _open_ground(world, corridor, span=8)
+
+    sim = _simulation(world)
+
+    async def scenario():
+        return await sim.sessions.join(
+            session_id="s-miss", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+
+    caster = _run(scenario).entity
+    caster.move_to(corridor.x, corridor.y)
+    world.reindex(caster)
+    ability = classes.get_class(caster.class_id).abilities[0]
+
+    sim.enqueue(
+        "s-miss",
+        wire.ActionCommand(
+            sequence=1,
+            topology_version=world.topology.topology_version,
+            ability_id=ability.ability_id,
+            target_entity=0,
+            target_x=corridor.x + 1.0,
+            target_y=corridor.y,
+        ),
+    )
+    report = sim.tick()
+
+    assert report.events.combat, "an empty swing still has to be answered"
+    assert report.events.combat[0].damage == 0
+
+
+def test_a_level_up_restores_the_character_to_full(world: World):
+    """A level-up that left someone injured would read as a punishment."""
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character()
+    entity.health = 3
+    entity.resource = 1
+
+    sim.grant_experience(entity, classes.experience_for_level(1), TickReport(tick=0))
+
+    assert entity.health == entity.max_health
+    assert entity.resource == entity.max_resource
+
+
+def test_composing_swaps_the_class_and_its_pools(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character(level=COMPOSE_LEVEL)
+    report = TickReport(tick=0)
+
+    sim._apply_compose(entity, wire.ComposeRequest(half=int(classes.BaseClass.HEALER)), report)
+
+    paladin = classes.CLASSES_BY_KEY["paladin"]
+    assert entity.class_id == paladin.class_id
+    assert entity.max_health == (
+        int(BASE_MAX_HEALTH * paladin.health_multiplier)
+        + HEALTH_PER_LEVEL * (COMPOSE_LEVEL - 1)
+    ), "composing must take the new multiplier without spending the levels already earned"
+    assert entity.entity_id in report.progressed
+
+
+def test_composing_without_the_level_is_ignored(world: World):
+    """A stale client that has not seen its own level yet, or a forged packet."""
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character(level=1)
+
+    sim._apply_compose(entity, wire.ComposeRequest(half=int(classes.BaseClass.MAGE)), TickReport(tick=0))
+
+    assert entity.class_id == 0
+
+
+def test_composing_twice_is_ignored(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character(level=COMPOSE_LEVEL)
+
+    sim._apply_compose(entity, wire.ComposeRequest(half=int(classes.BaseClass.HEALER)), TickReport(tick=0))
+    sim._apply_compose(entity, wire.ComposeRequest(half=int(classes.BaseClass.MAGE)), TickReport(tick=0))
+
+    assert entity.class_id == classes.CLASSES_BY_KEY["paladin"].class_id
+
+
+def test_a_half_outside_the_enum_is_ignored(world: World):
+    from age.application.simulation import TickReport
+
+    sim = _simulation(world)
+    entity = _character(level=COMPOSE_LEVEL)
+
+    sim._apply_compose(entity, wire.ComposeRequest(half=200), TickReport(tick=0))
+
+    assert entity.class_id == 0
+
+
+# --- items, the pack, and what wearing something is worth --------------------
+
+
+def test_every_item_in_the_catalogue_has_its_own_id():
+    """Ids are protocol constants, so a collision is a client showing the wrong thing."""
+    ids = [item.item_id for item in items.ITEMS.values()]
+
+    assert len(ids) == len(set(ids))
+    assert 0 not in ids, "id zero is reserved for an empty equipment slot on the wire"
+
+
+def test_an_item_is_equippable_exactly_when_it_names_a_slot():
+    for item in items.ITEMS.values():
+        wearable = item.kind is items.ItemKind.EQUIPMENT
+        assert wearable == (item.slot is not items.EquipmentSlot.NONE), (
+            f"{item.key} disagrees with itself about whether it can be worn"
+        )
+
+
+def test_every_material_the_world_yields_or_spends_is_in_the_catalogue():
+    """The catalogue is what the client draws from; a gap there is an invisible stack."""
+    from_harvest = {material for _, material, _ in HARVEST_RESULTS.values()}
+    from_recipes = set(BUILD_RECIPES)
+    from_loot = {key for archetype in ARCHETYPES for key, _ in archetype.loot}
+
+    assert (from_harvest | from_recipes | from_loot) <= set(items.ITEMS)
+
+
+def test_every_drop_table_belongs_to_an_archetype_that_exists():
+    """A typo here would be a table that never rolls, which nothing else would notice."""
+    assert set(items.DROP_TABLES) <= set(ARCHETYPES_BY_KEY)
+
+
+def test_every_drop_names_an_item_that_exists():
+    for table in items.DROP_TABLES.values():
+        for drop in table:
+            assert drop.item_key in items.ITEMS
+
+
+def test_the_same_corpse_always_rolls_the_same_loot():
+    """Seeded from the victim, so a replayed tick pays out identically."""
+    once = items.roll_drops("bandit", 4242)
+    twice = items.roll_drops("bandit", 4242)
+
+    assert once == twice
+
+
+def test_a_creature_with_no_drop_table_rolls_nothing():
+    assert items.roll_drops("townsfolk", 1) == ()
+
+
+def test_a_pack_tops_up_an_existing_stack_before_opening_a_new_slot():
+    entity = _character()
+
+    entity.give("wood", 30)
+    entity.give("wood", 12)
+
+    assert entity.count_of("wood") == 42
+    assert len(entity.inventory) == 1
+
+
+def test_a_pack_splits_across_slots_once_a_stack_is_full():
+    entity = _character()
+
+    entity.give("wood", 150)
+
+    assert entity.count_of("wood") == 150
+    assert [stack.count for stack in entity.inventory] == [99, 51]
+
+
+def test_a_full_pack_reports_how_much_it_could_not_take():
+    """The caller has to know, or the rest of a drop vanishes without a word."""
+    entity = _character()
+    for index in range(INVENTORY_SLOTS):
+        entity.give("rusted_blade", 1)
+        assert len(entity.inventory) == index + 1
+
+    stored = entity.give("bandit_helm", 1)
+
+    assert stored == 0
+    assert entity.count_of("bandit_helm") == 0
+
+
+def test_taking_more_than_is_carried_takes_nothing_at_all():
+    entity = _character()
+    entity.give("wood", 3)
+
+    assert not entity.take("wood", 5)
+    assert entity.count_of("wood") == 3
+
+
+def test_wearing_a_helm_raises_the_health_pool_and_taking_it_off_lowers_it():
+    entity = _character()
+    entity.refresh_stats()
+    bare = entity.max_health
+    entity.give("bandit_helm", 1)
+
+    assert entity.equip(0)
+    assert entity.max_health == bare + items.BANDIT_HELM.bonus_health
+
+    assert entity.unequip(int(items.EquipmentSlot.HEAD))
+    assert entity.max_health == bare
+    assert entity.count_of("bandit_helm") == 1
+
+
+def test_equipment_bonuses_stack_across_slots():
+    entity = _character()
+    entity.refresh_stats()
+    bare = entity.max_health
+    entity.give("bandit_helm", 1)
+    entity.give("padded_jerkin", 1)
+
+    entity.equip(0)
+    entity.equip(0)
+
+    assert entity.max_health == (
+        bare + items.BANDIT_HELM.bonus_health + items.PADDED_JERKIN.bonus_health
+    )
+
+
+def test_wearing_something_into_an_occupied_slot_returns_the_old_piece_to_the_pack():
+    entity = _character()
+    entity.give("leather_hood", 1)
+    entity.give("bandit_helm", 1)
+
+    entity.equip(0)
+    entity.equip(0)
+
+    assert entity.equipment[int(items.EquipmentSlot.HEAD)] == "bandit_helm"
+    assert entity.count_of("leather_hood") == 1
+
+
+def test_a_swap_still_works_with_no_free_slot_left():
+    """The incoming piece vacates its slot before the outgoing one needs one."""
+    entity = _character()
+    entity.give("leather_hood", 1)
+    entity.equip(0)
+    for _ in range(INVENTORY_SLOTS - 1):
+        entity.give("wood", 99)
+    entity.give("bandit_helm", 1)
+    assert len(entity.inventory) == INVENTORY_SLOTS
+
+    assert entity.equip(entity.inventory.index(next(
+        stack for stack in entity.inventory if stack.key == "bandit_helm"
+    )))
+    assert entity.count_of("leather_hood") == 1
+
+
+def test_losing_a_health_bonus_cannot_leave_a_character_over_full():
+    entity = _character()
+    entity.give("padded_jerkin", 1)
+    entity.equip(0)
+    entity.health = entity.max_health
+
+    entity.unequip(int(items.EquipmentSlot.CHEST))
+
+    assert entity.health == entity.max_health
+
+
+def test_a_material_cannot_be_worn():
+    entity = _character()
+    entity.give("wood", 1)
+
+    assert not entity.equip(0)
+    assert entity.equipment == {}
+
+
+def test_equipping_an_empty_slot_is_ignored():
+    """A stale client indexing past the end of a pack it has already spent."""
+    entity = _character()
+
+    assert not entity.equip(0)
+    assert not entity.equip(-1)
+    assert not entity.unequip(int(items.EquipmentSlot.HEAD))
+
+
+def test_eating_a_ration_heals_and_spends_one_from_the_stack():
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("field_ration", 3)
+    entity.health = 1
+
+    assert entity.consume(0)
+    assert entity.health == 1 + items.FIELD_RATION.restores_health
+    assert entity.count_of("field_ration") == 2
+
+
+def test_eating_at_full_health_is_refused_rather_than_wasted():
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("field_ration", 1)
+    entity.health = entity.max_health
+
+    assert not entity.consume(0)
+    assert entity.count_of("field_ration") == 1
+
+
+def test_a_weapon_bonus_reaches_the_blow(world: World):
+    """The point of the whole feature: a blade has to show up in the damage number."""
+    corridor = world.chunk_centre(ChunkAddress.edge(world.edge.edge_id, 0, 0, 0))
+    _open_ground(world, corridor, span=6)
+
+    attacker = _player(world, at=corridor)
+    attacker.refresh_stats()
+    victim = _npc(world, "slime", WorldPoint(corridor.x + 1.0, corridor.y))
+    victim.health = victim.max_health = 500
+    ability = classes.get_class(attacker.class_id).abilities[0]
+
+    def strike() -> int:
+        before = victim.health
+        combat.resolve_action(
+            world,
+            attacker,
+            ability.ability_id,
+            victim.position,
+            victim.entity_id,
+            now=world.clock.now(),
+        )
+        return before - victim.health
+
+    bare = strike()
+    attacker.cooldowns.clear()
+    attacker.last_ability_at = 0.0
+    attacker.resource = attacker.max_resource
+    attacker.give("golem_maul", 1)
+    attacker.equip(0)
+    armed = strike()
+
+    assert armed == bare + items.GOLEM_MAUL.bonus_damage
+
+
+def test_boots_reach_the_movement_integrator(world: World):
+    entity = _player(world)
+    entity.refresh_stats()
+    bare = movement.speed_for(entity, running=False)
+
+    entity.give("travellers_boots", 1)
+    entity.equip(0)
+
+    assert movement.speed_for(entity, running=False) == pytest.approx(
+        bare + items.TRAVELLERS_BOOTS.bonus_speed
+    )
+
+
+def test_an_npc_pool_is_never_recomputed_from_a_class_it_does_not_have(world: World):
+    """Archetype health is tuning, and a class multiplier applied to it is nonsense."""
+    wolf = _npc(world, "wolf", world.spawn_point_for(world.hubs[0]))
+    tuned = wolf.max_health
+
+    wolf.refresh_stats()
+
+    assert wolf.max_health == tuned
+
+
+def _inventory_command(sim, entity: Entity, action: int, slot: int, count: int = 1):
+    """One inventory command through the handler, returning the tick report."""
+    from age.application.simulation import TickReport
+
+    report = TickReport(tick=0)
+    sim._apply_inventory(
+        entity, wire.InventoryCommand(action=action, slot=slot, count=count), report
+    )
+    return report
+
+
+def test_an_equip_command_wears_the_item_and_tells_its_owner(world: World):
+    sim = _simulation(world)
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("bandit_helm", 1)
+
+    report = _inventory_command(sim, entity, wire.INVENTORY_EQUIP, 0)
+
+    assert entity.equipment[int(items.EquipmentSlot.HEAD)] == "bandit_helm"
+    assert entity.entity_id in report.inventories
+
+
+def test_an_unequip_command_names_the_body_slot_not_the_pack_slot(world: World):
+    """The two index different things, and confusing them takes off the wrong item."""
+    sim = _simulation(world)
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("bandit_helm", 1)
+    entity.equip(0)
+
+    _inventory_command(sim, entity, wire.INVENTORY_UNEQUIP, int(items.EquipmentSlot.HEAD))
+
+    assert entity.equipment == {}
+    assert entity.count_of("bandit_helm") == 1
+
+
+def test_a_use_command_spends_a_consumable(world: World):
+    sim = _simulation(world)
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("field_ration", 1)
+    entity.health = 1
+
+    _inventory_command(sim, entity, wire.INVENTORY_USE, 0)
+
+    assert entity.health > 1
+    assert entity.count_of("field_ration") == 0
+
+
+def test_a_drop_command_throws_the_stack_away(world: World):
+    sim = _simulation(world)
+    entity = _character()
+    entity.refresh_stats()
+    entity.give("wood", 5)
+
+    _inventory_command(sim, entity, wire.INVENTORY_DROP, 0, count=5)
+
+    assert entity.count_of("wood") == 0
+
+
+def test_an_inventory_command_that_cannot_be_honoured_still_answers(world: World):
+    """The reply is the client's correction; silence would leave it showing a lie."""
+    sim = _simulation(world)
+    entity = _character()
+    entity.refresh_stats()
+
+    report = _inventory_command(sim, entity, wire.INVENTORY_EQUIP, 11)
+
+    assert entity.entity_id in report.inventories
 
 
 # --- the NPC state machine --------------------------------------------------
@@ -1230,7 +1924,7 @@ def test_harvesting_gives_the_material_and_clears_the_tile(world: World):
     assert outcome.ok
     assert outcome.gained
     material, quantity = next(iter(outcome.gained.items()))
-    assert player.inventory[material] == quantity
+    assert player.count_of(material) == quantity
     assert world.tile_at(target) != int(Tile.TREE)
 
 
@@ -1266,7 +1960,7 @@ def test_building_costs_material_and_writes_the_tile(world: World):
     outcome = terrain.place(world, player, target, "wood", world.now)
 
     assert outcome.ok
-    assert player.inventory.get("wood", 0) == 0
+    assert player.count_of("wood") == 0
     assert world.tile_at(target) == int(tile)
 
 
@@ -1432,6 +2126,95 @@ def test_every_build_recipe_places_a_real_tile():
         assert cost > 0
 
 
+# --- interest management and replication -------------------------------------
+#
+# This module went uncovered and paid for it. An entity is introduced by one spawn packet
+# and afterwards described only by the fields that changed, so a field the introduction
+# omits is not one the client waits for — it is one the client makes up, for as long as
+# that entity lives. The state byte was omitted, clients defaulted it to zero, and bit 0
+# of zero means dead: every entity in the world arrived reading as a corpse and was drawn
+# in the single-frame hurt pose, which is why nothing in the game animated. The bug was
+# invisible from either side alone. These tests look at the packet.
+
+
+def _spawn_packet_for(world: World, viewer: Entity, subject: Entity) -> bytes:
+    """The introduction the viewer would receive for ``subject``."""
+    from age.application.interest import build_update
+
+    update = build_update(
+        world, _session(world, viewer), viewer, tick=1, server_time=world.now
+    )
+    for payload in update.spawns:
+        # The id is the first field after the one-byte message type.
+        if int.from_bytes(payload[1:5], "little") == subject.entity_id:
+            return payload
+    raise AssertionError(f"no spawn packet for entity {subject.entity_id}")
+
+
+def _introduced_state(payload: bytes) -> int:
+    """The state byte out of a spawn packet.
+
+    Counted from the end rather than the start, because everything before it is
+    variable-length once the name is in there, and the tail is fixed: one state byte
+    followed by the five appearance bytes.
+    """
+    return payload[-6]
+
+
+def test_an_introduction_says_a_living_entity_is_alive(world: World):
+    """Bit 0 of the state byte, the field whose absence made every character a corpse."""
+    from age.application.interest import _state_byte
+
+    spawn = world.spawn_point_for(world.hubs[0])
+    viewer = _player(world, at=spawn)
+    other = _player(world, at=WorldPoint(spawn.x + 2.0, spawn.y))
+
+    assert other.is_alive
+    assert _introduced_state(_spawn_packet_for(world, viewer, other)) & 1
+    assert _introduced_state(_spawn_packet_for(world, viewer, other)) == _state_byte(other)
+
+
+def test_an_introduction_carries_the_state_of_a_dead_entity_too(world: World):
+    """The same byte has to be able to say the opposite, or it is a constant."""
+    spawn = world.spawn_point_for(world.hubs[0])
+    viewer = _player(world, at=spawn)
+    corpse = _npc(world, "wolf", WorldPoint(spawn.x + 2.0, spawn.y))
+    corpse.health = 0
+
+    assert not _introduced_state(_spawn_packet_for(world, viewer, corpse)) & 1
+
+
+def test_an_introduction_decodes_field_for_field_with_nothing_left_over(world: World):
+    """Read the packet back the way the client reads it, and check it comes out even.
+
+    This is the shape of test the missing state byte needed. Asserting a field is present
+    by listing the fields is a tautology — the list is the thing that was wrong. Reading
+    the packet in order and requiring it to end exactly where the layout says is not: drop
+    a field and every field after it decodes as the neighbouring one's bytes, and the
+    surplus at the end gives it away.
+    """
+    spawn = world.spawn_point_for(world.hubs[0])
+    viewer = _player(world, at=spawn)
+    other = _player(world, at=WorldPoint(spawn.x + 2.5, spawn.y - 1.5), class_id=1)
+    other.level = 7
+    other.appearance = Appearance(1, 2, 0, 4, 3)
+
+    reader = wire.Reader(_spawn_packet_for(world, viewer, other))
+    assert reader.u8() == wire.SERVER_SPAWN
+    assert reader.u32() == other.entity_id
+    assert reader.u8() == other.kind
+    assert reader.u8() == other.class_id
+    assert reader.text(MAX_NAME_LENGTH * 4) == other.name
+    assert wire.decode_position(reader.i32()) == pytest.approx(other.position.x, abs=0.01)
+    assert wire.decode_position(reader.i32()) == pytest.approx(other.position.y, abs=0.01)
+    reader.u16()  # facing, quantised to an angle scale of its own
+    assert reader.u8() == wire.encode_percent(other.health, other.max_health)
+    assert reader.u16() == other.level
+    assert reader.u8() & 1, "the introduction says a living entity is dead"
+    assert tuple(reader.u8() for _ in range(5)) == other.appearance.pack()
+    assert reader.remaining == 0, "the introduction has bytes the layout does not account for"
+
+
 # --- chat -------------------------------------------------------------------
 
 
@@ -1575,7 +2358,9 @@ def test_joining_places_a_new_character_on_a_plaza(world: World):
 
     assert not result.returning
     assert world.is_in_hub(result.entity.position)
-    assert result.entity.class_id == 4
+    # Class 4 is Paladin, a hybrid. A new character cannot be one, so the request
+    # collapses to the base class of its origin half.
+    assert result.entity.class_id == classes.CLASSES_BY_KEY["warrior"].class_id
     assert world.sessions["abc"].entity_id == result.entity.entity_id
 
 
@@ -1592,29 +2377,33 @@ def test_a_blank_name_still_produces_a_playable_character(world: World):
 
 def test_health_follows_the_class_multiplier(world: World):
     service = session.SessionService(world)
-    warmaster = classes.CLASSES_BY_KEY["warmaster"]
+    warrior = classes.CLASSES_BY_KEY["warrior"]
 
     async def scenario():
         return await service.join(
             session_id="w",
             character_name="Bruna",
-            class_id=warmaster.class_id,
+            class_id=warrior.class_id,
             appearance=(0,) * 5,
         )
 
     entity = _run(scenario).entity
 
-    assert entity.max_health == int(BASE_MAX_HEALTH * warmaster.health_multiplier)
+    assert entity.max_health == int(BASE_MAX_HEALTH * warrior.health_multiplier)
 
 
 def test_a_returning_character_keeps_its_class_and_inventory(world: World):
     service = session.SessionService(world, MemoryCharacterRepository())
 
+    shaman = classes.CLASSES_BY_KEY["shaman"]
+
     async def scenario():
         first = await service.join(
-            session_id="a", character_name="Rowan", class_id=7, appearance=(1, 2, 3, 4, 5)
+            session_id="a", character_name="Rowan", class_id=1, appearance=(1, 2, 3, 4, 5)
         )
         first.entity.give("wood", 12)
+        # Composed in play, the way a character actually reaches a hybrid.
+        first.entity.class_id = shaman.class_id
         await service.leave("a")
         return await service.join(
             session_id="b", character_name="Rowan", class_id=0, appearance=(9,) * 5
@@ -1623,9 +2412,63 @@ def test_a_returning_character_keeps_its_class_and_inventory(world: World):
     again = _run(scenario)
 
     assert again.returning
-    assert again.entity.class_id == 7, "The stored class wins over the client's request."
-    assert again.entity.inventory["wood"] == 12
+    assert again.entity.class_id == shaman.class_id, (
+        "A returning character keeps the hybrid they composed, and the client's "
+        "requested class is ignored."
+    )
+    assert again.entity.count_of("wood") == 12
     assert again.entity.appearance.pack() == (1, 2, 3, 4, 5)
+
+
+def test_a_returning_character_is_still_wearing_what_it_had_on(world: World):
+    """Equipment that did not survive a logout would make the whole slot pointless."""
+    service = session.SessionService(world, MemoryCharacterRepository())
+
+    async def scenario():
+        first = await service.join(
+            session_id="a", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+        first.entity.give("bandit_helm", 1)
+        first.entity.give("travellers_boots", 1)
+        first.entity.equip(0)
+        armoured = first.entity.max_health
+        await service.leave("a")
+        return armoured, await service.join(
+            session_id="b", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+
+    armoured, again = _run(scenario)
+
+    assert again.entity.equipment == {int(items.EquipmentSlot.HEAD): "bandit_helm"}
+    assert again.entity.count_of("travellers_boots") == 1
+    assert again.entity.max_health == armoured, (
+        "the bonus has to be folded back in, not just the item remembered"
+    )
+
+
+def test_a_stored_item_the_catalogue_has_forgotten_does_not_lock_anyone_out(world: World):
+    """Retiring an item must not be the same thing as banning whoever was holding it."""
+    characters = MemoryCharacterRepository()
+    service = session.SessionService(world, characters)
+
+    async def scenario():
+        first = await service.join(
+            session_id="a", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+        await service.persist(first.entity)
+        stored = await characters.load("Rowan")
+        assert stored is not None
+        stored["inventory"] = [{"key": "moon_cheese", "count": 3}]
+        stored["equipment"] = {str(int(items.EquipmentSlot.HEAD)): "moon_cheese"}
+        await characters.save("Rowan", stored)
+        await service.leave("a")
+        return await service.join(
+            session_id="b", character_name="Rowan", class_id=0, appearance=(0,) * 5
+        )
+
+    again = _run(scenario)
+
+    assert again.entity.equipment == {}, "an unknown key cannot be worn"
 
 
 def test_a_character_is_stored_as_a_location_not_as_coordinates(world: World):
@@ -1729,7 +2572,7 @@ def test_death_costs_time_and_position_but_not_progress(world: World, clock: Man
     assert player.health == player.max_health
     assert world.is_in_hub(player.position)
     assert player.experience == 250
-    assert player.inventory["wood"] == 5
+    assert player.count_of("wood") == 5
 
 
 def test_respawning_early_is_refused(world: World, clock: ManualClock):
@@ -1788,6 +2631,68 @@ def test_a_hub_rim_counts_as_a_hub_even_where_it_meets_the_corridor(world: World
 
     assert world.is_in_hub(rim)
     assert world.chunk_address_at(rim).space_type is SpaceType.HUB
+
+
+def test_a_seam_reads_ground_rather_than_nothing(world: World):
+    """A point projected onto a chunk seam must land inside a chunk, not past one.
+
+    ``world_to_edge`` normalises by subtracting the chunk origin back off, and on a
+    seam that subtraction cancels to exactly ``CHUNK_TILES`` — one row too far, or
+    off the end of the array on the last one. A read past the end is not terrain,
+    and terrain that is not there stops the player on ground that renders as open.
+    """
+    world.topology.begin_expansion(world.now)
+    world.topology.advance_transitions(world.now + 1000.0)
+    seams = [
+        coordinates.edge_to_world(world.edge, segment, lane, tile_x, tile_y)
+        for segment in range(world.topology.segments)
+        for lane in lanes_for_tier(1)
+        for tile_x, tile_y in ((0.0, 0.0), (0.0, 0.5), (0.5, 0.0), (31.5, 0.0), (0.0, 31.5))
+    ]
+
+    for point in seams:
+        resolved = world._tile_index(point)
+
+        assert resolved is not None, f"{point} fell out of the world"
+        assert 0 <= resolved[1] < CHUNK_TILES * CHUNK_TILES, f"{point} is past the end"
+
+
+def test_a_hub_chunk_boundary_splits_the_same_way_on_both_axes(world: World):
+    """One floor then an exact split, not a floor of the chunk and a floor of the rest.
+
+    A hub centre is not at an integer, so the point one float step below it is a hair
+    under zero in hub-local space: the negative chunk, last tile. Deriving the chunk
+    and the offset from the float independently rounds that back to tile 0 of the
+    chunk above, which reads terrain from the wrong side of the seam.
+    """
+    centre = world.hubs[0].centre
+    below = WorldPoint(nextafter(centre.x, -inf), nextafter(centre.y, -inf))
+
+    resolved = world._tile_index(below)
+
+    assert resolved is not None
+    assert (resolved[0].chunk_x, resolved[0].chunk_y) == (-1, -1)
+    assert resolved[1] == (CHUNK_TILES - 1) * CHUNK_TILES + (CHUNK_TILES - 1)
+
+
+def test_a_lane_is_addressed_by_the_tier_that_first_named_it(world: World):
+    """The lane's ``tier_min`` is part of its key, so it cannot be assumed to be 0.
+
+    A flanking lane addressed as tier 0 is a key the topology never wrote, which reads
+    as outside the world: solid and unrendered down the lane's whole length from the
+    moment the accordion widens.
+    """
+    world.topology.begin_expansion(world.now)
+    world.topology.advance_transitions(world.now + 1000.0)
+    active = {record.address.key for record in world.topology.active_chunks()}
+
+    for lane in lanes_for_tier(1):
+        point = coordinates.edge_to_world(world.edge, 0, lane, 16.5, 16.5)
+        resolved = world._tile_index(point)
+
+        assert resolved is not None, f"lane {lane} fell out of the world"
+        assert resolved[0].tier_min == tier_min_for_lane(lane)
+        assert resolved[0].key in active
 
 
 def test_a_moving_entity_changes_spatial_bucket_exactly_once(world: World):

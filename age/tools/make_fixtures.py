@@ -1,16 +1,17 @@
 """Freeze the cross-language fixtures the client tests itself against.
 
-The Python side is the reference implementation for three things the client has to
-reproduce exactly: the hash functions, the noise fields, and the wire format. This
-script records what the reference produces so the Vitest suites can compare, and so
-pytest can re-derive the same file and fail if it has gone stale.
+The Python side is the reference implementation for four things the client has to
+reproduce exactly: the hash functions, the noise fields, the wire format, and which
+ground a player may stand on. This script records what the reference produces so the
+Vitest suites can compare, and so pytest can re-derive the same file and fail if it
+has gone stale.
 
 Whole chunks are recorded as digests rather than tile arrays. A 32x32 chunk is a
 kilobyte and there are eight of them here; the digest catches any single-tile
 disagreement just as well and keeps the fixture file readable in a diff.
 
-Run from the repository root after touching hashing, noise, the generator or the
-protocol::
+Run from the repository root after touching hashing, noise, the generator, the
+coordinate projections or the protocol::
 
     python -m age.tools.make_fixtures
 """
@@ -20,12 +21,15 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 from pathlib import Path
 
+from ..application.world import World, build_default_world
 from ..domain import hashing
-from ..domain.coordinates import ChunkAddress
+from ..domain.coordinates import ChunkAddress, WorldPoint, edge_to_world, hub_to_world
 from ..domain.entities import DirtyField
 from ..infrastructure import noise, wire
+from ..infrastructure.clock import ManualClock
 from ..infrastructure.generator import WorldGenerator
 
 FIXTURE_PATH = (
@@ -206,6 +210,117 @@ def _chunk_vectors() -> list[dict[str, object]]:
     return out
 
 
+def _passability_world() -> World:
+    """A default world expanded to the top tier, for the passability probes.
+
+    The top tier because the flanking lanes are where the two sides are most likely
+    to disagree: they carry a ``tier_min`` of 1, and a client that assumes 0 names a
+    chunk the topology has never heard of.
+    """
+    world = build_default_world(
+        world_seed=WORLD_SEED, clock=ManualClock(start=0.0), generator=WorldGenerator(WORLD_SEED)
+    )
+    world.topology.bootstrap(0.0)
+    world.topology.begin_expansion(1.0)
+    world.topology.advance_transitions(1000.0)
+    return world
+
+
+def _passability_points(world: World) -> list[WorldPoint]:
+    """Where to ask both sides whether the ground is walkable.
+
+    Built by projecting stable-frame coordinates onto the plane rather than by
+    writing plane coordinates down, because that is how a real position arises and
+    because the projection is what makes the interesting points interesting: the
+    subtraction that maps a point back into its chunk cancels, and on a chunk or lane
+    boundary it can return an offset of exactly ``CHUNK_TILES`` — one past the end.
+
+    Chosen to cross boundaries rather than to cover area. Cost is per distinct chunk,
+    not per point, so the probes are packed into a couple of dozen chunks: negative
+    hub chunks either side of the plaza origin, the hub rim where the zone gives way
+    to wilderness, and all three corridor lanes at their segment and lane seams.
+    """
+    hub_a, hub_b = world.hubs[0], world.hubs[1]
+    edge = world.edge
+
+    # Straddling -64, -32 and 0 puts probes in the chunks on both sides of every
+    # boundary the hub split has to get right, including the negative ones the chunk
+    # fixtures above never reach.
+    across_boundaries = (
+        -64.5, -64.25, -64.0, -63.75, -63.5, -33.0, -32.5, -32.25, -32.0,
+        -31.75, -31.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 31.5, 32.0, 32.5,
+    )
+    # The rim: the zone ends at HUB_RADIUS_TILES inclusive, and one step past it the
+    # same tile belongs to the corridor instead.
+    rim = (126.5, 127.5, 127.75, 128.0, 128.25, 128.5, 129.5)
+
+    points = [hub_to_world(hub_a, offset, 0.25) for offset in across_boundaries]
+    points += [hub_to_world(hub_a, 0.25, offset) for offset in across_boundaries]
+    points += [hub_to_world(hub_a, offset, offset) for offset in across_boundaries[::4]]
+    points += [hub_to_world(hub_a, offset, 0.25) for offset in rim]
+    points += [hub_to_world(hub_a, 0.25, offset) for offset in rim]
+    points += [hub_to_world(hub_b, offset, 0.25) for offset in across_boundaries[::3]]
+
+    # One ulp below the plaza origin on each axis. A hub centre is not generally at an
+    # exact coordinate, so a point a single step below it lands a hair under zero in
+    # hub-local space — the case where a chunk and an offset derived independently from
+    # the float disagree with the pair derived from its floor.
+    centre = hub_a.centre
+    just_below_x = math.nextafter(centre.x, -math.inf)
+    just_below_y = math.nextafter(centre.y, -math.inf)
+    points += [
+        WorldPoint(just_below_x, centre.y),
+        WorldPoint(centre.x, just_below_y),
+        WorldPoint(just_below_x, just_below_y),
+    ]
+
+    # tile_y of 0 sits exactly on a lane boundary and tile_x of 0 exactly on a segment
+    # boundary, which is where the inverse projection cancels.
+    offsets = ((0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5), (16.5, 0.0), (16.5, 16.5), (31.5, 31.5), (31.5, 0.0))
+    for segment in (0, 1):
+        for lane in (-1, 0, 1):
+            points += [
+                edge_to_world(edge, segment, lane, tile_x, tile_y) for tile_x, tile_y in offsets
+            ]
+    return points
+
+
+def _passability_vectors() -> dict[str, object]:
+    """The server's verdict on the ground under each probe.
+
+    Three answers per point rather than one. The chunk key and the tile index are what
+    actually broke: a client that resolves a point to the wrong chunk, or one tile past
+    the end of the right one, reads no terrain at all and stops the player dead on
+    ground that renders as open. Recording all three means a failure says which of the
+    three steps disagreed instead of only that the ground did.
+    """
+    world = _passability_world()
+    probes: list[dict[str, object]] = []
+    for point in _passability_points(world):
+        index = world._tile_index(point)
+        probes.append(
+            {
+                "x": point.x,
+                "y": point.y,
+                # ``null`` where the point falls outside the active topology, which is
+                # a different answer from "blocked" and has to stay that way.
+                "chunk": index[0].key if index is not None else None,
+                "index": index[1] if index is not None else None,
+                "tile": int(world.tile_at(point)),
+                "walkable": world.is_walkable_at(point),
+            }
+        )
+
+    return {
+        "edgeId": world.edge.edge_id,
+        "segments": world.topology.segments,
+        "currentTier": world.topology.current_tier,
+        "activeChunks": sorted(record.address.key for record in world.topology.active_chunks()),
+        "retiringChunks": [],
+        "probes": probes,
+    }
+
+
 def _client_packets() -> dict[str, object]:
     """Client frames encoded by the client and decoded here, in the tests."""
     hello = (
@@ -252,6 +367,13 @@ def _client_packets() -> dict[str, object]:
         .build()
     )
     ping = wire.Writer(wire.CLIENT_PING).f64(1234.5).build()
+    inventory = (
+        wire.Writer(wire.CLIENT_INVENTORY)
+        .u8(wire.INVENTORY_EQUIP)
+        .u8(5)
+        .u8(1)
+        .build()
+    )
 
     return {
         "hello": {
@@ -289,6 +411,12 @@ def _client_packets() -> dict[str, object]:
             "material": "stone",
         },
         "ping": {"encoded": _b64(ping), "clientTime": 1234.5},
+        "inventory": {
+            "encoded": _b64(inventory),
+            "action": wire.INVENTORY_EQUIP,
+            "slot": 5,
+            "count": 1,
+        },
     }
 
 
@@ -348,6 +476,7 @@ def _server_packets() -> dict[str, object]:
         facing=-2.0,
         health_percent=100,
         level=7,
+        state=3,
         appearance=(9, 8, 7, 6, 5),
     )
 
@@ -367,6 +496,18 @@ def _server_packets() -> dict[str, object]:
         killed=False,
         x=-100.75,
         y=200.5,
+    )
+
+    # A stack, a full stack, and two worn slots: enough that a decoder reading a count
+    # at the wrong width or in the wrong order lands somewhere visibly wrong.
+    inventory = wire.encode_inventory(
+        capacity=24,
+        stacks=[(1, 12), (6, 99), (11, 1)],
+        equipped=[(2, 16), (6, 11)],
+        max_health=142,
+        max_resource=118,
+        bonus_damage=9,
+        move_speed=4.65,
     )
 
     return {
@@ -427,6 +568,7 @@ def _server_packets() -> dict[str, object]:
             "facing": wire.decode_angle(wire.encode_angle(-2.0)),
             "healthPercent": 100,
             "level": 7,
+            "state": 3,
             "appearance": [9, 8, 7, 6, 5],
         },
         "despawn": {"encoded": _b64(wire.encode_despawn(64, wire.DESPAWN_DIED)), "entityId": 64},
@@ -466,6 +608,16 @@ def _server_packets() -> dict[str, object]:
             "code": wire.ERROR_VERSION_MISMATCH,
             "detail": "old client",
         },
+        "inventory": {
+            "encoded": _b64(inventory),
+            "capacity": 24,
+            "stacks": [[1, 12], [6, 99], [11, 1]],
+            "equipped": [[2, 16], [6, 11]],
+            "maxHealth": 142,
+            "maxResource": 118,
+            "bonusDamage": 9,
+            "moveSpeed": 4.65,
+        },
     }
 
 
@@ -478,6 +630,7 @@ def build() -> dict[str, object]:
         "hashing": _hashing_vectors(),
         "noise": _noise_vectors(),
         "chunks": _chunk_vectors(),
+        "passability": _passability_vectors(),
         "clientPackets": _client_packets(),
         "serverPackets": _server_packets(),
     }

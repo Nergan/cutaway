@@ -25,8 +25,16 @@ export interface TitleScreenProps {
   onEnter: (profile: Profile) => void
 }
 
-/** How many distinct values each appearance byte has, matching the Atelier's ramp tables. */
-const LOOK_RANGES = { body: 3, hair: 5, palette: 5, outfit: 6, accent: 6 } as const
+/**
+ * How many distinct values each appearance byte has, if the server has not said yet.
+ *
+ * These used to be the only source, and they were wrong: five stops for hair and five for
+ * skin against the baker's twelve and three. A slider that overshoots its table repeats
+ * looks and one that undershoots hides them, and neither is visible without counting
+ * ramps in Python. The server now publishes the real counts with the world; this is the
+ * shape to render before that arrives.
+ */
+const LOOK_RANGES = { body: 3, hair: 12, palette: 3, outfit: 6, accent: 4 } as const
 
 const LOOK_LABELS: Record<keyof typeof LOOK_RANGES, string> = {
   body: 'Build',
@@ -48,13 +56,15 @@ const SUGGESTIONS = [
   'Vesper',
 ]
 
-function randomAppearance(): Appearance {
+type LookPart = keyof typeof LOOK_RANGES
+
+function randomAppearance(ranges: Record<LookPart, number> = LOOK_RANGES): Appearance {
   return {
-    body: Math.floor(Math.random() * LOOK_RANGES.body),
-    hair: Math.floor(Math.random() * LOOK_RANGES.hair),
-    palette: Math.floor(Math.random() * LOOK_RANGES.palette),
-    outfit: Math.floor(Math.random() * LOOK_RANGES.outfit),
-    accent: Math.floor(Math.random() * LOOK_RANGES.accent),
+    body: Math.floor(Math.random() * ranges.body),
+    hair: Math.floor(Math.random() * ranges.hair),
+    palette: Math.floor(Math.random() * ranges.palette),
+    outfit: Math.floor(Math.random() * ranges.outfit),
+    accent: Math.floor(Math.random() * ranges.accent),
   }
 }
 
@@ -63,11 +73,27 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
   const [classId, setClassId] = useState(0)
   const [appearance, setAppearance] = useState<Appearance>(randomAppearance)
 
-  const classes = world?.classes ?? []
+  // Only the four base classes. The other ten are reached by choosing a second half at
+  // level-up (GDD 6.3), and offering them here would hand out the reward for free.
+  const classes = useMemo(
+    () => (world?.classes ?? []).filter((entry) => entry.isBase),
+    [world?.classes],
+  )
   const chosen = useMemo(
     () => classes.find((entry) => entry.classId === classId) ?? classes[0],
     [classes, classId],
   )
+  const ranges = useMemo(() => {
+    const published = world?.appearanceRanges
+    if (published === undefined) return LOOK_RANGES as Record<LookPart, number>
+    const merged = { ...LOOK_RANGES } as Record<LookPart, number>
+    for (const part of Object.keys(merged) as LookPart[]) {
+      // Guard the count rather than trusting it: a zero would give the slider a negative
+      // maximum, and this is the screen a visitor sees first.
+      if (Number.isInteger(published[part]) && published[part] > 0) merged[part] = published[part]
+    }
+    return merged
+  }, [world?.appearanceRanges])
 
   // The preview is the walk strip: standing still tells you less about a sprite than moving.
   const previewUrl = useMemo(() => {
@@ -89,6 +115,22 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
     const timer = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 140)
     return () => window.clearInterval(timer)
   }, [])
+
+  // Only show a sprite the browser has already decoded. Each appearance byte is a
+  // different URL, and pointing the box straight at a new one empties it for the length
+  // of the request — which, while a slider is being dragged, is a strobe.
+  const [loadedUrl, setLoadedUrl] = useState<string>()
+  useEffect(() => {
+    let cancelled = false
+    const image = new Image()
+    image.onload = () => {
+      if (!cancelled) setLoadedUrl(previewUrl)
+    }
+    image.src = previewUrl
+    return () => {
+      cancelled = true
+    }
+  }, [previewUrl])
 
   const trimmed = name.trim()
   const ready = world !== undefined && trimmed.length > 0 && !busy
@@ -134,6 +176,11 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
               {chosen.fantasy}
             </p>
           )}
+          <p className="muted" style={{ fontSize: '8.5pt', marginTop: 4 }}>
+            At your first level-up you choose a second discipline. The pair names what you
+            become — a Warrior who studies healing is a Paladin; one who doubles down is a
+            Warmaster.
+          </p>
         </div>
 
         <div className="field">
@@ -144,7 +191,7 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
               role="img"
               aria-label="Character preview"
               style={{
-                backgroundImage: `url("${previewUrl}")`,
+                backgroundImage: loadedUrl === undefined ? undefined : `url("${loadedUrl}")`,
                 // The strip is four frames wide; showing one means scaling it to four times
                 // the box and sliding it. Cheaper and sharper than four separate requests.
                 backgroundSize: '400% 100%',
@@ -154,12 +201,12 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
               }}
             />
             <div className="look-sliders">
-              {(Object.keys(LOOK_RANGES) as Array<keyof typeof LOOK_RANGES>).map((part) => (
+              {(Object.keys(LOOK_RANGES) as LookPart[]).map((part) => (
                 <LookSlider
                   key={part}
                   label={LOOK_LABELS[part]}
                   value={appearance[part]}
-                  max={LOOK_RANGES[part] - 1}
+                  max={ranges[part] - 1}
                   onChange={(value) => setAppearance((current) => ({ ...current, [part]: value }))}
                 />
               ))}
@@ -168,7 +215,7 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
           <button
             type="button"
             style={{ marginTop: 10, alignSelf: 'flex-start' }}
-            onClick={() => setAppearance(randomAppearance())}
+            onClick={() => setAppearance(randomAppearance(ranges))}
           >
             Randomise
           </button>

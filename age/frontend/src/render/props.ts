@@ -17,6 +17,7 @@ import { Container, Sprite, type Texture } from 'pixi.js'
 
 import { CHUNK_TILES, ENTITY_NPC, ENTITY_PLAYER, TILE_SIZE_PX } from '../domain/constants'
 import type { RemoteEntity } from '../net/session'
+import { STATE_ALIVE } from '../net/wire'
 import type { Atlas } from './atlas'
 import { animationFrame, facingFor, Pose, type CharacterCache } from './characters'
 
@@ -77,6 +78,63 @@ class Pair {
 /** How many spare pairs to keep. Roughly a screenful of props plus a raid's worth of players. */
 const POOL_LIMIT = 512
 
+/**
+ * One prop the terrain put there: which sprite, and which tile of the chunk.
+ *
+ * Held per chunk rather than recomputed per frame. Tree-or-not is a property of the tile,
+ * and tiles change when a player builds — a few times a minute at most — but the scan that
+ * found them was running every frame over every tile of every chunk in view. That is 25k
+ * tile reads and a few thousand object allocations sixty times a second to rediscover a
+ * list that had not changed, and it was the reason the frame rate sat near four: the ping
+ * the player saw as network lag was the main thread being busy here.
+ */
+interface StaticProp {
+  key: string
+  tileX: number
+  tileY: number
+}
+
+interface ChunkProps {
+  revision: number
+  props: StaticProp[]
+  /** The frame stamp this was last drawn on, so stale chunks can be swept. */
+  seen: number
+}
+
+/**
+ * How many chunks of prop lists to keep before sweeping the ones off screen. A view is
+ * roughly fifty chunks, so this holds a comfortable margin and only sweeps after the
+ * player has genuinely walked somewhere.
+ */
+const CHUNK_CACHE_LIMIT = 128
+
+/**
+ * How far outside the screen a prop is still queued, in tiles.
+ *
+ * Sized for the tallest thing in the atlas plus room to spare: a prop is culled by the tile
+ * it stands on, and a tree occupies several tiles of height above that.
+ */
+const CULL_MARGIN_TILES = 6
+
+/**
+ * Find every tile of a chunk that grows a prop.
+ *
+ * Tile coordinates rather than world pixels, because a corridor chunk's origin moves when
+ * the accordion reshuffles the lanes; keeping the offset relative means the cache survives
+ * a topology change instead of drawing a forest where the road now is.
+ */
+function scanProps(atlas: Atlas, tiles: Uint8Array): StaticProp[] {
+  const found: StaticProp[] = []
+  for (let index = 0; index < tiles.length; index += 1) {
+    const key = atlas.propFor(tiles[index])
+    if (key === undefined) continue
+
+    const tileX = index % CHUNK_TILES
+    found.push({ key, tileX, tileY: (index - tileX) / CHUNK_TILES })
+  }
+  return found
+}
+
 export class PropLayer {
   readonly colourRoot = new Container()
   readonly normalRoot = new Container()
@@ -84,6 +142,12 @@ export class PropLayer {
   private readonly live: Pair[] = []
   private readonly pool: Pair[] = []
   private readonly billboards: Billboard[] = []
+  private readonly chunkProps = new Map<string, ChunkProps>()
+  private frameStamp = 0
+  private viewMinX = -Infinity
+  private viewMinY = -Infinity
+  private viewMaxX = Infinity
+  private viewMaxY = Infinity
 
   constructor(
     private readonly atlas: Atlas,
@@ -95,30 +159,69 @@ export class PropLayer {
   /** Start a frame. Cheap: the array keeps its capacity between frames. */
   begin(): void {
     this.billboards.length = 0
+    this.frameStamp += 1
+  }
+
+  /**
+   * The rectangle worth drawing, in world pixels.
+   *
+   * Chunks are streamed in a ring wider than the screen, deliberately — terrain has to
+   * exist before the player can see it. Props do not have to be *queued* for it, and
+   * queueing them anyway meant allocating and then depth-sorting several thousand billboards
+   * a frame for a few hundred visible ones, with the sort paying `n log n` on all of it.
+   *
+   * The margin is what keeps that honest: a prop is placed by the tile it grows from, but a
+   * tree is much taller than its tile and a lantern hangs above its own base, so anything
+   * whose base is just off screen may still have its crown on screen. A few tiles of slack
+   * costs nothing and avoids a row of props popping in along the edges as the camera moves.
+   */
+  setViewport(centreX: number, centreY: number, halfWidth: number, halfHeight: number): void {
+    const margin = CULL_MARGIN_TILES * TILE_SIZE_PX
+    this.viewMinX = centreX - halfWidth - margin
+    this.viewMaxX = centreX + halfWidth + margin
+    this.viewMinY = centreY - halfHeight - margin
+    this.viewMaxY = centreY + halfHeight + margin
+  }
+
+  private onScreen(x: number, baseY: number): boolean {
+    return x >= this.viewMinX && x <= this.viewMaxX && baseY >= this.viewMinY && baseY <= this.viewMaxY
   }
 
   /**
    * Queue the standing props of one chunk.
    *
-   * `tiles` is the chunk's tile array as the tilemap last read it, so this walks memory the
-   * tilemap has already paid to fetch rather than asking the store again.
+   * `tiles` is the chunk's tile array as the tilemap last read it, so the scan walks memory
+   * the tilemap has already paid to fetch rather than asking the store again. `revision` is
+   * the store's own edit counter for the chunk, the same one the tilemap rebuilds its mesh
+   * on, so a player felling a tree is picked up on the next frame and nothing else is.
    */
-  addChunkProps(tiles: Uint8Array, originX: number, originY: number, frame: number): void {
-    for (let index = 0; index < tiles.length; index += 1) {
-      const key = this.atlas.propFor(tiles[index])
-      if (key === undefined) continue
+  addChunkProps(
+    key: string,
+    revision: number,
+    tiles: Uint8Array,
+    originX: number,
+    originY: number,
+    frame: number,
+  ): void {
+    let cached = this.chunkProps.get(key)
+    if (cached === undefined || cached.revision !== revision) {
+      cached = { revision, props: scanProps(this.atlas, tiles), seen: this.frameStamp }
+      this.chunkProps.set(key, cached)
+    }
+    cached.seen = this.frameStamp
 
-      const sprite = this.atlas.get(key)
+    for (const prop of cached.props) {
+      const baseY = originY + (prop.tileY + 1) * TILE_SIZE_PX
+      const x = originX + prop.tileX * TILE_SIZE_PX
+      if (!this.onScreen(x, baseY)) continue
+
+      const sprite = this.atlas.get(prop.key)
       if (sprite === undefined) continue
-
-      const tileX = index % CHUNK_TILES
-      const tileY = (index - tileX) / CHUNK_TILES
-      const baseY = originY + (tileY + 1) * TILE_SIZE_PX
 
       this.billboards.push({
         colour: sprite.colour[frame % sprite.colour.length],
         normal: sprite.normal[frame % sprite.normal.length],
-        x: originX + tileX * TILE_SIZE_PX,
+        x,
         // Props hang above the cell they grow from, and `anchorY` is how far below the tile's
         // bottom edge the sprite continues — a fence post that sinks into the ground.
         y: baseY - sprite.height + sprite.anchorY,
@@ -132,6 +235,8 @@ export class PropLayer {
 
   /** Queue a piece of hand-placed decor: a lantern, a campfire, a banner. */
   addDecor(key: string, worldX: number, worldY: number, frame: number): void {
+    if (!this.onScreen(worldX, worldY)) return
+
     const sprite = this.atlas.get(key)
     if (sprite === undefined) return
 
@@ -218,6 +323,14 @@ export class PropLayer {
    * swap order between frames and flicker.
    */
   flush(): void {
+    // Drop prop lists for chunks that have left the view. Only worth walking the map once
+    // it has grown past a viewful, so a stationary player never pays for this at all.
+    if (this.chunkProps.size > CHUNK_CACHE_LIMIT) {
+      for (const [key, cached] of this.chunkProps) {
+        if (cached.seen !== this.frameStamp) this.chunkProps.delete(key)
+      }
+    }
+
     this.billboards.sort((a, b) => a.baseY - b.baseY || a.x - b.x)
 
     // Grow to fit, then re-point. Children are added once and reused, so the display list's
@@ -284,7 +397,7 @@ export const AiState = {
 } as const
 
 export function isAlive(state: number): boolean {
-  return (state & 1) !== 0
+  return (state & STATE_ALIVE) !== 0
 }
 
 export function aiStateOf(state: number): number {

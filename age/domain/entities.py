@@ -16,17 +16,21 @@ from collections import deque
 from dataclasses import dataclass, field
 from enum import IntFlag
 
-from .classes import CharacterClass, get_class
+from .classes import CharacterClass, experience_for_level, get_class
 from .constants import (
     BASE_MAX_HEALTH,
     BASE_MAX_RESOURCE,
+    COMPOSE_LEVEL,
     ENTITY_NPC,
     ENTITY_PLAYER,
+    HEALTH_PER_LEVEL,
     POSITION_HISTORY_SECONDS,
+    RESOURCE_PER_LEVEL,
     SIMULATION_HZ,
     WALK_SPEED_TILES_S,
 )
 from .coordinates import LocationRef, WorldPoint
+from .items import INVENTORY_SLOTS, ITEMS, total_bonus
 from .npc import AIState, NpcArchetype
 
 EntityId = int
@@ -72,6 +76,19 @@ class Appearance:
 
 
 @dataclass(slots=True)
+class ItemStack:
+    """One occupied inventory slot.
+
+    Mutable, unlike almost everything else in the domain, because the alternative is
+    rebuilding the list on every point of a harvest. The list *position* is the
+    handle the client sends back, so nothing may reorder it silently.
+    """
+
+    key: str
+    count: int
+
+
+@dataclass(slots=True)
 class Entity:
     """One simulated thing.
 
@@ -102,6 +119,13 @@ class Entity:
     speed: float = WALK_SPEED_TILES_S
     radius: float = 0.35
 
+    # What the worn loadout is worth, folded into two numbers by
+    # :meth:`refresh_stats` so combat and movement read a field rather than walking
+    # the equipment map every tick. The pools are folded into ``max_health`` and
+    # ``max_resource`` for the same reason.
+    bonus_damage: int = 0
+    bonus_speed: float = 0.0
+
     # NPC-only.
     archetype: NpcArchetype | None = None
     ai_state: AIState = AIState.IDLE
@@ -130,7 +154,14 @@ class Entity:
 
     dirty: DirtyField = DirtyField.ALL
     chunk_key: str = ""
-    inventory: dict[str, int] = field(default_factory=dict)
+
+    # A list rather than a mapping of key to count, because the pack is bounded and a
+    # bound is over *slots*: two half stacks of wood are two slots even though they
+    # are one kind of thing, and that is the cost the player is being asked to weigh.
+    inventory: list[ItemStack] = field(default_factory=list)
+    # Slot value from :class:`~age.domain.items.EquipmentSlot` to item key. Integer
+    # keys rather than the enum so the whole map serialises without a converter.
+    equipment: dict[int, str] = field(default_factory=dict)
 
     # --- derived ------------------------------------------------------------
 
@@ -153,6 +184,24 @@ class Entity:
     @property
     def character_class(self) -> CharacterClass:
         return get_class(self.class_id)
+
+    @property
+    def can_compose(self) -> bool:
+        """Whether this character is owed the level-up class choice (GDD 6.3).
+
+        Derived rather than stored, so an unclaimed choice survives a reconnect and
+        cannot be spent twice: the moment the second half lands the class stops being
+        a base class and this goes false on its own.
+        """
+        return (
+            self.is_player
+            and self.level >= COMPOSE_LEVEL
+            and get_class(self.class_id).is_base
+        )
+
+    @property
+    def experience_to_next_level(self) -> int:
+        return experience_for_level(self.level)
 
     # --- mutation -----------------------------------------------------------
 
@@ -223,21 +272,180 @@ class Entity:
         self.dirty |= DirtyField.RESOURCE
         return True
 
-    def give(self, item: str, count: int) -> None:
-        """Add to the inventory. Infinite by design (GDD 6.1), so no capacity."""
+    # --- carrying things ----------------------------------------------------
+
+    def count_of(self, item: str) -> int:
+        return sum(stack.count for stack in self.inventory if stack.key == item)
+
+    def give(self, item: str, count: int) -> int:
+        """Store up to ``count`` of an item, returning how much actually fitted.
+
+        A bounded pack has to be able to refuse, and a caller that cannot tell how
+        much was refused would silently void the remainder of a drop. Existing
+        stacks are topped up before a new slot is opened, so a full pack still
+        accepts wood as long as it is already carrying some.
+        """
         if count <= 0:
-            return
-        self.inventory[item] = self.inventory.get(item, 0) + count
+            return 0
+
+        catalogued = ITEMS.get(item)
+        # An uncatalogued key can only come from stale storage. Treating it as
+        # unstackable keeps it visible and removable rather than merging it into
+        # something it is not.
+        limit = catalogued.stack_limit if catalogued is not None else 1
+
+        remaining = count
+        for stack in self.inventory:
+            if remaining <= 0:
+                break
+            if stack.key != item or stack.count >= limit:
+                continue
+            moved = min(limit - stack.count, remaining)
+            stack.count += moved
+            remaining -= moved
+
+        while remaining > 0 and len(self.inventory) < INVENTORY_SLOTS:
+            moved = min(limit, remaining)
+            self.inventory.append(ItemStack(item, moved))
+            remaining -= moved
+
+        return count - remaining
 
     def take(self, item: str, count: int) -> bool:
-        held = self.inventory.get(item, 0)
-        if held < count:
+        """Remove ``count`` of an item, all or nothing."""
+        if count <= 0:
+            return True
+        if self.count_of(item) < count:
             return False
-        remaining = held - count
-        if remaining:
-            self.inventory[item] = remaining
-        else:
-            self.inventory.pop(item, None)
+
+        remaining = count
+        for stack in list(self.inventory):
+            if remaining <= 0:
+                break
+            if stack.key != item:
+                continue
+            moved = min(stack.count, remaining)
+            stack.count -= moved
+            remaining -= moved
+            if stack.count <= 0:
+                self.inventory.remove(stack)
+        return True
+
+    def discard(self, index: int, count: int) -> bool:
+        """Throw away part of a stack. Dropped items are gone, not put on the ground."""
+        if index < 0 or index >= len(self.inventory) or count <= 0:
+            return False
+        stack = self.inventory[index]
+        stack.count -= min(count, stack.count)
+        if stack.count <= 0:
+            del self.inventory[index]
+        return True
+
+    # --- wearing things -----------------------------------------------------
+
+    def refresh_stats(self) -> None:
+        """Recompute the pools and combat bonuses from class, level, and equipment.
+
+        One formula, called from everywhere the inputs change, because the three
+        places that used to derive these independently disagreed: joining ignored
+        level entirely, levelling added a flat six, and composing overwrote the
+        total from the class multiplier and threw the level bonus away.
+
+        Only players have a class to derive from; an NPC's pool is its archetype's
+        and nothing here may touch it.
+        """
+        if not self.is_player:
+            return
+
+        bonus = total_bonus(self.equipment.values())
+        character_class = self.character_class
+        growth = self.level - 1
+
+        self.max_health = max(
+            1,
+            int(BASE_MAX_HEALTH * character_class.health_multiplier)
+            + HEALTH_PER_LEVEL * growth
+            + bonus.health,
+        )
+        self.max_resource = max(
+            0,
+            int(BASE_MAX_RESOURCE * character_class.resource_multiplier)
+            + RESOURCE_PER_LEVEL * growth
+            + bonus.resource,
+        )
+        self.bonus_damage = bonus.damage
+        self.bonus_speed = bonus.speed
+
+        self.health = min(self.health, self.max_health)
+        self.resource = min(self.resource, self.max_resource)
+        # Vitals travel as a fraction of the maximum, so a pool that grew changes
+        # what the client should draw even though the absolute value did not move.
+        self.mark(DirtyField.HEALTH | DirtyField.RESOURCE)
+
+    def equip(self, index: int) -> bool:
+        """Wear the item in inventory slot ``index``, swapping out what it replaces.
+
+        The incoming item leaves the pack before the outgoing one enters it, so
+        swapping with a full pack works: the slot the new piece vacated is the slot
+        the old piece lands in.
+        """
+        if index < 0 or index >= len(self.inventory):
+            return False
+
+        stack = self.inventory[index]
+        item = ITEMS.get(stack.key)
+        if item is None or not item.is_equippable:
+            return False
+
+        slot = int(item.slot)
+        replaced = self.equipment.get(slot)
+
+        stack.count -= 1
+        if stack.count <= 0:
+            del self.inventory[index]
+        self.equipment[slot] = item.key
+
+        if replaced is not None:
+            self.give(replaced, 1)
+
+        self.refresh_stats()
+        return True
+
+    def unequip(self, slot: int) -> bool:
+        """Take off what is in ``slot``, provided there is somewhere to put it."""
+        key = self.equipment.get(slot)
+        if key is None:
+            return False
+        if self.give(key, 1) < 1:
+            return False
+        del self.equipment[slot]
+        self.refresh_stats()
+        return True
+
+    def consume(self, index: int) -> bool:
+        """Use up a consumable. Refuses when it would be wasted."""
+        if index < 0 or index >= len(self.inventory) or not self.is_alive:
+            return False
+
+        stack = self.inventory[index]
+        item = ITEMS.get(stack.key)
+        if item is None or not item.is_consumable:
+            return False
+
+        healed = self.apply_healing(item.restores_health)
+        restored = min(item.restores_resource, self.max_resource - self.resource)
+        if restored > 0:
+            self.resource += restored
+            self.mark(DirtyField.RESOURCE)
+
+        # Eating at full health should cost nothing. Without this the one button a
+        # player presses in a panic is also the one that wastes the ration.
+        if healed <= 0 and restored <= 0:
+            return False
+
+        stack.count -= 1
+        if stack.count <= 0:
+            del self.inventory[index]
         return True
 
     def enter_ai_state(self, state: AIState, now: float) -> None:

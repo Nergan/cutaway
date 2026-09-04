@@ -44,18 +44,41 @@ hot-reloads.
 | `W` `A` `S` `D` or arrows | Walk |
 | `Shift` | Run |
 | Mouse | Aim — your character faces the cursor |
-| `1` `2` `3` | Abilities, aimed at the cursor |
+| `1` … `5` | Abilities, aimed at the cursor |
 | `F` | Harvest the tile under the cursor |
 | `B` | Build a wooden wall on the tile under the cursor |
+| `C` | Character sheet — level, derived stats, equipment slots |
+| `I` | Pack — the inventory grid |
 | `Enter` | Chat; `Enter` again sends, `Escape` cancels |
 | `Tab` | Diagnostics — latency, tick, topology, chunk counts |
 | `+` `-` | Zoom |
+
+A base class has three abilities and a composed one has five, which is why the
+bar goes to `5`.
 
 Chat has two ranges: **global** reaches everyone, **local** reaches 24 tiles.
 
 Harvesting and building work within 4 tiles. Fell a tree and you get wood; a
 cleared tile climbs back up the regrowth ladder — bare ground, grass, sapling,
 bush, tree — one stage a minute, unless somebody keeps cutting it.
+
+## Equipment
+
+Twenty-five items in a hand-authored catalogue: eight materials, two
+consumables, and fifteen pieces of equipment across seven slots — head, chest,
+hands, legs, feet, weapon and trinket. Materials come from the ground, the rest
+from things that die.
+
+The pack holds 24 stacks and nothing more, which is what makes a slot a
+decision. Click a stack to wear it or eat it, drag it onto a slot on the sheet,
+right-click to throw it away.
+
+Wearing something is not cosmetic. A helm raises the pool the health bar is
+drawn from, a blade raises the number that reaches `apply_damage`, and boots
+raise the metres per second the movement integrator uses — and the better pieces
+trade one against another. A stone-plated vest is thirty-two health and a third
+of a tile per second slower. All of it is persisted, so a character logs back in
+wearing what it took off.
 
 ## The accordion
 

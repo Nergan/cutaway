@@ -5,9 +5,15 @@ Every byte on the WebSocket at `/age/ws`. The codec is
 `age/frontend/src/net/wire.ts` in the browser; both are pinned by
 `tests/test_age_client_parity.py` against frozen fixtures.
 
-`PROTOCOL_VERSION` is **1**. A client whose version does not match is closed
+`PROTOCOL_VERSION` is **2**. A client whose version does not match is closed
 with `ERROR_VERSION_MISMATCH` and told to reload, because a stale bundle that
 keeps parsing produces nonsense rather than an error.
+
+The version moved from 1 to 2 with `INVENTORY`. Adding a server frame is
+normally free — a client that does not know a type byte ignores it — but this
+one is sent unconditionally during the handshake and carries the pools the
+vitals panel divides by, so a client that ignored it would draw every bar
+against the wrong maximum rather than simply missing a feature.
 
 ## Framing
 
@@ -130,6 +136,27 @@ the round trip measures the network and not the tick phase.
 production cadence is fifteen minutes; a demo that cannot show it on demand
 cannot show it at all.
 
+### `0x09 COMPOSE`
+
+`u8` the second half (GDD 6.3). Refused unless the character is at
+`COMPOSE_LEVEL` and still on a base class; the pairing it produces is derived
+server-side, so the client cannot name a hybrid it has not earned.
+
+### `0x0A INVENTORY`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| action | `u8` | 0 equip, 1 unequip, 2 use, 3 drop |
+| slot | `u8` | Pack index, except for unequip, where it is an equipment slot |
+| count | `u16` | Drop only; ignored by the rest |
+
+One byte does two jobs because the two indexings are never both in play: three
+of the four actions name a stack in the pack, and `unequip` names a place on
+the body. Everything here is refused silently rather than with an error, and
+answered with a fresh `0x8C INVENTORY` either way — the snapshot is the
+correction, so a client that asked for something impossible re-renders the
+truth instead of having to reason about a rejection.
+
 ## Server to client
 
 ### `0x81 WELCOME`
@@ -192,8 +219,18 @@ state.
 
 A full introduction, sent once when an entity enters the area of interest:
 `u32` id, `u8` kind, `u8` class or archetype, `text` name, position, facing,
-`u8` health percent, `u16` level, appearance. Afterwards the entity is
-delta-encoded in snapshots.
+`u8` health percent, `u16` level, `u8` state, appearance. Afterwards the entity
+is delta-encoded in snapshots.
+
+Every field a snapshot delta can carry is here, and the word to hold onto is
+*every*. An entity is introduced once and thereafter described only by the
+fields that changed, so anything the introduction omits is not a value the
+client waits for — it is a value the client invents, indefinitely. The state
+byte was omitted for a while and clients defaulted it to zero, whose bit 0
+means *dead*: every entity in the world arrived reading as a corpse, was drawn
+in the single-frame hurt pose, greyed and half-faded, and nothing in the game
+ever animated. A zero that looks like data is worse than a missing field,
+because a missing field throws.
 
 ### `0x84 DESPAWN`
 
@@ -257,6 +294,39 @@ Codes 2 through 9 are informational; the session continues. A garbled frame is
 answered with code 7 rather than dropping the connection, because one bad frame
 from a buggy client should not cost a player their session. Code 10 closes.
 
+### `0x8B PROGRESS`
+
+`u16` level, `u32` experience, `u32` next level at, `u8` class id, `u8` compose
+available, `u8` ability count, then a `u16` per ability id.
+
+Private to its owner and sent on join and on every change, which is a handful
+of times a session. The ability ids travel with the class rather than being
+derived client-side, so the bar cannot offer something the server will refuse.
+
+### `0x8C INVENTORY`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| capacity | `u8` | `INVENTORY_SLOTS` = 24 |
+| stack count | `u8` | |
+| per stack | `u16` item id, `u16` count | In pack order; the index is the slot |
+| equipped count | `u8` | |
+| per equipped | `u8` slot, `u16` item id | Slots as in `EquipmentSlot` |
+| max health | `u16` | |
+| max resource | `u16` | |
+| damage bonus | `u16` | |
+| move speed | `u16` | Hundredths of a tile per second |
+
+Also private to its owner, and the largest per-player frame in the protocol,
+which is why it is never broadcast: another player's bag is not something the
+client has anywhere to put.
+
+Only ids travel. Names, slots, rarities and stat modifiers are static and
+arrive once on `/api/world`, so a stack costs four bytes rather than a name.
+The derived stats ride along because vitals travel as a fraction of a maximum
+the client otherwise never sees — without them a helm worth twelve health
+would move the bar by nothing visible and the sheet could not print a number.
+
 ## Handshake
 
 ```
@@ -264,6 +334,8 @@ client                                server
   |-- HELLO ------------------------->|  validate version, load or create character
   |<-------------------- WELCOME -----|  seed, spawn, entity id
   |<------------------- TOPOLOGY -----|  active chunks, before anything is drawn
+  |<------------------- PROGRESS -----|  level, experience, ability kit
+  |<------------------ INVENTORY -----|  pack, loadout, derived stats
   |  (generate terrain, bake atlas)   |
   |-- READY ------------------------->|  begin snapshots
   |<------------------- SNAPSHOT -----|  15 Hz from here

@@ -14,11 +14,14 @@
  */
 
 import {
+  BASE_MAX_HEALTH,
+  BASE_MAX_RESOURCE,
   CONNECTION_TIMEOUT_SECONDS,
   ENTITY_PLAYER,
   HEARTBEAT_INTERVAL_SECONDS,
   INPUT_HZ,
   PROTOCOL_VERSION,
+  WALK_SPEED_TILES_S,
 } from '../domain/constants'
 import { ChunkStore } from '../world/chunkStore'
 import { buildWorld, type WorldLayout } from '../world/coordinates'
@@ -41,18 +44,26 @@ import {
   INPUT_RIGHT,
   INPUT_RUN,
   INPUT_UP,
+  INVENTORY_DROP,
+  INVENTORY_EQUIP,
+  INVENTORY_UNEQUIP,
+  INVENTORY_USE,
   ProtocolError,
+  STATE_ALIVE,
   decodeServerPacket,
   encodeAction,
   encodeBuild,
   encodeChat,
+  encodeCompose,
   encodeDevTier,
   encodeHello,
   encodeInput,
+  encodeInventory,
   encodePing,
   encodeReady,
   type Appearance,
   type Combat,
+  type Inventory,
   type ServerPacket,
 } from './wire'
 
@@ -69,6 +80,16 @@ export interface RemoteEntity {
   track: Track
   /** Last interpolated pose, refreshed once per frame by {@link Session.sample}. */
   pose: Pose
+  /**
+   * Ground distance covered since spawn, in tiles. Drives the walk cycle.
+   *
+   * Accumulated from the interpolated positions rather than derived from the reported
+   * speed. The renderer used to be handed `speed * elapsed`, which is only the distance
+   * travelled if the speed has been constant since the client started: a walker who
+   * changed pace at all made the product jump by tens of tiles, so the cycle picked a
+   * random frame each time and the legs juddered instead of walking.
+   */
+  travelled: number
 }
 
 export interface LocalPlayer {
@@ -81,6 +102,31 @@ export interface LocalPlayer {
   state: number
   facing: number
 }
+
+/**
+ * The local character's progression, as the server last stated it.
+ *
+ * Separate from {@link LocalPlayer} because it arrives on its own packet and changes
+ * on its own schedule: vitals move every tick, a level moves a handful of times a
+ * session.
+ */
+export interface Progression {
+  level: number
+  experience: number
+  nextLevelAt: number
+  classId: number
+  /** Whether the level-up class choice is waiting to be made (GDD 6.3). */
+  composeAvailable: boolean
+  abilityIds: readonly number[]
+}
+
+/**
+ * What the character is carrying and wearing, and what it adds up to.
+ *
+ * Private to its owner, so it lives beside {@link Session.progression} rather than on
+ * an entity: no remote entity ever has one.
+ */
+export type Loadout = Omit<Inventory, 'kind'>
 
 export interface ChatLine {
   senderId: number
@@ -105,6 +151,10 @@ export interface SessionEvents {
   /** A recoverable server refusal: out of range, on cooldown, no material. */
   refused: (code: number, detail: string) => void
   topology: (tier: number, version: number) => void
+  /** Level, experience, or class changed. ``levelled`` distinguishes a level-up. */
+  progress: (progression: Progression, levelled: boolean) => void
+  /** The pack or the loadout changed. */
+  inventory: (loadout: Loadout) => void
   /** Emitted once the welcome packet has landed and the world is generatable. */
   ready: (layout: WorldLayout) => void
   died: () => void
@@ -138,6 +188,35 @@ export class Session {
   store: ChunkStore | null = null
   layout: WorldLayout | null = null
 
+  /**
+   * Seeded so the HUD has a shape to draw before the first progress packet lands.
+   * The empty kit is honest: pressing a button before the server has named one would
+   * only be refused.
+   */
+  progression: Progression = {
+    level: 1,
+    experience: 0,
+    nextLevelAt: 100,
+    classId: 0,
+    composeAvailable: false,
+    abilityIds: [],
+  }
+
+  /**
+   * Seeded with the nominal pools rather than with zero, because the vitals panel
+   * divides by them from the first frame and a maximum of zero would read as a dead
+   * character until the first inventory packet landed.
+   */
+  loadout: Loadout = {
+    capacity: 0,
+    stacks: [],
+    equipped: [],
+    maxHealth: BASE_MAX_HEALTH,
+    maxResource: BASE_MAX_RESOURCE,
+    bonusDamage: 0,
+    moveSpeed: WALK_SPEED_TILES_S,
+  }
+
   worldSeed = 0n
   topologyVersion = 0
   currentTier = 0
@@ -170,6 +249,8 @@ export class Session {
     combat: new Set(),
     refused: new Set(),
     topology: new Set(),
+    progress: new Set(),
+    inventory: new Set(),
     ready: new Set(),
     died: new Set(),
     respawned: new Set(),
@@ -389,6 +470,39 @@ export class Session {
     this.send(encodeDevTier(tier))
   }
 
+  /**
+   * Take a second half, becoming the pairing's class (GDD 6.3).
+   *
+   * Nothing is applied locally: the server owns the class, and predicting a
+   * composition would mean showing a kit that a refusal then takes away.
+   */
+  compose(half: number): void {
+    this.send(encodeCompose(half))
+  }
+
+  /**
+   * Move one slot: wear it, take it off, use it, or throw it away.
+   *
+   * Nothing is applied locally. The server answers every one of these with a fresh
+   * snapshot of the whole pack, so predicting the result would only be a chance to
+   * disagree with the answer that is already on its way.
+   */
+  equip(index: number): void {
+    this.send(encodeInventory(INVENTORY_EQUIP, index))
+  }
+
+  unequip(slot: number): void {
+    this.send(encodeInventory(INVENTORY_UNEQUIP, slot))
+  }
+
+  useItem(index: number): void {
+    this.send(encodeInventory(INVENTORY_USE, index))
+  }
+
+  dropItem(index: number, count = 1): void {
+    this.send(encodeInventory(INVENTORY_DROP, index, count))
+  }
+
   // --- packet handling ------------------------------------------------------
 
   private handle(packet: ServerPacket): void {
@@ -424,7 +538,11 @@ export class Session {
           // survive until the first point of damage and read as a wounded healthy player.
           health: 1,
           resource: 1,
-          state: 0,
+          // Alive, for the same reason the vitals start full: the welcome packet does not
+          // carry a state byte, and a zero here means "dead" to everything downstream. It
+          // used to be zero, and the local player spent the whole session drawn greyed out
+          // in the single-frame hurt pose.
+          state: STATE_ALIVE,
           facing: 0,
         }
 
@@ -502,7 +620,8 @@ export class Session {
           appearance: packet.appearance,
           health: packet.health,
           resource: 1,
-          state: 0,
+          travelled: 0,
+          state: packet.state,
           track,
           pose,
         })
@@ -545,6 +664,30 @@ export class Session {
       case 'pong':
         this.clock.observePong(packet.clientTime, packet.serverTime, performance.now() / 1000)
         break
+
+      case 'progress': {
+        const levelled = packet.level > this.progression.level
+        this.progression = {
+          level: packet.level,
+          experience: packet.experience,
+          nextLevelAt: packet.nextLevelAt,
+          classId: packet.classId,
+          composeAvailable: packet.composeAvailable,
+          abilityIds: packet.abilityIds,
+        }
+        // The local player's class travels here rather than on the snapshot, so the
+        // character sheet and the ability bar follow a composition immediately.
+        if (this.local !== null) this.local.classId = packet.classId
+        this.emit('progress', this.progression, levelled)
+        break
+      }
+
+      case 'inventory': {
+        const { kind: _kind, ...loadout } = packet
+        this.loadout = loadout
+        this.emit('inventory', this.loadout)
+        break
+      }
 
       case 'error':
         if (packet.code === ERROR_VERSION_MISMATCH) {
@@ -599,7 +742,13 @@ export class Session {
     const renderTime = this.clock.renderTime(now)
     for (const entity of this.entities.values()) {
       const pose = entity.track.poseAt(renderTime)
-      if (pose !== undefined) entity.pose = pose
+      if (pose !== undefined) {
+        // A teleport — a respawn, or a snap after a long stall — must not be counted, or
+        // the walk cycle spins through a hundred frames in one tick.
+        const step = Math.hypot(pose.x - entity.pose.x, pose.y - entity.pose.y)
+        if (step < 2) entity.travelled += step
+        entity.pose = pose
+      }
       entity.track.prune(renderTime - 2)
     }
 

@@ -15,12 +15,20 @@ export interface AbilitiesProps {
   abilities: readonly AbilityInfo[]
   /** Millisecond timestamps of the last use, by ability id. */
   lastUsed: Readonly<Record<number, number>>
-  /** Current resource as a byte of percent, to grey out what cannot be paid for. */
+  /** Current resource as a ratio from 0 to 1, which is how the client carries vitals. */
   resource: number
+  /** The pool that ratio is of, from the server's derived stats. */
+  maxResource: number
   onUse: (abilityId: number) => void
 }
 
-export function Abilities({ abilities, lastUsed, resource, onUse }: AbilitiesProps) {
+export function Abilities({
+  abilities,
+  lastUsed,
+  resource,
+  maxResource,
+  onUse,
+}: AbilitiesProps) {
   // A ticking clock rather than a CSS transition per button: the bar has three entries and one
   // shared 20 Hz tick is cheaper, stays in step across them, and does not need to be restarted
   // whenever a cooldown is refreshed mid-flight.
@@ -36,10 +44,11 @@ export function Abilities({ abilities, lastUsed, resource, onUse }: AbilitiesPro
         const elapsed = now - (lastUsed[ability.abilityId] ?? -Infinity)
         const remaining = Math.max(0, ability.cooldownMs - elapsed)
         const fraction = ability.cooldownMs > 0 ? remaining / ability.cooldownMs : 0
-        // Resource is a percent byte and costs are absolute, so this compares against the
-        // nominal maximum. Approximate on purpose: the server is the authority on whether a
-        // cast can be paid for, and this only decides whether the button looks available.
-        const affordable = (resource / 255) * 100 >= ability.resourceCost
+        // Costs are absolute and the session carries a ratio, so the pool has to come from
+        // the server's derived stats. Off by up to a percent of the pool from the rounding
+        // the wire does; the server is the authority on whether a cast can actually be paid
+        // for, and this only decides whether the button looks available.
+        const affordable = resource * maxResource >= ability.resourceCost
         const ready = remaining <= 0 && affordable
 
         return (

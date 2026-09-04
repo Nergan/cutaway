@@ -35,6 +35,7 @@ import {
   encodeChat,
   encodeHello,
   encodeInput,
+  encodeInventory,
   encodePing,
   encodePosition,
   encodeReady,
@@ -126,6 +127,15 @@ describe('client frames the server has already accepted', () => {
 
   it('encodes a ping byte-for-byte', () => {
     expect(hex(encodePing(packets.ping.clientTime))).toBe(hex(bytes(packets.ping.encoded)))
+  })
+
+  it('encodes an inventory command byte-for-byte', () => {
+    const actual = encodeInventory(
+      packets.inventory.action,
+      packets.inventory.slot,
+      packets.inventory.count,
+    )
+    expect(hex(actual)).toBe(hex(bytes(packets.inventory.encoded)))
   })
 })
 
@@ -236,8 +246,29 @@ describe('server frames', () => {
     expect(packet.archetype).toBe(packets.spawn.archetype)
     expect(packet.name).toBe(packets.spawn.name)
     expect(packet.x).toBeCloseTo(packets.spawn.x, 6)
+    expect(packet.y).toBeCloseTo(packets.spawn.y, 6)
     expect(packet.level).toBe(packets.spawn.level)
     expect(packet.health).toBeCloseTo(packets.spawn.healthPercent / PERCENT_SCALE, 6)
+    // The state byte and the appearance are the tail of the packet, and the tail is where
+    // a missing field hides: everything before it still decodes, so the packet looks fine.
+    expect(packet.state).toBe(packets.spawn.state)
+    // Compared in the packing order rather than by name, so a pair of components swapped
+    // on one side of the wire fails here instead of quietly redressing every character.
+    const { body, hair, palette, outfit, accent } = packet.appearance
+    expect([body, hair, palette, outfit, accent]).toEqual(packets.spawn.appearance)
+  })
+
+  it('consumes the spawn exactly, leaving no trailing bytes', () => {
+    // The check the spawn packet did not have, and the reason a whole field went missing
+    // from it unnoticed. A spawn is the only packet that establishes an entity's baseline,
+    // so a field dropped here is one the client substitutes a default for, forever. The
+    // state byte was dropped, the default was zero, and zero means dead: every character
+    // in the game was drawn as a corpse in a one-frame pose and nothing ever animated.
+    const payload = bytes(packets.spawn.encoded)
+    expect(decodeServerPacket(payload).kind).toBe('spawn')
+    expect(() => decodeServerPacket(payload.subarray(0, payload.byteLength - 1))).toThrow(
+      ProtocolError,
+    )
   })
 
   it('decodes a despawn', () => {
@@ -304,6 +335,34 @@ describe('server frames', () => {
     if (packet.kind !== 'error') return
     expect(packet.code).toBe(packets.error.code)
     expect(packet.detail).toBe(packets.error.detail)
+  })
+
+  it('decodes an inventory snapshot with its stacks, loadout and derived stats', () => {
+    const payload = bytes(packets.inventory.encoded)
+    const packet = decodeServerPacket(payload)
+    expect(packet.kind).toBe('inventory')
+    if (packet.kind !== 'inventory') return
+
+    expect(packet.capacity).toBe(packets.inventory.capacity)
+    expect(packet.stacks.map((stack) => [stack.itemId, stack.count])).toEqual(
+      packets.inventory.stacks,
+    )
+    expect(packet.equipped.map((worn) => [worn.slot, worn.itemId])).toEqual(
+      packets.inventory.equipped,
+    )
+    expect(packet.maxHealth).toBe(packets.inventory.maxHealth)
+    expect(packet.maxResource).toBe(packets.inventory.maxResource)
+    expect(packet.bonusDamage).toBe(packets.inventory.bonusDamage)
+    expect(packet.moveSpeed).toBeCloseTo(packets.inventory.moveSpeed, 6)
+  })
+
+  it('consumes the inventory snapshot exactly, leaving no trailing bytes', () => {
+    // Two variable-length runs back to back, so a count read at the wrong width would
+    // shift the derived stats into values that still look like plausible numbers.
+    const payload = bytes(packets.inventory.encoded)
+    expect(() => decodeServerPacket(payload.subarray(0, payload.byteLength - 1))).toThrow(
+      ProtocolError,
+    )
   })
 })
 

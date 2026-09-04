@@ -38,6 +38,12 @@ from .room import Room
 
 logger = logging.getLogger(__name__)
 
+# How long a restore may spend on storage before the world opens without it. The
+# shared cluster is a free tier that sleeps, and the alternative to a budget here is
+# a world that never becomes ready because it is waiting on a connect timeout per
+# read. Everything read at bootstrap is reconstructible, so giving up is safe.
+STORAGE_READ_BUDGET_SECONDS = 5.0
+
 
 class Container:
     """Owns every long-lived object in the process."""
@@ -113,11 +119,7 @@ class Container:
 
         # Restoring before bootstrap so the tier that comes back is the tier that
         # gets its chunks activated, rather than tier 0 followed by an expansion.
-        try:
-            stored = await self._topology.load(world.edge.edge_id)
-        except Exception as exc:
-            logger.warning("Could not read stored topology, starting fresh: %s", exc)
-            stored = None
+        stored = await self._restore_topology(world.edge.edge_id)
         if stored:
             manager.restore(stored, self.clock.now())
 
@@ -134,7 +136,10 @@ class Container:
         )
 
         try:
-            await simulation.load_overlays()
+            async with asyncio.timeout(STORAGE_READ_BUDGET_SECONDS):
+                await simulation.load_overlays()
+        except TimeoutError:
+            logger.warning("Terrain edits took too long to read, serving generated terrain.")
         except Exception as exc:
             logger.warning("Could not restore terrain edits: %s", exc)
 
@@ -148,6 +153,17 @@ class Container:
             self.settings.corridor_segments,
             self.storage_backend,
         )
+
+    async def _restore_topology(self, edge_id: str) -> dict[str, object] | None:
+        """Read the stored accordion state, or give up and start fresh."""
+        try:
+            async with asyncio.timeout(STORAGE_READ_BUDGET_SECONDS):
+                return await self._topology.load(edge_id)
+        except TimeoutError:
+            logger.warning("Stored topology took too long to read, starting at tier 0.")
+        except Exception as exc:
+            logger.warning("Could not read stored topology, starting fresh: %s", exc)
+        return None
 
     async def ready(self) -> None:
         """Block until the world is playable, re-raising any startup failure."""

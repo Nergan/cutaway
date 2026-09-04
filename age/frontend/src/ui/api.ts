@@ -26,7 +26,50 @@ export interface ClassInfo {
   role: number
   fantasy: string
   isPure: boolean
+  /** One half only: the four a character may be created as (GDD 6.3). */
+  isBase: boolean
+  /** The half chosen at creation. */
+  origin: number
+  /** The half added at level-up, or null while the class is still a base class. */
+  chosen: number | null
   abilities: AbilityInfo[]
+}
+
+/**
+ * One entry of the item catalogue.
+ *
+ * Static, so it arrives here once rather than riding on every inventory packet. The
+ * packet carries ids and counts; everything a slot needs to draw itself is looked up
+ * against this.
+ */
+export interface ItemInfo {
+  itemId: number
+  key: string
+  name: string
+  /** 0 material, 1 consumable, 2 equipment. */
+  kind: number
+  /** 0 for anything that cannot be worn. */
+  slot: number
+  /** 0 common through 3 epic. Tinting only; the stats carry the weight. */
+  rarity: number
+  stackLimit: number
+  description: string
+  bonusHealth: number
+  bonusResource: number
+  bonusDamage: number
+  bonusSpeed: number
+  restoresHealth: number
+  restoresResource: number
+}
+
+/** Values of {@link ItemInfo.kind}, mirroring the server's `ItemKind`. */
+export const ITEM_MATERIAL = 0
+export const ITEM_CONSUMABLE = 1
+export const ITEM_EQUIPMENT = 2
+
+export interface EquipmentSlotInfo {
+  slot: number
+  name: string
 }
 
 export interface HubInfo {
@@ -61,6 +104,18 @@ export interface WorldInfo {
   hubs: HubInfo[]
   classes: ClassInfo[]
   biomes: BiomeInfo[]
+  /**
+   * Distinct looks per appearance byte, for the creation sliders.
+   *
+   * From the server because the counts are not derivable from anything the client holds:
+   * one byte feeds two separate tables in the baker, and a copy maintained here drifted
+   * from them the moment either changed.
+   */
+  appearanceRanges: Record<string, number>
+  /** How many stacks the pack holds, so the grid can be drawn before the first packet. */
+  inventorySlots: number
+  equipmentSlots: EquipmentSlotInfo[]
+  items: ItemInfo[]
 }
 
 /**

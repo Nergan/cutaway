@@ -35,6 +35,8 @@ export const CLIENT_CHAT = 0x05
 export const CLIENT_BUILD = 0x06
 export const CLIENT_PING = 0x07
 export const CLIENT_DEV_TIER = 0x08
+export const CLIENT_COMPOSE = 0x09
+export const CLIENT_INVENTORY = 0x0a
 
 export const SERVER_WELCOME = 0x81
 export const SERVER_SNAPSHOT = 0x82
@@ -46,12 +48,26 @@ export const SERVER_CHAT = 0x87
 export const SERVER_TILES = 0x88
 export const SERVER_PONG = 0x89
 export const SERVER_ERROR = 0x8a
+export const SERVER_PROGRESS = 0x8b
+export const SERVER_INVENTORY = 0x8c
+
+// What to do with a slot. `EQUIP`, `USE` and `DROP` address an inventory index;
+// `UNEQUIP` addresses an equipment slot.
+export const INVENTORY_EQUIP = 0
+export const INVENTORY_UNEQUIP = 1
+export const INVENTORY_USE = 2
+export const INVENTORY_DROP = 3
 
 export const INPUT_UP = 1 << 0
 export const INPUT_DOWN = 1 << 1
 export const INPUT_LEFT = 1 << 2
 export const INPUT_RIGHT = 1 << 3
 export const INPUT_RUN = 1 << 4
+
+// The state byte: bit 0 is liveness, bits 1-3 the AI or movement state. Named here
+// because it is a protocol field, and both the session and the renderer decide what to
+// draw from it.
+export const STATE_ALIVE = 1 << 0
 
 export const DESPAWN_OUT_OF_RANGE = 0
 export const DESPAWN_DIED = 1
@@ -366,6 +382,21 @@ export function encodeDevTier(targetTier: number): Uint8Array {
   return new Writer(CLIENT_DEV_TIER, 2).u8(targetTier).build()
 }
 
+/** Take a second half at level-up, becoming the pairing's class (GDD 6.3). */
+export function encodeCompose(half: number): Uint8Array {
+  return new Writer(CLIENT_COMPOSE, 2).u8(half).build()
+}
+
+/**
+ * Equip, unequip, use, or drop one slot.
+ *
+ * `count` is only read by a drop. Everything else moves exactly one item, because the
+ * equipment map has no way to answer what wearing two of something would mean.
+ */
+export function encodeInventory(action: number, slot: number, count = 1): Uint8Array {
+  return new Writer(CLIENT_INVENTORY, 4).u8(action).u8(slot).u8(count).build()
+}
+
 // --- server to client -------------------------------------------------------
 
 export interface Welcome {
@@ -417,6 +448,8 @@ export interface Spawn {
   facing: number
   health: number
   level: number
+  /** Packed liveness and animation state, the same byte a delta carries. */
+  state: number
   appearance: Appearance
 }
 
@@ -472,6 +505,51 @@ export interface ServerError {
   detail: string
 }
 
+export interface Progress {
+  kind: 'progress'
+  level: number
+  experience: number
+  /** Experience needed to leave the current level. */
+  nextLevelAt: number
+  classId: number
+  /** Whether the character is owed the level-up class choice. */
+  composeAvailable: boolean
+  /**
+   * The kit, in bar order, starting with the basic attack.
+   *
+   * Sent by the server rather than derived from the class id so the bar cannot show
+   * a button the server would refuse.
+   */
+  abilityIds: number[]
+}
+
+/** One occupied inventory slot. The index in {@link Inventory.stacks} is its address. */
+export interface ItemStack {
+  itemId: number
+  count: number
+}
+
+export interface Inventory {
+  kind: 'inventory'
+  /** How many stacks the pack holds, so the grid can draw its empty slots. */
+  capacity: number
+  stacks: ItemStack[]
+  /** Worn items, by equipment slot. */
+  equipped: Array<{ slot: number; itemId: number }>
+  /**
+   * What the loadout adds up to.
+   *
+   * The maxima are here rather than derived from the class because the client only
+   * ever sees vitals as a fraction: without these it can draw the bar but cannot say
+   * what the bar is a fraction of.
+   */
+  maxHealth: number
+  maxResource: number
+  bonusDamage: number
+  /** Walking speed in tiles per second, after class and equipment. */
+  moveSpeed: number
+}
+
 export type ServerPacket =
   | Welcome
   | Snapshot
@@ -483,6 +561,8 @@ export type ServerPacket =
   | Tiles
   | Pong
   | ServerError
+  | Progress
+  | Inventory
 
 function readAppearance(reader: Reader): Appearance {
   return {
@@ -568,6 +648,7 @@ export function decodeServerPacket(bytes: Uint8Array): ServerPacket {
         facing: decodeAngle(reader.u16()),
         health: decodePercent(reader.u8()),
         level: reader.u16(),
+        state: reader.u8(),
         appearance: readAppearance(reader),
       }
 
@@ -618,6 +699,50 @@ export function decodeServerPacket(bytes: Uint8Array): ServerPacket {
 
     case SERVER_ERROR:
       return { kind: 'error', code: reader.u8(), detail: reader.text(160) }
+
+    case SERVER_PROGRESS: {
+      const level = reader.u16()
+      const experience = reader.u32()
+      const nextLevelAt = reader.u32()
+      const classId = reader.u8()
+      const composeAvailable = reader.u8() !== 0
+      const count = reader.u8()
+      const abilityIds: number[] = []
+      for (let i = 0; i < count; i += 1) abilityIds.push(reader.u16())
+      return {
+        kind: 'progress',
+        level,
+        experience,
+        nextLevelAt,
+        classId,
+        composeAvailable,
+        abilityIds,
+      }
+    }
+
+    case SERVER_INVENTORY: {
+      const capacity = reader.u8()
+      const stacks: ItemStack[] = []
+      for (let i = reader.u8(); i > 0; i -= 1) {
+        stacks.push({ itemId: reader.u16(), count: reader.u16() })
+      }
+      const equipped: Array<{ slot: number; itemId: number }> = []
+      for (let i = reader.u8(); i > 0; i -= 1) {
+        equipped.push({ slot: reader.u8(), itemId: reader.u16() })
+      }
+      return {
+        kind: 'inventory',
+        capacity,
+        stacks,
+        equipped,
+        maxHealth: reader.u16(),
+        maxResource: reader.u16(),
+        bonusDamage: reader.u16(),
+        // Hundredths of a tile per second, which is how the server keeps the only
+        // float in the packet off the wire.
+        moveSpeed: reader.u16() / 100,
+      }
+    }
 
     default:
       throw new ProtocolError(

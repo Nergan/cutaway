@@ -16,6 +16,8 @@ import { describe, expect, it } from 'vitest'
 import fixtures from '../__fixtures__/parity.json'
 import { PROTOCOL_VERSION } from '../domain/constants'
 import { isWalkable, blocksSight, Tile } from '../domain/tiles'
+import { ChunkStore } from './chunkStore'
+import { buildWorld, locate } from './coordinates'
 import {
   chunkSeed,
   combine,
@@ -26,7 +28,7 @@ import {
   unitFloat,
 } from './hashing'
 import { fractal, gradientNoise, ridged, scatterValue } from './noise'
-import { SpaceType, WorldGenerator, type ChunkAddress } from './generator'
+import { SpaceType, WorldGenerator, chunkKey, type ChunkAddress } from './generator'
 
 const WORLD_SEED = BigInt(fixtures.worldSeed)
 
@@ -254,6 +256,86 @@ describe('the chunk generator', () => {
       }),
     )
     expect(hub).not.toEqual(edge)
+  })
+})
+
+// --- passability -------------------------------------------------------------
+
+describe('the ground a player may stand on', () => {
+  // The generator suite above proves the two sides agree about tiles once they are
+  // looking at the same tile. This proves they look at the same tile — which is the half
+  // that broke. A point resolved to the wrong chunk, or one cell past the end of the
+  // right one, reads as no terrain at all, and no terrain means blocked: the player
+  // stops dead on ground the renderer has drawn as open.
+  const passability = fixtures.passability
+  const layout = buildWorld(passability.edgeId, passability.segments)
+  const store = new ChunkStore(new WorldGenerator(WORLD_SEED), layout.hubs, layout.edges)
+  store.setTopology(passability.activeChunks, passability.retiringChunks)
+
+  it('resolves every probe to the chunk the server resolved it to', () => {
+    // Reported as a list rather than one assertion per probe: a projection bug hits a
+    // whole family of points at once, and the shape of the family is what names it.
+    const wrong = passability.probes
+      .filter((probe) => probe.chunk !== null)
+      .filter((probe) => {
+        const located = locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)
+        return located === undefined || chunkKey(located.address) !== probe.chunk
+      })
+      .map((probe) => `(${probe.x}, ${probe.y}) belongs to ${probe.chunk}`)
+
+    expect(wrong).toEqual([])
+  })
+
+  it('resolves every probe to the same tile within that chunk', () => {
+    const wrong = passability.probes
+      .filter((probe) => probe.chunk !== null)
+      .filter(
+        (probe) => locate({ x: probe.x, y: probe.y }, layout.hubs, layout.edges)?.index !== probe.index,
+      )
+      .map((probe) => `(${probe.x}, ${probe.y}) is tile ${probe.index} of ${probe.chunk}`)
+
+    expect(wrong).toEqual([])
+  })
+
+  it('reads the same tile the server reads', () => {
+    for (const probe of passability.probes) {
+      if (probe.chunk === null) continue
+      expect(store.tileAtPoint({ x: probe.x, y: probe.y }), `(${probe.x}, ${probe.y})`).toBe(
+        probe.tile,
+      )
+    }
+  })
+
+  it('agrees with the server about what blocks a player', () => {
+    const wrong = passability.probes
+      .filter((probe) => store.walkable(probe.x, probe.y) !== probe.walkable)
+      .map((probe) => `(${probe.x}, ${probe.y}) ${probe.walkable ? 'is open' : 'is solid'}`)
+
+    expect(wrong).toEqual([])
+  })
+
+  it('reports no terrain where the server has none, rather than inventing it', () => {
+    // Outside the active topology the two answers have to stay distinguishable: the local
+    // player is stopped, but a remote entity standing there is still drawn where the
+    // server says it is. Collapsing the two is what turns a closed lane into a wall the
+    // client cannot explain.
+    for (const probe of passability.probes) {
+      if (probe.chunk !== null) continue
+      expect(store.tileAtPoint({ x: probe.x, y: probe.y }), `(${probe.x}, ${probe.y})`).toBeUndefined()
+      expect(store.walkable(probe.x, probe.y)).toBe(false)
+    }
+  })
+
+  it('covers the flanking lanes, which only exist above tier 0', () => {
+    // The fixture is only worth anything if it reaches the chunks whose tier_min is not
+    // zero. Those are the ones a client that defaults the tier addresses wrongly, and a
+    // probe set that stayed in the centre lane would pass while the corridor was solid.
+    expect(passability.currentTier).toBeGreaterThan(0)
+    const flanking = passability.probes.filter(
+      (probe) => probe.chunk !== null && /^edge:[^:]+:\d+:-?[1-9]/.test(probe.chunk),
+    )
+    expect(flanking.length).toBeGreaterThan(0)
+    expect(flanking.every((probe) => probe.chunk?.endsWith(':1'))).toBe(true)
   })
 })
 

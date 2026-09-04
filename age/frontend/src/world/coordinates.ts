@@ -133,6 +133,49 @@ export function worldToHub(hub: HubDefinition, point: Point): Point {
   return { x: point.x - centre.x, y: point.y - centre.y }
 }
 
+/**
+ * The tier at which a lane first appears. Mirror of `tier_min_for_lane`.
+ *
+ * A lane's `tierMin` is part of its chunk key and is hashed into its chunk seed, so it is
+ * not a detail the client may default: addressing a flanking lane as tier 0 produces a key
+ * the server's topology never names, which the store reads as "outside the world" and the
+ * predictor reads as a wall. The symptom is a lane that is solid and unrendered for its
+ * whole length the moment the accordion widens.
+ */
+export function tierMinForLane(laneOffset: number): number {
+  return laneOffset === 0 ? 0 : 1
+}
+
+/**
+ * Split a hub-local tile coordinate into `[chunk, offset]`. Mirror of `_split_hub_tile`.
+ *
+ * One floor, then an exact integer split, rather than deriving the chunk and the offset
+ * from the float independently. Doing them separately lets rounding at a chunk boundary
+ * produce an offset of exactly `CHUNK_TILES`, one past the end of the chunk — and a hub
+ * plaza sits on the origin, where those boundaries are.
+ */
+function splitHubTile(value: number): readonly [number, number] {
+  const tile = Math.floor(value)
+  const chunk = Math.floor(tile / CHUNK_TILES)
+  return [chunk, tile - chunk * CHUNK_TILES]
+}
+
+/**
+ * A corridor tile offset, forced inside its chunk. Mirror of the clamp in `_tile_index`.
+ *
+ * `worldToEdge` normalises into `[0, CHUNK_TILES)` by subtracting the chunk origin back
+ * off, and on a lane boundary that cancellation can land a hair outside the range it
+ * promises. The server clamps before it indexes, so the client has to clamp the same way:
+ * the failure is not symmetric. An out-of-range index there is a tile of the neighbouring
+ * row, but here it reads `undefined` from the tile array, and no terrain is what the
+ * predictor treats as a wall.
+ */
+function clampToChunk(offset: number): number {
+  const tile = Math.floor(offset)
+  if (tile < 0) return 0
+  return tile >= CHUNK_TILES ? CHUNK_TILES - 1 : tile
+}
+
 export interface Located {
   address: ChunkAddress
   /** Tile index within the chunk, row-major. */
@@ -151,15 +194,12 @@ export function locate(
   point: Point,
   hubs: readonly HubDefinition[],
   edges: readonly EdgeDefinition[],
-  tierMin = 0,
 ): Located | undefined {
   for (const hub of hubs) {
     const local = worldToHub(hub, point)
     if (Math.max(Math.abs(local.x), Math.abs(local.y)) <= hub.radiusTiles) {
-      const chunkX = Math.floor(local.x / CHUNK_TILES)
-      const chunkY = Math.floor(local.y / CHUNK_TILES)
-      const tileX = Math.floor(local.x - chunkX * CHUNK_TILES)
-      const tileY = Math.floor(local.y - chunkY * CHUNK_TILES)
+      const [chunkX, tileX] = splitHubTile(local.x)
+      const [chunkY, tileY] = splitHubTile(local.y)
       return {
         address: { spaceType: SpaceType.HUB, hubId: hub.hubId, chunkX, chunkY },
         index: tileY * CHUNK_TILES + tileX,
@@ -180,9 +220,9 @@ export function locate(
           edgeId: edge.edgeId,
           segmentIndex: local.segmentIndex,
           laneOffset: local.laneOffset,
-          tierMin,
+          tierMin: tierMinForLane(local.laneOffset),
         },
-        index: Math.floor(local.tileY) * CHUNK_TILES + Math.floor(local.tileX),
+        index: clampToChunk(local.tileY) * CHUNK_TILES + clampToChunk(local.tileX),
       }
     }
   }

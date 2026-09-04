@@ -21,6 +21,7 @@ from ..domain.constants import PROTOCOL_VERSION
 from ..infrastructure import wire
 from .connection import Connection
 from .container import get_container
+from .room import inventory_frame, progress_frame
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,9 @@ async def _handshake(
             retiring_chunks=simulation.manager.retiring_chunk_keys(),
         )
     )
+
+    connection.enqueue(progress_frame(joined.entity))
+    connection.enqueue(inventory_frame(joined.entity))
 
     for message in simulation.chat.history[-CHAT_BACKLOG:]:
         connection.enqueue(_chat_frame(message))

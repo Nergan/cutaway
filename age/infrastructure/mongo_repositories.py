@@ -19,6 +19,7 @@ instead. Losing a session is recoverable; losing a character is not.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from pymongo.errors import PyMongoError
@@ -59,6 +60,30 @@ class MongoTerrainOverlayRepository:
         if not document:
             return {}
         return _decode_overlay(document.get("tiles"))
+
+    async def load_many(self, chunk_keys: Sequence[str]) -> dict[str, dict[int, int]]:
+        """Every requested overlay in one query.
+
+        Most chunks have never been touched, so the result is usually far smaller than
+        the request; asking for them individually would spend a round trip per chunk to
+        learn that nothing was stored.
+        """
+        keys = list(chunk_keys)
+        if not keys:
+            return {}
+        try:
+            cursor = self._collection.find({"_id": {"$in": keys}})
+            documents = await cursor.to_list(length=len(keys))
+        except PyMongoError as exc:
+            logger.warning("Overlay read for %d chunks failed, using generated terrain: %s", len(keys), exc)
+            return {}
+
+        restored: dict[str, dict[int, int]] = {}
+        for document in documents:
+            tiles = _decode_overlay(document.get("tiles"))
+            if tiles:
+                restored[str(document["_id"])] = tiles
+        return restored
 
     async def save_batch(self, overlays: dict[str, dict[int, int]]) -> None:
         if not overlays:

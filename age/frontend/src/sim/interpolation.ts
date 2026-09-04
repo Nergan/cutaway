@@ -164,7 +164,14 @@ export class ClockSync {
   /** Feed a pong. All three times are in seconds on their own clock. */
   observePong(clientTime: number, serverTime: number, now: number): void {
     const roundTrip = now - clientTime
-    this.latencyMs = Math.max(0, roundTrip * 1000) / 2
+
+    // Smoothed rather than instantaneous. The round trip is measured to the moment the reply
+    // is handled on the main thread, so one long frame — a chunk build, a garbage collection —
+    // lands in the sample as if it were network delay, and a raw reading latches that spike
+    // on screen until the next pong seconds later. The average moves for a real change in
+    // conditions and shrugs off a single stall.
+    const sample = Math.max(0, roundTrip * 1000) / 2
+    this.latencyMs = this.samples === 0 ? sample : this.latencyMs * 0.8 + sample * 0.2
 
     if (roundTrip < this.best) {
       this.best = roundTrip

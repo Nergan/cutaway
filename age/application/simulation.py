@@ -23,8 +23,11 @@ import logging
 from collections import deque
 from dataclasses import dataclass, field
 
+from ..domain.classes import BaseClass, compose
 from ..domain.constants import (
+    BUILD_EXPERIENCE,
     HEALTH_REGEN_PER_SECOND,
+    MAX_LEVEL,
     MAX_QUEUED_INPUTS,
     RESOURCE_REGEN_PER_SECOND,
     TERRAIN_FLUSH_INTERVAL_SECONDS,
@@ -32,6 +35,7 @@ from ..domain.constants import (
 )
 from ..domain.coordinates import WorldPoint
 from ..domain.entities import DirtyField, Entity, EntityId, PlayerSession
+from ..domain.items import roll_drops
 from ..domain.ports import TerrainOverlayRepository
 from ..infrastructure import wire
 from . import ai, combat, terrain, weather
@@ -71,6 +75,12 @@ class TickReport:
     # queue, because re-deriving the audience from a position would lose the
     # distinction between the local and global channels.
     chat: list[ChatDecision] = field(default_factory=list)
+    # Entities whose level, experience, or class changed this tick, so the transport
+    # can send a progress packet to their owner and nobody else.
+    progressed: list[EntityId] = field(default_factory=list)
+    # Entities whose pack or loadout changed. Kept apart from ``progressed`` because
+    # the two travel on different packets and a harvest moves one without the other.
+    inventories: list[EntityId] = field(default_factory=list)
 
 
 class Simulation:
@@ -202,6 +212,10 @@ class Simulation:
             self._apply_chat(session, entity, payload, now, report)
         elif isinstance(payload, wire.DevTierRequest):
             self._apply_dev_tier(session, payload, now, report)
+        elif isinstance(payload, wire.ComposeRequest):
+            self._apply_compose(entity, payload, report)
+        elif isinstance(payload, wire.InventoryCommand):
+            self._apply_inventory(entity, payload, report)
 
     # --- individual commands ------------------------------------------------
 
@@ -297,7 +311,7 @@ class Simulation:
                 killed,
             )
             if killed:
-                self._award_kill(entity, target_id)
+                self._award_kill(entity, target_id, report)
 
         if not outcome.hits and outcome.ability is not None:
             # A miss still needs to reach the client, or the ability appears to do
@@ -306,7 +320,7 @@ class Simulation:
                 entity.entity_id, 0, payload.ability_id, 0, 0, False
             )
 
-    def _award_kill(self, killer: Entity, target_id: EntityId) -> None:
+    def _award_kill(self, killer: Entity, target_id: EntityId, report: TickReport) -> None:
         """Grant experience for a kill, levelling up when the bar fills.
 
         The curve is deliberately shallow and the cap low: this slice needs
@@ -316,21 +330,46 @@ class Simulation:
         if target is None or not target.is_npc or target.archetype is None:
             return
 
-        killer.experience += target.archetype.experience
-        threshold = 40 + killer.level * 60
-        while killer.experience >= threshold and killer.level < 20:
-            killer.experience -= threshold
-            killer.level += 1
-            killer.max_health += 6
-            killer.health = killer.max_health
-            killer.max_resource += 4
-            killer.resource = killer.max_resource
-            killer.mark(DirtyField.HEALTH | DirtyField.RESOURCE | DirtyField.STATE)
-            threshold = 40 + killer.level * 60
-            self.events.system_message(f"{killer.name} reached level {killer.level}.")
+        self.grant_experience(killer, target.archetype.experience, report)
 
         for item, count in target.archetype.loot:
             killer.give(item, count)
+        # Seeded from the corpse, so every kill rolls independently and the same
+        # kill replayed gives the same reward. See `items.roll_drops`.
+        for item, count in roll_drops(target.archetype.key, target.entity_id):
+            killer.give(item, count)
+
+        report.inventories.append(killer.entity_id)
+
+    def grant_experience(self, entity: Entity, amount: int, report: TickReport) -> None:
+        """Add experience and level up while the bar keeps filling.
+
+        Public because experience comes from more than combat: GDD 6.4 pays it for
+        building too, and that path lives in :meth:`_apply_build`.
+        """
+        if amount <= 0 or not entity.is_player:
+            return
+
+        entity.experience += amount
+        while entity.level < MAX_LEVEL and entity.experience >= entity.experience_to_next_level:
+            entity.experience -= entity.experience_to_next_level
+            entity.level += 1
+            entity.refresh_stats()
+            entity.health = entity.max_health
+            entity.resource = entity.max_resource
+            entity.mark(DirtyField.HEALTH | DirtyField.RESOURCE | DirtyField.STATE)
+            self.events.system_message(f"{entity.name} reached level {entity.level}.")
+            if entity.can_compose:
+                # The one level-up that asks something of the player. Said plainly in
+                # chat as well as in the UI, because it is the class system's whole hook.
+                self.events.system_message(
+                    f"{entity.name} may choose a second discipline — open the character sheet."
+                )
+
+        report.progressed.append(entity.entity_id)
+        # A level moves the pools, and the pools are only stated in the inventory
+        # packet, so the sheet would keep showing the old maximum without this.
+        report.inventories.append(entity.entity_id)
 
     def _apply_build(
         self,
@@ -356,6 +395,11 @@ class Simulation:
             return
 
         self.events.tiles_changed(outcome.chunk_key, {outcome.tile_index: outcome.tile})
+        if outcome.gained or outcome.spent:
+            report.inventories.append(entity.entity_id)
+        # GDD 6.4 pays experience for building as well as for fighting, so a player who
+        # would rather make a house than a corpse still progresses.
+        self.grant_experience(entity, BUILD_EXPERIENCE, report)
 
     def _apply_chat(
         self,
@@ -384,6 +428,66 @@ class Simulation:
             report.rejections.append((session.session_id, wire.ERROR_INVALID))
             return
         report.accordion = self.manager.force_tier(payload.target_tier, now)
+
+    def _apply_compose(
+        self,
+        entity: Entity,
+        payload: wire.ComposeRequest,
+        report: TickReport,
+    ) -> None:
+        """Add the second half of a class (GDD 6.3).
+
+        Silently ignored rather than rejected when unavailable: the only ways to get
+        here without the right to compose are a stale client that has not seen its own
+        level yet and a hand-crafted packet, and neither deserves an error toast.
+        """
+        if not entity.can_compose:
+            return
+        try:
+            half = BaseClass(payload.half)
+        except ValueError:
+            return
+
+        composed = compose(entity.class_id, half)
+        if composed is None:
+            return
+
+        entity.class_id = composed.class_id
+        # The multipliers moved, so the pools move with them, and the character is
+        # topped up: a level-up that left them injured would read as a punishment.
+        entity.refresh_stats()
+        entity.health = entity.max_health
+        entity.resource = entity.max_resource
+        entity.mark(DirtyField.HEALTH | DirtyField.RESOURCE | DirtyField.STATE)
+        report.progressed.append(entity.entity_id)
+        report.inventories.append(entity.entity_id)
+        self.events.system_message(f"{entity.name} is now a {composed.name}.")
+
+    def _apply_inventory(
+        self,
+        entity: Entity,
+        payload: wire.InventoryCommand,
+        report: TickReport,
+    ) -> None:
+        """Equip, unequip, use, or drop one slot.
+
+        The snapshot goes back whether or not anything moved. A refusal here means the
+        client is describing a pack the server does not have — a stale index after a
+        harvest, most likely — and answering with the truth resynchronises it, where
+        an error code would only tell it that it was wrong.
+        """
+        if payload.action == wire.INVENTORY_EQUIP:
+            entity.equip(payload.slot)
+        elif payload.action == wire.INVENTORY_UNEQUIP:
+            entity.unequip(payload.slot)
+        elif payload.action == wire.INVENTORY_USE:
+            entity.consume(payload.slot)
+        elif payload.action == wire.INVENTORY_DROP:
+            entity.discard(payload.slot, payload.count)
+        else:
+            return
+
+        report.inventories.append(entity.entity_id)
 
     # --- snapshot assembly --------------------------------------------------
 
@@ -442,10 +546,14 @@ class Simulation:
         return written
 
     async def load_overlays(self) -> None:
-        """Restore persisted edits for every currently loaded chunk."""
+        """Restore persisted edits for every currently loaded chunk, in one read."""
         if self.overlays is None:
             return
-        for view in self.world.loaded_chunks():
-            stored = await self.overlays.load(view.address.key)
-            if stored:
-                self.world.apply_overlay(view.address, stored)
+        views = {view.address.key: view.address for view in self.world.loaded_chunks()}
+        if not views:
+            return
+        stored = await self.overlays.load_many(list(views))
+        for chunk_key, tiles in stored.items():
+            address = views.get(chunk_key)
+            if address is not None:
+                self.world.apply_overlay(address, tiles)

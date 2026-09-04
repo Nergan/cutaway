@@ -107,6 +107,21 @@ POSITION_HISTORY_SECONDS = 1.0
 RESPAWN_DELAY_SECONDS = 5.0
 BASE_MAX_HEALTH = 100
 BASE_MAX_RESOURCE = 100
+
+# Levelling (GDD 6.4). The curve is deliberately shallow and the cap low: this slice
+# needs progression to be visible within a few minutes of play, not tuned.
+MAX_LEVEL = 20
+#: The level at which a base class may take its second half (GDD 6.3). The first
+#: level-up is the composition, so it is reachable from a handful of kills.
+COMPOSE_LEVEL = 2
+#: Experience for placing or harvesting one tile. Small enough that levelling by
+#: landscaping is slower than levelling by fighting, large enough to be a path.
+BUILD_EXPERIENCE = 3
+#: What a level is worth, on top of the class multiplier applied to the base pools.
+#: Flat rather than proportional so a level is worth the same to every class and the
+#: gap between a tank and a mage does not widen with nothing but time played.
+HEALTH_PER_LEVEL = 6
+RESOURCE_PER_LEVEL = 4
 RESOURCE_REGEN_PER_SECOND = 6.0
 HEALTH_REGEN_PER_SECOND = 1.5
 
@@ -149,7 +164,13 @@ CHANNEL_SYSTEM = 2
 
 # --- wire encoding ----------------------------------------------------------
 
-PROTOCOL_VERSION = 1
+# Raised to 2 for the inventory packets and for the state byte added to SERVER_SPAWN.
+# Earlier additions left it alone because the new packet was optional in both directions,
+# so an old client simply never saw one. Neither of these is. The inventory snapshot is
+# sent unprompted on join, and the spawn byte changes the length of a packet that already
+# existed, which a mismatched reader does not fail on — it reads the appearance bytes one
+# position out and draws a character with someone else's face.
+PROTOCOL_VERSION = 2
 
 # Positions travel as int32 in 1/64-tile steps: about 0.5 px at the native tile
 # size, which is finer than a player can perceive, and covers +-33 million tiles.

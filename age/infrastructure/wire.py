@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import struct
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from ..domain.constants import (
@@ -44,6 +45,8 @@ CLIENT_CHAT = 0x05
 CLIENT_BUILD = 0x06
 CLIENT_PING = 0x07
 CLIENT_DEV_TIER = 0x08
+CLIENT_COMPOSE = 0x09
+CLIENT_INVENTORY = 0x0A
 
 SERVER_WELCOME = 0x81
 SERVER_SNAPSHOT = 0x82
@@ -55,6 +58,15 @@ SERVER_CHAT = 0x87
 SERVER_TILES = 0x88
 SERVER_PONG = 0x89
 SERVER_ERROR = 0x8A
+SERVER_PROGRESS = 0x8B
+SERVER_INVENTORY = 0x8C
+
+# What a client wants done with a slot. ``EQUIP``, ``USE`` and ``DROP`` address an
+# inventory index; ``UNEQUIP`` addresses an equipment slot.
+INVENTORY_EQUIP = 0
+INVENTORY_UNEQUIP = 1
+INVENTORY_USE = 2
+INVENTORY_DROP = 3
 
 # Input bit flags, packed into one byte.
 INPUT_UP = 1 << 0
@@ -360,8 +372,44 @@ class DevTierRequest:
     target_tier: int
 
 
+@dataclass(frozen=True, slots=True)
+class ComposeRequest:
+    """Add a second half to the character's class (GDD 6.3).
+
+    Sent once, when a base-class character has levelled and the client has asked
+    them which half to take. The server is the one that decides whether the choice
+    is available, so this carries nothing but the half.
+    """
+
+    half: int
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryCommand:
+    """Equip, unequip, use, or drop one slot.
+
+    One packet for four verbs rather than four packets, because they share a shape
+    and differ only in what the slot means. ``count`` is only read by ``DROP``; the
+    others move exactly one item, and letting a client equip two of something would
+    be a question the equipment map has no way to answer.
+    """
+
+    action: int
+    slot: int
+    count: int
+
+
 ClientPacket = (
-    Hello | Ready | InputCommand | ActionCommand | ChatRequest | BuildRequest | PingRequest | DevTierRequest
+    Hello
+    | Ready
+    | InputCommand
+    | ActionCommand
+    | ChatRequest
+    | BuildRequest
+    | PingRequest
+    | DevTierRequest
+    | ComposeRequest
+    | InventoryCommand
 )
 
 
@@ -422,6 +470,12 @@ def decode_client_packet(data: bytes) -> ClientPacket:
 
     if message_type == CLIENT_DEV_TIER:
         return DevTierRequest(target_tier=reader.u8())
+
+    if message_type == CLIENT_COMPOSE:
+        return ComposeRequest(half=reader.u8())
+
+    if message_type == CLIENT_INVENTORY:
+        return InventoryCommand(action=reader.u8(), slot=reader.u8(), count=reader.u8())
 
     raise ProtocolError(f"unknown client message type 0x{message_type:02X}")
 
@@ -537,9 +591,19 @@ def encode_spawn(
     facing: float,
     health_percent: int,
     level: int,
+    state: int,
     appearance: tuple[int, int, int, int, int],
 ) -> bytes:
-    """A full entity introduction, sent once when it enters the view."""
+    """A full entity introduction, sent once when it enters the view.
+
+    Carries ``state`` because it has to be complete: an entity is introduced once and
+    then only ever described by deltas, so a field the introduction leaves out is a
+    field the client invents. This one was left out, and the field it stood for was
+    liveness — so every entity arrived at the client reading as dead, which meant every
+    entity was drawn in the one-frame hurt pose, greyed and half-faded, and no character
+    in the game ever animated. Nothing detected it because the client's default was a
+    plausible-looking zero rather than an absence.
+    """
     writer = (
         Writer(SERVER_SPAWN)
         .u32(entity_id)
@@ -551,6 +615,7 @@ def encode_spawn(
         .u16(encode_angle(facing))
         .u8(health_percent)
         .u16(level)
+        .u8(state)
     )
     for component in appearance:
         writer.u8(component)
@@ -643,6 +708,82 @@ def encode_error(code: int, detail: str = "") -> bytes:
     return Writer(SERVER_ERROR).u8(code).text(detail, 160).build()
 
 
+def encode_progress(
+    *,
+    level: int,
+    experience: int,
+    next_level_at: int,
+    class_id: int,
+    compose_available: bool,
+    ability_ids: Sequence[int],
+) -> bytes:
+    """Level, experience, and the class kit that follows from them.
+
+    Sent on connect and whenever any of it changes, rather than folded into the
+    snapshot: it changes a handful of times per session, and the snapshot is the one
+    packet that goes out thirty times a second.
+
+    ``ability_ids`` travels with the class rather than being derived client-side, so
+    the bar cannot disagree with what the server will actually accept.
+    """
+    writer = (
+        Writer(SERVER_PROGRESS)
+        .u16(level)
+        .u32(experience)
+        .u32(next_level_at)
+        .u8(class_id)
+        .u8(1 if compose_available else 0)
+        .u8(len(ability_ids))
+    )
+    for ability_id in ability_ids:
+        writer.u16(ability_id)
+    return writer.build()
+
+
+#: Move speed travels in hundredths of a tile per second. Two bytes at that
+#: resolution covers everything the movement integrator can produce, and it keeps the
+#: only float in the packet off the wire.
+SPEED_SCALE = 100
+
+
+def encode_inventory(
+    *,
+    capacity: int,
+    stacks: Sequence[tuple[int, int]],
+    equipped: Sequence[tuple[int, int]],
+    max_health: int,
+    max_resource: int,
+    bonus_damage: int,
+    move_speed: float,
+) -> bytes:
+    """What one player is carrying, wearing, and what it adds up to.
+
+    Private to its owner and never broadcast: another player's bag is not something
+    the client has anywhere to put, and replicating it would be the single largest
+    per-entity payload in the protocol for no visible effect.
+
+    The derived stats ride along rather than being recomputed client-side. The client
+    knows vitals only as a fraction of a maximum it cannot see, so without these the
+    character sheet could show the bars but not the numbers behind them, and a helm
+    that adds twelve health would be invisible.
+    """
+    writer = Writer(SERVER_INVENTORY).u8(capacity).u8(len(stacks))
+    for item_id, count in stacks:
+        writer.u16(item_id).u16(min(count, 0xFFFF))
+
+    writer.u8(len(equipped))
+    for slot, item_id in equipped:
+        writer.u8(slot).u16(item_id)
+
+    return (
+        writer.u16(min(max(max_health, 0), 0xFFFF))
+        .u16(min(max(max_resource, 0), 0xFFFF))
+        .u16(min(max(bonus_damage, 0), 0xFFFF))
+        .u16(min(max(round_half_up(move_speed * SPEED_SCALE), 0), 0xFFFF))
+        .build()
+    )
+
+
 # --- introspection ----------------------------------------------------------
 
 MESSAGE_NAMES: dict[int, str] = {
@@ -654,6 +795,8 @@ MESSAGE_NAMES: dict[int, str] = {
     CLIENT_BUILD: "build",
     CLIENT_PING: "ping",
     CLIENT_DEV_TIER: "dev_tier",
+    CLIENT_COMPOSE: "compose",
+    CLIENT_INVENTORY: "inventory",
     SERVER_WELCOME: "welcome",
     SERVER_SNAPSHOT: "snapshot",
     SERVER_SPAWN: "spawn",
@@ -664,4 +807,6 @@ MESSAGE_NAMES: dict[int, str] = {
     SERVER_TILES: "tiles",
     SERVER_PONG: "pong",
     SERVER_ERROR: "error",
+    SERVER_PROGRESS: "progress",
+    SERVER_INVENTORY: "inventory",
 }

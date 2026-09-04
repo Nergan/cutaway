@@ -65,7 +65,10 @@ def harvest(world: World, actor: Entity, point: WorldPoint, now: float) -> Build
         return BuildOutcome(ok=False, error=wire.ERROR_INVALID)
 
     chunk_key, tile_index = written
-    actor.give(material, quantity)
+    # The pack is bounded, so a harvest can come back with less than the tile was
+    # worth. The tile is still cleared: refusing the swing because the bag is full
+    # would leave the player unable to make the room they need.
+    stored = actor.give(material, quantity)
     _schedule_regrowth(world, chunk_key, tile_index, now)
 
     return BuildOutcome(
@@ -73,7 +76,7 @@ def harvest(world: World, actor: Entity, point: WorldPoint, now: float) -> Build
         chunk_key=chunk_key,
         tile_index=tile_index,
         tile=replacement,
-        gained={material: quantity},
+        gained={material: stored} if stored else {},
     )
 
 
@@ -91,7 +94,7 @@ def place(
         return BuildOutcome(ok=False, error=wire.ERROR_INVALID)
 
     tile, cost = recipe
-    if actor.inventory.get(material, 0) < cost:
+    if actor.count_of(material) < cost:
         return BuildOutcome(ok=False, error=wire.ERROR_NO_MATERIAL)
 
     # Refuse to build on top of someone. Without this a player can wall another

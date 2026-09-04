@@ -12,6 +12,7 @@ caller changes.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
 from .coordinates import ChunkAddress, LocationRef
@@ -58,6 +59,15 @@ class TerrainOverlayRepository(Protocol):
 
     async def load(self, chunk_key: str) -> dict[int, int]:
         """Overlay for a chunk as ``{tile_index: tile_id}``."""
+
+    async def load_many(self, chunk_keys: Sequence[str]) -> dict[str, dict[int, int]]:
+        """Overlays for many chunks, keyed by chunk key, omitting the unedited ones.
+
+        Separate from :meth:`load` because bootstrap restores every active chunk at
+        once. One round trip per chunk is a hundred round trips against a shared
+        free-tier cluster, which is slower than generating the terrain it is
+        restoring, and unreachable storage multiplies that by the connect timeout.
+        """
 
     async def save_batch(self, overlays: dict[str, dict[int, int]]) -> None:
         """Flush accumulated edits for several chunks at once."""

@@ -1,11 +1,15 @@
 /**
  * The renderer: camera, layers, lighting pass, weather.
  *
- * The frame is drawn in two passes. First the world is drawn twice — once with colour art and
- * once with normal-map art, into an offscreen texture — then the colour buffer is put through
- * a filter that samples both and shades every pixel by the lights near it. Drawing twice
- * sounds expensive and is not: both passes are the same geometry with a different page bound,
- * and the alternative for 2D normal-mapped lighting is a custom render pipeline.
+ * The frame is drawn in three passes. The world goes into an offscreen colour buffer, the same
+ * geometry goes into a normal buffer with the normal page bound instead, and then a full-screen
+ * quad reads both and shades every pixel by the lights near it. Drawing the world twice sounds
+ * expensive and is not: both passes are the same geometry with a different page bound.
+ *
+ * Neither world container is on the stage. They are rendered to textures by hand, and the stage
+ * holds only the lighting quad and the screen-space overlay. That keeps the lighting shader's
+ * coordinates honest — a quad's vertices are screen pixels, so albedo, normals, and lights
+ * share one frame — and it keeps Pixi from measuring the bounds of thousands of sprites.
  *
  * Camera positions are snapped to whole screen pixels. Pixel art at a fractional offset
  * shimmers, because each tile rounds differently and the rounding changes as you walk.
@@ -33,7 +37,7 @@ import {
 } from './atmosphere'
 import { CharacterCache, type CharacterLayout } from './characters'
 import { DecorCache, type Placement } from './decor'
-import { LightingFilter, type Light } from './lighting'
+import { LightingPass, type Light } from './lighting'
 import { PropLayer, poseFor } from './props'
 import { TileLayer } from './tilemap'
 import { WeatherLayer } from './weather'
@@ -77,8 +81,33 @@ export interface SceneStats {
   fps: number
 }
 
-/** How zoomed in the world is. Two device pixels per art pixel: legible without being huge. */
+/**
+ * How much of the world has to stay on screen, in tiles.
+ *
+ * The zoom is chosen to satisfy this rather than fixed, and that is a correctness matter as
+ * much as a taste one. A fixed 2x on a 1024-wide canvas shows sixteen tiles across, which is
+ * narrower than the distance at which the hub's own guards stand: the world looked deserted
+ * because everything in it was just off screen. Thirty tiles across is roughly what the genre
+ * shows, and it is wide enough that a plaza reads as a plaza.
+ */
+const MIN_VISIBLE_TILES_X = 30
+const MIN_VISIBLE_TILES_Y = 16
+
+/** Fallback until the canvas has a size to measure. */
 const DEFAULT_ZOOM = 2
+
+/**
+ * The largest integer zoom that still shows {@link MIN_VISIBLE_TILES_X} by
+ * {@link MIN_VISIBLE_TILES_Y} tiles.
+ *
+ * Integers only: a zoom of 1.5 puts every other art pixel across two screen pixels, and the
+ * seams move as the camera does.
+ */
+function zoomFor(width: number, height: number): number {
+  const byWidth = width / (TILE_SIZE_PX * MIN_VISIBLE_TILES_X)
+  const byHeight = height / (TILE_SIZE_PX * MIN_VISIBLE_TILES_Y)
+  return Math.max(1, Math.min(4, Math.floor(Math.min(byWidth, byHeight))))
+}
 
 export class Scene {
   readonly app: Application
@@ -90,13 +119,15 @@ export class Scene {
   private tiles!: TileLayer
   private props!: PropLayer
   private weatherLayer!: WeatherLayer
-  private lighting!: LightingFilter
+  private lighting!: LightingPass
+  private colourBuffer!: RenderTexture
   private normalBuffer!: RenderTexture
 
   /** The full-screen rectangle the weather and lightning tints are painted onto. */
   private readonly tint = new Graphics()
 
   private zoom = DEFAULT_ZOOM
+  private zoomChosenByPlayer = false
   private stats: SceneStats = { chunks: 0, sprites: 0, lights: 0, fps: 0 }
   private readonly lights: Light[] = []
 
@@ -165,34 +196,41 @@ export class Scene {
     this.world.addChild(this.tiles.colourRoot, this.props.colourRoot)
     this.normalWorld.addChild(this.tiles.normalRoot, this.props.normalRoot)
 
-    this.normalBuffer = RenderTexture.create({
+    const bufferSize = {
       width: Math.max(1, this.app.screen.width),
       height: Math.max(1, this.app.screen.height),
       scaleMode: 'nearest',
-    })
+    } as const
+    this.colourBuffer = RenderTexture.create(bufferSize)
+    this.normalBuffer = RenderTexture.create(bufferSize)
 
-    this.lighting = new LightingFilter(this.normalBuffer)
-    this.world.filters = [this.lighting]
+    this.lighting = new LightingPass(this.colourBuffer.source, this.normalBuffer.source)
 
     this.overlay.addChild(this.tint, this.weatherLayer.root)
-    this.app.stage.addChild(this.world, this.overlay)
+    // The world containers stay off the stage: they are rendered into the buffers the
+    // lighting quad samples, and putting them on the stage as well would draw them twice.
+    this.app.stage.addChild(this.lighting.root, this.overlay)
 
     this.app.renderer.on('resize', () => this.onResize())
     this.onResize()
   }
 
   private onResize(): void {
-    const { width, height } = this.app.screen
-    this.normalBuffer.resize(Math.max(1, width), Math.max(1, height))
-    this.lighting.setNormalSource(this.normalBuffer.source)
-    this.lighting.setResolution(width, height)
+    const width = Math.max(1, this.app.screen.width)
+    const height = Math.max(1, this.app.screen.height)
+    this.colourBuffer.resize(width, height)
+    this.normalBuffer.resize(width, height)
+    this.lighting.resize(width, height, this.colourBuffer.source, this.normalBuffer.source)
     this.weatherLayer.resize(width, height)
+    if (!this.zoomChosenByPlayer) this.zoom = zoomFor(width, height)
   }
 
   setZoom(zoom: number): void {
     // Integers only. A zoom of 1.5 puts every other art pixel across two screen pixels, and
     // the seams move as the camera does.
     this.zoom = Math.max(1, Math.min(4, Math.round(zoom)))
+    // Once the player has an opinion, resizing stops overruling it.
+    this.zoomChosenByPlayer = true
   }
 
   get currentZoom(): number {
@@ -232,16 +270,23 @@ export class Scene {
     const waterFrame = Math.floor(input.elapsed * 6)
     this.tiles.update(store, input.chunks, waterFrame, (address) => originOf(address, store))
 
-    // Props and characters, all queued then depth-sorted in one pass.
+    // Props and characters, all queued then depth-sorted in one pass. The viewport is set
+    // first so the queueing can drop what the camera cannot see: chunks stream in a ring
+    // wider than the screen, and the props of the outer ring are work with nothing to show
+    // for it — both to allocate and, more expensively, to keep in the depth sort.
     this.props.begin()
+    this.props.setViewport(centreX, centreY, width / (2 * scale), height / (2 * scale))
     this.decor.length = 0
 
     for (const address of input.chunks) {
-      const tiles = this.tiles.tilesOf(chunkKey(address))
+      const key = chunkKey(address)
+      const tiles = this.tiles.tilesOf(key)
       if (tiles === undefined) continue
 
       const originTiles = store.chunkOriginTiles(address)
       this.props.addChunkProps(
+        key,
+        store.peek(key)?.revision ?? 0,
         tiles,
         originTiles.x * TILE_SIZE_PX,
         originTiles.y * TILE_SIZE_PX,
@@ -260,7 +305,7 @@ export class Scene {
     }
 
     for (const entity of input.entities) {
-      this.props.addEntity(entity, input.elapsed, entity.pose.speed * input.elapsed)
+      this.props.addEntity(entity, input.elapsed, entity.travelled)
     }
 
     if (input.local !== undefined) {
@@ -299,8 +344,13 @@ export class Scene {
     this.paintTint(width, height, ambient.overlay, flash)
     this.weatherLayer.update(particlesFor(input.weather), deltaSeconds)
 
-    // The normal pass goes to its own buffer, which the filter then samples. Rendered before
-    // the visible frame so the filter reads this frame's normals rather than last frame's.
+    // Both world passes go to their buffers before the visible frame, so the lighting quad
+    // reads this frame's albedo and normals rather than the previous frame's.
+    this.app.renderer.render({
+      container: this.world,
+      target: this.colourBuffer,
+      clear: true,
+    })
     this.app.renderer.render({
       container: this.normalWorld,
       target: this.normalBuffer,
@@ -388,6 +438,21 @@ export class Scene {
     return {
       x: camera.x + (screenX - width / 2) / (TILE_SIZE_PX * this.zoom),
       y: camera.y + (screenY - height / 2) / (TILE_SIZE_PX * this.zoom),
+    }
+  }
+
+  /**
+   * The inverse: where a world point lands on screen.
+   *
+   * For HUD elements that have to sit over something in the world — a damage number
+   * over the thing that took it. Drawing those in the DOM rather than in Pixi keeps
+   * them crisp at every zoom, where a bitmap font baked at one scale would not be.
+   */
+  tileToScreen(tileX: number, tileY: number, camera: CameraTarget): { x: number; y: number } {
+    const { width, height } = this.app.screen
+    return {
+      x: width / 2 + (tileX - camera.x) * TILE_SIZE_PX * this.zoom,
+      y: height / 2 + (tileY - camera.y) * TILE_SIZE_PX * this.zoom,
     }
   }
 

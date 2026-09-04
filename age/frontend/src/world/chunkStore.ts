@@ -18,6 +18,7 @@ import {
   edgeToWorld,
   hubToWorld,
   locate,
+  tierMinForLane,
   type EdgeDefinition,
   type HubDefinition,
   type Point,
@@ -264,12 +265,16 @@ export class ChunkStore {
     const edge = this.edges.find((candidate) => candidate.edgeId === address.edgeId)
     if (edge !== undefined && segmentIndex >= edge.segments) return undefined
 
+    // Derived from the new lane rather than carried over from the origin: stepping
+    // sideways out of the centre lane changes which tier the chunk belongs to, and
+    // inheriting the old one names a chunk the server has never heard of.
+    const laneOffset = (address.laneOffset ?? 0) + dy
     return {
       spaceType: 1,
       edgeId: address.edgeId,
       segmentIndex,
-      laneOffset: (address.laneOffset ?? 0) + dy,
-      tierMin: address.tierMin ?? 0,
+      laneOffset,
+      tierMin: tierMinForLane(laneOffset),
     }
   }
 

@@ -206,7 +206,10 @@ textarea {
   /* The HUD is a window onto the game, not a lid: only its own controls take the pointer. */
   pointer-events: none;
   display: grid;
-  grid-template-columns: minmax(240px, 320px) 1fr minmax(200px, 260px);
+  /* The side columns are `auto` rather than a minimum width so their panels are as wide as
+     they need to be and no wider. A minimum stretched the vitals panel into a mostly empty
+     rectangle, which is a lot of a small screen spent on two bars. */
+  grid-template-columns: auto 1fr auto;
   grid-template-rows: auto 1fr auto;
   gap: 14px;
   padding: 14px;
@@ -218,7 +221,9 @@ textarea {
 .hud-vitals {
   grid-column: 1;
   grid-row: 1;
-  padding: 10px 12px;
+  justify-self: start;
+  width: 208px;
+  padding: 7px 9px 8px;
 }
 
 .hud-world {
@@ -249,6 +254,38 @@ textarea {
   align-self: end;
 }
 
+.hud-toggles {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  /* Under the world panel, which is the only other thing in this corner. */
+  margin-top: 92px;
+  display: flex;
+  gap: 6px;
+}
+
+/* The sheets share the right column and stack. Both open at once is a normal thing to
+   want — the pack is only useful next to the slots it feeds. */
+.hud-sheets {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* This wrapper spans the whole middle of the right column whether or not it holds
+     anything, so it must not take the pointer itself; its panels do. */
+  pointer-events: none;
+  max-height: 100%;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+}
+.hud-sheets > * {
+  pointer-events: auto;
+}
+
 /* --- vitals ---------------------------------------------------------------- */
 
 .vitals-name {
@@ -256,23 +293,57 @@ textarea {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .vitals-name strong {
   font-family: 'Trebuchet MS', Arial, sans-serif;
   color: var(--primary);
   font-weight: normal;
-  font-size: 11pt;
+  font-size: 10pt;
+  line-height: 1.1;
+}
+.vitals-name span {
+  font-size: 8pt;
+  white-space: nowrap;
 }
 
 .bar {
   position: relative;
-  height: 14px;
+  height: 12px;
   background: var(--sb-track);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
+}
+.bar:last-child {
+  margin-bottom: 0;
+}
+
+/* Experience. Thin and unlabelled: it is a progress hint, not a vital sign, and a third
+   full-height bar would put the panel back to the size this trimmed it from. */
+.bar.experience {
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+}
+.bar-fill.experience {
+  background: linear-gradient(180deg, var(--primary) 0%, #8a6a4c 100%);
+}
+.vitals-compose {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 3px 6px;
+  font-size: 8pt;
+  color: var(--card-bg);
+  background: var(--primary);
+  border: 1px solid #2b2320;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.vitals-compose:hover {
+  background: var(--accent);
 }
 .bar-fill {
   position: absolute;
@@ -544,6 +615,71 @@ textarea {
   color: var(--text-muted);
 }
 
+/*
+ * Range inputs, styled from scratch.
+ *
+ * Left alone, a native range paints its track and thumb in the platform accent colour —
+ * which is blue on every default Windows and macOS install, and reads as a browser control
+ * sitting in the middle of a game. `appearance: none` is what surrenders the platform look;
+ * without it the rules below are ignored, and the vendor-prefixed thumb selectors cannot be
+ * combined into one rule because an unknown pseudo-element makes the whole selector invalid.
+ */
+input[type='range'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+}
+input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+}
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  /* Centring the thumb on a 6px track needs half the difference lifted back off. */
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 1px solid #2b2320;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 1px solid #2b2320;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+input[type='range']:hover::-webkit-slider-thumb {
+  background: var(--accent);
+}
+input[type='range']:hover::-moz-range-thumb {
+  background: var(--accent);
+}
+input[type='range']:focus-visible {
+  outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(217, 138, 89, 0.4);
+}
+input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(217, 138, 89, 0.4);
+}
+
 .title-actions {
   display: flex;
   align-items: center;
@@ -615,6 +751,331 @@ textarea {
   font-size: 18pt;
   color: var(--danger);
   margin-bottom: 6px;
+}
+
+/* --- the level-up class choice --------------------------------------------- */
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 14, 12, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 35;
+}
+
+.compose-card {
+  width: min(560px, calc(100% - 48px));
+  padding: 20px 22px;
+}
+.compose-card h2 {
+  font-size: 15pt;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+/* Two columns rather than four. Four halves side by side leaves each option too narrow for
+   the ability list, and the list is the part the decision is actually made on. */
+.compose-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.compose-option {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  text-align: left;
+  color: var(--text);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.compose-option:hover {
+  border-color: var(--accent);
+  background: var(--sb-track);
+}
+.compose-half,
+.compose-fantasy {
+  font-size: 8pt;
+}
+.compose-kit {
+  margin-top: 3px;
+  font-size: 8pt;
+  color: var(--accent);
+}
+
+.compose-later {
+  display: block;
+  margin: 0 auto;
+  padding: 4px 14px;
+  font-size: 8pt;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.compose-later:hover {
+  color: var(--text);
+}
+
+/* --- character sheet and pack ---------------------------------------------- */
+
+.hud-toggles button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 8pt;
+  color: var(--text-muted);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  cursor: pointer;
+}
+.hud-toggles button:hover,
+.hud-toggles button.on {
+  color: var(--text);
+  border-color: var(--primary);
+}
+.hud-toggles kbd {
+  font-family: inherit;
+  font-size: 7pt;
+  padding: 0 3px;
+  color: var(--primary);
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.sheet,
+.inventory {
+  width: 240px;
+  padding: 8px 10px 10px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sheet-head .panel-title {
+  flex: 1;
+  margin-bottom: 7px;
+}
+.sheet-close {
+  font-size: 9pt;
+  line-height: 1;
+  padding: 1px 5px 3px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.sheet-close:hover {
+  color: var(--danger);
+  border-color: var(--border);
+}
+
+.sheet-identity {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 8px;
+}
+.sheet-identity .muted {
+  font-size: 8pt;
+}
+.sheet-fantasy {
+  font-style: italic;
+}
+
+/* A definition list rather than rows of divs: these really are terms and their values,
+   and the two-column grid is what a stat block wants anyway. */
+.sheet-stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin-bottom: 9px;
+  font-size: 8pt;
+}
+.sheet-stats dt {
+  color: var(--text-muted);
+}
+.sheet-stats dd {
+  text-align: right;
+  color: var(--primary);
+}
+
+.sheet-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.slot {
+  display: grid;
+  gap: 1px;
+  padding: 4px 7px;
+  text-align: left;
+  font-size: 8pt;
+  color: var(--text-muted);
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  cursor: default;
+}
+.slot.filled {
+  color: var(--text);
+  background: var(--card-bg);
+  cursor: pointer;
+}
+.slot.filled:hover {
+  border-color: var(--accent);
+}
+.slot-name {
+  font-size: 7pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.slot-item {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Six across, which is the pack's width. The rows follow from its capacity. */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+.cell {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 2px;
+  overflow: hidden;
+  font-size: 6.5pt;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--text);
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.cell.empty {
+  display: block;
+}
+.cell.filled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  cursor: pointer;
+}
+.cell.filled:hover {
+  border-color: var(--accent);
+}
+.cell-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.cell-count {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  padding: 0 2px;
+  font-size: 6.5pt;
+  color: var(--primary);
+  background: rgba(20, 18, 16, 0.78);
+  border-radius: 3px;
+}
+
+.inventory-hint {
+  margin-top: 7px;
+  font-size: 7pt;
+  text-align: center;
+}
+
+/* Rarity is a tint on the edge, never on the fill: a coloured block behind six-point text
+   costs more legibility than the tier is worth saying. */
+.rarity-1 {
+  border-color: #6f8f5e;
+}
+.rarity-2 {
+  border-color: #5b8bb0;
+}
+.rarity-3 {
+  border-color: #a06fbf;
+}
+.slot.rarity-1 {
+  border-left-color: #6f8f5e;
+}
+.slot.rarity-2 {
+  border-left-color: #5b8bb0;
+}
+.slot.rarity-3 {
+  border-left-color: #a06fbf;
+}
+
+/* --- floating combat numbers ----------------------------------------------- */
+
+.combat-numbers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 15;
+}
+.floater {
+  position: absolute;
+  font-size: 12pt;
+  font-weight: bold;
+  /* An outline rather than a glow: these land on grass, on stone and on water, and a
+     soft shadow disappears against the light ones. */
+  text-shadow:
+    0 0 2px #000,
+    0 1px 3px rgba(0, 0, 0, 0.95);
+  transform: translate(-50%, -50%);
+  animation: floater-rise 0.9s ease-out forwards;
+}
+.floater.damage {
+  color: #f0a08c;
+}
+.floater.heal {
+  color: #a8d08a;
+}
+.floater.miss {
+  font-size: 9pt;
+  color: var(--text-muted);
+}
+
+@keyframes floater-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.7);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -170%) scale(1);
+  }
 }
 
 .toasts {

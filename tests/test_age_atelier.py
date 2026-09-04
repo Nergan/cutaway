@@ -13,9 +13,9 @@ import json
 import pytest
 
 from age.atelier import canvas as canvas_module
-from age.atelier import importers, normals, palette, png, recipes, sheet
+from age.atelier import character, importers, normals, palette, png, recipes, sheet
 from age.domain.constants import ATLAS_PADDING_PX, ATLAS_SIZE_PX, TILE_SIZE_PX
-from age.domain.tiles import Tile
+from age.domain.tiles import Tile, is_walkable
 
 
 # --- palette -----------------------------------------------------------------
@@ -451,6 +451,26 @@ def test_every_tile_has_ground_beneath_it():
         assert int(tile) in recipes.TILE_GROUND, f"{tile.name} has no ground art"
 
 
+def test_a_tile_that_blocks_movement_does_not_render_as_open_ground():
+    """A solid tile drawn as a walkable carpet is an invisible wall by construction.
+
+    The player walks at what looks like grass and stops dead, with nothing on screen to
+    explain it. Either the tile carries a prop or its ground is art no walkable tile uses;
+    sharing a carpet with a walkable tile is the case that has to be caught.
+    """
+    walkable_ground = {
+        recipes.TILE_GROUND[int(tile)] for tile in Tile if is_walkable(int(tile))
+    }
+
+    for tile in Tile:
+        if is_walkable(int(tile)):
+            continue
+        assert (
+            int(tile) in recipes.TILE_PROP
+            or recipes.TILE_GROUND[int(tile)] not in walkable_ground
+        ), f"{tile.name} blocks movement but renders as open ground"
+
+
 def test_the_fallback_ground_exists():
     """Everything unmapped falls back to this, so it is the one key that cannot be absent."""
     assert recipes.FALLBACK_GROUND in recipes.GROUND_RECIPES
@@ -487,3 +507,103 @@ def test_the_bindings_are_keyed_by_string_for_json():
     catalogue = recipes.catalogue()
     assert all(isinstance(key, str) for key in catalogue["tileGround"])
     assert all(key.isdigit() for key in catalogue["tileGround"])
+
+
+# --- characters ---------------------------------------------------------------
+#
+# The generator went uncovered for a long time and paid for it. Its walk cycle shipped
+# with lift but no swing, so the legs shortened in place and never travelled: from the
+# side, which is the angle a character is in most of the time, the figure stood still and
+# twitched. Nothing in the suite noticed, because nothing here looked at a character at
+# all. These assert the properties that failure violated, plus the two collisions that
+# silently erase a feature.
+
+
+def _character_columns(surface: canvas_module.Canvas, row: int) -> list[int]:
+    """Which columns of one row are opaque."""
+    return [x for x in range(surface.width) if surface.alpha_at(x, row) > 0]
+
+
+def test_a_character_stands_on_the_row_the_renderer_anchors_to():
+    """The sprite's feet, not its centre, are what the simulation moves.
+
+    A figure whose lowest ink is above or below the anchor row is one whose hitbox and
+    art disagree, which reads in game as walking on air or sunk into the ground.
+    """
+    surface = character.bake(character.Appearance(), character.Facing.DOWN, character.Pose.IDLE, 0)
+    inked = [y for y in range(surface.height) if _character_columns(surface, y)]
+    assert max(inked) >= character.FEET_ROW, "the feet stop short of the anchor row"
+    assert max(inked) <= character.FEET_ROW + 2, "ink hangs below the feet by more than the contact shadow"
+
+
+def test_every_walk_frame_differs_from_every_other():
+    """Four frames that bake the same are four times the atlas cost of one."""
+    frames = [
+        bytes(character.bake(character.Appearance(), character.Facing.SIDE, character.Pose.WALK, n).colour)
+        for n in range(character.POSE_FRAMES[character.Pose.WALK])
+    ]
+    assert len(set(frames)) == len(frames), "the walk cycle repeats a frame"
+
+
+def test_the_side_view_walk_swings_the_legs_fore_and_aft():
+    """The stride, not the lift, is what a gait looks like from the side.
+
+    Measured at the ankle, because that is where the travel is largest and where a viewer
+    reads it. The bug this catches passed every other plausible check: the frames differed
+    from each other, the sprite was the right size, and the legs did move — vertically,
+    which from this angle is a limp rather than a walk.
+    """
+    ankle = character.FEET_ROW - 3
+    spans = []
+    for frame in range(character.POSE_FRAMES[character.Pose.WALK]):
+        surface = character.bake(character.Appearance(), character.Facing.SIDE, character.Pose.WALK, frame)
+        columns = _character_columns(surface, ankle)
+        spans.append(max(columns) - min(columns) if columns else 0)
+
+    assert max(spans) - min(spans) >= 4, (
+        f"the ankles never separate: widths across the cycle were {spans}"
+    )
+
+
+def test_a_figure_is_narrower_seen_from_the_side_than_head_on():
+    """The silhouette is what says which way a sprite faces, before the face is legible."""
+    chest = character.SHOULDER_ROW + 4
+    widths = {}
+    for facing in (character.Facing.DOWN, character.Facing.SIDE):
+        surface = character.bake(character.Appearance(), facing, character.Pose.IDLE, 0)
+        columns = _character_columns(surface, chest)
+        widths[facing] = max(columns) - min(columns)
+
+    assert widths[character.Facing.SIDE] < widths[character.Facing.DOWN], (
+        f"the side view is no narrower than the front: {widths}"
+    )
+
+
+@pytest.mark.parametrize("outfit", range(len(character.OUTFIT_RAMPS)))
+def test_the_accent_never_lands_on_the_outfit_ramp(outfit: int):
+    """Belt, cuffs and boots in the tunic's own colour are not there at all.
+
+    Both lists share ``cloth``, ``metal`` and ``gold``, so a plain modulo on each byte
+    collides often rather than rarely, and one of the collisions is the default
+    appearance — which is the one every screenshot and every test double uses.
+    """
+    for accent in range(len(character.ACCENT_RAMPS) + 1):
+        look = character.Appearance(outfit=outfit, accent=accent)
+        assert look.accent_ramp != look.outfit_ramp
+
+
+@pytest.mark.parametrize("outfit", range(len(character.OUTFIT_RAMPS)))
+def test_the_trousers_never_land_on_the_outfit_ramp(outfit: int):
+    """Torso and legs in one colour is a boiler suit, and it hides the walk cycle."""
+    look = character.Appearance(outfit=outfit)
+    assert look.trouser_ramp != look.outfit_ramp
+
+
+def test_a_sheet_carries_every_facing_and_pose_once():
+    """The renderer slices by ``facing * poses + pose``, so a gap silently shifts rows."""
+    frames = character.sheet_frames(character.Appearance())
+    assert len(frames) == character.FRAMES_PER_CHARACTER
+    for facing in character.Facing:
+        for pose in character.Pose:
+            drawn = [entry for entry in frames if entry[0] is facing and entry[1] is pose]
+            assert len(drawn) == character.POSE_FRAMES[pose], f"{facing.name}/{pose.name} is short"

@@ -106,7 +106,7 @@ export const CHANNEL_SYSTEM = 2
 
 // --- wire encoding ----------------------------------------------------------
 
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 export const POSITION_SCALE = 64
 export const MAX_ENCODABLE_POSITION_TILES = 2147483647 / POSITION_SCALE

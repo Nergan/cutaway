@@ -14,16 +14,15 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from ..domain.classes import get_class
+from ..domain.classes import base_class_or_default, get_class
 from ..domain.constants import (
-    BASE_MAX_HEALTH,
-    BASE_MAX_RESOURCE,
     ENTITY_PLAYER,
     MAX_NAME_LENGTH,
     RESPAWN_DELAY_SECONDS,
 )
 from ..domain.coordinates import LocationRef, SpaceType, WorldPoint
 from ..domain.entities import Appearance, DirtyField, Entity, EntityId, PlayerSession
+from ..domain.items import ITEMS
 from ..domain.ports import CharacterRepository
 from .movement import find_walkable_near
 from .world import World
@@ -62,10 +61,14 @@ class SessionService:
         stored = await self.characters.load(name) if self.characters else None
         returning = stored is not None
 
-        character_class = get_class(int(stored["class_id"]) if stored else class_id)
-        max_health = int(BASE_MAX_HEALTH * character_class.health_multiplier)
-        max_resource = int(BASE_MAX_RESOURCE * character_class.resource_multiplier)
-
+        # A new character may only be one of the four base classes (GDD 6.3): the
+        # hybrids are earned at level-up, not picked from a menu. A returning one keeps
+        # whatever they composed into, so the stored id is taken as it stands.
+        character_class = (
+            get_class(int(stored["class_id"]))
+            if stored
+            else base_class_or_default(class_id)
+        )
         spawn = self._spawn_point(stored)
 
         entity = Entity(
@@ -74,18 +77,17 @@ class SessionService:
             position=spawn,
             name=name,
             class_id=character_class.class_id,
-            health=max_health,
-            max_health=max_health,
-            resource=max_resource,
-            max_resource=max_resource,
             appearance=_appearance_from(stored, appearance),
             level=int(stored.get("level", 1)) if stored else 1,
             experience=int(stored.get("experience", 0)) if stored else 0,
         )
-        if stored and isinstance(stored.get("inventory"), dict):
-            entity.inventory = {
-                str(key): int(value) for key, value in stored["inventory"].items()
-            }
+        _restore_carried(entity, stored)
+        # After the loadout, never before: the pools depend on what is worn, and a
+        # character topped up from the wrong maximum arrives either wounded or over
+        # full.
+        entity.refresh_stats()
+        entity.health = entity.max_health
+        entity.resource = entity.max_resource
 
         self.world.add_entity(entity)
 
@@ -140,7 +142,14 @@ class SessionService:
                 "experience": entity.experience,
                 "health": entity.health,
                 "resource": entity.resource,
-                "inventory": dict(entity.inventory),
+                # A list of documents rather than a mapping of key to count, because
+                # slot order is what the client addresses and a mapping would lose it
+                # along with the distinction between one stack and two.
+                "inventory": [
+                    {"key": stack.key, "count": stack.count} for stack in entity.inventory
+                ],
+                # BSON keys must be strings, so the slot travels as one.
+                "equipment": {str(slot): key for slot, key in entity.equipment.items()},
                 "appearance": list(entity.appearance.pack()),
                 "location": _location_to_document(location),
             },
@@ -212,6 +221,38 @@ def normalise_name(raw: str) -> str:
         if character.isalnum() or character in " -'"
     ]
     return " ".join("".join(kept).split())[:MAX_NAME_LENGTH]
+
+
+def _restore_carried(entity: Entity, stored: dict[str, object] | None) -> None:
+    """Put back what a returning character was carrying and wearing.
+
+    Everything is filtered through the catalogue rather than trusted. A stored
+    document outlives the release that wrote it, so an item retired since then must
+    be dropped quietly here instead of making its owner unable to log in.
+    """
+    if stored is None:
+        return
+
+    carried = stored.get("inventory")
+    if isinstance(carried, list):
+        for raw in carried:
+            if isinstance(raw, dict) and str(raw.get("key", "")) in ITEMS:
+                entity.give(str(raw["key"]), int(raw.get("count", 0)))
+    elif isinstance(carried, dict):
+        # The pre-equipment shape: a mapping of material to count. Read so a demo
+        # database written before the pack was bounded still opens.
+        for key, value in carried.items():
+            if str(key) in ITEMS:
+                entity.give(str(key), int(value))
+
+    worn = stored.get("equipment")
+    if isinstance(worn, dict):
+        for key in worn.values():
+            item = ITEMS.get(str(key))
+            # The slot is re-derived from the catalogue rather than read back, so a
+            # hand-edited document cannot wear a helm on its feet.
+            if item is not None and item.is_equippable:
+                entity.equipment[int(item.slot)] = item.key
 
 
 def _appearance_from(

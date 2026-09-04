@@ -49,6 +49,16 @@ class NpcArchetype:
     idle_duration_s: float
     experience: int
     loot: tuple[tuple[str, int], ...] = ()
+    # Whether this archetype ever looks for something to fight. False for townsfolk,
+    # who exist to be in the way and to be talked to. Without this they would have to
+    # be given a zero detection radius, which is a different thing: a radius of zero
+    # still runs target acquisition every decision tick for every villager in the hub,
+    # and it still lets them retaliate, so a stray hit would turn a market square into
+    # a brawl.
+    hostile: bool = True
+    # How far this archetype strays from where it was placed. Townsfolk keep to their
+    # own patch of the square; a merchant who wanders off is no longer at their stall.
+    patrol_radius_tiles: float = 10.0
 
 
 # Values from TDD 12.3.
@@ -96,6 +106,44 @@ ARCHETYPES: tuple[NpcArchetype, ...] = (
         attack_cooldown_ms=1200, flee_threshold=0.0,
         patrol_speed=1.8, aggro_speed=3.6, idle_duration_s=4.0,
         experience=0,
+    ),
+    # Townsfolk. No combat statistics that matter — they are scenery that moves, and
+    # that is the point: a hub with four guards standing at compass points reads as a
+    # checkpoint, and the same square with a dozen people crossing it reads as a town.
+    # They keep a nominal health pool so nothing downstream has to special-case a
+    # zero-health entity, and give no experience so they are worthless to kill.
+    NpcArchetype(
+        6, "villager", "Villager",
+        max_health=40, detection_radius=0.0, attack_range=0.0, attack_damage=0,
+        attack_cooldown_ms=0, flee_threshold=0.0,
+        # Slower than a player walks. Townsfolk moving at player pace look like they
+        # are all late for something.
+        patrol_speed=1.1, aggro_speed=1.1, idle_duration_s=6.0,
+        experience=0, hostile=False, patrol_radius_tiles=7.0,
+    ),
+    NpcArchetype(
+        7, "merchant", "Merchant",
+        max_health=40, detection_radius=0.0, attack_range=0.0, attack_damage=0,
+        attack_cooldown_ms=0, flee_threshold=0.0,
+        # Tied to a stall, so barely moves at all: a step behind the counter and back.
+        patrol_speed=0.7, aggro_speed=0.7, idle_duration_s=9.0,
+        experience=0, hostile=False, patrol_radius_tiles=1.5,
+    ),
+    NpcArchetype(
+        8, "smith", "Blacksmith",
+        max_health=60, detection_radius=0.0, attack_range=0.0, attack_damage=0,
+        attack_cooldown_ms=0, flee_threshold=0.0,
+        patrol_speed=0.8, aggro_speed=0.8, idle_duration_s=8.0,
+        experience=0, hostile=False, patrol_radius_tiles=2.0,
+    ),
+    NpcArchetype(
+        9, "child", "Child",
+        max_health=20, detection_radius=0.0, attack_range=0.0, attack_damage=0,
+        attack_cooldown_ms=0, flee_threshold=0.0,
+        # Fast and rarely still, which is most of what distinguishes a child from a
+        # villager when both are twenty pixels tall.
+        patrol_speed=2.6, aggro_speed=2.6, idle_duration_s=1.2,
+        experience=0, hostile=False, patrol_radius_tiles=9.0,
     ),
 )
 

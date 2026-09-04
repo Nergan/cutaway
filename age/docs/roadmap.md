@@ -71,12 +71,17 @@ modifiers loaded from data.
 the loader is the work, not the model. Ability ids are stable and travel on the
 wire, so a migration has to preserve them.
 
-### Progression, economy, crafting
+### Economy, crafting, trade
 
-Levels and inventory are persisted; nothing consumes them yet. There is no XP
-curve, no loot table, no crafting, no trade.
+Levels, the pack and the worn slots are persisted and all three now feed the
+simulation: kills roll a drop table, equipment moves the pools and the damage.
+What is missing is anything to *do* with a coin. There is no crafting, no
+vendor, no trade between players, and dropping an item destroys it rather than
+leaving it on the ground for somebody else.
 
-**Effort:** medium, and mostly design. The persistence shape is there.
+**Effort:** medium, and mostly design. The catalogue and the persistence shape
+are there; a ground-item entity kind is the only new mechanism a real drop
+needs.
 
 ### Guilds, territory, sieges
 

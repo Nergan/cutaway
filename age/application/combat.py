@@ -122,6 +122,10 @@ def resolve_action(
     friendly_only = bool(ability.flags & AbilityFlag.FRIENDLY)
     radius = ability.radius_tiles if ability.radius_tiles > 0.0 else 0.6
 
+    # A weapon adds to whatever the ability already hits for, and adds nothing to an
+    # ability that does not hit: a blade must not turn Mend into a damage spell.
+    damage_amount = ability.damage + actor.bonus_damage if ability.damage > 0 else 0
+
     for candidate in world.entities_near(impact, radius + 1.5):
         if candidate.entity_id == actor.entity_id or not candidate.is_alive:
             continue
@@ -136,7 +140,7 @@ def resolve_action(
         if historical.distance_to(impact) > radius + candidate.radius:
             continue
 
-        damage = candidate.apply_damage(ability.damage) if ability.damage else 0
+        damage = candidate.apply_damage(damage_amount) if damage_amount > 0 else 0
         healing = candidate.apply_healing(ability.healing) if ability.healing else 0
         if damage or healing:
             outcome.hits.append(

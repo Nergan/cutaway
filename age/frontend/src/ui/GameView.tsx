@@ -15,11 +15,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { MAX_TIER, RESPAWN_DELAY_SECONDS } from '../domain/constants'
-import type { ChatLine, Session } from '../net/session'
+import type { ChatLine, Loadout, Session } from '../net/session'
 import { Scene, visibleChunks, type SceneStats } from '../render/scene'
 import { Abilities } from './Abilities'
+import { CharacterSheet } from './CharacterSheet'
 import { Chat } from './Chat'
+import { CombatNumbers } from './CombatNumbers'
+import { Compose } from './Compose'
 import { Diagnostics } from './Diagnostics'
+import { InventoryPanel } from './InventoryPanel'
 import { Minimap } from './Minimap'
 import { apiBase, forceTier, type ClassInfo, type WorldInfo } from './api'
 import { Vitals } from './Vitals'
@@ -60,11 +64,42 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
   const cooldowns = useRef<Record<number, number>>({})
   const [cooldownView, setCooldownView] = useState<Record<number, number>>({})
 
+  /**
+   * The ability whose cooldown was started optimistically and not yet confirmed.
+   *
+   * The bar starts a cooldown the moment a key is pressed, which is the right lie
+   * while the cast lands. When the server refuses instead, the lie outlives its
+   * purpose: the button sits dark for its full cooldown over a cast that never
+   * happened, and the player concludes the skill does nothing.
+   */
+  const pendingAbility = useRef<number | null>(null)
+
   /** Tiles walked, for the walk cycle. Distance rather than time, so a run does not shuffle. */
   const distance = useRef(0)
 
   const [hud, setHud] = useState(() => snapshotHud(session))
   const [stats, setStats] = useState<SceneStats>({ chunks: 0, sprites: 0, lights: 0, fps: 0 })
+  const [composing, setComposing] = useState(false)
+  const [showSheet, setShowSheet] = useState(false)
+  const [showInventory, setShowInventory] = useState(false)
+
+  /** Rebuilt only when the catalogue does, which is never within a session. */
+  const itemsById = useMemo(
+    () => new Map(world.items.map((item) => [item.itemId, item])),
+    [world],
+  )
+
+  /**
+   * The class the server says the character is, which is not necessarily the one they were
+   * created as: composing at level-up replaces it.
+   *
+   * The HUD used to read `chosenClass` throughout, which is the creation-time pick handed down
+   * from the title screen. That is correct for exactly as long as nobody levels up, after
+   * which the ability bar still showed the base class's three abilities while the server was
+   * refusing anything the composed class had gained.
+   */
+  const liveClass =
+    world.classes.find((entry) => entry.classId === hud.classId) ?? chosenClass
 
   // --- the renderer ---------------------------------------------------------
 
@@ -189,8 +224,28 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
     }, 2600)
   }, [])
 
+  const useAbility = useCallback(
+    (abilityId: number) => {
+      const aim = aimPoint(scene.current, session)
+      cooldowns.current[abilityId] = performance.now()
+      pendingAbility.current = abilityId
+      session.useAbility(abilityId, aim.x, aim.y)
+    },
+    [session],
+  )
+
   useEffect(() => {
-    const offRefused = session.on('refused', (_code, detail) => toast(detail, true))
+    const offRefused = session.on('refused', (_code, detail) => {
+      const refused = pendingAbility.current
+      if (refused !== null) {
+        delete cooldowns.current[refused]
+        pendingAbility.current = null
+      }
+      toast(detail, true)
+    })
+    const offCombat = session.on('combat', () => {
+      pendingAbility.current = null
+    })
     const offDied = session.on('died', () => setDead(true))
     const offRespawned = session.on('respawned', () => setDead(false))
     const offTopology = session.on('topology', (tier) =>
@@ -200,19 +255,27 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
       if (status === 'reconnecting') toast('Connection lost — reconnecting…', true)
       else if (status === 'failed') setFailure(detail ?? 'The connection failed.')
     })
+    const offProgress = session.on('progress', (progression, levelled) => {
+      if (levelled) toast(`Level ${progression.level}`)
+      // Opened rather than only offered on the button, because the choice gates the rest of
+      // the kit and a player who does not know it is waiting simply never makes it.
+      if (progression.composeAvailable) setComposing(true)
+    })
 
     return () => {
       offRefused()
+      offCombat()
       offDied()
       offRespawned()
       offTopology()
       offStatus()
+      offProgress()
     }
   }, [session, toast])
 
   // --- input ---------------------------------------------------------------
 
-  const abilities = chosenClass.abilities
+  const abilities = liveClass.abilities
 
   useEffect(() => {
     const held = { up: false, down: false, left: false, right: false, run: false }
@@ -228,11 +291,7 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
       const elapsed = performance.now() - (cooldowns.current[ability.abilityId] ?? -Infinity)
       if (elapsed < ability.cooldownMs) return
 
-      // Aimed at the cursor if it is over the world, and straight ahead otherwise. Abilities
-      // are not predicted, so this is only a target, not a claim about the outcome.
-      const aim = aimPoint(scene.current, session)
-      cooldowns.current[ability.abilityId] = performance.now()
-      session.useAbility(ability.abilityId, aim.x, aim.y)
+      useAbility(ability.abilityId)
     }
 
     function onKeyDown(event: KeyboardEvent): void {
@@ -270,6 +329,20 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
           return
         case 'Digit3':
           use(2)
+          return
+        // A composed class has five abilities and only three were bound, so the two
+        // the level-up granted were unreachable from the keyboard.
+        case 'Digit4':
+          use(3)
+          return
+        case 'Digit5':
+          use(4)
+          return
+        case 'KeyI':
+          setShowInventory((current) => !current)
+          return
+        case 'KeyC':
+          setShowSheet((current) => !current)
           return
         case 'KeyF': {
           const target = targetTile(scene.current, session)
@@ -355,7 +428,7 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('pointermove', onPointerMove)
     }
-  }, [session, abilities, chatOpen])
+  }, [session, abilities, chatOpen, useAbility])
 
   // --- reads for the child panels, stable so they do not re-render ----------
 
@@ -380,10 +453,15 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
       <div className="hud">
         <Vitals
           name={name}
-          className={chosenClass.name}
+          className={liveClass.name}
           level={hud.level}
           health={hud.health}
           resource={hud.resource}
+          maxHealth={hud.loadout.maxHealth}
+          maxResource={hud.loadout.maxResource}
+          experience={hud.experience}
+          nextLevelAt={hud.nextLevelAt}
+          onCompose={hud.composeAvailable ? () => setComposing(true) : undefined}
         />
 
         <WorldPanel
@@ -415,15 +493,59 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
           abilities={abilities}
           lastUsed={cooldownView}
           resource={hud.resource}
-          onUse={(abilityId) => {
-            const aim = aimPoint(scene.current, session)
-            cooldowns.current[abilityId] = performance.now()
-            session.useAbility(abilityId, aim.x, aim.y)
-          }}
+          maxResource={hud.loadout.maxResource}
+          onUse={useAbility}
         />
+
+        <div className="hud-sheets">
+          {showSheet && (
+            <CharacterSheet
+              name={name}
+              characterClass={liveClass}
+              level={hud.level}
+              experience={hud.experience}
+              nextLevelAt={hud.nextLevelAt}
+              loadout={hud.loadout}
+              slots={world.equipmentSlots}
+              items={itemsById}
+              onUnequip={(slot) => session.unequip(slot)}
+              onEquipIndex={(index) => session.equip(index)}
+              onClose={() => setShowSheet(false)}
+            />
+          )}
+          {showInventory && (
+            <InventoryPanel
+              loadout={hud.loadout}
+              items={itemsById}
+              onEquip={(index) => session.equip(index)}
+              onUse={(index) => session.useItem(index)}
+              onDrop={(index) => session.dropItem(index)}
+              onClose={() => setShowInventory(false)}
+            />
+          )}
+        </div>
+
+        <div className="hud-toggles">
+          <button
+            type="button"
+            className={showSheet ? 'on' : undefined}
+            onClick={() => setShowSheet((current) => !current)}
+          >
+            Character <kbd>C</kbd>
+          </button>
+          <button
+            type="button"
+            className={showInventory ? 'on' : undefined}
+            onClick={() => setShowInventory((current) => !current)}
+          >
+            Pack <kbd>I</kbd>
+          </button>
+        </div>
 
         <Minimap store={session.store} position={position} entities={entities} place={place} />
       </div>
+
+      <CombatNumbers session={session} scene={() => scene.current} />
 
       {showDiagnostics && (
         <Diagnostics
@@ -446,6 +568,18 @@ export function GameView({ session, world, chosenClass, name }: GameViewProps) {
           </div>
         ))}
       </div>
+
+      {composing && (
+        <Compose
+          current={liveClass}
+          classes={world.classes}
+          onChoose={(half) => {
+            session.compose(half)
+            setComposing(false)
+          }}
+          onDismiss={() => setComposing(false)}
+        />
+      )}
 
       {dead && (
         <div className="death">
@@ -494,6 +628,10 @@ interface HudSnapshot {
   health: number
   resource: number
   level: number
+  experience: number
+  nextLevelAt: number
+  classId: number
+  composeAvailable: boolean
   dayPhase: number
   weather: number
   population: number
@@ -502,15 +640,18 @@ interface HudSnapshot {
   latencyMs: number
   clockOffset: number
   chat: readonly ChatLine[]
+  loadout: Loadout
 }
 
 function snapshotHud(session: Session): HudSnapshot {
   return {
     health: session.local?.health ?? 1,
     resource: session.local?.resource ?? 1,
-    // Levels are not in the MVP: the class kit is fixed and there is nothing to spend a level
-    // on yet. Shown as 1 rather than hidden so the layout does not shift when they arrive.
-    level: 1,
+    level: session.progression.level,
+    experience: session.progression.experience,
+    nextLevelAt: session.progression.nextLevelAt,
+    classId: session.progression.classId,
+    composeAvailable: session.progression.composeAvailable,
     dayPhase: session.dayPhase,
     weather: session.weather,
     // The entity map holds everyone but the local player, who is always present.
@@ -522,6 +663,9 @@ function snapshotHud(session: Session): HudSnapshot {
     // Copied rather than referenced: the session mutates the array in place, so passing it
     // through would give React the same reference and it would skip the update.
     chat: [...session.chat],
+    // Replaced wholesale on every inventory packet, so the reference is the change
+    // signal and there is nothing to copy.
+    loadout: session.loadout,
   }
 }
 

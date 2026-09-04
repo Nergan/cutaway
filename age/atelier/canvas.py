@@ -466,6 +466,96 @@ def bob(canvas: Canvas, *, offset: int) -> Canvas:
     return result
 
 
+def shift(
+    canvas: Canvas,
+    *,
+    by: int,
+    rect: tuple[int, int, int, int] | None = None,
+) -> None:
+    """Translate part of the canvas sideways as a rigid body.
+
+    The fourth kind of animation, and the one for a thing hanging from a fixed point.
+    :func:`sway` shears with a falloff squared from a pivot, so the movement is largest
+    furthest from it — correct for a stem rooted in the ground, and backwards for a shop
+    sign hanging off a bracket, where the top is what is pinned. The first attempt at the
+    sign used sway anyway, with the pivot below the board, and the falloff put the board's
+    displacement under half a pixel: all four frames baked identically, which the atelier
+    test suite noticed. A board on two chains barely deforms; it translates.
+
+    Pixels shifted out of the rect are dropped rather than wrapped, so the caller must
+    leave a margin.
+    """
+    if by == 0:
+        return
+
+    x0, y0, x1, y1 = rect or (0, 0, canvas.width, canvas.height)
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(canvas.width, x1), min(canvas.height, y1)
+
+    # Read the whole region before writing any of it: shifting in place overwrites pixels
+    # that have not been copied yet.
+    carried: list[tuple[int, int, RGB, int, int, int]] = []
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            alpha = canvas.alpha_at(x, y)
+            if not alpha:
+                continue
+            index = y * canvas.width + x
+            red, green, blue, _ = canvas.get(x, y)
+            carried.append(
+                (x, y, (red, green, blue), alpha, canvas.depth[index], canvas.material[index])
+            )
+            canvas.clear(x, y)
+
+    for x, y, colour, alpha, depth, material in carried:
+        moved = x + by
+        if moved < x0 or moved >= x1:
+            continue
+        canvas.put(moved, y, colour, alpha=alpha, depth=depth, material=material)
+
+
+def glow(
+    canvas: Canvas,
+    *,
+    amount: float,
+    rect: tuple[int, int, int, int] | None = None,
+) -> None:
+    """Scale the brightness of what is already drawn, in place.
+
+    The third kind of animation, after :func:`sway` and :func:`flicker`, and the one a lit
+    object needs. A lantern hung on a post does not move and its silhouette does not dance:
+    what changes frame to frame is how hard the flame is burning. The first version of the
+    lantern used :func:`bob`, which shifts the entire canvas — so the post, the cap and the
+    bracket all hopped up and down together, as if the lamp were a balloon on a string. That
+    was the single most obviously wrong animation in the scene.
+
+    Multiplies rather than adds so a dark frame stays dark and only lit pixels brighten;
+    adding a constant washes the shadowed side of the housing out to grey.
+    """
+    x0, y0, x1, y1 = rect or (0, 0, canvas.width, canvas.height)
+    scale = 1.0 + amount
+
+    for y in range(max(0, y0), min(canvas.height, y1)):
+        for x in range(max(0, x0), min(canvas.width, x1)):
+            alpha = canvas.alpha_at(x, y)
+            if not alpha:
+                continue
+            red, green, blue, _ = canvas.get(x, y)
+            index = y * canvas.width + x
+            canvas.put(
+                x,
+                y,
+                (
+                    min(255, int(red * scale)),
+                    min(255, int(green * scale)),
+                    min(255, int(blue * scale)),
+                ),
+                alpha=alpha,
+                depth=canvas.depth[index],
+                material=canvas.material[index],
+            )
+
+
 def flicker(canvas: Canvas, *, seed: int, above_row: int, amount: float) -> None:
     """Erase a seeded scatter of pixels above a row, so a flame's silhouette dances.
 

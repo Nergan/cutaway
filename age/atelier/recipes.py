@@ -220,6 +220,11 @@ def _apply(
         )
     elif op == "bob":
         return ops.bob(surface, offset=round(float(step.get("amplitude", 1.0)) * wave))
+    elif op == "shift":
+        ops.shift(surface, by=round(float(step.get("amplitude", 1.0)) * wave), rect=rect)
+    elif op == "glow":
+        # Brightness rides the wave, so the loop closes where it started.
+        ops.glow(surface, amount=float(step.get("amount", 0.2)) * wave, rect=rect)
     elif op == "flicker":
         # The frame goes into the seed rather than into an amplitude: a flame's outline
         # changes shape between frames, it does not move as a rigid body, so what varies
@@ -244,22 +249,34 @@ def _ripple(surface: Canvas, step: Step, phase: float) -> None:
     Two crests at different wavelengths, both whole multiples of the tile width so
     they still meet at the seam. Deforming the tile instead would be cheaper to write
     and would break tiling, which on an open water surface is immediately obvious.
+
+    Crests only land on pixels that are already opaque. On a ground tile that is every
+    pixel and the guard costs nothing, but the first prop to use ripple — the fountain —
+    came out with crests scrolling through the empty space beside it, which at a glance
+    looked like the thing had wings.
     """
     from .palette import ramp as lookup_ramp
 
     palette = lookup_ramp(str(step.get("ramp", "water")))
     crest = palette.shade(int(step.get("level", 4)))
     thickness = max(1, int(step.get("band", 2)))
-    drift = phase * surface.height
+    rect = _rect(step.get("rect")) or (0, 0, surface.width, surface.height)
+    x0, y0, x1, y1 = rect
+    span = max(1, y1 - y0)
+    drift = phase * span
 
-    for x in range(surface.width):
-        angle = x / surface.width * math.tau
-        for wavelength, offset in ((1.0, 0.0), (2.0, surface.height * 0.5)):
+    for x in range(max(0, x0), min(surface.width, x1)):
+        angle = (x - x0) / max(1, x1 - x0) * math.tau
+        for wavelength, offset in ((1.0, 0.0), (2.0, span * 0.5)):
             centre = (
-                math.sin(angle * wavelength) * 2.2 + drift + offset + surface.height * 0.25
-            ) % surface.height
+                math.sin(angle * wavelength) * 2.2 + drift + offset + span * 0.25
+            ) % span
             for step_y in range(thickness):
-                y = int(centre + step_y) % surface.height
+                y = y0 + int(centre + step_y) % span
+                if y < 0 or y >= surface.height:
+                    continue
+                if not surface.alpha_at(x, y):
+                    continue
                 if ops.BAYER_4X4[y & 3][x & 3] < 11:
                     surface.put(x, y, crest, depth=surface.depth[y * surface.width + x])
 
@@ -739,8 +756,11 @@ PROP_RECIPES: dict[str, Recipe] = {
             # The finial: what tells you which way is up.
             {"op": "fill", "ramp": "metal", "level": 2, "depth": 216, "rect": [15, 2, 18, 6]},
             {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 215},
-            {"op": "bob", "amplitude": 1.0},
-            frames=4,
+            # Only the glass pulses, and only in place. Six frames rather than four because
+            # a flame read as a two-state blink at four: the wave has to have a visible
+            # middle on the way up and on the way down for it to look like burning.
+            {"op": "glow", "amount": 0.30, "rect": [9, 4, 24, 21]},
+            frames=6,
             anchor_y=2,
         ),
         _prop(
@@ -792,6 +812,201 @@ PROP_RECIPES: dict[str, Recipe] = {
             # twice: fire is not rigid, and at this pivot the falloff left the flame rows
             # shifting by zero, so all four frames baked identically.
             {"op": "flicker", "aboveRow": 15, "amount": 0.34},
+            frames=4,
+            anchor_y=2,
+        ),
+        # Town furniture. The hub had a campfire and some lanterns and read as an empty
+        # field with lights in it: a plaza is recognisable by the things people put on it,
+        # not by its paving. These are the cheapest set that makes a square look inhabited.
+        _prop(
+            "fountain",
+            46,
+            # The focal point of the plaza, and the hardest prop here to get right.
+            #
+            # The first attempt built it from circular blobs — a big one for the basin, a
+            # smaller one above for the upper bowl — and diagonal lines for the water
+            # falling off the rim. It read unmistakably as a potion bottle with dragonfly
+            # wings. Two separate lessons in that. A basin is a *wide, shallow* ellipse
+            # and a circle of the same area reads as a vessel, because vessels are as tall
+            # as they are wide and pools are not. And the diagonal falls, being thin
+            # brights outside the main silhouette, attached themselves to the outline as
+            # wings rather than reading as water; anything that leaves the body of the
+            # object has to be inside its silhouette or it becomes part of it.
+            #
+            # So: the basin is built from stacked rectangles of decreasing width, which is
+            # how an ellipse is drawn at this size, and nothing crosses the outline.
+            {"op": "fill", "ramp": "stone", "level": 1, "depth": 206, "rect": [4, 40, 28, 44]},
+            {"op": "fill", "ramp": "stone", "level": 2, "depth": 210, "rect": [1, 34, 31, 41]},
+            {"op": "fill", "ramp": "stone", "level": 3, "depth": 214, "rect": [1, 32, 31, 35]},
+            {"op": "fill", "ramp": "stone", "level": 4, "depth": 216, "rect": [3, 32, 29, 34]},
+            # Water inside the rim, inset by two pixels all round so the stone reads as a
+            # wall holding it rather than as a ring painted on it.
+            {"op": "fill", "ramp": "water", "level": 2, "depth": 190, "rect": [3, 35, 29, 40]},
+            {"op": "dither", "ramp": "water", "from": 3, "to": 1, "rect": [3, 35, 29, 40]},
+            {"op": "ripple", "ramp": "water", "level": 4, "band": 1, "rect": [3, 35, 29, 40]},
+            # Pedestal, then the upper bowl: wide and three pixels deep, same logic as the
+            # basin. The bowl overhangs the pedestal, which is what makes it a bowl.
+            {"op": "column", "ramp": "stone", "rect": [13, 24, 20, 36], "level": 2, "depth": 226},
+            {"op": "fill", "ramp": "stone", "level": 3, "depth": 230, "rect": [8, 22, 25, 26]},
+            {"op": "fill", "ramp": "stone", "level": 4, "depth": 232, "rect": [9, 21, 24, 23]},
+            {"op": "fill", "ramp": "water", "level": 3, "depth": 228, "rect": [10, 21, 23, 23]},
+            {"op": "ripple", "ramp": "water", "level": 4, "band": 1, "rect": [10, 21, 23, 23]},
+            # The jet: a narrow column rising from the bowl and spreading at the top, all
+            # of it within the width of the bowl below it.
+            {"op": "fill", "ramp": "water", "level": 3, "depth": 236, "rect": [15, 10, 18, 22]},
+            {"op": "fill", "ramp": "water", "level": 4, "depth": 238, "rect": [15, 10, 17, 22]},
+            {"op": "fill", "ramp": "water", "level": 4, "depth": 238, "rect": [13, 7, 20, 11]},
+            {"op": "fill", "ramp": "water", "level": 3, "depth": 234, "rect": [11, 9, 22, 12]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 225},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.30},
+            # The spray brightens and dims. Flicker would erode its outline, which is right
+            # for a flame and wrong here: falling water holds its shape and it is the light
+            # through it that changes.
+            {"op": "glow", "amount": 0.22, "rect": [10, 6, 23, 24]},
+            frames=6,
+            anchor_y=4,
+        ),
+        _prop(
+            "market_stall",
+            48,
+            # Two posts, a striped awning, and a counter with goods on it. The stripes are
+            # what identify it — a plain canopy on legs is a lean-to, and the alternating
+            # bands of cloth are the one detail that says "market" at sixteen pixels.
+            {"op": "column", "ramp": "wood", "rect": [3, 22, 7, 48], "level": 1, "depth": 150},
+            {"op": "column", "ramp": "wood", "rect": [25, 22, 29, 48], "level": 1, "depth": 150},
+            {"op": "fill", "ramp": "plank", "level": 2, "depth": 200, "rect": [1, 30, 31, 40]},
+            {"op": "fill", "ramp": "plank", "level": 4, "depth": 206, "rect": [1, 30, 31, 33]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 198, "rect": [1, 39, 31, 41]},
+            # Goods on the counter: three lumps at different heights, no two the same ramp.
+            {"op": "blob", "ramp": "cloth", "seed": 70, "x": 8, "y": 27, "radius": 3.4, "wobble": 0.30, "level": 3, "depth": 208},
+            {"op": "blob", "ramp": "gold", "seed": 71, "x": 16, "y": 28, "radius": 2.8, "wobble": 0.28, "level": 3, "depth": 208},
+            {"op": "blob", "ramp": "leaf", "seed": 72, "x": 23, "y": 27, "radius": 3.2, "wobble": 0.32, "level": 3, "depth": 208},
+            # The awning, over the goods so it overhangs them. Alternating bands, then the
+            # scalloped hem that reads as hanging cloth.
+            {"op": "fill", "ramp": "cloth", "level": 2, "depth": 240, "rect": [0, 6, 32, 22]},
+            {"op": "fill", "ramp": "cloth", "level": 4, "depth": 242, "rect": [0, 6, 32, 9]},
+            {"op": "fill", "ramp": "snow", "level": 2, "depth": 240, "rect": [4, 9, 11, 22]},
+            {"op": "fill", "ramp": "snow", "level": 2, "depth": 240, "rect": [18, 9, 25, 22]},
+            {"op": "fill", "ramp": "wood", "level": 1, "depth": 244, "rect": [0, 4, 32, 7]},
+            {"op": "fill", "ramp": "shadow", "level": 1, "depth": 238, "rect": [0, 21, 32, 23]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 230},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.30},
+            # The hem lifts in the wind. Pivoted at the hem itself, so the posts and the
+            # counter below it do not move.
+            {"op": "sway", "pivotRow": 23, "amplitude": 1.2},
+            frames=4,
+            anchor_y=0,
+        ),
+        _prop(
+            "well",
+            42,
+            {"op": "blob", "ramp": "stone", "seed": 74, "x": 16, "y": 34, "radius": 12.0, "wobble": 0.10, "level": 2, "depth": 220, "dome": False},
+            *_wall_bricks()[:6],
+            {"op": "blob", "ramp": "dark_stone", "seed": 75, "x": 16, "y": 30, "radius": 8.0, "wobble": 0.08, "level": 0, "depth": 180, "dome": False},
+            {"op": "blob", "ramp": "stone", "seed": 76, "x": 16, "y": 29, "radius": 9.5, "wobble": 0.08, "level": 3, "depth": 226, "dome": False},
+            # Posts, roof and the bucket on its rope. The roof is what distinguishes a well
+            # from a planter at this size.
+            {"op": "column", "ramp": "wood", "rect": [5, 12, 8, 32], "level": 1, "depth": 200},
+            {"op": "column", "ramp": "wood", "rect": [24, 12, 27, 32], "level": 1, "depth": 200},
+            {"op": "line", "ramp": "wood", "x0": 2, "y0": 12, "x1": 16, "y1": 4, "level": 3, "thickness": 3, "depth": 240},
+            {"op": "line", "ramp": "wood", "x0": 30, "y0": 12, "x1": 16, "y1": 4, "level": 1, "thickness": 3, "depth": 240},
+            {"op": "line", "ramp": "metal", "x0": 16, "y0": 8, "x1": 16, "y1": 20, "level": 1, "thickness": 1, "depth": 210},
+            {"op": "fill", "ramp": "wood", "level": 2, "depth": 212, "rect": [13, 20, 20, 26]},
+            {"op": "fill", "ramp": "metal", "level": 2, "depth": 214, "rect": [13, 20, 20, 22]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 230},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.32},
+            anchor_y=2,
+        ),
+        _prop(
+            "bench",
+            24,
+            {"op": "column", "ramp": "wood", "rect": [4, 16, 8, 24], "level": 0, "depth": 150},
+            {"op": "column", "ramp": "wood", "rect": [24, 16, 28, 24], "level": 0, "depth": 150},
+            {"op": "fill", "ramp": "plank", "level": 3, "depth": 190, "rect": [2, 13, 30, 17]},
+            {"op": "fill", "ramp": "plank", "level": 4, "depth": 194, "rect": [2, 13, 30, 15]},
+            {"op": "fill", "ramp": "plank", "level": 2, "depth": 186, "rect": [2, 7, 30, 11]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 182, "rect": [4, 10, 8, 14]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 182, "rect": [24, 10, 28, 14]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 225},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.30},
+            anchor_y=0,
+        ),
+        _prop(
+            "barrel",
+            28,
+            # Curved staves, two iron hoops, and an elliptical lid. The dither runs
+            # horizontally rather than vertically: a barrel's roundness is across it.
+            {"op": "fill", "ramp": "plank", "level": 2, "depth": 200, "rect": [7, 10, 25, 28]},
+            {"op": "fill", "ramp": "plank", "level": 3, "depth": 204, "rect": [6, 13, 26, 25]},
+            {"op": "dither", "ramp": "plank", "from": 4, "to": 1, "vertical": False, "rect": [6, 10, 26, 28]},
+            {"op": "fill", "ramp": "metal", "level": 1, "depth": 206, "rect": [6, 14, 26, 16]},
+            {"op": "fill", "ramp": "metal", "level": 1, "depth": 206, "rect": [6, 22, 26, 24]},
+            # The lid, as stacked rows rather than a circle. A circular blob here stood
+            # proud of the staves and read as a wheel propped against a box: a lid seen
+            # from this angle is a shallow ellipse, never a disc.
+            {"op": "fill", "ramp": "wood", "level": 2, "depth": 208, "rect": [7, 10, 25, 14]},
+            {"op": "fill", "ramp": "wood", "level": 3, "depth": 210, "rect": [8, 9, 24, 12]},
+            {"op": "fill", "ramp": "plank", "level": 4, "depth": 212, "rect": [10, 9, 22, 11]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 230},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.32},
+            anchor_y=0,
+        ),
+        _prop(
+            "sacks",
+            22,
+            # Three slumped bags. Wobble high and dome on, because the whole point of a
+            # sack is that it has no straight edges anywhere.
+            {"op": "blob", "ramp": "sand", "seed": 80, "x": 9, "y": 15, "radius": 6.2, "wobble": 0.40, "level": 2, "depth": 170},
+            {"op": "blob", "ramp": "sand", "seed": 81, "x": 22, "y": 16, "radius": 5.6, "wobble": 0.42, "level": 1, "depth": 165},
+            {"op": "blob", "ramp": "sand", "seed": 82, "x": 16, "y": 11, "radius": 5.8, "wobble": 0.38, "level": 3, "depth": 180},
+            {"op": "scatter", "ramp": "soil", "seed": 83, "density": 0.06, "level": 1},
+            # The ties. One dark pixel pair at each neck is enough to say "tied shut".
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 182, "rect": [8, 9, 11, 11]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 176, "rect": [21, 11, 24, 13]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 225},
+            {"op": "contact_shadow", "rows": 2, "amount": 0.32},
+            anchor_y=0,
+        ),
+        _prop(
+            "planter",
+            22,
+            {"op": "fill", "ramp": "plank", "level": 2, "depth": 170, "rect": [4, 12, 28, 22]},
+            {"op": "fill", "ramp": "plank", "level": 3, "depth": 174, "rect": [3, 11, 29, 14]},
+            {"op": "fill", "ramp": "soil", "level": 1, "depth": 168, "rect": [6, 11, 26, 13]},
+            {"op": "blob", "ramp": "leaf", "seed": 84, "x": 10, "y": 8, "radius": 4.2, "level": 2},
+            {"op": "blob", "ramp": "leaf", "seed": 85, "x": 21, "y": 9, "radius": 3.8, "level": 3},
+            # Flowers: single bright pixels, not blobs. Three of them, three colours. A
+            # blob of cloth-red the size of a bloom reads as fruit; one pixel reads as a
+            # flower because that is all a flower is at this scale.
+            {"op": "scatter", "ramp": "cloth", "seed": 86, "density": 0.16, "level": 3},
+            {"op": "scatter", "ramp": "gold", "seed": 87, "density": 0.10, "level": 4},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 220},
+            {"op": "contact_shadow", "rows": 1, "amount": 0.28},
+            {"op": "sway", "pivotRow": 12, "amplitude": 0.8},
+            frames=4,
+            anchor_y=0,
+        ),
+        _prop(
+            "sign",
+            38,
+            # A board hanging off a bracket. The bracket is the L that makes it read as
+            # hung rather than nailed flat, and the two chain pixels sell the swing.
+            {"op": "column", "ramp": "wood", "rect": [3, 8, 7, 38], "level": 1, "depth": 160},
+            {"op": "fill", "ramp": "metal", "level": 1, "depth": 200, "rect": [5, 8, 24, 10]},
+            {"op": "fill", "ramp": "metal", "level": 0, "depth": 198, "rect": [12, 10, 13, 14]},
+            {"op": "fill", "ramp": "metal", "level": 0, "depth": 198, "rect": [21, 10, 22, 14]},
+            {"op": "fill", "ramp": "plank", "level": 2, "depth": 210, "rect": [8, 14, 27, 26]},
+            {"op": "fill", "ramp": "plank", "level": 3, "depth": 212, "rect": [8, 14, 27, 16]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 208, "rect": [8, 14, 27, 15]},
+            {"op": "fill", "ramp": "wood", "level": 0, "depth": 208, "rect": [8, 25, 27, 26]},
+            # A mark on the board. Illegible on purpose: a real glyph would need to say
+            # something, and every shop would be saying the same thing.
+            {"op": "fill", "ramp": "gold", "level": 3, "depth": 214, "rect": [12, 18, 23, 20]},
+            {"op": "fill", "ramp": "gold", "level": 3, "depth": 214, "rect": [14, 20, 21, 23]},
+            {"op": "outline", "ramp": "shadow", "level": 0, "alpha": 225},
+            # The board and its chains swing together, the bracket and post do not. Rows
+            # 10 upward are the bracket, so the shifted band starts below it.
+            {"op": "shift", "amplitude": 1.0, "rect": [7, 10, 29, 27]},
             frames=4,
             anchor_y=2,
         ),
@@ -857,7 +1072,20 @@ TILE_ANIMATION: dict[int, int] = {
 FALLBACK_GROUND = "bare_ground"
 
 # Props with no tile of their own, placed by hand in the location editor.
-DECOR_RECIPES = ("lantern", "banner", "crate", "campfire")
+DECOR_RECIPES = (
+    "lantern",
+    "banner",
+    "crate",
+    "campfire",
+    "fountain",
+    "market_stall",
+    "well",
+    "bench",
+    "barrel",
+    "sacks",
+    "planter",
+    "sign",
+)
 
 ALL_RECIPES: dict[str, Recipe] = {**GROUND_RECIPES, **PROP_RECIPES}
 
