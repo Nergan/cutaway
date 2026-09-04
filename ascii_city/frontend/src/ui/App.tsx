@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameSession, type SessionView } from '../game/session'
 import { Chat } from './Chat'
 import { Hud } from './Hud'
+import { Minimap } from './Minimap'
 import { Overlay } from './Overlay'
+import { Roster } from './Roster'
 import { Settings } from './Settings'
 
 const BASE_PATH = resolveBasePath()
@@ -26,23 +28,28 @@ export function App() {
   const [view, setView] = useState<SessionView | null>(null)
   const [fatal, setFatal] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Mounting the session is an effect, so a plain ref would not re-render the
+  // children that need it. This state hands it over exactly once.
+  const [session, setSession] = useState<GameSession | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     const surface = surfaceRef.current
     if (!canvas || !surface) return
 
-    const session = new GameSession(BASE_PATH)
-    sessionRef.current = session
-    const unsubscribe = session.subscribe(setView)
-    session.start(canvas, surface).catch((error: unknown) => {
+    const game = new GameSession(BASE_PATH)
+    sessionRef.current = game
+    setSession(game)
+    const unsubscribe = game.subscribe(setView)
+    game.start(canvas, surface).catch((error: unknown) => {
       setFatal(error instanceof Error ? error.message : String(error))
     })
 
     return () => {
       unsubscribe()
-      session.dispose()
+      game.dispose()
       sessionRef.current = null
+      setSession(null)
     }
   }, [])
 
@@ -52,6 +59,10 @@ export function App() {
 
   const sendRename = useCallback((nickname: string) => {
     sessionRef.current?.sendRename(nickname)
+  }, [])
+
+  const sendAvatar = useCallback((index: number) => {
+    sessionRef.current?.sendAvatar(index)
   }, [])
 
   const rosterColors = useMemo(() => {
@@ -85,6 +96,8 @@ export function App() {
       {view && online ? (
         <>
           <Hud view={view} onOpenSettings={() => setSettingsOpen((open) => !open)} />
+          <Minimap session={session} roster={view.roster} selfId={view.player?.id ?? 0} />
+          <Roster roster={view.roster} selfId={view.player?.id ?? 0} session={session} />
           <Chat
             messages={view.messages}
             selfId={view.player?.id ?? 0}
@@ -100,10 +113,13 @@ export function App() {
       {settingsOpen && view ? (
         <Settings
           nickname={view.player?.nickname ?? ''}
+          avatar={view.player?.avatar ?? 0}
+          color={view.player?.color ?? 0}
           onClose={() => setSettingsOpen(false)}
           onQuality={(preset) => sessionRef.current?.setQuality(preset)}
           onFieldOfView={(degrees) => sessionRef.current?.setFieldOfView(degrees)}
           onRename={sendRename}
+          onAvatar={sendAvatar}
           stats={view.stats}
         />
       ) : null}

@@ -13,6 +13,7 @@ export const MSG_INPUT = 0x01
 export const MSG_CHAT = 0x02
 export const MSG_PING = 0x03
 export const MSG_RENAME = 0x04
+export const MSG_SET_AVATAR = 0x05
 
 export const INPUT_FLAG_SPRINT = 0x01
 export const INPUT_FLAG_JUMP = 0x02
@@ -145,12 +146,17 @@ export function encodeRename(nickname: string): Uint8Array {
   return frame
 }
 
+export function encodeSetAvatar(avatar: number): Uint8Array {
+  return new Uint8Array([MSG_SET_AVATAR, avatar & 0xff])
+}
+
 // --- inbound ---------------------------------------------------------------
 
 export interface WelcomeFrame {
   kind: 'welcome'
   playerId: number
   color: number
+  avatar: number
   nickname: string
   x: number
   y: number
@@ -202,6 +208,7 @@ export interface RosterMember {
   id: number
   nickname: string
   color: number
+  avatar: number
 }
 
 export interface RosterSyncFrame {
@@ -286,9 +293,10 @@ export function decodeServerFrame(payload: ArrayBuffer | Uint8Array): ServerFram
 function decodeWelcome(bytes: Uint8Array, view: DataView): WelcomeFrame {
   const playerId = view.getUint16(1, true)
   const color = view.getUint8(3)
-  const nickLength = view.getUint8(4)
-  const nickname = readString(bytes, 5, nickLength)
-  let at = 5 + nickLength
+  const avatar = view.getUint8(4)
+  const nickLength = view.getUint8(5)
+  const nickname = readString(bytes, 6, nickLength)
+  let at = 6 + nickLength
   const x = decodePosition(view.getUint16(at, true))
   const y = decodePosition(view.getUint16(at + 2, true))
   const z = decodePosition(view.getUint16(at + 4, true))
@@ -307,6 +315,7 @@ function decodeWelcome(bytes: Uint8Array, view: DataView): WelcomeFrame {
     kind: 'welcome',
     playerId,
     color,
+    avatar,
     nickname,
     x,
     y,
@@ -371,9 +380,10 @@ function readRosterEntry(
 ): { member: RosterMember; next: number } {
   const id = view.getUint16(at, true)
   const color = view.getUint8(at + 2)
-  const length = view.getUint8(at + 3)
-  const nickname = readString(bytes, at + 4, length)
-  return { member: { id, nickname, color }, next: at + 4 + length }
+  const avatar = view.getUint8(at + 3)
+  const length = view.getUint8(at + 4)
+  const nickname = readString(bytes, at + 5, length)
+  return { member: { id, nickname, color, avatar }, next: at + 5 + length }
 }
 
 function decodeRosterSync(bytes: Uint8Array, view: DataView): RosterSyncFrame {

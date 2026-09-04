@@ -85,6 +85,9 @@ export function Chat({ messages, selfId, rosterColors, onSend, onFocusChange }: 
           <button
             type="button"
             className="scope"
+            // Without this the button steals focus, the input blurs, and the
+            // blur handler below closes the chat mid-sentence.
+            onMouseDown={(event) => event.preventDefault()}
             onClick={() => setScope(scope === 'global' ? 'proximity' : 'global')}
             title="Global reaches the district, nearby reaches thirty metres."
           >

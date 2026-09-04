@@ -113,6 +113,18 @@ def test_index_is_served(client):
     assert "ASCII CITY" in response.text
 
 
+def test_javascript_is_served_as_javascript():
+    """A registry-polluted Windows box would otherwise serve the bundle as
+    text/plain, which browsers refuse to execute as an ES module."""
+    import mimetypes
+
+    from ascii_city.presentation import app as app_module  # noqa: F401  (registers the types)
+
+    assert mimetypes.guess_type("bundle.js")[0] == "text/javascript"
+    assert mimetypes.guess_type("worker.mjs")[0] == "text/javascript"
+    assert mimetypes.guess_type("styles.css")[0] == "text/css"
+
+
 # --- tiles -----------------------------------------------------------------
 
 
@@ -172,9 +184,11 @@ def read_until(socket, kind: int, *, contains: bytes = b"", timeout: float = 10.
 
 
 def parse_welcome(payload: bytes) -> dict:
-    player_id, color, nick_len = struct.unpack_from("<HBB", payload, 1)
-    nickname = payload[4 : 4 + nick_len].decode()
-    return {"id": player_id, "color": color, "nickname": nickname}
+    header = struct.Struct("<HBBB")
+    player_id, color, avatar, nick_len = header.unpack_from(payload, 1)
+    start = 1 + header.size
+    nickname = payload[start : start + nick_len].decode()
+    return {"id": player_id, "color": color, "avatar": avatar, "nickname": nickname}
 
 
 def input_frame(sequence: int, yaw: float = 0.0) -> bytes:

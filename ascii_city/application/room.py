@@ -33,7 +33,13 @@ from ..infrastructure import wire_codec as wire
 from .chat_service import ChatService
 from .interest import visible_players, within_radius
 from .movement import find_safe_position, move_player
-from .nicknames import ColorAllocator, NicknameFactory, is_safe_nickname
+from .nicknames import (
+    ColorAllocator,
+    NicknameFactory,
+    is_safe_nickname,
+    is_valid_avatar,
+    pick_avatar,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +159,7 @@ class CityRoom:
                 id=player_id,
                 nickname=self._nicknames.issue(),
                 color=self._colors.issue(player_id),
+                avatar=pick_avatar(),
                 x=spawn_x,
                 y=spawn_y,
                 z=EYE_HEIGHT_M,
@@ -261,7 +268,20 @@ class CityRoom:
             await self._handle_rename(member, frame.nickname)
             return
 
+        if isinstance(frame, wire.SetAvatarRequest):
+            await self._handle_set_avatar(member, frame.avatar)
+            return
+
         await self._handle_chat(member, frame.scope, frame.text)
+
+    async def _handle_set_avatar(self, member: Member, avatar: int) -> None:
+        if not is_valid_avatar(avatar):
+            await self._send(member, wire.encode_notice(wire.NOTICE_WARNING, "No such avatar."))
+            return
+        if avatar == member.state.avatar:
+            return
+        member.state.avatar = avatar
+        await self._broadcast(wire.encode_roster_update(member.state))
 
     async def _handle_rename(self, member: Member, nickname: str) -> None:
         cleaned = nickname.strip()

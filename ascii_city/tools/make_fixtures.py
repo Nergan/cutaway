@@ -118,6 +118,7 @@ def _player(identifier: int, nickname: str, **overrides) -> PlayerState:
         id=identifier,
         nickname=nickname,
         color=identifier % 12,
+        avatar=(identifier * 7) % 24,
         x=112.5,
         y=64.25,
         z=1.7,
@@ -173,13 +174,20 @@ def build() -> dict:
                     "yaw": 1.25,
                     "pitch": -0.4,
                     "sprint": True,
+                    "jump": True,
                     "clientTime": 123456,
                 },
                 # Byte-for-byte what the server's decoder expects to receive.
                 "encoded": _b64(
                     bytes([wire.MSG_INPUT])
                     + wire._INPUT.pack(
-                        4242, 100, -50, wire.encode_yaw(1.25), wire.encode_pitch(-0.4), 1, 123456
+                        4242,
+                        100,
+                        -50,
+                        wire.encode_yaw(1.25),
+                        wire.encode_pitch(-0.4),
+                        wire.INPUT_FLAG_SPRINT | wire.INPUT_FLAG_JUMP,
+                        123456,
                     )
                 ),
             },
@@ -195,6 +203,14 @@ def build() -> dict:
             "ping": {
                 "clientTime": 77777,
                 "encoded": _b64(bytes([wire.MSG_PING]) + (77777).to_bytes(4, "little")),
+            },
+            "rename": {
+                "nickname": "amber-lantern-2",
+                "encoded": _b64(wire.encode_rename("amber-lantern-2")),
+            },
+            "setAvatar": {
+                "avatar": 11,
+                "encoded": _b64(wire.encode_set_avatar(11)),
             },
         },
         "serverFrames": {
@@ -216,6 +232,7 @@ def build() -> dict:
                 "expected": {
                     "playerId": viewer.id,
                     "color": viewer.color,
+                    "avatar": viewer.avatar,
                     "nickname": viewer.nickname,
                     "simulationHz": 20,
                     "snapshotHz": 20,
@@ -263,15 +280,19 @@ def build() -> dict:
                 "encoded": _b64(wire.encode_roster_sync([viewer, others[0][0], others[1][0]])),
                 "expected": {
                     "members": [
-                        {"id": 1, "nickname": "amber-lantern", "color": 1},
-                        {"id": 2, "nickname": "violet-conduit", "color": 2},
-                        {"id": 3, "nickname": "quiet-rebar", "color": 3},
+                        {"id": 1, "nickname": "amber-lantern", "color": 1, "avatar": 7},
+                        {"id": 2, "nickname": "violet-conduit", "color": 2, "avatar": 14},
+                        {"id": 3, "nickname": "quiet-rebar", "color": 3, "avatar": 21},
                     ]
                 },
             },
             "rosterAdd": {
                 "encoded": _b64(wire.encode_roster_add(others[0][0])),
-                "expected": {"id": 2, "nickname": "violet-conduit", "color": 2},
+                "expected": {"id": 2, "nickname": "violet-conduit", "color": 2, "avatar": 14},
+            },
+            "rosterUpdate": {
+                "encoded": _b64(wire.encode_roster_update(others[0][0])),
+                "expected": {"id": 2, "nickname": "violet-conduit", "color": 2, "avatar": 14},
             },
             "rosterRemove": {
                 "encoded": _b64(wire.encode_roster_remove(4242)),

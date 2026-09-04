@@ -90,6 +90,7 @@ export const MAX_TILES_PER_AXIS = Math.floor(MAX_ENCODABLE_POSITION_M / TILE_SIZ
 export const ANGLE_SCALE = 65536
 export const PITCH_SCALE = 100
 export const PLAYER_COLOR_COUNT = 12
+export const PLAYER_AVATAR_COUNT = 24
 
 export const ANIMATION_IDLE = 0
 export const ANIMATION_WALK = 1

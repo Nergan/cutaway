@@ -127,6 +127,10 @@ PITCH_SCALE: Final[int] = 100
 
 PLAYER_COLOR_COUNT: Final[int] = 12
 
+PLAYER_AVATAR_COUNT: Final[int] = 24
+"""Glyphs a player may wear as their avatar. The table itself is client-side;
+the wire only carries the index, so adding a glyph is not a protocol change."""
+
 ANIMATION_IDLE: Final[int] = 0
 ANIMATION_WALK: Final[int] = 1
 ANIMATION_RUN: Final[int] = 2

@@ -50,11 +50,20 @@ hot-reloads.
 | `Space` | Jump |
 | Mouse | Look (click the viewport to capture the pointer) |
 | `T` or `Enter` | Open the chat line; press again to send, `Escape` cancels |
+| `Tab` (hold) | Player list, with distances |
 | Left half of a touchscreen | Virtual stick |
 | Right half of a touchscreen | Look |
 
 Chat has two ranges: `district` reaches everyone, `nearby` reaches thirty
 metres. The button left of the input switches between them.
+
+The **settings** panel changes your nickname and your avatar — one of
+twenty-four glyphs you wear as a face, on the minimap, in the player list and
+above your head in the street. Colours are dealt by the server so that no two
+people online at once share one.
+
+The district itself is fixed. It is generated from a constant seed and pinned
+by a test, so the corner you learned yesterday is the same corner today.
 
 ## How it works
 

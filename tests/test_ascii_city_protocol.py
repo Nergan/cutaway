@@ -18,6 +18,7 @@ def a_player(player_id: int = 7, **overrides) -> PlayerState:
         id=player_id,
         nickname=f"QuietFox-{1000 + player_id}",
         color=3,
+        avatar=5,
         x=123.45,
         y=67.89,
         z=1.7,
@@ -152,10 +153,10 @@ def test_welcome_carries_the_world_shape():
         cell_size=2.0,
     )
     assert payload[0] == wire.MSG_WELCOME
-    player_id, color, nick_len = struct.unpack_from("<HBB", payload, 1)
-    assert player_id == 7 and color == 3
-    assert payload[5 : 5 + nick_len].decode() == "QuietFox-1007"
-    tail = struct.unpack_from("<HHHHBBIBBHfI", payload, 5 + nick_len)
+    player_id, color, avatar, nick_len = struct.unpack_from("<HBBB", payload, 1)
+    assert player_id == 7 and color == 3 and avatar == 5
+    assert payload[6 : 6 + nick_len].decode() == "QuietFox-1007"
+    tail = struct.unpack_from("<HHHHBBIBBHfI", payload, 6 + nick_len)
     assert tail[4] == 20 and tail[5] == 20
     assert tail[7] == 2 and tail[8] == 2 and tail[9] == 128
     assert tail[10] == pytest.approx(2.0)
@@ -233,6 +234,25 @@ def test_input_jump_flag_decodes():
     frame = wire.decode_client_frame(encode_input(flags=wire.INPUT_FLAG_JUMP | wire.INPUT_FLAG_SPRINT))
     assert frame.jump is True
     assert frame.sprint is True
+
+
+def test_set_avatar_frame_decodes():
+    frame = wire.decode_client_frame(wire.encode_set_avatar(9))
+    assert isinstance(frame, wire.SetAvatarRequest)
+    assert frame.avatar == 9
+
+
+def test_a_malformed_avatar_frame_is_refused():
+    with pytest.raises(ProtocolError):
+        wire.decode_client_frame(bytes([wire.MSG_SET_AVATAR, 1, 2]))
+
+
+def test_roster_entries_carry_the_avatar():
+    payload = wire.encode_roster_add(a_player(9))
+    # type, id (u16), colour, avatar, nickname length, then the nickname.
+    assert payload[3] == 3, "colour"
+    assert payload[4] == 5, "avatar"
+    assert payload[6 : 6 + payload[5]].decode() == "QuietFox-1009"
 
 
 def test_notice_is_length_bounded():

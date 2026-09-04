@@ -7,9 +7,9 @@
  */
 
 import { ANIMATION_IDLE, ANIMATION_RUN } from '../domain/constants'
-import { AVATAR_ROWS, CHARSET } from './charset'
+import { AVATAR_ROWS, CHARSET, avatarGlyph } from './charset'
 import { CellBuffer, EFFECT_GLOW } from './cellBuffer'
-import { fade, playerColor, scale, type Rgb } from './palette'
+import { fade, mix, playerColor, scale, type Rgb } from './palette'
 import type { Camera } from './raycaster'
 
 export interface Sprite {
@@ -19,11 +19,20 @@ export interface Sprite {
   animation: number
   nickname: string
   color: number
+  avatar: number
 }
 
 const AVATAR_HEIGHT_M = 1.8
 const AVATAR_WIDTH_M = 0.9
 const NAMEPLATE_DISTANCE_M = 42
+
+/**
+ * How far a name still carries once its owner is behind something. Names do
+ * punch through walls, the way they do in Minecraft, but only close enough
+ * that the information is about the room you are in rather than the district.
+ */
+const OCCLUDED_NAMEPLATE_DISTANCE_M = 16
+
 const FOG_DISTANCE_M = 90
 
 export function renderSprites(
@@ -89,7 +98,9 @@ export function renderSprites(
           Math.floor(withinY * AVATAR_ROWS.length),
         )
         const stamp = AVATAR_ROWS[glyphRow]
-        const glyphIndex = stamp[Math.min(stamp.length - 1, glyphColumn)]
+        // The head cell is where the chosen face goes; the rest is the body.
+        const glyphIndex =
+          glyphRow === 0 ? avatarGlyph(sprite.avatar) : stamp[Math.min(stamp.length - 1, glyphColumn)]
         if (glyphIndex === 0) continue
 
         const foreground = fade(scale(base, 1.15), fogAmount * 0.7)
@@ -110,14 +121,18 @@ export function renderSprites(
       }
     }
 
-    if (depth < NAMEPLATE_DISTANCE_M) {
+    const centreColumn = Math.round(centre)
+    const occluded =
+      centreColumn < 0 || centreColumn >= columns || depth > buffer.depth[centreColumn]
+    const reach = occluded ? OCCLUDED_NAMEPLATE_DISTANCE_M : NAMEPLATE_DISTANCE_M
+    if (depth < reach) {
       drawNameplate(
         buffer,
         sprite.nickname,
-        Math.round(centre),
+        centreColumn,
         Math.floor(head + bob) - 1,
         base,
-        depth,
+        occluded,
       )
     }
   }
@@ -129,28 +144,19 @@ function drawNameplate(
   centre: number,
   row: number,
   color: Rgb,
-  depth: number,
+  occluded: boolean,
 ): void {
   if (row < 0 || row >= buffer.rows) return
   const text = nickname.length > 18 ? `${nickname.slice(0, 17)}\u2026` : nickname
   const start = centre - Math.floor(text.length / 2)
+  // Seen through a wall a name is dimmer and loses its bloom, so the two cases
+  // stay distinguishable at a glance.
+  const ink = occluded ? mix(color, [10, 16, 22], 0.55) : color
+  const effect = occluded ? 0 : EFFECT_GLOW
   for (let index = 0; index < text.length; index += 1) {
     const column = start + index
     if (column < 0 || column >= buffer.columns) continue
-    // A name must not float through a facade any more than its owner does.
-    if (depth > buffer.depth[column]) continue
-    buffer.set(
-      column,
-      row,
-      asciiGlyph(text[index]),
-      color[0],
-      color[1],
-      color[2],
-      4,
-      7,
-      12,
-      EFFECT_GLOW,
-    )
+    buffer.set(column, row, asciiGlyph(text[index]), ink[0], ink[1], ink[2], 4, 7, 12, effect)
   }
 }
 

@@ -76,6 +76,7 @@ class PlayerState:
     color: int
     x: float
     y: float
+    avatar: int = 0
     z: float = EYE_HEIGHT_M
     yaw: float = 0.0
     pitch: float = 0.0

@@ -101,9 +101,10 @@
         "yaw": 1.25,
         "pitch": -0.4,
         "sprint": true,
+        "jump": true,
         "clientTime": 123456
       },
-      "encoded": "AZIQAABkzu4y2AFA4gEA"
+      "encoded": "AZIQAABkzu4y2ANA4gEA"
     },
     "chat": {
       "scope": "proximity",
@@ -113,14 +114,23 @@
     "ping": {
       "clientTime": 77777,
       "encoded": "A9EvAQA="
+    },
+    "rename": {
+      "nickname": "amber-lantern-2",
+      "encoded": "BA8AYW1iZXItbGFudGVybi0y"
+    },
+    "setAvatar": {
+      "avatar": 11,
+      "encoded": "BQs="
     }
   },
   "serverFrames": {
     "welcome": {
-      "encoded": "gQEAAQ1hbWJlci1sYW50ZXJu8isZGaoA7jIUFADxU2UCAoAAAAAAQAMAAAAEZGVtbw==",
+      "encoded": "gQEAAQcNYW1iZXItbGFudGVybvIrGRmqAO4yFBQA8VNlAgKAAAAAAEADAAAABGRlbW8=",
       "expected": {
         "playerId": 1,
         "color": 1,
+        "avatar": 7,
         "nickname": "amber-lantern",
         "simulationHz": 20,
         "snapshotHz": 20,
@@ -172,33 +182,46 @@
       }
     },
     "rosterSync": {
-      "encoded": "hQMAAQABDWFtYmVyLWxhbnRlcm4CAAIOdmlvbGV0LWNvbmR1aXQDAAMLcXVpZXQtcmViYXI=",
+      "encoded": "hQMAAQABBw1hbWJlci1sYW50ZXJuAgACDg52aW9sZXQtY29uZHVpdAMAAxULcXVpZXQtcmViYXI=",
       "expected": {
         "members": [
           {
             "id": 1,
             "nickname": "amber-lantern",
-            "color": 1
+            "color": 1,
+            "avatar": 7
           },
           {
             "id": 2,
             "nickname": "violet-conduit",
-            "color": 2
+            "color": 2,
+            "avatar": 14
           },
           {
             "id": 3,
             "nickname": "quiet-rebar",
-            "color": 3
+            "color": 3,
+            "avatar": 21
           }
         ]
       }
     },
     "rosterAdd": {
-      "encoded": "hgIAAg52aW9sZXQtY29uZHVpdA==",
+      "encoded": "hgIAAg4OdmlvbGV0LWNvbmR1aXQ=",
       "expected": {
         "id": 2,
         "nickname": "violet-conduit",
-        "color": 2
+        "color": 2,
+        "avatar": 14
+      }
+    },
+    "rosterUpdate": {
+      "encoded": "iQIAAg4OdmlvbGV0LWNvbmR1aXQ=",
+      "expected": {
+        "id": 2,
+        "nickname": "violet-conduit",
+        "color": 2,
+        "avatar": 14
       }
     },
     "rosterRemove": {

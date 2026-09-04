@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import secrets
 
-from ..domain.constants import PLAYER_COLOR_COUNT
+from ..domain.constants import PLAYER_AVATAR_COUNT, PLAYER_COLOR_COUNT
 from ..infrastructure.wordlists import ADJECTIVES, NOUNS
 
 MIN_LENGTH = 6
@@ -79,6 +79,15 @@ def is_safe_nickname(value: str) -> bool:
 def pick_color(player_id: int) -> int:
     """Spread colours across the palette so neighbours rarely match."""
     return (player_id * 5) % PLAYER_COLOR_COUNT
+
+
+def pick_avatar() -> int:
+    """A random face to arrive with. Players may change it afterwards."""
+    return secrets.randbelow(PLAYER_AVATAR_COUNT)
+
+
+def is_valid_avatar(index: int) -> bool:
+    return 0 <= index < PLAYER_AVATAR_COUNT
 
 
 class ColorAllocator:

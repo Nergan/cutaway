@@ -191,6 +191,7 @@ describe('other players', () => {
     animation: 1,
     nickname: 'violet-conduit',
     color: 2,
+    avatar: 3,
   })
 
   function occupiedCells(buffer: CellBuffer, before: CellBuffer): number {

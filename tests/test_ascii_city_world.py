@@ -6,10 +6,11 @@ import gzip
 
 import pytest
 
-from ascii_city.config import load_settings
+from ascii_city.config import DEFAULT_SEED, load_settings
 from ascii_city.domain.constants import (
     CATEGORY_NAMES,
     CELL_BUILDING,
+    CELL_SIZE_M,
     CELL_ROAD,
     CELL_SIDEWALK,
     MAX_BUILDING_HEIGHT_M,
@@ -33,6 +34,31 @@ def test_generation_is_deterministic(small_descriptor):
         second[0].collision, second[0].heights, second[0].styles
     )
     assert [b.id for b in first[0].buildings] == [b.id for b in second[0].buildings]
+
+
+def test_the_shipped_district_never_changes_by_accident():
+    """The city players know has to be the city they get back tomorrow.
+
+    Nothing about the layout may drift without someone deliberately editing
+    this number, which also forces a matching ``world_version`` bump so cached
+    tiles in browsers are invalidated rather than silently wrong.
+    """
+    descriptor = WorldDescriptor(
+        id="demo",
+        version=1,
+        seed=DEFAULT_SEED,
+        tiles_x=1,
+        tiles_y=1,
+        tile_cells=TILE_CELLS,
+        cell_size=CELL_SIZE_M,
+        source="procedural",
+    )
+    tile = DistrictGenerator().generate_tiles(descriptor)[0]
+    assert digest_bytes(tile.collision, tile.heights, tile.styles) == 752060246
+
+
+def test_the_default_seed_is_not_left_to_chance():
+    assert load_settings().world_seed == DEFAULT_SEED
 
 
 def test_a_different_seed_produces_a_different_district(small_descriptor):

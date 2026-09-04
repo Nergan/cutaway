@@ -1,4 +1,5 @@
 import type { SessionView } from '../game/session'
+import { avatarFace } from '../render/charset'
 import { PLAYER_COLORS } from '../render/palette'
 
 interface Props {
@@ -25,7 +26,9 @@ export function Hud({ view, onOpenSettings }: Props) {
   return (
     <div className="hud">
       <div className="hud-block hud-identity">
-        <span className="dot" style={{ background: css(color) }} />
+        <span className="face" style={{ color: css(color) }}>
+          {avatarFace(player.avatar)}
+        </span>
         <strong style={{ color: css(color) }}>{player.nickname}</strong>
       </div>
 
@@ -34,7 +37,7 @@ export function Hud({ view, onOpenSettings }: Props) {
           {Math.round(player.x)}, {Math.round(player.y)}
         </span>
         <span>{heading(player.yaw)}</span>
-        <span>{view.population} online</span>
+        <span title="Hold Tab for the player list">{view.population} online</span>
         <span>{view.status.latencyMs} ms</span>
       </div>
 

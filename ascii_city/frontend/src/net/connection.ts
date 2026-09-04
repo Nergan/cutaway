@@ -14,6 +14,7 @@ import {
   encodeInput,
   encodePing,
   encodeRename,
+  encodeSetAvatar,
   type InputCommand,
   type ServerFrame,
 } from './wire'
@@ -82,6 +83,10 @@ export class Connection {
 
   sendRename(nickname: string): void {
     this.send(encodeRename(nickname))
+  }
+
+  sendAvatar(avatar: number): void {
+    this.send(encodeSetAvatar(avatar))
   }
 
   private send(payload: Uint8Array): void {

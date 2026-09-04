@@ -14,6 +14,8 @@ import {
   MSG_CHAT,
   MSG_INPUT,
   MSG_PING,
+  MSG_RENAME,
+  MSG_SET_AVATAR,
   WireError,
   decodePitch,
   decodePosition,
@@ -24,6 +26,8 @@ import {
   encodePing,
   encodePitch,
   encodePosition,
+  encodeRename,
+  encodeSetAvatar,
   encodeYaw,
 } from './wire'
 
@@ -78,6 +82,7 @@ describe('frames this client sends', () => {
       yaw: fixture.command.yaw,
       pitch: fixture.command.pitch,
       sprint: fixture.command.sprint,
+      jump: fixture.command.jump,
       clientTime: fixture.command.clientTime,
     })
     expect(encoded[0]).toBe(MSG_INPUT)
@@ -98,6 +103,20 @@ describe('frames this client sends', () => {
     expect(encoded).toEqual(bytes(fixture.encoded))
   })
 
+  it('encodes a rename exactly as the server decoder expects', () => {
+    const fixture = fixtures.clientFrames.rename
+    const encoded = encodeRename(fixture.nickname)
+    expect(encoded[0]).toBe(MSG_RENAME)
+    expect(encoded).toEqual(bytes(fixture.encoded))
+  })
+
+  it('encodes an avatar change exactly as the server decoder expects', () => {
+    const fixture = fixtures.clientFrames.setAvatar
+    const encoded = encodeSetAvatar(fixture.avatar)
+    expect(encoded[0]).toBe(MSG_SET_AVATAR)
+    expect(encoded).toEqual(bytes(fixture.encoded))
+  })
+
   it('keeps an input frame at fifteen bytes whatever the values', () => {
     const frame = encodeInput({
       sequence: 0xffffffff,
@@ -106,6 +125,7 @@ describe('frames this client sends', () => {
       yaw: 99,
       pitch: -99,
       sprint: false,
+      jump: false,
       clientTime: 0xffffffff,
     })
     expect(frame.byteLength).toBe(15)
@@ -119,6 +139,7 @@ describe('frames this client sends', () => {
       yaw: 0,
       pitch: 0,
       sprint: false,
+      jump: false,
       clientTime: 0,
     })
     expect(new DataView(frame.buffer).getInt8(5)).toBe(0)
@@ -139,6 +160,7 @@ describe('frames the server sends', () => {
     expect(frame.playerId).toBe(fixture.expected.playerId)
     expect(frame.nickname).toBe(fixture.expected.nickname)
     expect(frame.color).toBe(fixture.expected.color)
+    expect(frame.avatar).toBe(fixture.expected.avatar)
     expect(frame.simulationHz).toBe(fixture.expected.simulationHz)
     expect(frame.serverTimeMs).toBe(fixture.expected.serverTimeMs)
     expect(frame.tilesX).toBe(fixture.expected.tilesX)
@@ -189,7 +211,7 @@ describe('frames the server sends', () => {
     })
   })
 
-  it('decodes the three roster frames', () => {
+  it('decodes the roster frames, avatars included', () => {
     const sync = decodeServerFrame(bytes(fixtures.serverFrames.rosterSync.encoded))
     expect(sync.kind).toBe('roster-sync')
     if (sync.kind === 'roster-sync') {
@@ -200,6 +222,12 @@ describe('frames the server sends', () => {
     expect(added.kind).toBe('roster-add')
     if (added.kind === 'roster-add') {
       expect(added.member).toEqual(fixtures.serverFrames.rosterAdd.expected)
+    }
+
+    const updated = decodeServerFrame(bytes(fixtures.serverFrames.rosterUpdate.encoded))
+    expect(updated.kind).toBe('roster-update')
+    if (updated.kind === 'roster-update') {
+      expect(updated.member).toEqual(fixtures.serverFrames.rosterUpdate.expected)
     }
 
     const removed = decodeServerFrame(bytes(fixtures.serverFrames.rosterRemove.encoded))

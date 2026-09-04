@@ -95,6 +95,7 @@ export interface LocalPlayer {
   id: number
   nickname: string
   color: number
+  avatar: number
   x: number
   y: number
   z: number
@@ -108,6 +109,7 @@ export interface RemotePlayer {
   id: number
   nickname: string
   color: number
+  avatar: number
   x: number
   y: number
   yaw: number

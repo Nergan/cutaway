@@ -26,6 +26,12 @@ export const CHARSET = [
   '\u2551', '\u2554', '\u2557', '\u255a',
   '\u255d', '\u2571', '\u2572', '\u2573',
   '\u00b7', '\u2022', '\u25cf', '\u25cb',
+  // Avatar faces. Every one of these is a CP437 codepoint, so any monospace
+  // font that can draw the box-drawing set above can draw these too.
+  '\u263a', '\u263b', '\u2665', '\u2666', '\u2663', '\u2660',
+  '\u2642', '\u2640', '\u266a', '\u266b', '\u263c', '\u25ba',
+  '\u25c4', '\u25b2', '\u25bc', '\u25d8', '\u25d9', '\u2605',
+  '\u2606', '\u2302', '\u00a7', '\u00b6', '\u203c', '\u2195',
 ] as const
 
 export const GLYPH_COUNT = CHARSET.length
@@ -78,7 +84,31 @@ export const SKY_GLYPHS = {
   haze: glyph('\u2591'),
 }
 
-/** The standing figure other players are drawn as, top row first. */
+/**
+ * The faces a player can wear. Index into this is what travels on the wire, so
+ * the order has to match `PLAYER_AVATAR_COUNT` on the server and may only ever
+ * grow at the end.
+ */
+export const AVATAR_FACES = [
+  '\u263a', '\u263b', '\u2665', '\u2666', '\u2663', '\u2660',
+  '\u2642', '\u2640', '\u266a', '\u266b', '\u263c', '\u25ba',
+  '\u25c4', '\u25b2', '\u25bc', '\u25d8', '\u25d9', '\u2605',
+  '\u2606', '\u2302', '\u00a7', '\u00b6', '\u203c', '\u2195',
+] as const
+
+export const AVATAR_GLYPHS = AVATAR_FACES.map(glyph)
+
+export function avatarFace(index: number): string {
+  const count = AVATAR_FACES.length
+  return AVATAR_FACES[((index % count) + count) % count]
+}
+
+export function avatarGlyph(index: number): number {
+  const count = AVATAR_GLYPHS.length
+  return AVATAR_GLYPHS[((index % count) + count) % count]
+}
+
+/** The standing figure other players are drawn as, below the head row. */
 export const AVATAR_ROWS = [
   ['\u25cf'],
   ['/', '|', '\\'],

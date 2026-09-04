@@ -29,6 +29,7 @@ MSG_INPUT = 0x01
 MSG_CHAT = 0x02
 MSG_PING = 0x03
 MSG_RENAME = 0x04
+MSG_SET_AVATAR = 0x05
 
 INPUT_FLAG_SPRINT = 0x01
 INPUT_FLAG_JUMP = 0x02
@@ -102,7 +103,12 @@ class RenameRequest:
     nickname: str
 
 
-ClientFrame = InputCommand | ChatRequest | PingRequest | RenameRequest
+@dataclass(frozen=True, slots=True)
+class SetAvatarRequest:
+    avatar: int
+
+
+ClientFrame = InputCommand | ChatRequest | PingRequest | RenameRequest | SetAvatarRequest
 
 
 def decode_client_frame(payload: bytes) -> ClientFrame:
@@ -168,6 +174,11 @@ def decode_client_frame(payload: bytes) -> ClientFrame:
             raise ProtocolError("Nickname is not valid UTF-8.") from exc
         return RenameRequest(nickname=nickname)
 
+    if kind == MSG_SET_AVATAR:
+        if len(body) != 1:
+            raise ProtocolError("Malformed avatar frame.")
+        return SetAvatarRequest(avatar=body[0])
+
     raise ProtocolError(f"Unknown frame type 0x{kind:02x}.")
 
 
@@ -189,9 +200,10 @@ def encode_welcome(
     out = bytearray()
     out.append(MSG_WELCOME)
     out += struct.pack(
-        "<HBB",
+        "<HBBB",
         player.id,
         player.color,
+        player.avatar,
         len(nickname),
     )
     out += nickname
@@ -274,6 +286,7 @@ def _roster_entry(out: bytearray, player: PlayerState) -> None:
     nickname = player.nickname.encode("utf-8")
     out += player.id.to_bytes(2, "little")
     out.append(player.color)
+    out.append(player.avatar)
     out.append(len(nickname))
     out += nickname
 
@@ -308,6 +321,10 @@ def encode_rename(nickname: str) -> bytes:
     out += len(payload).to_bytes(2, "little")
     out += payload
     return bytes(out)
+
+
+def encode_set_avatar(avatar: int) -> bytes:
+    return bytes([MSG_SET_AVATAR, avatar & 0xFF])
 
 
 def encode_roster_remove(player_id: int) -> bytes:

@@ -93,6 +93,21 @@ The server validates the nickname the same way it does on join. A successful
 rename updates the roster and broadcasts `0x89` ROSTER_UPDATE to everyone in the
 room.
 
+### `0x05` SET AVATAR — 2 bytes
+
+| Offset | Type | Field |
+| --- | --- | --- |
+| 0 | `u8` | `0x05` |
+| 1 | `u8` | avatar index, `0 … PLAYER_AVATAR_COUNT - 1` |
+
+The index selects a glyph from `frontend/src/render/charset.ts::AVATAR_FACES`.
+Only the index travels, so appending a face to that table is a client change
+rather than a protocol change — but the table may only ever grow at the end,
+because an index already on the wire must keep meaning the same face. An index
+past the end is refused with a notice rather than clamped.
+
+Like a rename, a successful change broadcasts `0x89` ROSTER_UPDATE.
+
 ## Server to client
 
 ### `0x81` WELCOME
@@ -104,6 +119,7 @@ Sent once, immediately after the socket is accepted and the player is seated.
 | `u8` | `0x81` |
 | `u16` | your player id |
 | `u8` | your colour index, 0 … 11 |
+| `u8` | your avatar index, 0 … 23 |
 | `u8` | nickname byte length |
 | bytes | nickname, UTF-8 |
 | `u16` | spawn x |
@@ -188,16 +204,17 @@ colour and simply stops drawing them.
 
 ### `0x85` / `0x86` / `0x87` / `0x89` ROSTER
 
-The roster is the name-and-colour directory; it changes on join, leave, and
-rename, which is why it is not repeated inside every snapshot.
+The roster is the identity directory: name, colour and avatar. It changes only
+on join, leave, rename and avatar change, which is why none of those fields are
+repeated inside every snapshot.
 
 `0x85` ROSTER SYNC: `u16` count, then that many entries.
 `0x86` ROSTER ADD: exactly one entry.
 `0x87` ROSTER REMOVE: `u16` player id.
-`0x89` ROSTER UPDATE: exactly one entry when a nickname or colour changes.
+`0x89` ROSTER UPDATE: one entry, when a nickname or avatar changes.
 
-An entry is `u16` player id, `u8` colour index, `u8` nickname byte length,
-then the nickname.
+An entry is `u16` player id, `u8` colour index, `u8` avatar index, `u8`
+nickname byte length, then the nickname.
 
 ### `0x88` PONG
 

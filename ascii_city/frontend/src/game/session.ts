@@ -18,7 +18,13 @@ import type {
   WorldMetadata,
 } from '../domain/types'
 import { Connection, now } from '../net/connection'
-import { NOTICE_RATE_LIMIT, type InputCommand, type ServerFrame } from '../net/wire'
+import {
+  NOTICE_RATE_LIMIT,
+  type InputCommand,
+  type RosterMember,
+  type ServerFrame,
+} from '../net/wire'
+import { buildMinimap, type MinimapSource } from '../render/minimap'
 import { Renderer, type QualityPreset, type RendererStats } from '../render/renderer'
 import type { Sprite } from '../render/sprites'
 import { InputController } from '../sim/input'
@@ -27,11 +33,17 @@ import { Predictor } from '../sim/prediction'
 import type { CollisionGrid } from '../world/collisionGrid'
 import { WorldClient, type LoadProgress } from '../world/worldClient'
 
+/** Everything the minimap and the roster panel need, sampled every frame. */
+export interface LiveState {
+  camera: { x: number; y: number; z: number; yaw: number; pitch: number }
+  others: Array<{ id: number; x: number; y: number }>
+}
+
 export interface SessionView {
   status: ConnectionStatus
   player: LocalPlayer | null
   population: number
-  roster: Array<{ id: number; nickname: string; color: number }>
+  roster: RosterMember[]
   messages: ChatMessage[]
   progress: LoadProgress | null
   metadata: WorldMetadata | null
@@ -62,8 +74,13 @@ const EMPTY_VIEW: SessionView = {
 export class GameSession {
   private readonly worldClient: WorldClient
   private readonly interpolation = new InterpolationBuffer()
-  private readonly roster = new Map<number, { id: number; nickname: string; color: number }>()
+  private readonly roster = new Map<number, RosterMember>()
   private readonly messages: ChatMessage[] = []
+  private readonly live: LiveState = {
+    camera: { x: 0, y: 0, z: EYE_HEIGHT_M, yaw: 0, pitch: 0 },
+    others: [],
+  }
+  private minimapSource: MinimapSource | null = null
 
   private renderer: Renderer | null = null
   private input: InputController | null = null
@@ -97,6 +114,19 @@ export class GameSession {
     return this.view
   }
 
+  /** The district map, rasterised once the world finishes loading. */
+  get minimap(): MinimapSource | null {
+    return this.minimapSource
+  }
+
+  /**
+   * Positions at render rate rather than HUD rate. The minimap reads this from
+   * its own animation frame so it tracks the camera smoothly.
+   */
+  get liveState(): LiveState {
+    return this.live
+  }
+
   async start(canvas: HTMLCanvasElement, surface: HTMLElement): Promise<void> {
     this.patch({ status: { phase: 'loading-world', detail: '', latencyMs: 0, attempt: 0 } })
 
@@ -104,6 +134,7 @@ export class GameSession {
     if (this.disposed) return
 
     this.grid = loaded.grid
+    this.minimapSource = buildMinimap(loaded.grid)
     this.patch({ metadata: loaded.metadata })
 
     this.renderer = new Renderer(canvas)
@@ -157,6 +188,10 @@ export class GameSession {
     const trimmed = nickname.trim()
     if (!trimmed) return
     this.connection?.sendRename(trimmed)
+  }
+
+  sendAvatar(index: number): void {
+    this.connection?.sendAvatar(index)
   }
 
   setChatFocused(focused: boolean): void {
@@ -223,6 +258,7 @@ export class GameSession {
     }
 
     const sprites: Sprite[] = []
+    const others: LiveState['others'] = []
     for (const other of this.interpolation.sample(performance.now())) {
       const member = this.roster.get(other.id)
       sprites.push({
@@ -232,8 +268,13 @@ export class GameSession {
         animation: other.animation,
         nickname: member?.nickname ?? '',
         color: member?.color ?? 0,
+        avatar: member?.avatar ?? 0,
       })
+      others.push({ id: other.id, x: other.x, y: other.y })
     }
+
+    this.live.camera = camera
+    this.live.others = others
 
     renderer.render(grid, camera, sprites, dt)
 
@@ -246,6 +287,7 @@ export class GameSession {
           id: this.view.player?.id ?? 0,
           nickname: this.view.player?.nickname ?? '',
           color: this.view.player?.color ?? 0,
+          avatar: this.view.player?.avatar ?? 0,
           x: camera.x,
           y: camera.y,
           z: camera.z,
@@ -267,6 +309,7 @@ export class GameSession {
           id: frame.playerId,
           nickname: frame.nickname,
           color: frame.color,
+          avatar: frame.avatar,
         })
         this.predictor?.reset(frame.x, frame.y, frame.z)
         this.input?.setOrientation(frame.yaw, 0)
@@ -276,6 +319,7 @@ export class GameSession {
             id: frame.playerId,
             nickname: frame.nickname,
             color: frame.color,
+            avatar: frame.avatar,
             x: frame.x,
             y: frame.y,
             z: frame.z,
@@ -332,7 +376,12 @@ export class GameSession {
         this.roster.set(frame.member.id, frame.member)
         if (this.view.player?.id === frame.member.id) {
           this.patch({
-            player: { ...this.view.player, nickname: frame.member.nickname, color: frame.member.color },
+            player: {
+              ...this.view.player,
+              nickname: frame.member.nickname,
+              color: frame.member.color,
+              avatar: frame.member.avatar,
+            },
             roster: [...this.roster.values()],
           })
         } else {
