@@ -160,16 +160,21 @@ The vertical velocity is here because the client replays its unacknowledged
 input from this state. Without it the replay has to assume zero, which flattens
 the arc of a jump twenty times a second.
 
-Then one 10-byte entry per visible player:
+Then one 12-byte entry per visible player:
 
 | Type | Field |
 | --- | --- |
 | `u16` | player id |
 | `u16` | x |
 | `u16` | y |
+| `u16` | z |
 | `u16` | yaw |
 | `i8` | pitch |
 | `u8` | flags |
+
+The height is here for the same reason it is in the header: without it a jump
+is something you can only see in your own view, and everyone else in the street
+stays glued to the pavement.
 
 Entry flags: bits 0–1 carry the animation state (`0` idle, `1` walk, `2` run),
 bit 2 marks a *simplified* entry.
@@ -231,9 +236,9 @@ nickname byte length, then the nickname.
 
 ## Bandwidth
 
-A snapshot to a player who can see 49 others is `1 + 16 + 1 + 49 × 10 = 508`
-bytes. At 20 Hz that is about 10 kB/s down per player, and a full 50-player
-room costs roughly 10 MB per minute in total — an order of magnitude below the
+A snapshot to a player who can see 49 others is `1 + 16 + 1 + 49 × 12 = 606`
+bytes. At 20 Hz that is about 12 kB/s down per player, and a full 50-player
+room costs roughly 12 MB per minute in total — an order of magnitude below the
 traffic the orchestrator budgets for this project. Upstream is 15 bytes per
 input, so 300 B/s per player.
 

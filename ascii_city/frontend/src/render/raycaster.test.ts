@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { CELL_BUILDING, CELL_ROAD, EYE_HEIGHT_M } from '../domain/constants'
 import { CollisionGrid } from '../world/collisionGrid'
 import { CellBuffer, CELL_STRIDE } from './cellBuffer'
-import { CHARSET, G_SPACE } from './charset'
+import { AVATAR_FACES, CHARSET, G_SPACE } from './charset'
 import { DEFAULT_QUALITY, Raycaster, type Camera } from './raycaster'
 import { renderSprites, type Sprite } from './sprites'
 
@@ -184,10 +184,11 @@ describe('silhouettes', () => {
 })
 
 describe('other players', () => {
-  const spriteAt = (x: number, y: number): Sprite => ({
+  const spriteAt = (x: number, y: number, z = EYE_HEIGHT_M): Sprite => ({
     id: 2,
     x,
     y,
+    z,
     animation: 1,
     nickname: 'violet-conduit',
     color: 2,
@@ -259,6 +260,43 @@ describe('other players', () => {
     const rendered = asText(buffer).join('\n')
     expect(rendered).toContain('violet-conduit')
   })
+
+  /** Draw one figure and return the characters it put on screen. */
+  function figure(sprite: Sprite): string {
+    const grid = district()
+    const view = camera()
+    const buffer = frame(grid, view)
+    renderSprites(buffer, view, [sprite], DEFAULT_QUALITY.fov, 0)
+    return asText(buffer).join('\n')
+  }
+
+  it('wears the face the player picked', () => {
+    for (let avatar = 0; avatar < AVATAR_FACES.length; avatar += 1) {
+      const drawn = figure({ ...spriteAt(70, 64), avatar, nickname: '' })
+      expect(drawn).toContain(AVATAR_FACES[avatar])
+    }
+  })
+
+  it('draws a different figure for a different face', () => {
+    const first = figure({ ...spriteAt(70, 64), avatar: 0, nickname: '' })
+    const second = figure({ ...spriteAt(70, 64), avatar: 9, nickname: '' })
+    expect(first).not.toEqual(second)
+  })
+
+  it('lifts the figure off the ground when its owner jumps', () => {
+    const standing = topRow(figure({ ...spriteAt(70, 64), nickname: '' }))
+    const jumping = topRow(figure({ ...spriteAt(70, 64, EYE_HEIGHT_M + 1.2), nickname: '' }))
+    expect(jumping).toBeLessThan(standing)
+  })
+
+  /** The first row holding any part of the figure, counted from the top. */
+  function topRow(rendered: string): number {
+    const rows = rendered.split('\n')
+    for (let row = 0; row < rows.length; row += 1) {
+      if (rows[row].includes('\u250c')) return row
+    }
+    return rows.length
+  }
 })
 
 describe('the glyph vocabulary', () => {

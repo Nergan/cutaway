@@ -39,7 +39,7 @@ export const MAX_FRAME_BYTES = 4096
 export const SNAPSHOT_FLAG_SIMPLIFIED = 0x04
 
 const INPUT_FRAME_BYTES = 1 + 14
-const SNAPSHOT_ENTRY_BYTES = 10
+const SNAPSHOT_ENTRY_BYTES = 12
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -181,6 +181,8 @@ export interface SnapshotEntry {
   id: number
   x: number
   y: number
+  /** Eye height. Carried so other people's jumps are visible, not just yours. */
+  z: number
   yaw: number
   pitch: number
   animation: number
@@ -353,13 +355,14 @@ function decodeSnapshot(bytes: Uint8Array, view: DataView): SnapshotFrame {
     if (at + SNAPSHOT_ENTRY_BYTES > bytes.byteLength) {
       throw new WireError('Snapshot is truncated.')
     }
-    const flags = view.getUint8(at + 9)
+    const flags = view.getUint8(at + 11)
     entries.push({
       id: view.getUint16(at, true),
       x: decodePosition(view.getUint16(at + 2, true)),
       y: decodePosition(view.getUint16(at + 4, true)),
-      yaw: decodeYaw(view.getUint16(at + 6, true)),
-      pitch: decodePitch(view.getInt8(at + 8)),
+      z: decodePosition(view.getUint16(at + 6, true)),
+      yaw: decodeYaw(view.getUint16(at + 8, true)),
+      pitch: decodePitch(view.getInt8(at + 10)),
       animation: flags & 0x03,
       simplified: (flags & SNAPSHOT_FLAG_SIMPLIFIED) !== 0,
     })

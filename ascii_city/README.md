@@ -46,12 +46,15 @@ hot-reloads.
 | Input | Action |
 | --- | --- |
 | `W` `A` `S` `D` or arrows | Walk |
-| `Ctrl` | Run |
-| `Space` | Jump |
+| `Shift` (or `Ctrl`) | Run |
+| `Space` | Jump — high enough to clear a terrace |
 | Mouse | Look (click the viewport to capture the pointer) |
+| Mouse wheel | Field of view, 55° to 110° |
 | `T` or `Enter` | Open the chat line; press again to send, `Escape` cancels |
 | `Tab` (hold) | Player list, with distances |
-| `Escape` | Settings |
+| `Z` (hold) | The minimap, enlarged |
+| `E` | Settings |
+| `Escape` | Close whatever is open |
 | `5` | Third-person view |
 | Left half of a touchscreen | Virtual stick |
 | Right half of a touchscreen | Look |
@@ -79,8 +82,8 @@ server's to compute.
   buildings, then slices the result into 256 m tiles. Tiles are immutable for a
   world version, so they are served with a long cache lifetime and gzipped once
   at startup rather than per request.
-- **Transport.** A compact binary WebSocket protocol. A snapshot entry is ten
-  bytes, so a full fifty-player room costs roughly 10 MB per minute — an order
+- **Transport.** A compact binary WebSocket protocol. A snapshot entry is twelve
+  bytes, so a full fifty-player room costs roughly 12 MB per minute — an order
   of magnitude under the traffic budget the orchestrator grants the project.
 - **Prediction.** The client runs a line-for-line copy of the server's movement
   code, so walking feels instant. When a snapshot arrives, the client rewinds
@@ -122,8 +125,8 @@ project itself, which keeps the whole thing self-contained.
 ## Tests
 
 ```bash
-python -m pytest tests -k ascii_city   # 249 server, import and parity tests
-cd ascii_city && npm test              # 83 client tests
+python -m pytest tests -k ascii_city   # 270 server, import and parity tests
+cd ascii_city && npm test              # 108 client tests
 ```
 
 The two suites are tied together on purpose. `ascii_city/tools/make_fixtures.py`
@@ -137,7 +140,20 @@ To look at the city without a browser:
 
 ```bash
 python -m ascii_city.main --port 8130
-cd ascii_city && npx vite-node tools/preview-frame.ts -- --plain --yaw 120
+cd ascii_city && npx vite-node tools/preview-frame.ts -- --plain --auto
+```
+
+`--auto` turns the camera towards the longest clear view, which matters in a
+district this dense: dropped at random you are usually facing a wall a metre
+away, and a frame of that says nothing about the renderer. `--avatar N` stands
+a figure in front of the camera, framed the way pressing `5` frames you.
+
+`scripts/probe_district.py` counts what the generator actually produced —
+rooms, terraces, street furniture, and how much of it a player can walk to —
+and prints coordinates worth pointing `preview-frame.ts` at:
+
+```bash
+python scripts/probe_district.py
 ```
 
 `ascii_city/tools/preview.py` does the same for the generator itself, printing

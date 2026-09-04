@@ -11,11 +11,14 @@
  */
 
 import {
+  FLOOR_STEP_M,
+  isSolidCode,
   PROP_BANNER,
   PROP_BENCH,
   PROP_BOLLARD,
   PROP_KIOSK,
   PROP_LAMP,
+  PROP_NPC,
   PROP_PLANTER,
   PROP_SIGN,
   PROP_STALL,
@@ -25,13 +28,23 @@ import {
 } from '../domain/constants'
 import type { WorldTile } from '../domain/types'
 import { CellBuffer, EFFECT_GLOW, EFFECT_NONE } from './cellBuffer'
-import { glyph } from './charset'
+import {
+  AVATAR_FACE_COLUMN,
+  AVATAR_FACE_ROW,
+  AVATAR_GLYPHS,
+  AVATAR_ROWS,
+  avatarGlyph,
+  glyph,
+  signWord,
+} from './charset'
 import { fade, mix, rgb, scale, type Rgb } from './palette'
 import type { Camera } from './raycaster'
 
 export interface WorldProp {
   x: number
   y: number
+  /** Elevation of the ground it stands on, so it rides the terraces. */
+  z: number
   kind: number
   /** Stable per-prop noise, so flicker and variant choice hold still. */
   seed: number
@@ -186,6 +199,17 @@ const ART: Record<number, PropArt> = {
     lightRadiusM: 2,
     lightInk: rgb(0xffd479),
   },
+  [PROP_NPC]: {
+    // A street with nobody on it reads as an evacuation. These do not move,
+    // but at a distance a still figure is still a person.
+    heightM: 1.8,
+    widthM: 0.9,
+    art: [],
+    ink: rgb(0x8f9bb0),
+    glowFrom: 99,
+    lightRadiusM: 0,
+    lightInk: LAMP_LIGHT,
+  },
 }
 
 const FALLBACK = ART[PROP_BOLLARD]
@@ -199,6 +223,56 @@ for (const [kind, art] of Object.entries(ART)) {
   )
 }
 
+const G_BLANK = glyph(' ')
+const FRAME = {
+  topLeft: glyph('\u250c'),
+  top: glyph('\u2500'),
+  topRight: glyph('\u2510'),
+  side: glyph('\u2502'),
+  bottomLeft: glyph('\u2514'),
+  bottomRight: glyph('\u2518'),
+}
+
+/** Built on demand, then kept: there are only ever a few dozen distinct signs. */
+const LETTERED = new Map<string, Int16Array[]>()
+
+/**
+ * A sign with a word running down it.
+ *
+ * Boards get a frame so they read as a box bolted to a pole; banners do not,
+ * because a banner is cloth.
+ */
+function letteredSign(seed: number, framed: boolean): Int16Array[] {
+  const word = signWord(Math.floor(seed * 9973))
+  const key = `${word.join()}|${framed}`
+  const cached = LETTERED.get(key)
+  if (cached) return cached
+
+  const edge = framed ? FRAME.side : G_BLANK
+  const rows: Int16Array[] = []
+  if (framed) rows.push(Int16Array.of(FRAME.topLeft, FRAME.top, FRAME.topRight))
+  for (const character of word) rows.push(Int16Array.of(edge, character, edge))
+  if (framed) rows.push(Int16Array.of(FRAME.bottomLeft, FRAME.top, FRAME.bottomRight))
+  LETTERED.set(key, rows)
+  return rows
+}
+
+/** A pedestrian: the player figure, wearing whichever face their seed picks. */
+function pedestrian(seed: number): Int16Array[] {
+  const key = `npc${Math.floor(seed * AVATAR_GLYPHS.length)}`
+  const cached = LETTERED.get(key)
+  if (cached) return cached
+
+  const face = avatarGlyph(Math.floor(seed * 997))
+  const rows = AVATAR_ROWS.map((row, index) =>
+    Int16Array.from(row, (character, column) =>
+      index === AVATAR_FACE_ROW && column === AVATAR_FACE_COLUMN ? face : character,
+    ),
+  )
+  LETTERED.set(key, rows)
+  return rows
+}
+
 export function propArt(kind: number): PropArt {
   return ART[kind] ?? FALLBACK
 }
@@ -210,9 +284,13 @@ export function collectProps(tiles: readonly WorldTile[], cellSize: number): Wor
     const originX = tile.tileX * tile.cells
     const originY = tile.tileY * tile.cells
     for (const prop of tile.props) {
+      const cell = prop.y * tile.cells + prop.x
+      const solid = isSolidCode(tile.collision[cell])
       props.push({
         x: (originX + prop.x + 0.5) * cellSize,
         y: (originY + prop.y + 0.5) * cellSize,
+        // A bench on a terrace stands on the terrace, not sunk into it.
+        z: solid ? 0 : tile.heights[cell] * FLOOR_STEP_M,
         kind: prop.kind,
         seed: ((prop.id * 2654435761) >>> 0) / 0x100000000,
       })
@@ -295,12 +373,19 @@ export function renderProps(
 
   for (const { prop, depth, lateral } of visible) {
     const art = propArt(prop.kind)
-    const stamp = STAMPS.get(prop.kind)
+    const stamp =
+      prop.kind === PROP_SIGN
+        ? letteredSign(prop.seed, true)
+        : prop.kind === PROP_BANNER
+          ? letteredSign(prop.seed, false)
+          : prop.kind === PROP_NPC
+            ? pedestrian(prop.seed)
+            : STAMPS.get(prop.kind)
     if (!stamp) continue
 
     const scaleRows = projRows / depth
-    const feet = horizon + scaleRows * camera.z
-    const head = horizon - scaleRows * (art.heightM - camera.z)
+    const feet = horizon + scaleRows * (camera.z - prop.z)
+    const head = feet - scaleRows * art.heightM
     const heightRows = feet - head
     if (heightRows < 0.9) continue
 

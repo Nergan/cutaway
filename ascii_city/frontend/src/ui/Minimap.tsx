@@ -9,12 +9,14 @@ interface Props {
   session: GameSession | null
   roster: RosterMember[]
   selfId: number
-  /** Metres of district visible across the widget. */
-  span?: number
+  /** Held-open map: bigger widget, and enough district to plan a route on. */
+  expanded?: boolean
 }
 
 const SIZE_PX = 148
+const EXPANDED_SIZE_PX = 460
 const DEFAULT_SPAN_M = 130
+const EXPANDED_SPAN_M = 340
 
 function css(color: readonly [number, number, number]): string {
   return `rgb(${Math.round(color[0])},${Math.round(color[1])},${Math.round(color[2])})`
@@ -27,8 +29,10 @@ function css(color: readonly [number, number, number]): string {
  * session, because the React view only refreshes a few times a second and a
  * map that steps like that reads as broken rather than economical.
  */
-export function Minimap({ session, roster, selfId, span = DEFAULT_SPAN_M }: Props) {
+export function Minimap({ session, roster, selfId, expanded = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const size = expanded ? EXPANDED_SIZE_PX : SIZE_PX
+  const span = expanded ? EXPANDED_SPAN_M : DEFAULT_SPAN_M
   // The draw loop must not restart every time somebody joins or renames.
   const rosterRef = useRef(new Map<number, RosterMember>())
 
@@ -44,8 +48,8 @@ export function Minimap({ session, roster, selfId, span = DEFAULT_SPAN_M }: Prop
     if (!context) return
 
     const ratio = Math.min(2, window.devicePixelRatio || 1)
-    canvas.width = SIZE_PX * ratio
-    canvas.height = SIZE_PX * ratio
+    canvas.width = size * ratio
+    canvas.height = size * ratio
 
     let handle = 0
     const draw = () => {
@@ -56,7 +60,7 @@ export function Minimap({ session, roster, selfId, span = DEFAULT_SPAN_M }: Prop
       const { camera, others } = session.liveState
       const members = rosterRef.current
       const cells = span / source.cellSize
-      const pixelsPerCell = (SIZE_PX * ratio) / cells
+      const pixelsPerCell = (size * ratio) / cells
       const originCellX = camera.x / source.cellSize - cells / 2
       const originCellY = camera.y / source.cellSize - cells / 2
 
@@ -116,12 +120,16 @@ export function Minimap({ session, roster, selfId, span = DEFAULT_SPAN_M }: Prop
 
     handle = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(handle)
-  }, [session, selfId, span])
+  }, [session, selfId, span, size])
 
   return (
-    <div className="minimap" style={{ width: SIZE_PX, height: SIZE_PX }}>
-      <canvas ref={canvasRef} style={{ width: SIZE_PX, height: SIZE_PX }} />
+    <div
+      className={`minimap${expanded ? ' minimap-expanded' : ''}`}
+      style={{ width: size, height: size }}
+    >
+      <canvas ref={canvasRef} style={{ width: size, height: size }} />
       <span className="minimap-north">N</span>
+      {expanded ? <span className="minimap-scale">{EXPANDED_SPAN_M} m</span> : null}
     </div>
   )
 }

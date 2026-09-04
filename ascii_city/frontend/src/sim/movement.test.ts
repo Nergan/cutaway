@@ -13,6 +13,9 @@ import {
   ANIMATION_RUN,
   ANIMATION_WALK,
   CELL_BUILDING,
+  CELL_SIDEWALK,
+  EYE_HEIGHT_M,
+  FLOOR_STEP_M,
   RUN_SPEED_MS,
   TICK_SECONDS,
   WALK_SPEED_MS,
@@ -144,6 +147,63 @@ describe('collisions', () => {
     expect(state.x).toBeGreaterThanOrEqual(1)
     expect(state.y).toBeGreaterThanOrEqual(0)
     expect(state.x).toBeLessThanOrEqual(grid.widthM)
+  })
+})
+
+describe('relief', () => {
+  /** The open grid with everything east of cell 6 raised by `risers`. */
+  function stepped(risers: number): CollisionGrid {
+    const grid = openGrid()
+    for (let cy = 0; cy < grid.height; cy += 1) {
+      for (let cx = 6; cx < grid.width; cx += 1) {
+        grid.cells[cy * grid.width + cx] = CELL_SIDEWALK
+        grid.heights[cy * grid.width + cx] = risers
+      }
+    }
+    return grid
+  }
+
+  function walkEast(grid: CollisionGrid, state: ReturnType<typeof player>, ticks: number): void {
+    for (let step = 0; step < ticks; step += 1) {
+      movePlayer(state, command({ sequence: step, forward: 1 }), grid, TICK_SECONDS)
+    }
+  }
+
+  it('walks up a low step and stands on it', () => {
+    const grid = stepped(2)
+    const state = player(10, 10)
+    walkEast(grid, state, 30)
+    expect(state.x).toBeGreaterThan(13)
+    expect(state.z).toBeCloseTo(EYE_HEIGHT_M + 2 * FLOOR_STEP_M, 6)
+  })
+
+  it('refuses a terrace taller than a stride', () => {
+    const grid = stepped(5)
+    const state = player(10, 10)
+    walkEast(grid, state, 30)
+    expect(state.x).toBeLessThan(12)
+    expect(state.z).toBeCloseTo(EYE_HEIGHT_M, 6)
+  })
+
+  it('lets a jump carry the player onto that terrace', () => {
+    const grid = stepped(5)
+    const state = player(10, 10)
+    for (let step = 0; step < 40; step += 1) {
+      movePlayer(state, command({ sequence: step, forward: 1, jump: step === 0 }), grid, TICK_SECONDS)
+    }
+    expect(state.x).toBeGreaterThan(13)
+    expect(state.z).toBeCloseTo(EYE_HEIGHT_M + 5 * FLOOR_STEP_M, 6)
+  })
+
+  it('falls back to the street on the way off', () => {
+    const grid = stepped(5)
+    const state = player(20, 10)
+    state.z = EYE_HEIGHT_M + 5 * FLOOR_STEP_M
+    for (let step = 0; step < 80; step += 1) {
+      movePlayer(state, command({ sequence: step, forward: 1, yaw: Math.PI }), grid, TICK_SECONDS)
+    }
+    expect(state.x).toBeLessThan(11)
+    expect(state.z).toBeCloseTo(EYE_HEIGHT_M, 6)
   })
 })
 

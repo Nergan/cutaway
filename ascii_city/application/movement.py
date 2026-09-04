@@ -44,13 +44,16 @@ def move_player(
     state.yaw = command.yaw
     state.pitch = command.pitch
 
-    grounded = state.z <= EYE_HEIGHT_M + 0.02 and state.velocity_z <= 0.01
+    # The ground is not a constant any more: terraces, sunken parks and the
+    # stairs between them all lift the surface the player is standing on.
+    standing = grid.ground_at(state.x, state.y, PLAYER_RADIUS_M) + EYE_HEIGHT_M
+    grounded = state.z <= standing + 0.02 and state.velocity_z <= 0.01
     if command.jump and grounded:
         state.velocity_z = JUMP_SPEED_MS
     state.velocity_z -= GRAVITY_MS2 * step
     state.z += state.velocity_z * step
-    if state.z < EYE_HEIGHT_M:
-        state.z = EYE_HEIGHT_M
+    if state.z < standing:
+        state.z = standing
         state.velocity_z = 0.0
 
     forward = command.forward
@@ -76,13 +79,22 @@ def move_player(
     dy = (forward * sin_yaw - strafe * cos_yaw) * speed * step
 
     start_x, start_y = state.x, state.y
+    feet = state.z - EYE_HEIGHT_M
     # Resolving axes separately is what lets a player slide along a facade
     # instead of sticking to it.
-    if dx and grid.is_free_circle(state.x + dx, state.y, PLAYER_RADIUS_M):
+    if dx and grid.is_free_circle(state.x + dx, state.y, PLAYER_RADIUS_M, feet):
         state.x += dx
-    if dy and grid.is_free_circle(state.x, state.y + dy, PLAYER_RADIUS_M):
+    if dy and grid.is_free_circle(state.x, state.y + dy, PLAYER_RADIUS_M, feet):
         state.y += dy
     state.x, state.y = grid.clamp_to_world(state.x, state.y)
+
+    # Having walked onto a step, rise to it now rather than a tick later: a
+    # delay here reads as the stair pushing back before it lets you up.
+    standing = grid.ground_at(state.x, state.y, PLAYER_RADIUS_M) + EYE_HEIGHT_M
+    if state.z < standing:
+        state.z = standing
+        if state.velocity_z < 0.0:
+            state.velocity_z = 0.0
 
     state.velocity_x = (state.x - start_x) / step
     state.velocity_y = (state.y - start_y) / step

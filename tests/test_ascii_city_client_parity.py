@@ -58,6 +58,8 @@ SHARED_CONSTANTS = (
     "RUN_SPEED_MS",
     "JUMP_SPEED_MS",
     "GRAVITY_MS2",
+    "FLOOR_STEP_M",
+    "STEP_UP_M",
     "MAX_PITCH_RAD",
     "SIMULATION_HZ",
     "SNAPSHOT_HZ",

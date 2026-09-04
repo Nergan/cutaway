@@ -43,12 +43,15 @@ export function movePlayer(
   state.yaw = command.yaw
   state.pitch = command.pitch
 
-  const grounded = state.z <= EYE_HEIGHT_M + 0.02 && state.velocityZ <= 0.01
+  // The ground is not a constant any more: terraces, sunken parks and the
+  // stairs between them all lift the surface the player is standing on.
+  let standing = grid.groundAt(state.x, state.y, PLAYER_RADIUS_M) + EYE_HEIGHT_M
+  const grounded = state.z <= standing + 0.02 && state.velocityZ <= 0.01
   if (command.jump && grounded) state.velocityZ = JUMP_SPEED_MS
   state.velocityZ -= GRAVITY_MS2 * step
   state.z += state.velocityZ * step
-  if (state.z < EYE_HEIGHT_M) {
-    state.z = EYE_HEIGHT_M
+  if (state.z < standing) {
+    state.z = standing
     state.velocityZ = 0
   }
 
@@ -75,10 +78,19 @@ export function movePlayer(
 
   const startX = state.x
   const startY = state.y
+  const feet = state.z - EYE_HEIGHT_M
   // Separate axes let a player slide along a facade instead of sticking to it.
-  if (dx !== 0 && grid.isFreeCircle(state.x + dx, state.y, PLAYER_RADIUS_M)) state.x += dx
-  if (dy !== 0 && grid.isFreeCircle(state.x, state.y + dy, PLAYER_RADIUS_M)) state.y += dy
+  if (dx !== 0 && grid.isFreeCircle(state.x + dx, state.y, PLAYER_RADIUS_M, feet)) state.x += dx
+  if (dy !== 0 && grid.isFreeCircle(state.x, state.y + dy, PLAYER_RADIUS_M, feet)) state.y += dy
   grid.clampToWorld(state)
+
+  // Having walked onto a step, rise to it now rather than a tick later: a
+  // delay here reads as the stair pushing back before it lets you up.
+  standing = grid.groundAt(state.x, state.y, PLAYER_RADIUS_M) + EYE_HEIGHT_M
+  if (state.z < standing) {
+    state.z = standing
+    if (state.velocityZ < 0) state.velocityZ = 0
+  }
 
   const travelled = Math.hypot(state.x - startX, state.y - startY)
   state.animation =

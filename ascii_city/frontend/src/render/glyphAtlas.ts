@@ -21,7 +21,12 @@ export interface GlyphAtlas {
 
 const FONT_STACK =
   '"Cascadia Mono", "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", ' +
-  'Menlo, Consolas, "Courier New", monospace'
+  'Menlo, Consolas, "Courier New", ' +
+  // The shop signs are Japanese and none of the mono faces above carry kana,
+  // so the CJK fallbacks come last: Latin still renders in the primary font,
+  // and the signage renders in whatever the platform has.
+  '"Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "MS Gothic", ' +
+  '"Hiragino Kaku Gothic ProN", monospace'
 
 const ATLAS_COLUMNS = 16
 

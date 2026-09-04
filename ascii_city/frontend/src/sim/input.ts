@@ -31,6 +31,10 @@ const KEYS: Record<string, Action> = {
   ArrowLeft: 'left',
   KeyD: 'right',
   ArrowRight: 'right',
+  ShiftLeft: 'sprint',
+  ShiftRight: 'sprint',
+  // Ctrl stays bound because it is what the first build shipped with, and
+  // unlearning a run key is more annoying than having two.
   ControlLeft: 'sprint',
   ControlRight: 'sprint',
   Space: 'jump',
@@ -45,6 +49,7 @@ export class InputController {
   /** Set while a text field owns the keyboard. */
   private suspended = false
   private pointerLocked = false
+  private lockAllowed = true
   private lookPointer: number | null = null
   private lookLast = { x: 0, y: 0 }
   private stickPointer: number | null = null
@@ -87,8 +92,18 @@ export class InputController {
     if (value) this.releaseAll()
   }
 
+  /**
+   * While a panel owns the mouse the pointer must stay free, whatever the
+   * player clicks. Without this a stray click on the world silently re-locks
+   * and the cursor disappears from under the interface.
+   */
+  setPointerLockAllowed(allowed: boolean): void {
+    this.lockAllowed = allowed
+    if (!allowed) this.releasePointerLock()
+  }
+
   requestPointerLock(): void {
-    if (this.pointerLocked) return
+    if (this.pointerLocked || !this.lockAllowed) return
     // Chrome refuses a re-lock for about a second after Escape released it,
     // and rejects without a gesture. Either way the click handler is still
     // there, so a refusal is not worth an unhandled rejection.
@@ -100,9 +115,16 @@ export class InputController {
     }
   }
 
-  /** Give the mouse back to the page so the interface can be clicked. */
+  /**
+   * Give the mouse back to the page so the interface can be clicked.
+   *
+   * This does not consult `pointerLocked` first. That flag is only as fresh as
+   * the last `pointerlockchange`, and a stale one here costs the player their
+   * cursor with no way to get it back short of reloading; asking a browser to
+   * exit a lock it is not holding costs nothing.
+   */
   releasePointerLock(): void {
-    if (this.pointerLocked) document.exitPointerLock?.()
+    document.exitPointerLock?.()
   }
 
   get isPointerLocked(): boolean {

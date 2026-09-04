@@ -8,7 +8,17 @@
  * pixels.
  */
 
-import { CELL_INTERACTIVE, CELL_ROAD, CELL_SIDEWALK, CELL_WATER, unpackStyle } from '../domain/constants'
+import {
+  CATEGORY_APARTMENT,
+  CATEGORY_OFFICE,
+  CATEGORY_SHOP,
+  CATEGORY_STATION,
+  CELL_INTERACTIVE,
+  CELL_ROAD,
+  CELL_SIDEWALK,
+  CELL_WATER,
+  unpackStyle,
+} from '../domain/constants'
 import type { CollisionGrid } from '../world/collisionGrid'
 import {
   RAMP,
@@ -20,6 +30,7 @@ import {
   WINDOWS,
   WINDOW_DARK,
   G_SPACE,
+  signWord,
 } from './charset'
 import { CellBuffer, EFFECT_GLOW, EFFECT_NONE } from './cellBuffer'
 import { hash2, hash3 } from './hash'
@@ -81,6 +92,29 @@ const FOG_DISTANCE_M = 90
 const FLOOR_HEIGHT_M = 3
 const WINDOW_PITCH_M = 1.6
 
+/** Width of a window frame member, in metres of facade. */
+const MULLION_M = 0.22
+/** Spacing of the horizontal courses scored into a blank wall. */
+const COURSE_M = 0.75
+
+/** Metres of facade each character of a vertical signboard occupies. */
+const SIGN_CELL_M = 1.5
+const EMPTY_WORD: number[] = []
+/** Premises that put their name on the outside wall. */
+const SIGNED_CATEGORIES = new Set([
+  CATEGORY_SHOP,
+  CATEGORY_APARTMENT,
+  CATEGORY_OFFICE,
+  CATEGORY_STATION,
+])
+const SIGN_INKS: readonly Rgb[] = [
+  rgb(0xff5fa2),
+  rgb(0x35e0ff),
+  rgb(0xffd479),
+  rgb(0x9fe86b),
+  rgb(0xff8a3d),
+]
+
 interface Hit {
   distance: number
   height: number
@@ -90,6 +124,8 @@ interface Hit {
   along: number
   cellX: number
   cellY: number
+  /** A walkable surface stepping up, not a wall: drawn as a riser. */
+  ledge: boolean
 }
 
 const HITS: Hit[] = Array.from({ length: 16 }, () => ({
@@ -100,6 +136,7 @@ const HITS: Hit[] = Array.from({ length: 16 }, () => ({
   along: 0,
   cellX: 0,
   cellY: 0,
+  ledge: false,
 }))
 
 export class Raycaster {
@@ -153,9 +190,17 @@ export class Raycaster {
 
       // Far to near, so nearer geometry overwrites the silhouettes behind it.
       for (let index = hitCount - 1; index >= 0; index -= 1) {
-        this.paintWall(buffer, column, HITS[index], horizon, projRows, camera.z)
+        const hit = HITS[index]
+        if (hit.ledge) this.paintLedge(buffer, column, hit, horizon, projRows, camera.z)
+        else this.paintWall(buffer, column, hit, horizon, projRows, camera.z)
       }
-      if (hitCount > 0) buffer.depth[column] = HITS[0].distance
+      // Only a wall hides what stands behind it. A knee-high step does not,
+      // so the depth the sprite pass tests against skips the risers.
+      for (let index = 0; index < hitCount; index += 1) {
+        if (HITS[index].ledge) continue
+        buffer.depth[column] = HITS[index].distance
+        break
+      }
     }
   }
 
@@ -178,6 +223,10 @@ export class Raycaster {
     const layers = this.quality.layers
     let found = 0
     let side = 0
+    // The ground the ray is currently flying over. Every time it climbs, the
+    // riser it climbed is a surface the eye can see, so it gets a hit of its
+    // own; going back down is just floor, and the floor pass handles that.
+    let groundAlong = grid.floorAt(mapX, mapY)
 
     for (let steps = 0; steps < 2048; steps += 1) {
       if (sideX < sideY) {
@@ -193,16 +242,28 @@ export class Raycaster {
       const travelled = side === 0 ? sideX - deltaX : sideY - deltaY
       if (travelled > maxCells) break
       if (mapX < -1 || mapY < -1 || mapX > grid.width || mapY > grid.height) break
-      if (!grid.isSolidCell(mapX, mapY)) continue
+
+      const solid = grid.isSolidCell(mapX, mapY)
+      let ledgeTop = 0
+      if (!solid) {
+        const floor = grid.floorAt(mapX, mapY)
+        if (floor <= groundAlong + 0.01) {
+          groundAlong = floor
+          continue
+        }
+        ledgeTop = floor
+        groundAlong = floor
+      }
 
       const distance = travelled * cellSize
       const hit = HITS[found]
       hit.distance = distance < 0.01 ? 0.01 : distance
-      hit.height = Math.max(1, grid.heightAt(mapX, mapY))
+      hit.height = solid ? Math.max(1, grid.heightAt(mapX, mapY)) : ledgeTop
       hit.style = grid.styleAt(mapX, mapY)
       hit.side = side
       hit.cellX = mapX
       hit.cellY = mapY
+      hit.ledge = !solid
       hit.along =
         side === 0 ? camera.y + rayY * hit.distance : camera.x + rayX * hit.distance
       found += 1
@@ -210,6 +271,7 @@ export class Raycaster {
       // Once a wall reaches over the camera by a wide margin nothing behind it
       // can appear, and there is no point spending steps on it.
       if (found >= layers) break
+      if (!solid) continue
       if (hit.height > 200 && hit.distance < 6) break
     }
     return found
@@ -320,15 +382,45 @@ export class Raycaster {
         buffer.set(column, row, G_SPACE, 0, 0, 0, VOID[0], VOID[1], VOID[2])
         continue
       }
-      const distance = (projRows * camera.z) / offset
-      if (distance > this.quality.viewDistance) {
+      // Where the ground is a plane at zero, one division answers the whole
+      // question. Where it is not, the surface under this row sits closer than
+      // the plane did, so the sample is walked in: two or three passes settle
+      // it, and over flat ground the first pass finds nothing to settle.
+      let distance = (projRows * camera.z) / offset
+      let worldX = 0
+      let worldY = 0
+      let cellX = 0
+      let cellY = 0
+      let elevation = 0
+      let beyond = false
+      let hidden = false
+      for (let pass = 0; pass < 3; pass += 1) {
+        if (distance > this.quality.viewDistance) {
+          beyond = true
+          break
+        }
+        worldX = camera.x + rayX * distance
+        worldY = camera.y + rayY * distance
+        cellX = Math.floor(worldX / grid.cellSize)
+        cellY = Math.floor(worldY / grid.cellSize)
+        const floor = grid.floorAt(cellX, cellY)
+        if (Math.abs(floor - elevation) < 0.01) break
+        elevation = floor
+        const drop = camera.z - elevation
+        // Standing below a terrace, its top is over the eye and this row is
+        // looking at the face of it, which the ledge pass has already drawn.
+        if (drop <= 0.05) {
+          hidden = true
+          break
+        }
+        distance = (projRows * drop) / offset
+      }
+      if (hidden) continue
+      if (beyond) {
         buffer.set(column, row, G_SPACE, 0, 0, 0, FOG[0], FOG[1], FOG[2])
         continue
       }
-      const worldX = camera.x + rayX * distance
-      const worldY = camera.y + rayY * distance
-      const cellX = Math.floor(worldX / grid.cellSize)
-      const cellY = Math.floor(worldY / grid.cellSize)
+
       const code = grid.codeAt(cellX, cellY)
       const fogAmount = 1 - Math.exp(-distance / FOG_DISTANCE_M)
 
@@ -401,6 +493,55 @@ export class Raycaster {
     return map[cellY * grid.width + cellX]
   }
 
+  /**
+   * The vertical face of a step or terrace.
+   *
+   * Short enough that a facade's worth of windows and signage would be
+   * nonsense on it, so it gets its own treatment: a bright nosing along the
+   * top edge and stone below, which is what makes a flight of stairs read as
+   * stairs from the bottom.
+   */
+  private paintLedge(
+    buffer: CellBuffer,
+    column: number,
+    hit: Hit,
+    horizon: number,
+    projRows: number,
+    eyeZ: number,
+  ): void {
+    const scaleRows = projRows / hit.distance
+    const top = horizon - scaleRows * (hit.height - eyeZ)
+    const bottom = horizon + scaleRows * eyeZ
+    const first = Math.max(0, Math.floor(top))
+    const last = Math.min(buffer.rows - 1, Math.ceil(bottom))
+    if (last < 0 || first >= buffer.rows) return
+
+    const fogAmount = 1 - Math.exp(-hit.distance / FOG_DISTANCE_M)
+    const sideShade = hit.side === 0 ? 0.7 : 1.15
+    const stone = scale(GROUND_SIDEWALK, 0.55 * sideShade)
+    const nosing = scale(GROUND_SIDEWALK, 2.1)
+
+    for (let row = first; row <= last; row += 1) {
+      const worldZ = eyeZ + (horizon - row) / scaleRows
+      if (worldZ < -0.05 || worldZ > hit.height + 0.02) continue
+      const edge = row === first && top > 0
+      const foreground = fade(edge ? nosing : scale(stone, 1.7), fogAmount)
+      const background = fade(edge ? mix(stone, nosing, 0.3) : stone, fogAmount)
+      buffer.set(
+        column,
+        row,
+        edge ? STRUCTURE.ledge : SHADES[1],
+        foreground[0],
+        foreground[1],
+        foreground[2],
+        background[0],
+        background[1],
+        background[2],
+        EFFECT_NONE,
+      )
+    }
+  }
+
   private paintWall(
     buffer: CellBuffer,
     column: number,
@@ -429,6 +570,20 @@ export class Raycaster {
     const bandIndex = Math.floor(hit.along / WINDOW_PITCH_M)
     const glazed = hash3(hit.cellX, hit.cellY, bandIndex) > 0.28
     const windowChance = 0.34 + style.window * 0.14
+    // Where this column sits inside its band. Close up a band is dozens of
+    // screen columns wide, so without this the whole thing is one flat slab.
+    const acrossBand = hit.along - bandIndex * WINDOW_PITCH_M
+    const mullion = acrossBand < MULLION_M || acrossBand > WINDOW_PITCH_M - MULLION_M
+
+    // The one thing a Tokyo street has more of than windows: signboards bolted
+    // up the front of the building, read top to bottom. One band in four
+    // carries one, on the kinds of premises that have something to advertise.
+    const boardKey = hash3(hit.cellX * 7 + bandIndex * 3, hit.cellY * 13 + 5, 91)
+    const board = SIGNED_CATEGORIES.has(style.category) && boardKey > 0.74 && hit.height > 6
+    const boardWord = board ? signWord(Math.floor(boardKey * 9973)) : EMPTY_WORD
+    const boardBottom = 2.6
+    const boardTop = Math.min(hit.height - 1.2, boardBottom + boardWord.length * SIGN_CELL_M)
+    const boardInk = SIGN_INKS[Math.floor(boardKey * 977) % SIGN_INKS.length]
 
     for (let row = first; row <= last; row += 1) {
       // Height in metres of the world point this row looks at.
@@ -455,6 +610,20 @@ export class Raycaster {
           glyphIndex = ROOF_GLYPHS.beacon
           foreground = [255, 90, 90]
         }
+      } else if (board && worldZ > boardBottom && worldZ < boardTop) {
+        const index = Math.floor((boardTop - worldZ) / SIGN_CELL_M)
+        // The board has an edge and its characters sit in cells. Standing under
+        // one, that structure is the difference between a sign and a wash of
+        // colour across a quarter of the screen.
+        const rule = (boardTop - worldZ) % SIGN_CELL_M < 0.16
+        glyphIndex = mullion
+          ? STRUCTURE.double
+          : rule
+            ? STRUCTURE.ledge
+            : boardWord[Math.min(boardWord.length - 1, Math.max(0, index))]
+        foreground = scale(boardInk, mullion || rule ? 1.7 : 1.4)
+        background = mix(VOID, boardInk, 0.22)
+        effect = EFFECT_GLOW
       } else if (withinFloor < 0.42) {
         // Slab between floors — brighter on sun-facing bands for contour.
         const edge = hash3(hit.cellX, hit.cellY, bandIndex) > 0.82
@@ -466,11 +635,25 @@ export class Raycaster {
         foreground = scale(facade, 1.05 * sideShade)
         background = mix(background, VOID, 0.25)
       } else if (glazed && withinFloor > 0.8 && withinFloor < 2.5 && worldZ > 1.0) {
-        if (lit < windowChance) {
+        // A window is a frame with glass in it, not a coloured rectangle. The
+        // frame is what survives magnification and gives the wall its relief.
+        const sill = withinFloor < 0.8 + MULLION_M
+        const head = withinFloor > 2.5 - MULLION_M
+        if (mullion || sill || head) {
+          glyphIndex = mullion
+            ? sill || head
+              ? STRUCTURE.cross
+              : STRUCTURE.pillar
+            : STRUCTURE.ledge
+          foreground = scale(facade, 2.1 * sideShade * depthShade)
+        } else if (lit < windowChance) {
           const strength = Math.floor(lit * 1000) % WINDOWS.length
-          glyphIndex = WINDOWS[strength]
-          foreground = scale(neon, 1.0 + strength * 0.08)
-          background = mix(background, neon, 0.16)
+          // A pane catches the street diagonally, so the highlight runs across
+          // the glass rather than filling it.
+          const sheen = (acrossBand * 2.1 + withinFloor) % 1.15 < 0.3
+          glyphIndex = sheen ? WINDOWS[WINDOWS.length - 1] : WINDOWS[strength]
+          foreground = scale(neon, (sheen ? 1.35 : 1.0) + strength * 0.08)
+          background = mix(background, neon, sheen ? 0.28 : 0.16)
           effect = EFFECT_GLOW
         } else {
           glyphIndex = WINDOW_DARK[Math.floor(lit * 7) % WINDOW_DARK.length]
@@ -479,8 +662,15 @@ export class Raycaster {
       } else {
         // Structural band: ribs every other band, grainy concrete between.
         // Colour carries the distance, so the glyph is free to carry material.
-        glyphIndex = bandIndex & 1 ? STRUCTURE.pillar : SHADES[1 + (Math.floor(lit * 5) % 2)]
-        foreground = scale(facade, 1.25 * sideShade)
+        // The seam and the courses are what stop a close wall reading as one
+        // undifferentiated slab.
+        const course = withinFloor % COURSE_M < COURSE_M * 0.22
+        glyphIndex = course
+          ? STRUCTURE.ledge
+          : mullion
+            ? STRUCTURE.pillar
+            : SHADES[1 + (Math.floor(lit * 5) % 2)]
+        foreground = scale(facade, (course || mullion ? 1.7 : 1.25) * sideShade)
       }
 
       const litForeground = fade(foreground, fogAmount)

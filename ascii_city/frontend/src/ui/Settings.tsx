@@ -11,6 +11,8 @@ interface Props {
   color: number
   onClose: () => void
   onQuality: (preset: QualityPreset) => void
+  /** Owned by the app, because the wheel changes it too. */
+  fieldOfView: number
   onFieldOfView: (degrees: number) => void
   onRename: (nickname: string) => void
   onAvatar: (index: number) => void
@@ -25,12 +27,12 @@ export function Settings({
   color,
   onClose,
   onQuality,
+  fieldOfView,
   onFieldOfView,
   onRename,
   onAvatar,
 }: Props) {
   const [preset, setPreset] = useState<QualityPreset>('auto')
-  const [fov, setFov] = useState(78)
   const [draftNick, setDraftNick] = useState(nickname)
   const swatch = PLAYER_COLORS[color % PLAYER_COLORS.length]
   const ink = `rgb(${swatch[0]},${swatch[1]},${swatch[2]})`
@@ -109,17 +111,13 @@ export function Settings({
       </label>
 
       <label>
-        <span>field of view: {fov}&deg;</span>
+        <span>field of view: {fieldOfView}&deg; (or scroll)</span>
         <input
           type="range"
-          min={60}
-          max={105}
-          value={fov}
-          onChange={(event) => {
-            const value = Number(event.target.value)
-            setFov(value)
-            onFieldOfView(value)
-          }}
+          min={55}
+          max={110}
+          value={fieldOfView}
+          onChange={(event) => onFieldOfView(Number(event.target.value))}
         />
       </label>
 
@@ -137,10 +135,10 @@ export function Settings({
       ) : null}
 
       <p className="muted">
-        WASD or arrows to walk. Ctrl to run. Space to jump. Mouse to look. T or Enter to talk,
-        Escape to stop talking. Escape again for this panel. Hold Tab for the player list. 5
-        steps the camera behind you. On a phone, the left half of the screen is a stick and the
-        right half looks around.
+        WASD or arrows to walk. Shift to run. Space to jump. Mouse to look, wheel to zoom. T or
+        Enter to talk, Escape to stop talking. E for this panel. Hold Tab for the player list,
+        hold Z for the big map. 5 steps the camera behind you. On a phone, the left half of the
+        screen is a stick and the right half looks around.
       </p>
     </div>
   )

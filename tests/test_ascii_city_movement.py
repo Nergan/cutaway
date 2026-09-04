@@ -13,6 +13,9 @@ from ascii_city.domain.constants import (
     ANIMATION_WALK,
     CELL_BUILDING,
     CELL_ROAD,
+    CELL_SIDEWALK,
+    EYE_HEIGHT_M,
+    FLOOR_STEP_M,
     PLAYER_RADIUS_M,
     RUN_SPEED_MS,
     WALK_SPEED_MS,
@@ -150,6 +153,63 @@ def test_the_player_cannot_leave_the_world():
         )
     assert 0 <= state.x <= grid.width_m
     assert 0 <= state.y <= grid.height_m
+
+
+def stepped_grid(risers: int) -> CollisionGrid:
+    """The corridor room, with everything east of x=12 raised by `risers`."""
+    grid = corridor_grid()
+    for y in range(1, 19):
+        for x in range(12, 19):
+            grid.set(x, y, CELL_SIDEWALK, risers)
+    return grid
+
+
+def walk_east(grid: CollisionGrid, state: PlayerState, ticks: int) -> None:
+    for sequence in range(1, ticks + 1):
+        move_player(state, command(forward=1.0, yaw=0.0, sequence=sequence), grid, STEP)
+
+
+def test_a_low_step_is_walked_up_and_stood_on():
+    grid = stepped_grid(2)  # half a metre
+    state = player_at(22.0, 10.0)
+    state.z = EYE_HEIGHT_M
+    walk_east(grid, state, 30)
+    assert state.x > 25.0, "the step should not have stopped the walk"
+    assert state.z == pytest.approx(EYE_HEIGHT_M + 2 * FLOOR_STEP_M)
+
+
+def test_a_terrace_taller_than_a_stride_blocks_the_walk():
+    grid = stepped_grid(5)  # 1.25 m: a jump, not a stride
+    state = player_at(22.0, 10.0)
+    state.z = EYE_HEIGHT_M
+    walk_east(grid, state, 30)
+    assert state.x < 24.0, "a terrace this tall has to be climbed, not strolled onto"
+    assert state.z == pytest.approx(EYE_HEIGHT_M)
+
+
+def test_a_jump_carries_the_player_onto_a_terrace():
+    grid = stepped_grid(5)
+    state = player_at(22.0, 10.0)
+    state.z = EYE_HEIGHT_M
+    for sequence in range(1, 40):
+        move_player(
+            state,
+            command(forward=1.0, yaw=0.0, jump=sequence == 1, sequence=sequence),
+            grid,
+            STEP,
+        )
+    assert state.x > 25.0
+    assert state.z == pytest.approx(EYE_HEIGHT_M + 5 * FLOOR_STEP_M)
+
+
+def test_walking_off_a_terrace_falls_back_to_the_street():
+    grid = stepped_grid(5)
+    state = player_at(30.0, 10.0)
+    state.z = EYE_HEIGHT_M + 5 * FLOOR_STEP_M
+    for sequence in range(1, 60):
+        move_player(state, command(forward=1.0, yaw=math.pi, sequence=sequence), grid, STEP)
+    assert state.x < 23.0
+    assert state.z == pytest.approx(EYE_HEIGHT_M)
 
 
 def test_find_safe_position_pushes_out_of_geometry():

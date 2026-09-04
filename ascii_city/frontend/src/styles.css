@@ -252,12 +252,31 @@ button:hover {
   font-family: var(--mono);
 }
 
+/* Held open with Z: the same widget, centred and large enough to read. */
+.minimap-expanded {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  border-color: var(--neon);
+  box-shadow: 0 0 48px rgba(0, 0, 0, 0.85);
+}
+
 .minimap-north {
   position: absolute;
   top: 2px;
   right: 5px;
   font-size: 10px;
   letter-spacing: 0.1em;
+  color: var(--dim);
+}
+
+.minimap-scale {
+  position: absolute;
+  bottom: 3px;
+  right: 6px;
+  font-size: 10px;
   color: var(--dim);
 }
 

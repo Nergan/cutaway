@@ -6,7 +6,7 @@
  * appear once a player is close enough for the text to be readable.
  */
 
-import { ANIMATION_IDLE, ANIMATION_RUN } from '../domain/constants'
+import { ANIMATION_IDLE, ANIMATION_RUN, EYE_HEIGHT_M } from '../domain/constants'
 import {
   AVATAR_FACE_COLUMN,
   AVATAR_FACE_ROW,
@@ -23,6 +23,8 @@ export interface Sprite {
   id: number
   x: number
   y: number
+  /** Eye height above the world floor, so a jump lifts the figure. */
+  z: number
   animation: number
   nickname: string
   color: number
@@ -32,6 +34,9 @@ export interface Sprite {
 const AVATAR_HEIGHT_M = 1.8
 const AVATAR_WIDTH_M = 0.9
 const NAMEPLATE_DISTANCE_M = 42
+
+/** At most three screen cells per stamp cell. Beyond that a glyph is a slab. */
+const MAX_STAMP_ROWS = 7 * 3
 
 /**
  * How far a name still carries once its owner is behind something. Names do
@@ -77,12 +82,23 @@ export function renderSprites(
   for (const { sprite, depth, lateral } of ordered) {
     const centre = half * (1 + lateral / (depth * tanHalfFov))
     const scaleRows = projRows / depth
-    const feet = horizon + scaleRows * camera.z
-    const head = horizon - scaleRows * (AVATAR_HEIGHT_M - camera.z)
-    const heightRows = feet - head
+    // A jumping player leaves the ground, and their figure has to leave it too.
+    const standingOn = sprite.z - EYE_HEIGHT_M
+    const feet = horizon + scaleRows * (camera.z - standingOn)
+    const head = feet - scaleRows * AVATAR_HEIGHT_M
+    let heightRows = feet - head
     if (heightRows < 1.2) continue
 
-    const widthColumns = Math.max(1, (projColumns * AVATAR_WIDTH_M) / depth)
+    // Past a few metres the stamp is stretched over so many cells that each of
+    // its glyphs becomes a slab and the face stops being a face. Capping the
+    // magnification keeps the figure crisp, and the chosen face readable.
+    let shrink = 1
+    if (heightRows > MAX_STAMP_ROWS) {
+      shrink = MAX_STAMP_ROWS / heightRows
+      heightRows = MAX_STAMP_ROWS
+    }
+
+    const widthColumns = Math.max(1, ((projColumns * AVATAR_WIDTH_M) / depth) * shrink)
     const left = Math.round(centre - widthColumns / 2)
     const right = Math.round(centre + widthColumns / 2)
     const fogAmount = 1 - Math.exp(-depth / FOG_DISTANCE_M)
@@ -100,7 +116,7 @@ export function renderSprites(
       const lastColumn = AVATAR_ROWS[0].length - 1
       const glyphColumn = Math.min(lastColumn, Math.max(0, Math.round(withinX * lastColumn)))
 
-      for (let row = Math.floor(head + bob); row <= Math.ceil(feet); row += 1) {
+      for (let row = Math.floor(head + bob); row <= Math.ceil(head + bob + heightRows); row += 1) {
         if (row < 0 || row >= rows) continue
         const withinY = (row - (head + bob)) / Math.max(1, heightRows)
         if (withinY < 0 || withinY > 1) continue

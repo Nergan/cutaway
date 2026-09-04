@@ -7,15 +7,18 @@ OSM pipeline in ``docs/osm-import.md`` a drop-in replacement.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Sequence
 
 from .constants import (
     CATEGORY_NAMES,
     CELL_SIZE_M,
+    FLOOR_STEP_M,
     MAX_BUILDING_HEIGHT_M,
     ROAD_TYPE_NAMES,
     SOLID_CELLS,
+    STEP_UP_M,
     TILE_CELLS,
 )
 from .errors import WorldDataError
@@ -248,11 +251,23 @@ class CollisionGrid:
     def is_solid_point(self, x: float, y: float) -> bool:
         return self.is_solid_cell(int(x // self._cell_size), int(y // self._cell_size))
 
-    def is_free_circle(self, x: float, y: float, radius: float) -> bool:
+    def floor_at(self, cx: int, cy: int) -> float:
+        """Elevation of the walkable surface, in metres above street level."""
+        if self.is_solid_cell(cx, cy):
+            return 0.0
+        return self.height_at(cx, cy) * FLOOR_STEP_M
+
+    def is_free_circle(
+        self, x: float, y: float, radius: float, feet_z: float = math.inf
+    ) -> bool:
         """Approximate a capsule with the four extremes of its bounding box.
 
         Cells are 2 m and the player radius is 0.35 m, so the box can never span
         more than two cells per axis; checking the corners is exact here.
+
+        A cell is in the way when it is solid, and also when its floor stands
+        further above ``feet_z`` than one stride. That single test is what makes
+        a terrace an obstacle from the street and a surface from the stairs.
         """
         min_cx = int((x - radius) // self._cell_size)
         max_cx = int((x + radius) // self._cell_size)
@@ -262,7 +277,23 @@ class CollisionGrid:
             for cx in range(min_cx, max_cx + 1):
                 if self.is_solid_cell(cx, cy):
                     return False
+                if self.floor_at(cx, cy) > feet_z + STEP_UP_M:
+                    return False
         return True
+
+    def ground_at(self, x: float, y: float, radius: float) -> float:
+        """Highest floor under the player's footprint: what they stand on."""
+        min_cx = int((x - radius) // self._cell_size)
+        max_cx = int((x + radius) // self._cell_size)
+        min_cy = int((y - radius) // self._cell_size)
+        max_cy = int((y + radius) // self._cell_size)
+        ground = 0.0
+        for cy in range(min_cy, max_cy + 1):
+            for cx in range(min_cx, max_cx + 1):
+                floor = self.floor_at(cx, cy)
+                if floor > ground:
+                    ground = floor
+        return ground
 
     def clamp_to_world(self, x: float, y: float) -> tuple[float, float]:
         margin = self._cell_size * 0.5

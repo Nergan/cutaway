@@ -6,7 +6,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { CELL_BUILDING, CELL_ROAD, EYE_HEIGHT_M, PROP_LAMP, PROP_TREE } from '../domain/constants'
+import {
+  CELL_BUILDING,
+  CELL_ROAD,
+  EYE_HEIGHT_M,
+  FLOOR_STEP_M,
+  PROP_LAMP,
+  PROP_TREE,
+} from '../domain/constants'
 import type { WorldTile } from '../domain/types'
 import { CollisionGrid } from '../world/collisionGrid'
 import { CellBuffer } from './cellBuffer'
@@ -48,7 +55,7 @@ function glyphs(buffer: CellBuffer): string {
 }
 
 function lamp(x: number, y: number): WorldProp {
-  return { x, y, kind: PROP_LAMP, seed: 0.5 }
+  return { x, y, z: 0, kind: PROP_LAMP, seed: 0.5 }
 }
 
 describe('street furniture', () => {
@@ -96,22 +103,34 @@ describe('street furniture', () => {
   })
 
   it('bakes nothing for furniture that does not emit', () => {
-    const light = bakeLightMap([{ x: 20, y: 20, kind: PROP_TREE, seed: 0 }], 64, 64, 2)
+    const light = bakeLightMap([{ x: 20, y: 20, z: 0, kind: PROP_TREE, seed: 0 }], 64, 64, 2)
     expect(light.every((value) => value === 0)).toBe(true)
   })
 
   it('places tile-local furniture in world metres', () => {
-    const tile = {
-      tileX: 1,
-      tileY: 2,
-      cells: 128,
-      props: [{ id: 7, x: 3, y: 4, kind: PROP_LAMP }],
-    } as unknown as WorldTile
-    const [prop] = collectProps([tile], 2)
+    const [prop] = collectProps([tileWith(PROP_LAMP)], 2)
     // Tile origin plus the cell, sampled at the middle of that cell.
     expect(prop.x).toBeCloseTo((128 + 3 + 0.5) * 2, 6)
     expect(prop.y).toBeCloseTo((256 + 4 + 0.5) * 2, 6)
     expect(prop.seed).toBeGreaterThanOrEqual(0)
     expect(prop.seed).toBeLessThan(1)
   })
+
+  it('stands furniture on the terrace it was placed on', () => {
+    const tile = tileWith(PROP_LAMP)
+    tile.heights[4 * 128 + 3] = 3
+    const [prop] = collectProps([tile], 2)
+    expect(prop.z).toBeCloseTo(3 * FLOOR_STEP_M, 6)
+  })
 })
+
+function tileWith(kind: number): WorldTile {
+  return {
+    tileX: 1,
+    tileY: 2,
+    cells: 128,
+    collision: new Uint8Array(128 * 128),
+    heights: new Uint8Array(128 * 128),
+    props: [{ id: 7, x: 3, y: 4, kind }],
+  } as unknown as WorldTile
+}

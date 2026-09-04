@@ -19,6 +19,7 @@ interface Sample {
   t: number
   x: number
   y: number
+  z: number
   yaw: number
   pitch: number
   animation: number
@@ -29,6 +30,7 @@ export interface InterpolatedPlayer {
   id: number
   x: number
   y: number
+  z: number
   yaw: number
   pitch: number
   animation: number
@@ -73,6 +75,7 @@ class Track {
           t: renderTime,
           x: a.x + (b.x - a.x) * alpha,
           y: a.y + (b.y - a.y) * alpha,
+          z: a.z + (b.z - a.z) * alpha,
           yaw: lerpAngle(a.yaw, b.yaw, alpha),
           pitch: a.pitch + (b.pitch - a.pitch) * alpha,
           animation: b.animation,
@@ -102,6 +105,7 @@ export class InterpolationBuffer {
         t: receivedAt,
         x: entry.x,
         y: entry.y,
+        z: entry.z,
         yaw: entry.yaw,
         pitch: entry.pitch,
         animation: entry.animation,
@@ -136,6 +140,7 @@ export class InterpolationBuffer {
         id,
         x: sample.x,
         y: sample.y,
+        z: sample.z,
         yaw: sample.yaw,
         pitch: sample.pitch,
         animation: sample.animation,

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { ANIMATION_WALK } from '../domain/constants'
+import { ANIMATION_WALK, EYE_HEIGHT_M } from '../domain/constants'
 import type { SnapshotEntry } from '../net/wire'
 import { INTERPOLATION_DELAY_MS, InterpolationBuffer, lerpAngle } from './interpolation'
 
-function entry(id: number, x: number, y: number, yaw = 0): SnapshotEntry {
-  return { id, x, y, yaw, pitch: 0, animation: ANIMATION_WALK, simplified: false }
+function entry(id: number, x: number, y: number, yaw = 0, z = EYE_HEIGHT_M): SnapshotEntry {
+  return { id, x, y, z, yaw, pitch: 0, animation: ANIMATION_WALK, simplified: false }
 }
 
 describe('angle blending', () => {

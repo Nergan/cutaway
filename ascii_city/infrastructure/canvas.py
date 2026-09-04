@@ -44,6 +44,11 @@ class Canvas:
             return CELL_BLOCKED
         return self.collision[y * self.width + x]
 
+    def height_at(self, x: int, y: int) -> int:
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
+            return 0
+        return self.heights[y * self.width + x]
+
     def paint(self, x: int, y: int, code: int, height: int = 0, style: int = 0) -> None:
         if x < 0 or y < 0 or x >= self.width or y >= self.height:
             return

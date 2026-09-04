@@ -44,7 +44,8 @@ PROP_BOLLARD: Final[int] = 7
 PROP_PLANTER: Final[int] = 8
 PROP_STALL: Final[int] = 9
 PROP_BANNER: Final[int] = 10
-PROP_KIND_COUNT: Final[int] = 11
+PROP_NPC: Final[int] = 11
+PROP_KIND_COUNT: Final[int] = 12
 WALKABLE_CELLS: Final[frozenset[int]] = frozenset(
     {CELL_FREE, CELL_ROAD, CELL_SIDEWALK, CELL_INTERACTIVE}
 )
@@ -93,8 +94,24 @@ PLAYER_RADIUS_M: Final[float] = 0.35
 EYE_HEIGHT_M: Final[float] = 1.7
 WALK_SPEED_MS: Final[float] = 3.4
 RUN_SPEED_MS: Final[float] = 6.2
-JUMP_SPEED_MS: Final[float] = 5.6
-GRAVITY_MS2: Final[float] = 22.0
+JUMP_SPEED_MS: Final[float] = 7.4
+GRAVITY_MS2: Final[float] = 20.0
+"""Together these clear about 1.35 m, which is a hop you can feel and enough
+to get onto the raised decks and terraces the district is built with."""
+
+FLOOR_STEP_M: Final[float] = 0.25
+"""Quantum of ground elevation.
+
+The height byte means two different things depending on the cell under it. On
+a solid cell it is the height of the wall in metres; on a walkable one it is
+how far the floor is lifted, counted in these steps. Reusing the byte is what
+lets terraces, sunken parks and stairs ship without another tile layer, and a
+quarter of a metre is a stair riser you can actually see."""
+
+STEP_UP_M: Final[float] = 0.6
+"""How much rise a walking player takes in their stride. Two risers. Anything
+taller has to be jumped, which is what makes the raised decks worth jumping
+onto."""
 
 MAX_PITCH_RAD: Final[float] = 1.2
 """Roughly 69 degrees. Beyond that the raycaster horizon leaves the viewport."""
@@ -102,8 +119,8 @@ MAX_PITCH_RAD: Final[float] = 1.2
 # --- Simulation timing -----------------------------------------------------
 SIMULATION_HZ: Final[int] = 20
 SNAPSHOT_HZ: Final[int] = 20
-"""Snapshots ride every tick. At ten bytes per visible entry a full fifty
-player room costs roughly 10 MB per minute, well inside the orchestrator's
+"""Snapshots ride every tick. At twelve bytes per visible entry a full fifty
+player room costs roughly 12 MB per minute, well inside the orchestrator's
 256 MB traffic budget for this project."""
 MAX_CLIENTS: Final[int] = 50
 MAX_QUEUED_INPUTS: Final[int] = 8

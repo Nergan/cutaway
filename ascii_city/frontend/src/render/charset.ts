@@ -6,6 +6,29 @@
  * "wet asphalt") instead of by magic number.
  */
 
+/**
+ * Kana and kanji for shop signage.
+ *
+ * Katakana carry most of the load because their strokes survive being squeezed
+ * into a half-width atlas cell; the kanji here are the handful the district's
+ * vocabulary actually needs.
+ */
+const KATAKANA = [
+  '\u30a2', '\u30ab', '\u30b1', '\u30b3', '\u30b5', '\u30b7', '\u30b9',
+  '\u30c6', '\u30c8', '\u30ca', '\u30cb', '\u30d0', '\u30d3', '\u30db',
+  '\u30de', '\u30df', '\u30e0', '\u30e1', '\u30e2', '\u30e9', '\u30ea',
+  '\u30eb', '\u30ec', '\u30ed', '\u30f3', '\u30fc', '\u30aa', '\u30e4',
+] as const
+
+const KANJI = [
+  '\u5c45', '\u9152', '\u5c4b', '\u85ac', '\u5c40', '\u9280', '\u884c',
+  '\u66f8', '\u5e97', '\u5599', '\u8336', '\u5bff', '\u53f8', '\u6e29',
+  '\u6cc9', '\u4ea4', '\u756a', '\u96fb', '\u6c17', '\u53e4', '\u7740',
+  '\u713c', '\u8089', '\u9eba', '\u6e6f', '\u672c', '\u6771', '\u4eac',
+  '\u65b0', '\u5bbf', '\u6e0b', '\u8c37', '\u79cb', '\u8449', '\u539f',
+  '\u51fa', '\u5165', '\u53e3', '\u99c5', '\u5927', '\u4e2d', '\u5c0f',
+] as const
+
 export const CHARSET = [
   ' ', '.', ',', ':', ';', "'", '"', '`', '^', '~', '-', '_', '=', '+',
   '*', '#', '%', '&', '$', '@', '|', '/', '\\', '(', ')', '[', ']', '{',
@@ -32,6 +55,11 @@ export const CHARSET = [
   '\u2642', '\u2640', '\u266a', '\u266b', '\u263c', '\u25ba',
   '\u25c4', '\u25b2', '\u25bc', '\u25d8', '\u25d9', '\u2605',
   '\u2606', '\u2302', '\u00a7', '\u00b6', '\u203c', '\u2195',
+  // Signage. Every shopfront in the district is lettered from this set, so it
+  // covers the words in SIGN_WORDS and nothing else — an unused glyph is an
+  // atlas cell and a texture fetch that never pays for itself.
+  ...KATAKANA,
+  ...KANJI,
 ] as const
 
 export const GLYPH_COUNT = CHARSET.length
@@ -111,23 +139,72 @@ export function avatarGlyph(index: number): number {
 /**
  * The standing figure a player is drawn as.
  *
- * Five columns rather than three, and mostly blank, because the stamp is
- * stretched over however many screen cells the figure projects onto. A dense
- * stamp seen from two metres away magnifies into a solid slab; a sparse one
- * keeps its silhouette at any size.
+ * The head is a drawn box with the player's chosen face inside it. Giving the
+ * face a frame is what makes the choice legible: a bare glyph floating above a
+ * stick figure reads as noise at any distance, whereas a boxed one reads as a
+ * head wearing that face.
+ *
+ * The stamp is mostly blank on purpose. It is stretched over however many
+ * screen cells the figure projects onto, and a dense stamp seen from two
+ * metres away magnifies into a solid slab.
  */
 export const AVATAR_ROWS = [
-  '  .  ',
+  ' \u250c\u2500\u2510 ',
+  ' \u2502.\u2502 ',
+  ' \u2514\u252c\u2518 ',
   ' /|\\ ',
   '  |  ',
-  '  |  ',
   ' / \\ ',
-  ' /  \\',
+  '/   \\',
 ].map((row) => [...row].map(glyph))
 
 /** Where in {@link AVATAR_ROWS} the player's chosen face is stamped. */
-export const AVATAR_FACE_ROW = 0
+export const AVATAR_FACE_ROW = 1
 export const AVATAR_FACE_COLUMN = 2
+
+/**
+ * What the signs say.
+ *
+ * Written top to bottom, the way a Tokyo shopfront hangs them. Which word a
+ * sign gets is a function of its id, so the district reads the same on every
+ * machine and the wire carries no text at all.
+ */
+export const SIGN_WORDS: readonly number[][] = [
+  '\u30e9\u30fc\u30e1\u30f3', // ramen
+  '\u5c45\u9152\u5c4b', // izakaya
+  '\u85ac\u5c40', // pharmacy
+  '\u30ab\u30e9\u30aa\u30b1', // karaoke
+  '\u9280\u884c', // bank
+  '\u66f8\u5e97', // bookshop
+  '\u5599\u8336', // tearoom
+  '\u5bff\u53f8', // sushi
+  '\u6e29\u6cc9', // hot spring
+  '\u30db\u30c6\u30eb', // hotel
+  '\u30b3\u30f3\u30d3\u30cb', // convenience store
+  '\u4ea4\u756a', // police box
+  '\u96fb\u6c17', // electrics
+  '\u53e4\u7740', // second-hand clothes
+  '\u713c\u8089', // grilled meat
+  '\u30d0\u30fc', // bar
+  '\u9eba', // noodles
+  '\u6e6f', // bathhouse
+  '\u9152', // sake
+  '\u672c', // books
+  '\u6771\u4eac', // Tokyo
+  '\u65b0\u5bbf', // Shinjuku
+  '\u6e0b\u8c37', // Shibuya
+  '\u79cb\u8449\u539f', // Akihabara
+  '\u51fa\u53e3', // way out
+  '\u5165\u53e3', // way in
+  '\u99c5', // station
+  '\u5927\u30bb\u30fc\u30eb', // big sale
+].map((word) => [...word].map(glyph))
+
+/** Deterministic pick, so the same sign says the same thing to everybody. */
+export function signWord(seed: number): number[] {
+  const count = SIGN_WORDS.length
+  return SIGN_WORDS[((seed % count) + count) % count]
+}
 
 export const ROOF_GLYPHS = {
   flat: glyph('\u2500'),

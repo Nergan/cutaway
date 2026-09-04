@@ -44,7 +44,7 @@ from ..domain.world import (
     WorldTile,
 )
 from .canvas import Canvas, pack_style, slice_into_tiles
-from .district_features import enrich_district
+from .district_features import enrich_district, paint_relief
 from .rng import Mulberry32
 
 __all__ = ["DistrictGenerator", "pack_style"]
@@ -61,6 +61,7 @@ AVENUE_SPACING = (48, 72)
 PROP_LAMP = constants.PROP_LAMP
 PROP_TREE = constants.PROP_TREE
 PROP_KIOSK = constants.PROP_KIOSK
+PROP_SIGN = constants.PROP_SIGN
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +129,9 @@ class DistrictGenerator(WorldGeneratorPort):
             canvas, buildings, bands_x, bands_y, root.fork(0x7)
         )
         self._paint_sidewalks(canvas)
+        # After the pavements, so the terraces have a kerb network to step down
+        # onto rather than only the handful of squares the blocks left open.
+        paint_relief(canvas, root.fork(0x8))
 
         roads = self._road_records(bands_x, bands_y, width, height)
         props = self._props(canvas, root.fork(0x5)) + extra_props
@@ -206,9 +210,13 @@ class DistrictGenerator(WorldGeneratorPort):
                 roll = rng.next_float()
                 if roll < 0.07:
                     park_furniture.extend(self._make_park(canvas, inner, rng))
+                    # A garden on a low mound has somewhere to look out from,
+                    # which is more of a place than a flat green square.
+                    self._terrace(canvas, inner, rng, 4)
                     continue
                 if roll < 0.12:
                     canvas.fill(*inner, CELL_SIDEWALK)
+                    self._terrace(canvas, inner, rng, 6)
                     continue
                 for leaf in self._subdivide(inner, rng):
                     if rng.chance(0.10):
@@ -218,6 +226,27 @@ class DistrictGenerator(WorldGeneratorPort):
                         buildings.append(building)
                         next_id += 1
         return buildings, park_furniture
+
+    def _terrace(
+        self, canvas: Canvas, rect: tuple[int, int, int, int], rng: Mulberry32, tallest: int
+    ) -> None:
+        """Step a block of open ground up towards its middle.
+
+        Concentric rings one riser apart, outermost at street level. Built this
+        way the whole thing is walkable from every side without a single stair
+        having to be lined up, and the top is somewhere to stand and look down
+        the avenue from.
+        """
+        x0, y0, x1, y1 = rect
+        levels = min(rng.between(2, tallest), min(x1 - x0, y1 - y0) // 2)
+        if levels < 2:
+            return
+        style = pack_style(CATEGORY_OTHER, 2, 0)
+        for ring in range(levels):
+            for y in range(y0 + ring, y1 - ring):
+                for x in range(x0 + ring, x1 - ring):
+                    if canvas.get(x, y) in (CELL_FREE, CELL_SIDEWALK):
+                        canvas.paint(x, y, CELL_SIDEWALK, ring, style)
 
     def _subdivide(
         self, rect: tuple[int, int, int, int], rng: Mulberry32, depth: int = 0
@@ -493,20 +522,28 @@ class DistrictGenerator(WorldGeneratorPort):
                         place(x, y, constants.PROP_VENDING)
                     elif roll < 0.13:
                         place(x, y, constants.PROP_BENCH)
-                    elif roll < 0.20:
+                    elif roll < 0.22:
                         place(x, y, constants.PROP_BANNER)
-                    elif roll < 0.23:
-                        canvas.paint(x, y, CELL_INTERACTIVE, 3, pack_style(CATEGORY_OTHER, 1, 0))
+                    elif roll < 0.30:
+                        place(x, y, PROP_SIGN)
+                    elif roll < 0.33:
+                        canvas.paint(x, y, CELL_INTERACTIVE, 0, pack_style(CATEGORY_OTHER, 1, 0))
                         place(x, y, PROP_KIOSK)
+                    elif roll < 0.38:
+                        place(x, y, constants.PROP_NPC)
                     continue
                 if roads:
                     if (x + y * 3) % 9 == 4 and rng.chance(0.5):
                         place(x, y, constants.PROP_BOLLARD)
                     elif rng.chance(0.06):
                         place(x, y, constants.PROP_PLANTER)
+                    elif rng.chance(0.05):
+                        place(x, y, constants.PROP_NPC)
                     continue
                 if rng.chance(0.05):
                     place(x, y, constants.PROP_STALL if rng.chance(0.25) else constants.PROP_TREE)
+                elif rng.chance(0.04):
+                    place(x, y, constants.PROP_NPC)
 
         return props
 

@@ -11,8 +11,11 @@ from ascii_city.domain.constants import (
     CATEGORY_NAMES,
     CELL_BUILDING,
     CELL_SIZE_M,
+    CELL_INTERACTIVE,
     CELL_ROAD,
     CELL_SIDEWALK,
+    GRAVITY_MS2,
+    JUMP_SPEED_MS,
     MAX_BUILDING_HEIGHT_M,
     MAX_ENCODABLE_POSITION_M,
     MAX_TILES_PER_AXIS,
@@ -54,7 +57,7 @@ def test_the_shipped_district_never_changes_by_accident():
         source="procedural",
     )
     tile = DistrictGenerator().generate_tiles(descriptor)[0]
-    assert digest_bytes(tile.collision, tile.heights, tile.styles) == 1932902122
+    assert digest_bytes(tile.collision, tile.heights, tile.styles) == 1000197402
 
 
 def test_the_default_seed_is_not_left_to_chance():
@@ -119,9 +122,28 @@ def test_every_layer_is_consistent(small_world):
             if code == CELL_BUILDING:
                 building_cells += 1
                 assert 0 < height <= MAX_BUILDING_HEIGHT_M
-            elif code in (CELL_ROAD, CELL_SIDEWALK):
+            elif code == CELL_ROAD:
+                # Carriageways stay flat; a step in one would be a trip hazard
+                # nobody put there on purpose.
                 assert height == 0
     assert building_cells > grid.width * grid.height // 10
+
+
+def test_no_terrace_is_taller_than_a_player_can_jump(small_world):
+    """Relief has to be somewhere you can get out of, not somewhere you land.
+
+    On a walkable cell the height byte counts risers, and the generator is free
+    to stack them. A plateau higher than a standing jump with its stairs built
+    over is a hole in the district, so the ceiling is checked rather than
+    trusted.
+    """
+    reach = JUMP_SPEED_MS**2 / (2 * GRAVITY_MS2)
+    grid = small_world.grid
+    for y in range(grid.height):
+        for x in range(grid.width):
+            if grid.code_at(x, y) in SOLID_CELLS:
+                continue
+            assert grid.floor_at(x, y) <= reach, (x, y, grid.floor_at(x, y))
 
 
 def test_out_of_bounds_reads_are_walls(small_world):
@@ -136,6 +158,60 @@ def test_spawn_points_are_standable(small_world):
 
     for x, y, _heading in small_world.spawn_points:
         assert small_world.grid.is_free_circle(x, y, PLAYER_RADIUS_M), (x, y)
+
+
+def test_every_spawn_can_walk_the_whole_district(small_world):
+    """A spawn walled into a courtyard is a player with nothing to do.
+
+    Nothing in the generator guarantees the road cell it picked is joined to
+    the rest of the map, and an arcade or a terrace dropped in the wrong place
+    can sever one. The cheapest guard is to walk it.
+    """
+    grid = small_world.grid
+    assert small_world.spawn_points, "a district with nowhere to spawn is unplayable"
+    reachable = [len(_walk_from(grid, x, y)) for x, y, _ in small_world.spawn_points]
+    largest = max(reachable)
+    for spawn, reached in zip(small_world.spawn_points, reachable):
+        assert reached > largest * 0.9, (spawn, reached, largest)
+
+
+def test_a_shop_is_a_short_walk_from_every_spawn(small_world):
+    """Interiors nobody can find are the same as interiors that do not exist."""
+    grid = small_world.grid
+    rooms = {
+        cy * grid.width + cx
+        for cy in range(grid.height)
+        for cx in range(grid.width)
+        if grid.code_at(cx, cy) == CELL_INTERACTIVE
+    }
+    assert rooms, "the district has no interiors at all"
+    for x, y, _ in small_world.spawn_points:
+        walked = _walk_from(grid, x, y)
+        assert walked & rooms, (x, y)
+
+
+def _walk_from(grid, x: float, y: float) -> set[int]:
+    """Every cell a player-sized circle can reach on foot from `x, y` metres."""
+    from collections import deque
+
+    from ascii_city.domain.constants import PLAYER_RADIUS_M
+
+    size = grid.cell_size
+    start = (int(x / size), int(y / size))
+    seen = {start[1] * grid.width + start[0]}
+    queue = deque([start])
+    while queue:
+        cx, cy = queue.popleft()
+        feet = grid.ground_at((cx + 0.5) * size, (cy + 0.5) * size, PLAYER_RADIUS_M)
+        for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+            index = ny * grid.width + nx
+            if nx < 0 or ny < 0 or nx >= grid.width or ny >= grid.height or index in seen:
+                continue
+            if not grid.is_free_circle((nx + 0.5) * size, (ny + 0.5) * size, PLAYER_RADIUS_M, feet):
+                continue
+            seen.add(index)
+            queue.append((nx, ny))
+    return seen
 
 
 def test_tile_codec_round_trip(small_world):

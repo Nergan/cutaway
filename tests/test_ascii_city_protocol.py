@@ -164,9 +164,9 @@ def test_welcome_carries_the_world_shape():
     assert payload.endswith(b"demo")
 
 
-def test_snapshot_entry_is_ten_bytes():
+def test_snapshot_entry_is_twelve_bytes():
     """Entry size drives the bandwidth budget documented in docs/protocol.md."""
-    assert wire._SNAPSHOT_ENTRY.size == 10
+    assert wire._SNAPSHOT_ENTRY.size == 12
     viewer = a_player(1)
     others = [(a_player(index), index % 2 == 0) for index in range(2, 6)]
     payload = wire.encode_snapshot(tick=5, ack_sequence=99, viewer=viewer, entries=others)
@@ -184,8 +184,19 @@ def test_snapshot_marks_distant_players_as_simplified():
         entries=[(a_player(2), True)],
     )
     offset = 1 + wire._SNAPSHOT_HEAD.size + 1
-    _id, _x, _y, _yaw, _pitch, flags = wire._SNAPSHOT_ENTRY.unpack_from(payload, offset)
+    _id, _x, _y, _z, _yaw, _pitch, flags = wire._SNAPSHOT_ENTRY.unpack_from(payload, offset)
     assert flags & wire.SNAPSHOT_FLAG_SIMPLIFIED
+
+
+def test_snapshot_entries_carry_the_height_a_jump_reaches():
+    airborne = a_player(2)
+    airborne.z = 3.05
+    payload = wire.encode_snapshot(
+        tick=1, ack_sequence=0, viewer=a_player(1), entries=[(airborne, False)]
+    )
+    offset = 1 + wire._SNAPSHOT_HEAD.size + 1
+    _id, _x, _y, z, *_rest = wire._SNAPSHOT_ENTRY.unpack_from(payload, offset)
+    assert wire.decode_position(z) == pytest.approx(3.05)
 
 
 def test_snapshot_truncates_beyond_the_byte_count_field():

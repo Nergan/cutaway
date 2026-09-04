@@ -6,7 +6,7 @@
  * query surface.
  */
 
-import { CELL_SIZE_M, isSolidCode } from '../domain/constants'
+import { CELL_SIZE_M, FLOOR_STEP_M, STEP_UP_M, isSolidCode } from '../domain/constants'
 import type { WorldTile } from '../domain/types'
 
 export class CollisionGrid {
@@ -54,7 +54,20 @@ export class CollisionGrid {
     return isSolidCode(this.codeAt(cx, cy))
   }
 
-  isFreeCircle(x: number, y: number, radius: number): boolean {
+  /** Elevation of the walkable surface, in metres above street level. */
+  floorAt(cx: number, cy: number): number {
+    if (this.isSolidCell(cx, cy)) return 0
+    return this.heightAt(cx, cy) * FLOOR_STEP_M
+  }
+
+  /**
+   * Whether the player fits here, standing with their feet at `feetZ`.
+   *
+   * A cell is in the way when it is solid, and also when its floor is further
+   * above the feet than one stride: that is what makes a terrace an obstacle
+   * from the street and a surface from the stairs.
+   */
+  isFreeCircle(x: number, y: number, radius: number, feetZ = Infinity): boolean {
     const minCx = Math.floor((x - radius) / this.cellSize)
     const maxCx = Math.floor((x + radius) / this.cellSize)
     const minCy = Math.floor((y - radius) / this.cellSize)
@@ -62,9 +75,26 @@ export class CollisionGrid {
     for (let cy = minCy; cy <= maxCy; cy += 1) {
       for (let cx = minCx; cx <= maxCx; cx += 1) {
         if (this.isSolidCell(cx, cy)) return false
+        if (this.floorAt(cx, cy) > feetZ + STEP_UP_M) return false
       }
     }
     return true
+  }
+
+  /** Highest floor under the player's footprint: what they stand on. */
+  groundAt(x: number, y: number, radius: number): number {
+    const minCx = Math.floor((x - radius) / this.cellSize)
+    const maxCx = Math.floor((x + radius) / this.cellSize)
+    const minCy = Math.floor((y - radius) / this.cellSize)
+    const maxCy = Math.floor((y + radius) / this.cellSize)
+    let ground = 0
+    for (let cy = minCy; cy <= maxCy; cy += 1) {
+      for (let cx = minCx; cx <= maxCx; cx += 1) {
+        const floor = this.floorAt(cx, cy)
+        if (floor > ground) ground = floor
+      }
+    }
+    return ground
   }
 
   clampToWorld(point: { x: number; y: number }): void {

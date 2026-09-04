@@ -224,12 +224,13 @@ export class GameSession {
   }
 
   requestPointerLock(): void {
+    this.input?.setPointerLockAllowed(true)
     this.input?.requestPointerLock()
   }
 
-  /** Hand the mouse back so the player can click the interface. */
+  /** Hand the mouse back so the player can click the interface, and keep it. */
   releasePointerLock(): void {
-    this.input?.releasePointerLock()
+    this.input?.setPointerLockAllowed(false)
   }
 
   get camera(): CameraMode {
@@ -305,6 +306,7 @@ export class GameSession {
         id: other.id,
         x: other.x,
         y: other.y,
+        z: other.z,
         animation: other.animation,
         nickname: member?.nickname ?? '',
         color: member?.color ?? 0,
@@ -329,6 +331,7 @@ export class GameSession {
         id: this.view.player?.id ?? 0,
         x: position.x,
         y: position.y,
+        z: position.z,
         animation: predictor.state.animation,
         nickname: this.view.player?.nickname ?? '',
         color: this.view.player?.color ?? 0,

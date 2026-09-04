@@ -55,7 +55,7 @@ MAX_FRAME_BYTES = 4096
 
 _INPUT = struct.Struct("<IbbHbBI")
 _SNAPSHOT_HEAD = struct.Struct("<IIHHHh")
-_SNAPSHOT_ENTRY = struct.Struct("<HHHHbB")
+_SNAPSHOT_ENTRY = struct.Struct("<HHHHHbB")
 _PONG = struct.Struct("<II")
 
 SNAPSHOT_FLAG_SIMPLIFIED = 0x04
@@ -268,6 +268,9 @@ def encode_snapshot(
             state.id,
             encode_position(state.x),
             encode_position(state.y),
+            # Without a height the whole street looks bolted to the pavement:
+            # you see a player's jump in their own view and nowhere else.
+            encode_position(state.z),
             encode_yaw(state.yaw),
             encode_pitch(state.pitch),
             flags,
