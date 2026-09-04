@@ -1,0 +1,20 @@
+# Age has no dependencies of its own. That is deliberate rather than austere.
+#
+# The simulation, the deterministic world generator, the binary wire codec, the
+# procedural pixel-art baker and the PNG encoder are all pure standard library. The
+# reason is the deployment target: an isolated worker gets a 512 MB memory budget and
+# a cold start it has to survive, and numpy alone is most of a hundred megabytes for
+# an array library this project would use for nothing but a 1024-byte tile buffer.
+#
+# The other reason is parity. Terrain has to generate identically in Python and in the
+# browser or the client cannot skip downloading it, and that is far easier to
+# guarantee against plain float arithmetic than against a vectorised library whose
+# reduction order is its own business.
+#
+# Versions match the root requirements.txt exactly, so this project can never drag a
+# neighbour's worker environment sideways.
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+motor==3.6.0
+pymongo==4.9.2
+websockets

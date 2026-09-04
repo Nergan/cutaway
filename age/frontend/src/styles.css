@@ -1,0 +1,678 @@
+/*
+ * Age — interface styling.
+ *
+ * The palette and the general feel come from the house reference (`web/design/opt.html`): warm
+ * browns, tan highlights, thin borders, no gradients pretending to be depth. Two deliberate
+ * departures, both because this is a game and not a document:
+ *
+ *  - Corners are rounded a little. The reference is square, which reads as a utility; a few
+ *    pixels of radius reads as something you sit with.
+ *  - Panels are translucent and blurred. They float over a live world, and a solid panel over
+ *    a game is a wall in front of it.
+ *
+ * The pixel-art canvas is deliberately *not* styled by any of this. It has its own visual
+ * language, and the one rule the two share is that nothing is allowed to interpolate a pixel.
+ */
+
+:root {
+  /* Straight from the reference. */
+  --bg: #383431;
+  --container-bg: #423e3b;
+  --card-bg: #4a3c31;
+  --primary: #d4a373;
+  --accent: #d98a59;
+  --text: #e5e1db;
+  --text-muted: #b5aba4;
+  --border: #665f5a;
+  --btn-bg: #524a44;
+  --sb-track: #332d29;
+  --sb-thumb: #7d736c;
+  --selection-bg: #d4a373;
+  --selection-color: #1a1614;
+  --focus-ring: #d98a59;
+
+  /* Added for the game: a translucent panel, and the status colours a HUD needs. */
+  --panel: rgba(58, 53, 49, 0.82);
+  --panel-solid: #3a3531;
+  --panel-border: rgba(122, 99, 82, 0.75);
+  --health: #c1584f;
+  --health-dim: #6b2f2b;
+  --resource: #5b8bb0;
+  --resource-dim: #2f4a5e;
+  --danger: #e65c5c;
+  --good: #8bab6a;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-color);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--sb-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb);
+  border-radius: 5px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-weight: normal;
+  color: var(--primary);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text);
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+button:hover:not(:disabled) {
+  background: #5f564f;
+  border-color: var(--primary);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text);
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+/* --- shared panel ---------------------------------------------------------- */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  /* Blur is the one modern effect used here. Over a moving world it separates the
+     interface from the scene far better than opacity alone. */
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.panel-title {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-size: 9pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.pill {
+  display: inline-block;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-size: 8pt;
+  color: var(--text-muted);
+}
+.pill.on {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.pill.warn {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* --- the game screen ------------------------------------------------------- */
+
+.game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0d12;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* Pixel art, at every stage of the pipeline that can be told not to smooth it. */
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  /* The HUD is a window onto the game, not a lid: only its own controls take the pointer. */
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr minmax(200px, 260px);
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
+  padding: 14px;
+}
+.hud > * {
+  pointer-events: auto;
+}
+
+.hud-vitals {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 10px 12px;
+}
+
+.hud-world {
+  grid-column: 3;
+  grid-row: 1;
+  padding: 10px 12px;
+  justify-self: end;
+  min-width: 200px;
+}
+
+.hud-chat {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+}
+
+.hud-abilities {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: center;
+  align-self: end;
+}
+
+.hud-minimap {
+  grid-column: 3;
+  grid-row: 3;
+  justify-self: end;
+  align-self: end;
+}
+
+/* --- vitals ---------------------------------------------------------------- */
+
+.vitals-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.vitals-name strong {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  color: var(--primary);
+  font-weight: normal;
+  font-size: 11pt;
+}
+
+.bar {
+  position: relative;
+  height: 14px;
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  /* Width is the only animated property: transitioning colour as well would make a hit
+     land softly, which is the opposite of the feedback a hit should give. */
+  transition: width 0.16s linear;
+}
+.bar-fill.health {
+  background: linear-gradient(180deg, var(--health) 0%, var(--health-dim) 100%);
+}
+.bar-fill.resource {
+  background: linear-gradient(180deg, var(--resource) 0%, var(--resource-dim) 100%);
+}
+.bar-text {
+  position: relative;
+  display: block;
+  text-align: center;
+  font-size: 8pt;
+  line-height: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+/* --- abilities ------------------------------------------------------------- */
+
+.abilities {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+
+.ability {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+.ability:disabled {
+  opacity: 1;
+}
+.ability .key {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-size: 12pt;
+  color: var(--primary);
+  line-height: 1;
+}
+.ability .label {
+  font-size: 7pt;
+  color: var(--text-muted);
+  line-height: 1;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Cooldown drains from the top, so a glance at the row reads as a set of levels. */
+.ability .cooldown {
+  position: absolute;
+  inset: 0 0 auto 0;
+  background: rgba(11, 13, 18, 0.72);
+  pointer-events: none;
+}
+.ability.ready {
+  border-color: var(--primary);
+}
+
+/* --- chat ----------------------------------------------------------------- */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  max-height: 34vh;
+  padding: 8px 10px;
+}
+
+.chat-log {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 9pt;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-line {
+  word-break: break-word;
+}
+.chat-line .who {
+  color: var(--primary);
+}
+.chat-line.global .who {
+  color: var(--accent);
+}
+.chat-line.system {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chat-entry {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chat-entry input {
+  flex: 1;
+  min-width: 0;
+}
+.chat-entry .channel {
+  flex: 0 0 auto;
+  width: 74px;
+}
+
+/* Collapsed, chat is a strip of the last few lines with no input and no pointer capture. */
+.chat.collapsed {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* --- minimap -------------------------------------------------------------- */
+
+.minimap {
+  padding: 8px;
+}
+.minimap canvas {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  image-rendering: pixelated;
+}
+.minimap-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+/* --- world panel ---------------------------------------------------------- */
+
+.world-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: 9pt;
+}
+.world-rows dt {
+  color: var(--text-muted);
+}
+.world-rows dd {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- title screen --------------------------------------------------------- */
+
+.title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+  /* A dark warm wash rather than pure black: the world is visible behind it while it
+     loads, and that is a better first impression than a loading screen. */
+  background: radial-gradient(120% 90% at 50% 0%, rgba(74, 60, 49, 0.55), rgba(20, 18, 16, 0.94));
+}
+
+.title-card {
+  width: min(720px, 100%);
+  padding: 26px 28px;
+}
+
+.title-brand {
+  text-align: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+.title-brand h1 {
+  font-size: 30pt;
+  letter-spacing: 0.16em;
+  margin-bottom: 2px;
+}
+.title-brand p {
+  color: var(--text-muted);
+  font-size: 9pt;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.field > label {
+  font-size: 8pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.class-option {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.class-option strong {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-weight: normal;
+  color: var(--text);
+}
+.class-option small {
+  font-size: 8pt;
+  color: var(--text-muted);
+}
+.class-option.chosen {
+  border-color: var(--primary);
+  background: #55463a;
+}
+.class-option.chosen strong {
+  color: var(--primary);
+}
+
+.look-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.look-preview {
+  flex: 0 0 auto;
+  width: 128px;
+  height: 192px;
+  background: var(--sb-track);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  image-rendering: pixelated;
+}
+.look-sliders {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 9pt;
+}
+.look-sliders span {
+  color: var(--text-muted);
+}
+
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.title-actions button {
+  padding: 9px 22px;
+}
+.title-actions .primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #241d17;
+}
+.title-actions .primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.title-note {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 8pt;
+  color: var(--text-muted);
+}
+.title-note kbd {
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 8pt;
+}
+
+/* --- overlays ------------------------------------------------------------- */
+
+.banner {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  font-size: 9pt;
+  z-index: 40;
+}
+.banner.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.death {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(30, 10, 10, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 30;
+}
+.death-card {
+  padding: 22px 30px;
+  text-align: center;
+}
+.death-card h2 {
+  font-size: 18pt;
+  color: var(--danger);
+  margin-bottom: 6px;
+}
+
+.toasts {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  z-index: 20;
+}
+.toast {
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  font-size: 9pt;
+  background: rgba(20, 18, 16, 0.86);
+  border: 1px solid var(--panel-border);
+  animation: toast-rise 0.22s ease-out;
+}
+.toast.bad {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* --- diagnostics ---------------------------------------------------------- */
+
+.diagnostics {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 8pt;
+  line-height: 1.5;
+  color: var(--text-muted);
+  z-index: 15;
+}
+.diagnostics b {
+  color: var(--primary);
+  font-weight: normal;
+}
+
+/* --- respects a user who would rather things held still ------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
+}

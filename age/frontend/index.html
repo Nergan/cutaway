@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Age</title>
+    <meta
+      name="description"
+      content="A browser MMO demo: a world that folds and unfolds around the people in it."
+    />
+    <!-- The card image and favicon live on the same CDN as the other projects in this
+         monorepo; the orchestrator's root page links here. -->
+    <link rel="icon" href="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/age/favicon.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      Age is a real-time game and needs JavaScript. There is no meaningful degraded version of a
+      world you walk around in.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

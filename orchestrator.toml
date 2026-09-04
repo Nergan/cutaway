@@ -362,6 +362,64 @@ allowed_hosts = []
 allow_private = false
 requests_per_minute = 0
 
+[projects.age]
+directory = "age"
+entrypoint = "age.main"
+prefix = "/age"
+requirements = "age/requirements.txt"
+npm_build = true
+# Lazy, like ascii_city: the world costs a couple of hundred milliseconds to build
+# and holds a tick loop open for as long as it lives, so it should start when
+# somebody asks for it rather than at boot.
+startup = "lazy"
+env_allowlist = [
+  "MONGODB_URI",
+  "MONGO_MAX_POOL_SIZE",
+  "MONGO_TLS",
+  "MONGO_TLS_ALLOW_INVALID_CERTS",
+  "AGE_WORLD_ID",
+  "AGE_WORLD_SEED",
+  "AGE_CORRIDOR_SEGMENTS",
+  "AGE_MAX_CLIENTS",
+  "AGE_USE_MONGO",
+  "AGE_BASE_PATH",
+  "AGE_TIER_COOLDOWN_SECONDS",
+  "AGE_ALLOW_DEV_CONTROLS",
+  "AGE_CDN_BASE",
+]
+
+# Terrain never crosses the wire — the client generates it from the seed — so the
+# traffic budget is snapshots and the one-time client download. Sixty-four players at
+# fifteen snapshots per second stays inside a few MB a minute; the response allowance
+# is sized for the Atelier's atlas PNGs, which are the largest single responses here.
+[projects.age.limits]
+request_rate = 240
+request_window_seconds = 60
+request_bytes = 262144
+response_bytes = 8388608
+traffic_bytes_per_minute = 268435456
+max_concurrency = 16
+queue_timeout_seconds = 5
+request_timeout_seconds = 30
+max_websockets = 64
+websocket_message_bytes = 65536
+websocket_lifetime_seconds = 3600
+memory_mb = 512
+cpu_percent = 120
+cpu_grace_seconds = 30
+max_processes = 2
+max_connections = 160
+idle_timeout_seconds = 900
+# Longer than ascii_city's: bootstrap builds the tier-0 corridor and both hub plazas
+# before it reports ready, and on a cold free-tier CPU that is seconds, not
+# milliseconds.
+startup_timeout_seconds = 45
+
+[projects.age.network]
+allowed_hosts = []
+allow_private = false
+requests_per_minute = 0
+
 [projects.another]
 directory = "another"
 entrypoint = "another.main"

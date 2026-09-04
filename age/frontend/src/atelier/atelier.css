@@ -1,0 +1,413 @@
+/*
+ * The Atelier's layout, on top of the shared palette in `styles.css`.
+ *
+ * A tool rather than a game screen, so it is denser, squarer, and scrolls. The one thing it
+ * shares with the game beyond colour is that nothing is ever allowed to smooth a pixel.
+ */
+
+body {
+  overflow: auto;
+  background: var(--bg);
+}
+
+.atelier {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- top bar --------------------------------------------------------------- */
+
+.atelier-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 16px;
+  background: var(--container-bg);
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.atelier-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.atelier-brand strong {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-weight: normal;
+  font-size: 15pt;
+  color: var(--primary);
+  letter-spacing: 0.06em;
+}
+.atelier-brand span {
+  font-size: 8pt;
+}
+
+.atelier-tabs {
+  display: flex;
+  gap: 6px;
+}
+.atelier-tabs button.on {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--card-bg);
+}
+
+.atelier-exit {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 9pt;
+}
+.atelier-exit:hover {
+  text-decoration: none;
+}
+
+/* --- body ----------------------------------------------------------------- */
+
+.atelier-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(230px, 290px) 1fr;
+  gap: 14px;
+  padding: 14px;
+  align-items: start;
+}
+
+.atelier-body > .panel {
+  padding: 12px;
+}
+
+.atelier-empty {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}
+
+/* --- recipe list ---------------------------------------------------------- */
+
+.atelier-list {
+  position: sticky;
+  top: 68px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+}
+
+.atelier-filter {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.atelier-group + .atelier-group {
+  margin-top: 16px;
+}
+.atelier-group ul {
+  list-style: none;
+}
+
+.atelier-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 4px 8px;
+  margin-bottom: 2px;
+  background: transparent;
+  border-color: transparent;
+  font-size: 9pt;
+}
+.atelier-entry:hover {
+  background: var(--btn-bg);
+}
+.atelier-entry.on {
+  background: var(--card-bg);
+  border-color: var(--primary);
+}
+.atelier-entry .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atelier-entry .meta {
+  font-size: 8pt;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.atelier-entry .unbound {
+  font-size: 7pt;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0 5px;
+}
+
+/* --- inspector ------------------------------------------------------------ */
+
+.atelier-inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.atelier-inspector-head strong {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-weight: normal;
+  font-size: 13pt;
+  color: var(--primary);
+}
+.atelier-inspector-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.atelier-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  /* A chequerboard, so transparency reads as transparency rather than as black. */
+  background:
+    repeating-conic-gradient(#2e2a27 0% 25%, #383431 0% 50%) 50% / 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  min-height: 160px;
+  overflow: auto;
+}
+
+.atelier-preview-strip img {
+  display: block;
+}
+
+.atelier-preview-tiled {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atelier-bake-error {
+  color: var(--danger);
+  font-size: 9pt;
+  max-width: 46ch;
+}
+
+.atelier-preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- steps ---------------------------------------------------------------- */
+
+.atelier-steps {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.atelier-step-list ol {
+  list-style: none;
+  counter-reset: step;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.atelier-step-list li {
+  counter-increment: step;
+}
+
+.atelier-step {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 3px 8px;
+  margin-bottom: 2px;
+  background: transparent;
+  border-color: transparent;
+  font-size: 9pt;
+}
+.atelier-step::before {
+  content: counter(step);
+  color: var(--text-muted);
+  font-size: 8pt;
+  min-width: 14px;
+}
+.atelier-step:hover {
+  background: var(--btn-bg);
+}
+.atelier-step.on {
+  background: var(--card-bg);
+  border-color: var(--primary);
+}
+.atelier-step .op {
+  flex: 1;
+}
+.atelier-step .swatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.atelier-step-buttons {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.atelier-step-buttons button {
+  padding: 4px 9px;
+  font-size: 9pt;
+}
+
+.atelier-step-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.atelier-hint {
+  font-size: 8pt;
+  max-width: 60ch;
+  margin-bottom: 4px;
+}
+
+.atelier-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9pt;
+}
+.atelier-field > span:first-child {
+  color: var(--text-muted);
+  min-width: 88px;
+}
+.atelier-field input[type='range'] {
+  flex: 1;
+  max-width: 220px;
+  padding: 0;
+}
+.atelier-field output {
+  min-width: 42px;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.atelier-field.atelier-rect input {
+  width: 58px;
+}
+
+.atelier-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9pt;
+  cursor: pointer;
+}
+.atelier-check input {
+  padding: 0;
+}
+
+/* --- atlas view ---------------------------------------------------------- */
+
+.atelier-atlas-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 68px;
+}
+
+.atelier-atlas-view {
+  overflow: auto;
+  background:
+    repeating-conic-gradient(#2e2a27 0% 25%, #383431 0% 50%) 50% / 16px 16px;
+}
+.atelier-atlas-view img {
+  display: block;
+}
+
+.atelier-link {
+  color: var(--accent);
+  font-size: 9pt;
+}
+
+/* --- importers ------------------------------------------------------------ */
+
+.atelier-import p code,
+.atelier-import-result code {
+  background: var(--sb-track);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 8pt;
+}
+
+.atelier-drop {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 20px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--sb-track);
+  cursor: pointer;
+  font-size: 9pt;
+  color: var(--text-muted);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.atelier-drop:hover,
+.atelier-drop.over {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.atelier-drop input {
+  display: none;
+}
+
+.atelier-import-result details {
+  margin-bottom: 8px;
+}
+.atelier-import-result summary {
+  cursor: pointer;
+  font-size: 9pt;
+  color: var(--primary);
+}
+
+.atelier-result-list {
+  list-style: none;
+  font-size: 8pt;
+  color: var(--text-muted);
+  max-height: 40vh;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding-left: 12px;
+}
+
+/* --- narrow screens ------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .atelier-body,
+  .atelier-steps {
+    grid-template-columns: 1fr;
+  }
+  .atelier-list,
+  .atelier-atlas-controls {
+    position: static;
+    max-height: none;
+  }
+}

@@ -37,6 +37,7 @@ def test_hf_profile_disables_policy_sensitive_projects():
         "dnd",
         "netlazy",
         "ascii_city",
+        "age",
     }
 
 
