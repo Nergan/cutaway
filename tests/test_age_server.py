@@ -55,8 +55,13 @@ async def _lifespan(_: FastAPI):
 
     ``create_app`` deliberately has no lifespan of its own: the hub owns the process
     and calls ``startup_clients``/``shutdown_clients``. A test has to stand in for it.
+
+    ``startup`` only schedules bootstrap. The worker answers health immediately so a
+    probe is not stuck behind atlas baking; this suite wants a playable world, so it
+    waits the same way the socket and ``/api/world`` do.
     """
     await get_container().startup()
+    await get_container().ready()
     try:
         yield
     finally:
