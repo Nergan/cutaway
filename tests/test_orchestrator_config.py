@@ -24,6 +24,10 @@ def test_hf_profile_disables_policy_sensitive_projects():
     assert config.projects["another"].build is False
     assert config.projects["another"].deploy is False
     assert config.projects["another"].ci is True
+    assert config.projects["age"].run is False
+    assert config.projects["age"].build is False
+    assert config.projects["age"].deploy is False
+    assert config.projects["age"].ci is True
     assert config.projects["yellow_mirror"].run is False
     assert config.projects["yellow_mirror"].deploy is False
     assert {project.project_id for project in config.for_phase("run")} == {
@@ -37,7 +41,6 @@ def test_hf_profile_disables_policy_sensitive_projects():
         "dnd",
         "netlazy",
         "ascii_city",
-        "age",
     }
 
 
@@ -49,6 +52,11 @@ def test_project_ignore_is_a_global_kill_switch():
     assert another.build is False
     assert another.deploy is False
     assert another.reason
+    age = config.projects["age"]
+    assert age.run is False
+    assert age.build is False
+    assert age.deploy is False
+    assert age.reason
     assert config.projects["yellow_mirror"].run is True
 
 
@@ -193,3 +201,4 @@ def test_hf_deploy_pruner_reports_both_exclusions():
 
     assert "exclude another" in result.stdout
     assert "exclude yellow_mirror" in result.stdout
+    assert "exclude age" in result.stdout

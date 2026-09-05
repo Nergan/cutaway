@@ -368,10 +368,13 @@ entrypoint = "age.main"
 prefix = "/age"
 requirements = "age/requirements.txt"
 npm_build = true
-# Lazy, like ascii_city: the world costs a couple of hundred milliseconds to build
-# and holds a tick loop open for as long as it lives, so it should start when
-# somebody asks for it rather than at boot.
-startup = "lazy"
+# Kept in the git repo and in CI; not built, deployed, or started.
+startup = "disabled"
+ci = true
+run = false
+build = false
+deploy = false
+reason = "Parked in the repository; not started or deployed."
 env_allowlist = [
   "MONGODB_URI",
   "MONGO_MAX_POOL_SIZE",
