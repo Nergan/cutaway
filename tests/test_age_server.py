@@ -863,14 +863,19 @@ def test_wearing_something_raises_the_health_the_server_reports(client: TestClie
     assert after["maxHealth"] > before["maxHealth"]
 
 
-@pytest.mark.asyncio
-async def test_a_silent_cluster_falls_back_to_memory_before_anyone_joins():
+def test_a_silent_cluster_falls_back_to_memory_before_anyone_joins():
     """Constructing the Mongo client is not the same as a server answering.
 
     ``get_client()`` only parses a URI. Without the ping, every join waits out the
     selection timeout and then refuses to create a character — a demo nobody can
     enter because the free-tier cluster is asleep.
+
+    Driven with ``asyncio.run`` rather than ``pytest.mark.asyncio``: the orchestrator
+    suite does not install an async plugin, and a mark the runner does not know is a
+    failed workflow, not a skipped test.
     """
+    import asyncio
+
     from age.infrastructure.memory_repositories import MemoryCharacterRepository
 
     box = Container(_settings())
@@ -881,12 +886,10 @@ async def test_a_silent_cluster_falls_back_to_memory_before_anyone_joins():
             raise RuntimeError("connection refused")
 
     box._topology = Down()
-    await box._confirm_storage()
+    asyncio.run(box._confirm_storage())
 
     assert box.storage_backend == "memory"
     assert isinstance(box._characters, MemoryCharacterRepository)
-    # The world is still unbuilt; this only proves the adapters were swapped
-    # before anyone could join against a dead cluster.
 
 
 # --- helpers ----------------------------------------------------------------

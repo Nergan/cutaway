@@ -242,9 +242,9 @@ async def catalogue() -> JSONResponse:
 @router.get("/api/atelier/atlas.png")
 async def atlas_colour() -> Response:
     """The packed colour page, for anyone who wants the art as a file."""
-    atlas = _cached_atlas()
+    colour, _ = _atlas_pngs()
     return Response(
-        content=png.encode(atlas.width, atlas.height, atlas.colour.colour),
+        content=colour,
         media_type="image/png",
         headers={"Cache-Control": ART_CACHE_CONTROL},
     )
@@ -253,9 +253,9 @@ async def atlas_colour() -> Response:
 @router.get("/api/atelier/atlas-normal.png")
 async def atlas_normal() -> Response:
     """The matching normal page. Same packing, so the same UVs address both."""
-    atlas = _cached_atlas()
+    _, normal = _atlas_pngs()
     return Response(
-        content=png.encode(atlas.width, atlas.height, atlas.normal_map()),
+        content=normal,
         media_type="image/png",
         headers={"Cache-Control": ART_CACHE_CONTROL},
     )
@@ -403,14 +403,23 @@ async def character_sheet(
 
     from ..atelier.character import POSE_FRAMES, SPRITE_HEIGHT, SPRITE_WIDTH
 
-    count = POSE_FRAMES[chosen_pose]
-    strip = Canvas(SPRITE_WIDTH * count, SPRITE_HEIGHT)
-    for frame in range(count):
-        strip.blit(bake_character(appearance, chosen_facing, chosen_pose, frame), frame * SPRITE_WIDTH, 0)
+    key = (body, hair, palette, outfit, accent, int(chosen_facing), int(chosen_pose), normals)
+    cached = _character_pngs.get(key)
+    if cached is None:
+        count = POSE_FRAMES[chosen_pose]
+        strip = Canvas(SPRITE_WIDTH * count, SPRITE_HEIGHT)
+        for frame in range(count):
+            strip.blit(
+                bake_character(appearance, chosen_facing, chosen_pose, frame),
+                frame * SPRITE_WIDTH,
+                0,
+            )
+        pixels = to_normal_map(strip) if normals else strip.colour
+        cached = png.encode(strip.width, strip.height, pixels)
+        _character_pngs[key] = cached
 
-    pixels = to_normal_map(strip) if normals else strip.colour
     return Response(
-        content=png.encode(strip.width, strip.height, pixels),
+        content=cached,
         media_type="image/png",
         headers={"Cache-Control": ART_CACHE_CONTROL},
     )
@@ -517,6 +526,22 @@ async def _read_json(request: Request, limit: int) -> dict[str, object]:
 
 
 _atlas_cache: sheet.Atlas | None = None
+_atlas_colour_png: bytes | None = None
+_atlas_normal_png: bytes | None = None
+_character_pngs: dict[tuple[object, ...], bytes] = {}
+
+
+def warm_atlas() -> None:
+    """Bake and encode the terrain atlas before anyone asks for a PNG.
+
+    The first request used to do this on the clock of a free-tier proxy. Packing
+    and encoding a 1024 page in pure Python is longer than that timeout on a cold
+    Render box, which is a 504 on ``atlas.png`` and a client that reports the
+    renderer could not start. Doing it at process start means the request is a
+    memory copy.
+    """
+    _cached_atlas()
+    _atlas_pngs()
 
 
 def _cached_atlas() -> sheet.Atlas:
@@ -530,3 +555,13 @@ def _cached_atlas() -> sheet.Atlas:
     if _atlas_cache is None:
         _atlas_cache = sheet.bake_terrain_atlas()
     return _atlas_cache
+
+
+def _atlas_pngs() -> tuple[bytes, bytes]:
+    """The two atlas pages, encoded once."""
+    global _atlas_colour_png, _atlas_normal_png
+    if _atlas_colour_png is None or _atlas_normal_png is None:
+        atlas = _cached_atlas()
+        _atlas_colour_png = png.encode(atlas.width, atlas.height, atlas.colour.colour)
+        _atlas_normal_png = png.encode(atlas.width, atlas.height, atlas.normal_map())
+    return _atlas_colour_png, _atlas_normal_png

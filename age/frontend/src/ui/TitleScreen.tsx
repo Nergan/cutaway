@@ -95,7 +95,11 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
     return merged
   }, [world?.appearanceRanges])
 
-  // The preview is the walk strip: standing still tells you less about a sprite than moving.
+  // One idle frame, not the walk strip. Cycling four frames of a just-fetched PNG
+  // is what made the box strobe: each slider tick swapped the URL, the old image
+  // vanished, and the walk cycle then jumped across empty frames until the new
+  // strip decoded. Standing still is less charming and the only thing that does
+  // not blink on a slow host.
   const previewUrl = useMemo(() => {
     const query = new URLSearchParams({
       body: String(appearance.body),
@@ -104,21 +108,13 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
       outfit: String(appearance.outfit),
       accent: String(appearance.accent),
       facing: '0',
-      pose: '1',
+      pose: '0',
     })
     return `${apiBase()}/atelier/character.png?${query.toString()}`
   }, [appearance])
 
-  // Step through the strip so the preview walks on the spot.
-  const [previewFrame, setPreviewFrame] = useState(0)
-  useEffect(() => {
-    const timer = window.setInterval(() => setPreviewFrame((frame) => (frame + 1) % 4), 140)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  // Only show a sprite the browser has already decoded. Each appearance byte is a
-  // different URL, and pointing the box straight at a new one empties it for the length
-  // of the request — which, while a slider is being dragged, is a strobe.
+  // Keep showing the last decoded sprite until the next one is ready. Assigning
+  // a new URL to the box itself empties it for the length of the request.
   const [loadedUrl, setLoadedUrl] = useState<string>()
   useEffect(() => {
     let cancelled = false
@@ -192,10 +188,9 @@ export function TitleScreen({ world, error, busy, onEnter }: TitleScreenProps) {
               aria-label="Character preview"
               style={{
                 backgroundImage: loadedUrl === undefined ? undefined : `url("${loadedUrl}")`,
-                // The strip is four frames wide; showing one means scaling it to four times
-                // the box and sliding it. Cheaper and sharper than four separate requests.
-                backgroundSize: '400% 100%',
-                backgroundPosition: `${-previewFrame * 100}% 0`,
+                // Idle is two frames wide; show the first and leave the rest off-screen.
+                backgroundSize: '200% 100%',
+                backgroundPosition: '0 0',
                 backgroundRepeat: 'no-repeat',
                 imageRendering: 'pixelated',
               }}

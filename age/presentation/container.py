@@ -178,6 +178,14 @@ class Container:
         self._room = Room(simulation, max_clients=self.settings.max_clients)
         await self._room.start()
 
+        # Bake the atlas off the event loop so /api/health still answers while it
+        # runs, and so the first ``atlas.png`` is a cache hit. On Render the bake
+        # is longer than the proxy timeout; doing it here is the difference between
+        # a world that appears and a 504 the client treats as a dead renderer.
+        from . import http_routes
+
+        await asyncio.to_thread(http_routes.warm_atlas)
+
         logger.info(
             "Age world %s ready: seed %#x, %d segments, storage %s",
             self.settings.world_id,

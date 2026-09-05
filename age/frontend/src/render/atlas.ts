@@ -108,18 +108,35 @@ export class Atlas {
    * `/age` and against a bare dev server.
    */
   static async load(api: string): Promise<Atlas> {
+    // A cold host can 504 the first atlas fetch while the page is still baking.
+    // One failure used to abort the whole renderer. Three tries, a second apart,
+    // cover a bake that finishes just after the proxy gave up.
+    let lastError: unknown
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await Atlas.fetch(api, attempt)
+      } catch (error) {
+        lastError = error
+        await new Promise((resolve) => window.setTimeout(resolve, 1000 * (attempt + 1)))
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('atlas load failed')
+  }
+
+  private static async fetch(api: string, attempt: number): Promise<Atlas> {
+    const bust = attempt === 0 ? '' : `?retry=${attempt}`
     const [colour, normal, index] = await Promise.all([
       Assets.load<Texture>({
-        src: `${api}/atelier/atlas.png`,
+        src: `${api}/atelier/atlas.png${bust}`,
         // Nearest neighbour, always. Pixel art through a linear filter is the single
         // fastest way to make hand-made art look like a JPEG.
         data: { scaleMode: 'nearest', autoGenerateMipmaps: false },
       }),
       Assets.load<Texture>({
-        src: `${api}/atelier/atlas-normal.png`,
+        src: `${api}/atelier/atlas-normal.png${bust}`,
         data: { scaleMode: 'nearest', autoGenerateMipmaps: false },
       }),
-      fetch(`${api}/atelier/atlas.json`).then((response) => {
+      fetch(`${api}/atelier/atlas.json${bust}`).then((response) => {
         if (!response.ok) throw new Error(`atlas index: HTTP ${response.status}`)
         return response.json() as Promise<AtlasIndex>
       }),

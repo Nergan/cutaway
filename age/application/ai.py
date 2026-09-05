@@ -261,13 +261,18 @@ def _decide(world: World, entity: Entity, archetype: NpcArchetype, now: float) -
 
     distance = target.position.distance_to(entity.position) if target else None
 
-    # A guard only engages inside its own hub, so it never abandons its post to
-    # chase someone down the corridor.
-    if archetype.key == "guard" and target is not None:
-        if not world.is_in_hub(target.position):
-            target = None
-            distance = None
-            entity.ai_target = None
+    # A hub is a safe zone for players (GDD 11.1). Guards used to acquire anyone
+    # standing on the plaza — detection 9, 24 damage, 1.2 s swing — so a new
+    # character died in a few seconds on the spawn square, which is the opposite
+    # of a garrison. They still refuse to chase into the corridor.
+    if target is not None and target.is_player and world.is_in_hub(target.position):
+        target = None
+        distance = None
+        entity.ai_target = None
+    elif archetype.key == "guard" and target is not None and not world.is_in_hub(target.position):
+        target = None
+        distance = None
+        entity.ai_target = None
 
     snapshot = AISnapshot(
         state=entity.ai_state,
@@ -366,6 +371,8 @@ def _try_attack(
     if (now - entity.last_attack_at) * 1000.0 < archetype.attack_cooldown_ms:
         return
     if target.position.distance_to(entity.position) > archetype.attack_range + target.radius:
+        return
+    if target.is_player and world.is_in_hub(target.position):
         return
     if not world.has_line_of_sight(entity.position, target.position):
         return

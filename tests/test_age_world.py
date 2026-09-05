@@ -1845,6 +1845,26 @@ def test_a_guard_will_not_leave_its_hub_to_chase_someone(world: World):
     assert guard.ai_state in (AIState.IDLE, AIState.PATROL)
 
 
+def test_a_guard_does_not_murder_a_player_on_the_plaza(world: World):
+    """The spawn square is a safe zone, including against the garrison.
+
+    Guards acquire players by default — ``nearest_enemy(..., hostile_to_players=False)``
+    means "look for players" — and a 24-damage swing every 1.2 s empties a fresh
+    warrior in six hits. That is why a demo character died on load.
+    """
+    spawn = world.spawn_point_for(world.hubs[0])
+    player = _player(world, at=spawn)
+    guard = _npc(world, "guard", WorldPoint(spawn.x + 1.0, spawn.y))
+    guard.ai_target = player.entity_id
+    guard.enter_ai_state(AIState.ATTACK, world.now)
+
+    ai._decide(world, guard, guard.archetype, world.now)
+    ai._try_attack(world, guard, guard.archetype, player, world.now, EventQueue())
+
+    assert player.health == player.max_health
+    assert guard.ai_target is None
+
+
 def test_a_dead_creature_comes_back_where_it_started(world: World, clock: ManualClock):
     spawn = world.spawn_point_for(world.hubs[0])
     _open_ground(world, spawn, span=6)
