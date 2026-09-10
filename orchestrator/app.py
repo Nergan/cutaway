@@ -310,7 +310,7 @@ def create_hub_app(config: RuntimeConfig = CONFIG) -> FastAPI:
         assert http_client is not None
         for project in config.for_phase("run"):
             proxy = ProjectProxy(project, supervisor, http_client)
-            # Legacy yellow_mirror assets use an underscore while its app prefix uses a dash.
+            # Some projects use a dashed public prefix and an underscored id.
             legacy_base = f"/{project.project_id}"
             if legacy_base != project.prefix:
                 app.mount(f"{legacy_base}/static", proxy, name=f"{project.project_id}_static_proxy")

@@ -202,3 +202,5 @@ def test_hf_deploy_pruner_reports_both_exclusions():
     assert "exclude another" in result.stdout
     assert "exclude yellow_mirror" in result.stdout
     assert "exclude age" in result.stdout
+    assert "replace README.md" in result.stdout
+    assert "scrub-rewrite orchestrator.toml" in result.stdout

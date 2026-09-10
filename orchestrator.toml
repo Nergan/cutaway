@@ -471,7 +471,7 @@ memory_mb = 1536
 run = false
 build = false
 deploy = false
-reason = "Remote-browser functionality is not suitable for the Hugging Face Space policy."
+reason = "Remote-browser functionality is not published on the public Space."
 
 [profiles.hf.projects.toadcode.env_defaults]
 MONGO_MAX_POOL_SIZE = "3"

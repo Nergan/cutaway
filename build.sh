@@ -19,6 +19,18 @@ pip_try() {
     done
 }
 
+run_project_hook() {
+    local project="$1"
+    local project_python="$2"
+    local hook="$project/hooks/install-runtime.sh"
+    if [ -f "$hook" ]; then
+        echo "Running runtime hook for $project..."
+        if ! CUTAWAY_PROJECT_PYTHON="$project_python" bash "$hook"; then
+            echo "WARNING: runtime hook failed for $project" >&2
+        fi
+    fi
+}
+
 python -m orchestrator.config --profile "$PROFILE" validate
 DEPENDENCY_ISOLATION="$(
     python -m orchestrator.config --profile "$PROFILE" settings --field dependency_isolation
@@ -75,6 +87,7 @@ if [ "$DEPENDENCY_ISOLATION" = "true" ]; then
                 echo "WARNING: project dependencies failed for $project" >&2
             fi
         fi
+        run_project_hook "$project" "$project_python"
         build_frontend "$project"
     done
 else
@@ -86,6 +99,7 @@ else
                 echo "WARNING: project dependencies failed for $project" >&2
             fi
         fi
+        run_project_hook "$project" python
         build_frontend "$project"
     done
 fi
@@ -94,23 +108,3 @@ echo "Waiting for frontend builds..."
 for pid in "${build_pids[@]}"; do
     wait "$pid" || echo "WARNING: a frontend build failed." >&2
 done
-
-echo "Installing the shared Playwright browser when required..."
-PLAYWRIGHT_INSTALLED=0
-if [ "$DEPENDENCY_ISOLATION" = "true" ]; then
-    for project in "${ACTIVE_PROJECTS[@]}"; do
-        candidate="$VENV_ROOT/$PROFILE/$project/bin/playwright"
-        if [ -x "$candidate" ]; then
-            "$candidate" install chromium
-            PLAYWRIGHT_INSTALLED=1
-            break
-        fi
-    done
-elif command -v playwright >/dev/null 2>&1; then
-    playwright install chromium
-    PLAYWRIGHT_INSTALLED=1
-fi
-
-if [ "$PLAYWRIGHT_INSTALLED" -eq 0 ]; then
-    echo "Playwright is not required by active projects."
-fi

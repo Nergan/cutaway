@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# GitHub остаётся полным монорепозиторием. Этот job копирует ephemeral
+# checkout, prepare_deploy вырезает всё с deploy=false и прочий hosting
+# policy scrub, и только очищенное дерево force-push на Space.
 # Срабатывает только на ветке main. Пуш в cursor/* или другую ветку Action
 # не запускает — отсюда «после пуша ничего не едет на HF».
 # Ручной запуск: Actions → Sync to Hugging Face Space → Run workflow,
@@ -32,7 +35,10 @@ jobs:
           python scripts/prepare_deploy.py --profile hf
           test ! -e another
           test ! -e yellow_mirror
-          rm -rf .github
+          test ! -e formular/core/html_pdf.py
+          test ! -e .github
+          test ! -e tests
+          python -m orchestrator.hosting_policy --profile hf
           rm -rf .git
 
           # На свежих раннерах `git init` сразу создаёт ветку main, и

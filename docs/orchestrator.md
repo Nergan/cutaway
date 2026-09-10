@@ -53,9 +53,28 @@ deploy = true
 reason = "Why the project is disabled."
 ```
 
-Он не отключает CI. Проект `another` использует этот механизм. В HF-профиле
-также отключён `yellow_mirror`, поскольку remote-browser функциональность
-несовместима с политикой публичного Space.
+Он не отключает CI. Проект `another` использует этот механизм. Профиль `hf`
+дополнительно держит выключенным remote-browser проект: публичный Space его
+не собирает и не публикует.
+
+## Политика хостинга
+
+`orchestrator.hosting_policy` сверяет профиль `hf` с правилами публичного Space:
+
+- в манифесте остаются выключенными tunnel/VPN/worker и remote-browser проекты;
+- `prepare_deploy` удаляет их деревья из CI-checkout, вычищает локальные runtime
+  hook и сканирует оставшиеся файлы;
+- в публичном дереве не должно быть worker-конфигов, VNC, stealth/captcha
+  обходов, несанкционированного удалённого доступа, pipe-to-shell и
+  headless-browser пакетов.
+
+Карточка Space берётся из `docs/hf-space/`, а не из корневого README.
+Локальный профиль выключенные деревья может оставлять. Проверка:
+
+```bash
+python -m orchestrator.config --profile hf validate
+python -m orchestrator.hosting_policy --profile hf
+```
 
 ## Сборка и деплой
 
@@ -63,13 +82,15 @@ reason = "Why the project is disabled."
 активного проекта в `.orchestrator/venvs/<profile>/`. Версии зависимостей одного
 проекта больше не перезаписывают зависимости соседнего.
 
-`scripts/prepare_deploy.py --profile hf` удаляет из временного CI checkout
-проекты с `deploy = false`. Без `--dry-run` скрипт отказывается работать вне CI,
-если явно не передан `--force`.
+`scripts/prepare_deploy.py --profile hf` готовит ephemeral checkout для
+Sync to Hugging Face Space: удаляет проекты с `deploy = false`, вычищает
+локальные runtime-файлы, подменяет Space README и вырезает эти проекты из
+`orchestrator.toml`. GitHub-монорепозиторий не меняется. Без `--dry-run`
+скрипт отказывается работать вне CI, если явно не передан `--force`.
 
 Автоматический deploy `another` отключён. Его CI остаётся активным, а edge и
-installer workflows можно запустить только вручную. Уже развёрнутый Cloudflare
-Worker этот репозиторий автоматически не удаляет.
+installer workflows можно запустить только вручную. Уже существующий внешний
+edge-деплой этот репозиторий автоматически не удаляет.
 
 ## Добавление проекта
 
@@ -82,6 +103,7 @@ Worker этот репозиторий автоматически не удал�
    ```bash
    python -m orchestrator.config --profile local validate
    python -m orchestrator.config --profile hf validate
+   python -m orchestrator.hosting_policy --profile hf
    pytest -q tests
    ```
 

@@ -50,10 +50,9 @@ Dockerfile
 **/.coverage
 **/htmlcov
 
-### Another (VPN control plane) ###
+### Paused control-plane tree ###
 # Код остаётся в GitHub для CI, но никогда не попадает в runtime-образ.
 another/
-**/.wrangler
 **/.terraform
 
 ### Environment & Secrets ###

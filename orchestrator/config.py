@@ -351,6 +351,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.command == "validate":
+        from .hosting_policy import format_report, validate_profile
+
+        findings = validate_profile(config)
+        if findings:
+            print(format_report(findings), file=sys.stderr)
+            return 2
         print(
             f"profile={config.profile} isolation={config.isolation} "
             f"projects={len(config.projects)} active={len(config.for_phase('run'))}"

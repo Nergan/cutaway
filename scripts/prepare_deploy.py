@@ -11,6 +11,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from orchestrator.config import load_runtime_config
+from orchestrator.hosting_policy import (
+    apply_hf_checkout_cleanup,
+    format_report,
+    validate_profile,
+)
 
 
 def main() -> int:
@@ -30,6 +35,11 @@ def main() -> int:
         parser.error("refusing to prune a non-CI checkout without --force")
 
     config = load_runtime_config(root, profile=args.profile)
+    findings = validate_profile(config)
+    if findings:
+        print(format_report(findings), file=sys.stderr)
+        return 2
+
     removed: list[str] = []
     for project in config.projects.values():
         if project.deploy:
@@ -39,6 +49,19 @@ def main() -> int:
         print(f"exclude {relative.as_posix()}: {project.reason or 'profile policy'}")
         if not args.dry_run and project.directory.exists():
             shutil.rmtree(project.directory)
+
+    if config.profile == "hf":
+        for action in apply_hf_checkout_cleanup(root, config, dry_run=args.dry_run):
+            print(action)
+
+    if not args.dry_run:
+        remaining = validate_profile(
+            load_runtime_config(root, profile=args.profile),
+            published=True,
+        )
+        if remaining:
+            print(format_report(remaining), file=sys.stderr)
+            return 2
 
     print(f"deployment profile {config.profile}: excluded {len(removed)} project(s)")
     return 0

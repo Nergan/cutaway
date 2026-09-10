@@ -13,8 +13,12 @@ import json
 import yaml
 import toml
 import shlex
-from playwright.async_api import async_playwright
 from shared_runtime import ProcessResult, SubprocessFailure, run_process
+
+try:
+    from .html_pdf import render_html_to_pdf
+except ImportError:
+    render_html_to_pdf = None
 
 
 MAX_ARCHIVE_FILES = int(os.getenv("FORMULAR_MAX_ARCHIVE_FILES", "2000"))
@@ -423,6 +427,26 @@ def _validate_svg_is_local(input_path: str) -> None:
         raise Exception("External SVG resources are not allowed.")
 
 
+async def _html_to_pdf_office(input_path: str, output_path: str) -> None:
+    outdir = os.path.dirname(output_path)
+    cmd = [
+        "libreoffice",
+        "--headless",
+        "--nologo",
+        "--nofirststartwizard",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        outdir,
+        input_path,
+    ]
+    await _run_process(*cmd, timeout=300)
+    base_name = os.path.basename(input_path).rsplit(".", 1)[0]
+    office_out = os.path.join(outdir, f"{base_name}.pdf")
+    if os.path.exists(office_out) and office_out != output_path:
+        os.rename(office_out, output_path)
+
+
 async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None, merge_path: str = None, merge_loop: bool = False):
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
     if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
@@ -452,39 +476,10 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         return
     
     if from_fmt == 'html' and to_fmt == 'pdf':
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            try:
-                page = await browser.new_page()
-                allowed_root = pathlib.Path(input_path).resolve().parent
-
-                async def local_resources_only(route):
-                    request_url = route.request.url
-                    if request_url.startswith(("data:", "blob:", "about:")):
-                        await route.continue_()
-                        return
-                    if request_url.startswith("file:"):
-                        from urllib.parse import unquote, urlsplit
-                        from urllib.request import url2pathname
-                        candidate = pathlib.Path(
-                            url2pathname(unquote(urlsplit(request_url).path))
-                        ).resolve()
-                        try:
-                            candidate.relative_to(allowed_root)
-                        except ValueError:
-                            await route.abort()
-                            return
-                        await route.continue_()
-                        return
-                    await route.abort()
-
-                await page.route("**/*", local_resources_only)
-                file_uri = pathlib.Path(input_path).resolve().as_uri()
-                await page.goto(file_uri, wait_until="load")
-                await page.add_style_tag(content="body { max-width: none !important; padding: 0 !important; margin: 0 !important; } body > *:first-child { margin-top: 0 !important; }")
-                await page.pdf(path=output_path, format="A4", print_background=True, margin={"top": "1in", "right": "1in", "bottom": "1in", "left": "1in"})
-            finally:
-                await browser.close()
+        if render_html_to_pdf is not None:
+            await render_html_to_pdf(input_path, output_path)
+            return
+        await _html_to_pdf_office(input_path, output_path)
         return
 
     if from_fmt == 'pdf' and to_fmt in ['html', 'txt']:

@@ -43,50 +43,45 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 #### 1. [Formular](./formular/) (Document & Media Forge)
 
 * **Description:** An all-to-all file converter utilizing a programmatic pathfinding routing engine based on Dijkstra's algorithm.
-* **Key Integrations:** LibreOffice, Pandoc, PyMuPDF, FFmpeg, Pandas, Pillow, CairoSVG, and 7-Zip. Local HTML-to-PDF can use Chromium print; the public Space uses LibreOffice.
+* **Key Integrations:** LibreOffice, Pandoc, PyMuPDF, FFmpeg, Pandas, Pillow, CairoSVG, and 7-Zip. HTML-to-PDF uses the same local document engines as the other office formats.
 * **Core Capabilities:** Interlinks disparate media categories together (e.g., Markdown ➔ HTML ➔ PDF, or Excel ➔ CSV ➔ JSON ➔ XML) dynamically compiling an execution chain for any supported atomic hop.
 
-#### 2. [Yellow Mirror](./yellow_mirror/) (Headless Remote Mirror)
-
-* **Description:** A WebSocket-based real-time browser stream for trusted, explicitly allowlisted destinations. It stays in this GitHub monorepo and is not published to the Hugging Face Space.
-* **Core Capabilities:** Persistent isolated Chromium contexts, CDP screencast frames over WebSocket, and forwarded mouse/keyboard input.
-
-#### 3. [Toadcode](./toadcode/) (Collaborative Workspace)
+#### 2. [Toadcode](./toadcode/) (Collaborative Workspace)
 
 * **Description:** A collaborative, virtual file system environment providing temporary online project spaces.
 * **Core Capabilities:** Supports direct folder structures, multiple-file uploading, direct `.ZIP` unpacking, and GitHub URL proxy ingestion. Includes text selection lassoing, manual line-number rendering, standard auto-completion, and real-time project size limits (10MB).
 
-#### 4. [Markbin](./markbin/) (Markdown Editor & Shared Bin)
+#### 3. [Markbin](./markbin/) (Markdown Editor & Shared Bin)
 
 * **Description:** A Markdown rendering, viewing, and sharing workspace powered by the Vditor engine.
 * **Core Capabilities:** Interactive visual editing, custom auto-generating tables of contents, client-side downloading, and self-destructing links. Incorporates MongoDB-backed TTL indexes, managing automatic document deletion when specified expiration timestamps are reached.
 
-#### 5. [Kanban](./kanban/) (Lite Board Organizer)
+#### 4. [Kanban](./kanban/) (Lite Board Organizer)
 
 * **Description:** A minimalist task manager utilizing recursive nested lists and a drag-and-drop hierarchy.
 * **Core Capabilities:** Infinite recursive task nests, native file picker exports, drag-and-drop polyfills for touchscreens, keyboard shortcuts, and customizable color-coding.
 
-#### 6. [D&D Tools](./dnd/) (Game Master Utilities)
+#### 5. [D&D Tools](./dnd/) (Game Master Utilities)
 
 * **Description:** Utilities for Dungeons & Dragons 5th Edition (2024 ruleset).
 * **Core Capabilities:**
   * **Bestiary & Wild Shape Helper:** A searchable and filterable database supporting synonym matching, exclusion tags (`-`), language toggle, and complex multi-variable normalized sorting.
   * **Foundry VTT Character Viewer:** An actor `.json` import pipeline rendering character sheets natively on the web. Parses Roll expressions and dynamic rich-text references.
 
-#### 7. [Evenfest](./evenfest/) (Cosplay Community Website)
+#### 6. [Evenfest](./evenfest/) (Cosplay Community Website)
 
 * **Description:** A template-driven website configured directly via MongoDB backends, using Jinja2 layouts to dynamically output community news, photographers, tickets, and rules.
 
-#### 8. [Snake](./snake/) (Organic Arcade)
+#### 7. [Snake](./snake/) (Organic Arcade)
 
 * **Description:** An organic, canvas-based arcade game utilizing vector particle calculations, dynamic difficulty scaling, and a selection API serving video backgrounds.
 
-#### 9. [Soon](./soon/) (Shared Canvas)
+#### 8. [Soon](./soon/) (Shared Canvas)
 
 * **Description:** An unauthenticated collaborative board. Everyone in the same room draws on one canvas; there is no landing-page card, the route is `/soon`.
 * **Core Capabilities:** Live strokes and named cursors over WebSocket, image paste/drag-and-drop stored on Cloudinary with hash dedup, a collapsible sidebar, and jump-to-user edge hints. One shared room at `/soon`.
 
-#### 10. [ASCII City](./ascii_city/) (Multiplayer ASCII Cityscape)
+#### 9. [ASCII City](./ascii_city/) (Multiplayer ASCII Cityscape)
 
 * **Description:** A first-person cyberpunk city rendered entirely as glowing ASCII, walked by everyone who opens the page. The district is generated procedurally from a seed and every position in it belongs to the server.
 * **Core Capabilities:** Authoritative 20 Hz simulation with client-side prediction and reconciliation, a ten-byte-per-player binary WebSocket protocol, interest management, proximity and district chat. A WebGL2 raycaster draws the character grid in one instanced call against a glyph atlas that carries its own neon bleed, with a Canvas2D fallback and adaptive quality. Binary 256 m tiles are decoded in a Web Worker and cached in MongoDB; a second implementation of the world port imports tagged GeoJSON from OpenStreetMap into the identical tile format.

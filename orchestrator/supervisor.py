@@ -143,10 +143,11 @@ class ProjectSupervisor:
             directory.mkdir(parents=True, exist_ok=True)
 
         network_hosts = project.network.allowed_hosts
-        if project.project_id == "yellow_mirror" and os.getenv("YELLOW_MIRROR_ALLOWED_HOSTS"):
+        override_key = f"{project.project_id.upper()}_ALLOWED_HOSTS"
+        if os.getenv(override_key):
             network_hosts = tuple(
                 host.strip()
-                for host in os.environ["YELLOW_MIRROR_ALLOWED_HOSTS"].split(",")
+                for host in os.environ[override_key].split(",")
                 if host.strip()
             )
         env.update(

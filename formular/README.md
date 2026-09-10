@@ -11,8 +11,8 @@ Formular relies on file-content detection (via Magic Bytes), not file extensions
 | **DOCX** / **DOC** | `PDF`, `HTML`, `TXT`, `MD` | LibreOffice, Pandoc |
 | **PPTX** | `PDF` | LibreOffice |
 | **PDF** | `HTML`, `TXT`, `MD` | PyMuPDF, Pandoc |
-| **HTML** | `PDF`, `MD`, `TXT` | Playwright (Chromium), Pandoc |
-| **Markdown (MD)** | `PDF`, `HTML`, `TXT` | Playwright, Pandoc |
+| **HTML** | `PDF`, `MD`, `TXT` | Chromium print (local), LibreOffice, Pandoc |
+| **Markdown (MD)** | `PDF`, `HTML`, `TXT` | Chromium print (local), LibreOffice, Pandoc |
 | **TXT** | `PDF`, `HTML`, `MD` | LibreOffice, Pandoc |
 | **RTF** | `PDF`, `HTML`, `TXT`, `MD` | LibreOffice, Pandoc |
 | **ODT** | `PDF`, `HTML`, `TXT`, `MD` | LibreOffice, Pandoc |
@@ -25,5 +25,5 @@ Formular relies on file-content detection (via Magic Bytes), not file extensions
 
 ## Technology Stack
 - **Backend Environment:** FastAPI, Python 3.11, Docker (Debian Slim)
-- **Conversion Engines:** LibreOffice (headless), Playwright, Pandoc, PyMuPDF, FFmpeg, DjvuLibre, xmltodict.
+- **Conversion Engines:** LibreOffice (headless), Pandoc, PyMuPDF, FFmpeg, DjvuLibre, xmltodict.
 - **Frontend UI:** Vanilla JavaScript, CSS3. Features global lasso-selection algorithms, bulk execution limits, and multi-file drag and drop arrays. Built to run fluidly at 100vh scaling.

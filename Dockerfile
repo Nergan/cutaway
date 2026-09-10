@@ -1,3 +1,5 @@
+FROM node:20-bookworm-slim AS nodejs
+
 FROM python:3.11-slim
 
 ARG CUTAWAY_PROFILE=hf
@@ -5,7 +7,6 @@ ARG CUTAWAY_ISOLATION=isolated
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/user/pw-browsers
 ENV CUTAWAY_PROFILE=${CUTAWAY_PROFILE}
 ENV CUTAWAY_ISOLATION=${CUTAWAY_ISOLATION}
 ENV CUTAWAY_REQUIRE_VENVS=1
@@ -22,7 +23,6 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
-    curl \
     libreoffice-core \
     libreoffice-writer \
     libreoffice-calc \
@@ -35,15 +35,17 @@ RUN apt-get update && apt-get install -y \
     djvulibre-bin \
     libreoffice-impress \
     libmagic1 \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=nodejs /usr/local/bin/node /usr/local/bin/node
+COPY --from=nodejs /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 RUN useradd -m -u 1000 user
 USER user
 
 ENV PATH="/home/user/.local/bin:$PATH"
-ENV DISPLAY=:99
 # HF builder часто роняет сборку на одном медленном GET к PyPI. Не гоняем
 # `pip install --upgrade pip`: в образе уже есть рабочий pip, а обрыв на
 # files.pythonhosted.org из-за `&&` раньше даже не давал запустить build.sh.

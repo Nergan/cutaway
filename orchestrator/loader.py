@@ -36,8 +36,8 @@ async def call_lifecycle(callback: LifecycleCallback | None) -> None:
 
 
 def _mount_static(app: FastAPI, project: ProjectConfig) -> None:
-    # Keep the legacy underscore URL for yellow_mirror assets. All other project
-    # ids already match their public prefix.
+    # Static mounts use the project id so dashed public prefixes still have a
+    # stable underscored asset path.
     static_base = f"/{project.project_id}"
     for child in ("static", "scripts"):
         directory = project.directory / child

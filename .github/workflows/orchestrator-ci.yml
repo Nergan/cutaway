@@ -26,6 +26,7 @@ jobs:
         run: |
           python -m orchestrator.config --profile local --isolation embedded validate
           python -m orchestrator.config --profile hf --isolation isolated validate
+          python -m orchestrator.hosting_policy --profile hf
           python scripts/prepare_deploy.py --profile hf --dry-run
           bash -n build.sh start.sh
 
