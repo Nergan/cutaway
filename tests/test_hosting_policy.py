@@ -71,3 +71,22 @@ def test_html_to_pdf_keeps_an_office_fallback():
 def test_published_tree_scan_is_clean():
     config = load_runtime_config(ROOT, profile="hf", isolation="isolated")
     assert scan_published_tree(config) == []
+
+
+def test_stripped_checkout_passes_hosting_policy():
+    config = load_runtime_config(ROOT, profile="hf", isolation="isolated")
+    unpublished = {"another", "yellow_mirror"}
+    stripped = replace(
+        config,
+        root=ROOT,
+        projects={key: value for key, value in config.projects.items() if key not in unpublished},
+    )
+    # Directories still exist in the GitHub tree, so an unregistered leftover must fail.
+    leftover = policy.audit_manifest(stripped)
+    assert any(item.rule_id == "missing_exclusion" for item in leftover)
+
+    empty_root = ROOT / ".pytest-tmp" / "stripped-hf-root"
+    empty_root.mkdir(parents=True, exist_ok=True)
+    published = replace(stripped, root=empty_root)
+    assert policy.audit_manifest(published) == []
+    assert validate_profile(published, published=True) == []

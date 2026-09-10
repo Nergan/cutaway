@@ -377,15 +377,16 @@ def audit_manifest(config: RuntimeConfig, *, published: bool = False) -> list[Po
     for project_id, reason in HF_REQUIRED_EXCLUSIONS.items():
         project = config.projects.get(project_id)
         if project is None:
-            if published:
-                continue
-            findings.append(
-                PolicyFinding(
-                    "orchestrator.toml",
-                    "missing_exclusion",
-                    f"{project_id} must be registered and disabled on the hf profile ({reason}).",
+            # After prepare_deploy the published checkout no longer lists these
+            # projects. That is required. Fail only if their tree is still here.
+            if (config.root / project_id).is_dir():
+                findings.append(
+                    PolicyFinding(
+                        "orchestrator.toml",
+                        "missing_exclusion",
+                        f"{project_id} must be registered and disabled on the hf profile ({reason}).",
+                    )
                 )
-            )
             continue
         for phase in ("run", "build", "deploy"):
             if getattr(project, phase):
