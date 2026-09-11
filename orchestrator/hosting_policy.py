@@ -90,10 +90,7 @@ _INDEX_REMOTE = re.compile(
     r"^.*" + _t("yellow", "[-_ ]", "mirror") + r".*$\n?",
     re.IGNORECASE | re.MULTILINE,
 )
-_REQUIREMENTS_BROWSER = re.compile(
-    rf"^\s*{re.escape(_BROWSER)}(?:\s|[<>=!~]|$).*$",
-    re.IGNORECASE | re.MULTILINE,
-)
+_REQ_SPEC = re.compile(r"[<>=!~\[]")
 _DOCKER_BROWSER = re.compile(
     rf"^ENV {re.escape(_BROWSER.upper())}_BROWSERS_PATH=.*$\n?|^ENV DISPLAY=:99$\n?",
     re.IGNORECASE | re.MULTILINE,
@@ -331,6 +328,24 @@ def _strip_toml_projects(text: str, project_ids: frozenset[str]) -> str:
     return "".join(kept)
 
 
+def _requirement_name(line: str) -> str:
+    package = line.split("#", 1)[0].strip()
+    if not package:
+        return ""
+    return _REQ_SPEC.split(package, maxsplit=1)[0].strip().lower()
+
+
+def _strip_requirements_browser(text: str) -> str:
+    # Line-based: a ``\s`` after the package name also matches the newline, so a
+    # multiline regex would swallow the next dependency (``pymupdf`` after the
+    # local print runtime).
+    return "".join(
+        line
+        for line in text.splitlines(keepends=True)
+        if _requirement_name(line) != _BROWSER
+    )
+
+
 def _rewrite_published_text(
     relative: str,
     text: str,
@@ -340,7 +355,7 @@ def _rewrite_published_text(
     if relative == "orchestrator.toml":
         return _strip_toml_projects(text, unpublished_ids)
     if relative == "formular/requirements.txt":
-        return _REQUIREMENTS_BROWSER.sub("", text)
+        return _strip_requirements_browser(text)
     if relative == "index.html":
         return _INDEX_REMOTE.sub("", text)
     if relative == "Dockerfile":

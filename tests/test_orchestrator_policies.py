@@ -143,6 +143,7 @@ def test_supervisor_opens_circuit_after_restart_budget():
     snapshot = supervisor.snapshot()
     assert snapshot["toadcode"]["status"] == "circuit_open"
     assert snapshot["toadcode"]["retry_after"] >= 1
+    assert snapshot["toadcode"]["last_error"] == "second crash"
 
 
 def test_ensure_running_respects_open_circuit():

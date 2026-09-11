@@ -564,6 +564,8 @@ class ProjectSupervisor:
                 "status": worker.status,
                 "restarts": len(worker.restart_times),
             }
+            if worker.last_error:
+                entry["last_error"] = worker.last_error
             if worker.status == "online":
                 entry["resources"] = {
                     "memory_mb": round(worker.metrics.memory_mb, 1),

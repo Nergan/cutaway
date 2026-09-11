@@ -38,7 +38,22 @@ def test_formular_browser_runtime_is_scrubbed_from_the_space_tree():
     rewritten = published_text(ROOT, ROOT / "formular" / "requirements.txt")
     assert rewritten is not None
     assert "play" + "wright" not in rewritten.lower()
+    assert "pymupdf" in rewritten
+    assert "python-magic" in rewritten
     assert published_text(ROOT, ROOT / "formular" / "core" / "html_pdf.py") is None
+
+    pinned = policy._strip_requirements_browser(
+        "fastapi\n"
+        + "play"
+        + "wright>=1.40\n"
+        + "pymupdf>=1.24\n"
+        + "play"
+        + "wright==1.49.0  # local print\n"
+        + "python-magic\n"
+    )
+    assert "play" + "wright" not in pinned.lower()
+    assert "pymupdf>=1.24" in pinned
+    assert "python-magic" in pinned
 
 
 def test_unpublished_projects_stay_on_github_and_leave_the_space_tree():
