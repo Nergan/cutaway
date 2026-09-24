@@ -177,7 +177,7 @@ it here has consequences that are not optional:
   visibly wherever the district is shown. `OsmDistrictImporter.attribution`
   carries the string, and it should be surfaced in the UI, not just in a file.
 - ODbL is share-alike on the *database*. Publishing a derived tile set means
-  publishing it under ODbL too. The project's own MIT licence covers the code;
+  publishing it under ODbL too. The project's own MPL-2.0 licence covers the code;
   it does not and cannot relicense the data.
 - Do not point a production deployment at the public OSM tile servers or the
   public Overpass instances. They are donated infrastructure with an explicit

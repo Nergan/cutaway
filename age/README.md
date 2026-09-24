@@ -259,4 +259,4 @@ they caught a cliff that read as a radiator and a campfire that did not animate.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MPL-2.0. See [LICENSE](LICENSE).

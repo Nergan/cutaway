@@ -167,4 +167,4 @@ python -m ascii_city.tools.import_osm ascii_city/docs/samples/osm-district.geojs
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MPL-2.0. See [LICENSE](LICENSE).

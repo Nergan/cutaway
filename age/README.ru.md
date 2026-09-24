@@ -239,4 +239,4 @@ python scripts/probe_character.py   # кадры персонажа в 10x
 
 ## Лицензия
 
-MIT. См. [LICENSE](LICENSE).
+MPL-2.0. См. [LICENSE](LICENSE).
