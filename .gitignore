@@ -80,8 +80,8 @@ kanban.json
 plan.md
 
 ### Tooling (Repomix) ###
-repomix.config.json
-.repomixignore
 code.md
+cutaway.md
+repomix-output.*
 tmp.md
 *.bak

@@ -1,29 +1,17 @@
-# Специфичные файлы
-code.md
-tmp.md
-kanban.json
-plan.md
-README*.md
-tags.yaml
-# welcome.html
+netlazy.md
+repomix-output.*
+**/package-lock.json
+android/app/netlazy-keystore
+android/gradle/wrapper/**
+android/gradlew
+android/gradlew.bat
+android/app/src/main/res/drawable*/**
+android/app/src/main/res/mipmap*/**
+**/*.png
+**/*.webp
+**/*.jpg
+**/*.ico
+README.ru.md
 LICENSE
-
-# Папки и сборщики
-android
-assets
-node_modules
-static
-**/vercel.json
-
-# Кэш и логи
-**/*.log
-**/__pycache__
-**/*.pyc
-
-# Скрытые файлы проекта (если нужно скрыть всё, кроме конкретных)
-.*
-!.dockerignore
-!.env
-!.gitattributes
-!.hfignore
-!.gitignore
+.hfignore
+tags.yml

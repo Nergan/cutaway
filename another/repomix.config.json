@@ -1,0 +1,20 @@
+{
+  "output": {
+    "file_path": "another.md",
+    "style": "markdown",
+    "header_text": "",
+    "instruction_file_path": "",
+    "remove_empty_lines": true,
+    "remove_comments": false,
+    "show_line_numbers": false,
+    "calculate_tokens": false,
+    "show_file_stats": false,
+    "show_directory_structure": true,
+    "include_empty_directories": false
+  },
+  "ignore": {
+    "use_gitignore": true,
+    "use_default_ignore": true,
+    "use_dot_ignore": true
+  }
+}

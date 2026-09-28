@@ -1,0 +1,10 @@
+ascii_city.md
+repomix-output.*
+**/package-lock.json
+docs/samples/*.geojson
+frontend/src/__fixtures__/**
+**/*.png
+**/*.webp
+**/*.ico
+README.ru.md
+LICENSE

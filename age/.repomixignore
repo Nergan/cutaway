@@ -1,0 +1,10 @@
+age.md
+repomix-output.*
+**/package-lock.json
+frontend/src/__fixtures__/**
+**/*.png
+**/*.webp
+**/*.jpg
+**/*.ico
+README.ru.md
+LICENSE
