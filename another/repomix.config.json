@@ -16,5 +16,8 @@
     "use_gitignore": true,
     "use_default_ignore": true,
     "use_dot_ignore": true
+  },
+  "security": {
+    "enable_security_check": false
   }
 }
