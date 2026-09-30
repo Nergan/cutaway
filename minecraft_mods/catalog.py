@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_USER = "Nergan"
 MODRINTH_USER = "nargan"
-SCHEMA = 1
+SCHEMA = 2
 FRESH_SECONDS = 60 * 60
 STALE_SECONDS = 10 * 60
 MAX_BYTES = 1_000_000
@@ -88,6 +88,7 @@ class ModEntry:
     modrinth_state: str
     modrinth_url: str
     modrinth_status: str
+    license_text: str = ""
 
 
 @dataclass
@@ -338,6 +339,7 @@ def _build_mod(
         authenticated=authenticated,
     )
     display = title_en or title_ru or _fallback_name(name)
+    license_text = _github_text(name, "license") or ""
     return ModEntry(
         repo=name,
         name=display,
@@ -357,6 +359,7 @@ def _build_mod(
         modrinth_state=state,
         modrinth_url=modrinth_url,
         modrinth_status=status,
+        license_text=license_text.strip(),
     )
 
 
@@ -471,6 +474,8 @@ def _github_url(repo: str, suffix: str) -> str:
     base = f"https://api.github.com/repos/{GITHUB_USER}/{urllib.parse.quote(repo)}"
     if suffix == "readme":
         return f"{base}/readme"
+    if suffix == "license":
+        return f"{base}/license"
     if suffix.startswith("contents/"):
         path = urllib.parse.quote(suffix.removeprefix("contents/"), safe="/")
         return f"{base}/contents/{path}"
@@ -629,4 +634,5 @@ def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
         modrinth_state=str(raw.get("modrinth_state") or "missing"),
         modrinth_url=str(raw.get("modrinth_url") or ""),
         modrinth_status=str(raw.get("modrinth_status") or ""),
+        license_text=str(raw.get("license_text") or ""),
     )

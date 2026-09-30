@@ -178,6 +178,7 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
         modrinth_state="moderation",
         modrinth_url="https://modrinth.com/mod/tamed-phantoms",
         modrinth_status="processing",
+        license_text="Mozilla Public License Version 2.0\nThis is the license body.",
     )
     page = render_page(Catalog(mods=[mod], fetched_at=1_700_000_000), "ru", "name")
     assert "Приручение фантомов" in page
@@ -185,11 +186,17 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "tamedphantoms-1.0.0.jar" in page
     assert "kotlinforforge-5.8.0-all.jar" in page
     assert "MPL-2.0" in page
-    assert 'class="custom-select"' in page
+    assert "This is the license body." in page
+    assert "blob/main/LICENSE" not in page
+    assert 'class="ext"' in page
+    assert 'class="jar"' in page
+    assert 'class="custom-select"' not in page
+    assert "на главную" not in page
+    assert "Minecraft mods by" in page
+    assert "<em>Nargan</em>" in page
     assert "::selection" in page
     assert "::-webkit-scrollbar" in page
-    assert "--radius: 6px" in page
-    assert 'href="/mods?lang=en&amp;sort=name"' in page
+    assert 'href="/mods?lang=en"' in page
 
 
 def test_minecraft_mods_is_registered_on_the_public_prefix():
