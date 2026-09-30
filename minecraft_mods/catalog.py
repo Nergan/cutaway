@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -280,11 +281,13 @@ def get_catalog() -> Catalog:
             fresh = fetch_catalog()
         except Exception:
             logger.exception("minecraft mods catalog refresh failed")
-            stale = cached or _read_cache()
-            if stale is not None:
+            stale = cached or _read_cache(strict_schema=False)
+            if stale is not None and stale.mods:
                 stale.error = "stale"
+                stale.expires_at = time.time() + 60
+                _remember(stale)
                 return stale
-            failed = Catalog(fetched_at=time.time(), expires_at=time.time() + STALE_SECONDS, error="fetch", partial=True)
+            failed = Catalog(fetched_at=time.time(), expires_at=time.time() + 60, error="fetch", partial=False)
             _remember(failed)
             return failed
         _write_cache(fresh)
@@ -326,6 +329,8 @@ def _build_mod(
     authenticated: bool,
     token: str,
 ) -> ModEntry:
+    if repo.get("from_profile"):
+        _fill_public_repo(repo)
     name = str(repo["name"])
     html_url = str(repo.get("html_url") or f"https://github.com/{GITHUB_USER}/{name}")
     branch = str(repo.get("default_branch") or "main")
@@ -384,6 +389,17 @@ def _build_mod(
 
 
 def _list_mod_repos() -> list[dict[str, Any]]:
+    try:
+        return _list_mod_repos_api()
+    except CatalogError as exc:
+        logger.warning("GitHub API repository list failed (%s); reading the public profile.", exc)
+        try:
+            return _list_mod_repos_html()
+        except CatalogError:
+            raise exc
+
+
+def _list_mod_repos_api() -> list[dict[str, Any]]:
     url: str | None = (
         f"https://api.github.com/users/{GITHUB_USER}/repos?per_page=100&type=owner&sort=full_name"
     )
@@ -407,6 +423,211 @@ def _list_mod_repos() -> list[dict[str, Any]]:
         url = _next_link(str(headers.get("Link") or headers.get("link") or ""))
         pages += 1
     return found
+
+
+_PROFILE_REPO = re.compile(r'itemprop="name codeRepository"[^>]*>\s*([^<]+?)\s*<')
+_HOMEPAGE_URL = re.compile(r'"homepageUrl":"((?:\\.|[^"\\])*)"')
+_DEFAULT_BRANCH = re.compile(r'"defaultBranch":"([^"]+)"')
+_LICENSE_META = re.compile(r'"license":\{"spdxId":"([^"]+)","name":"([^"]*)"\}')
+_RELEASE_TAG = re.compile(r"/releases/(?:tag|download|expanded_assets)/([^\"'#?/]+)")
+_RELEASE_ASSET = re.compile(r"/releases/download/([^/\"']+)/([^\"'?]+\.jar)")
+_HTML_BROWSER = {"User-Agent": "Mozilla/5.0 (compatible; nargan-cutaway-mods)", "Accept": "text/html"}
+
+
+def _list_mod_repos_html() -> list[dict[str, Any]]:
+    status, payload, _headers = _github_html(f"https://github.com/{GITHUB_USER}?tab=repositories&type=source")
+    if status != 200:
+        raise CatalogError(f"GitHub profile returned {status}.")
+    page = payload.decode("utf-8", "replace")
+    if not _PROFILE_REPO.search(page):
+        raise CatalogError("GitHub profile did not list any repositories.")
+    return _repos_from_profile_html(page)
+
+
+def _repos_from_profile_html(page: str) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw_name in _PROFILE_REPO.findall(page):
+        name = html.unescape(raw_name).strip()
+        if not name or name in seen or not is_mod_repo_name(name):
+            continue
+        seen.add(name)
+        found.append(
+            {
+                "name": name,
+                "html_url": f"https://github.com/{GITHUB_USER}/{name}",
+                "default_branch": "main",
+                "private": False,
+                "fork": False,
+                "from_profile": True,
+            }
+        )
+    return found
+
+
+def _fill_public_repo(repo: dict[str, Any]) -> None:
+    """License and About website are on the public repo page when the API is limited."""
+    status, payload, _headers = _github_html(f"https://github.com/{GITHUB_USER}/{repo['name']}")
+    if status != 200:
+        repo["homepage"] = ""
+        return
+    fields = _public_repo_fields(payload.decode("utf-8", "replace"))
+    repo["default_branch"] = fields["default_branch"] or repo.get("default_branch") or "main"
+    repo["homepage"] = fields["homepage"]
+    if fields["license_id"]:
+        repo["license"] = {"spdx_id": fields["license_id"], "name": fields["license_name"]}
+
+
+def _public_repo_fields(page: str) -> dict[str, str]:
+    homepage = ""
+    match = _HOMEPAGE_URL.search(page)
+    if match and match.group(1):
+        homepage = _github_js_string(match.group(1))
+    branch = ""
+    branch_match = _DEFAULT_BRANCH.search(page)
+    if branch_match:
+        branch = branch_match.group(1)
+    license_id = ""
+    license_name = ""
+    license_match = _LICENSE_META.search(page)
+    if license_match:
+        license_id = license_match.group(1)
+        license_name = _github_js_string(license_match.group(2))
+    return {
+        "homepage": homepage,
+        "default_branch": branch,
+        "license_id": license_id,
+        "license_name": license_name,
+    }
+
+
+def _github_js_string(value: str) -> str:
+    return value.replace("\\u002F", "/").replace("\\/", "/").replace("\\u0026", "&")
+
+
+def _github_html(url: str) -> tuple[int, bytes, dict[str, str]]:
+    try:
+        return _http_get(url, _HTML_BROWSER, max_bytes=2_000_000)
+    except CatalogError:
+        logger.warning("could not read %s", url)
+        return 0, b"", {}
+
+
+def _release_from_html(repo: str) -> dict[str, Any] | None:
+    status, payload, _headers = _github_html(f"https://github.com/{GITHUB_USER}/{repo}/releases/latest")
+    if status != 200 or not payload:
+        return None
+    page = payload.decode("utf-8", "replace")
+    tag = _release_tag(page)
+    assets_page = ""
+    if tag and not _RELEASE_ASSET.search(page):
+        asset_status, asset_payload, _headers = _github_html(
+            f"https://github.com/{GITHUB_USER}/{repo}/releases/expanded_assets/{urllib.parse.quote(tag, safe='')}"
+        )
+        if asset_status == 200:
+            assets_page = asset_payload.decode("utf-8", "replace")
+    return _release_document_from_html(repo, page, assets_page)
+
+
+def _release_document_from_html(repo: str, page: str, assets_page: str = "") -> dict[str, Any] | None:
+    tag = _release_tag(page) or _release_tag(assets_page)
+    assets = _html_assets(page, repo)
+    if not assets and assets_page:
+        assets = _html_assets(assets_page, repo, tag)
+    body = _html_release_notes(page)
+    if not assets and not body:
+        return None
+    return {"tag_name": tag, "body": body, "assets": assets}
+
+
+def _release_tag(page: str) -> str:
+    match = _RELEASE_TAG.search(page)
+    if not match:
+        return ""
+    return urllib.parse.unquote(match.group(1))
+
+
+def _html_assets(page: str, repo: str, tag: str = "") -> list[dict[str, str]]:
+    found: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for asset_tag, filename in _RELEASE_ASSET.findall(page):
+        filename = urllib.parse.unquote(filename)
+        if filename in seen:
+            continue
+        seen.add(filename)
+        asset_tag = urllib.parse.unquote(asset_tag)
+        found.append(
+            {
+                "name": filename,
+                "browser_download_url": (
+                    f"https://github.com/{GITHUB_USER}/{repo}/releases/download/{asset_tag}/{filename}"
+                ),
+            }
+        )
+    if found or not tag:
+        return found
+    for filename in re.findall(r">([^<]+\.jar)<", page):
+        filename = html.unescape(filename).strip()
+        if not filename or filename in seen or any(char.isspace() for char in filename):
+            continue
+        seen.add(filename)
+        found.append(
+            {
+                "name": filename,
+                "browser_download_url": (
+                    f"https://github.com/{GITHUB_USER}/{repo}/releases/download/{tag}/{filename}"
+                ),
+            }
+        )
+    return found
+
+
+def _html_release_notes(page: str) -> str:
+    body = _markdown_region(page)
+    if not body:
+        return ""
+    intro = _strip_tags(body.split("<table", 1)[0])
+    lines = [intro] if intro else []
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", body, flags=re.DOTALL):
+        cells = _html_cells(row)
+        if not cells or not cells[0].lower().endswith(".jar"):
+            continue
+        padded = (cells + ["", "", ""])[:3]
+        lines.append(f"| `{padded[0]}` | {padded[1]} | {padded[2]} |")
+    return "\n".join(lines)
+
+
+def _markdown_region(page: str) -> str:
+    marker = page.find("markdown-body")
+    if marker < 0:
+        return ""
+    start = page.find(">", marker)
+    if start < 0:
+        return ""
+    depth = 1
+    index = start + 1
+    while index < len(page) and depth:
+        if page.startswith("<div", index):
+            depth += 1
+        elif page.startswith("</div", index):
+            depth -= 1
+            if depth == 0:
+                return page[start + 1 : index]
+        index += 1
+    return page[start + 1 : start + 20000]
+
+
+def _html_cells(row: str) -> list[str]:
+    cells: list[str] = []
+    for part in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, flags=re.DOTALL):
+        code = re.search(r"<code>(.*?)</code>", part, flags=re.DOTALL)
+        cells.append(_strip_tags(code.group(1) if code else part))
+    return cells
+
+
+def _strip_tags(value: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", value)
+    return " ".join(html.unescape(text).split())
 
 
 def _load_modrinth_projects(token: str) -> tuple[list[dict[str, Any]], bool]:
@@ -482,13 +703,18 @@ def _github_headers() -> dict[str, str]:
 def _api_get(url: str) -> tuple[int, bytes, dict[str, str]]:
     """Call the GitHub API one request at a time and retry a rate limit once."""
     with _api_lock:
-        status, payload, headers = _http_get(url, _github_headers())
+        headers = _github_headers()
+        status, payload, response_headers = _http_get(url, headers)
+        if status == 401 and "Authorization" in headers:
+            logger.warning("GitHub rejected the token; continuing without it.")
+            headers = dict(GITHUB_HEADERS)
+            status, payload, response_headers = _http_get(url, headers)
         if status not in {403, 429}:
-            return status, payload, headers
-        delay = _retry_after(headers)
+            return status, payload, response_headers
+        delay = _retry_after(response_headers)
         logger.warning("GitHub returned %s for %s: %s", status, url, _snippet(payload))
         time.sleep(delay)
-        return _http_get(url, _github_headers())
+        return _http_get(url, headers)
 
 
 def _retry_after(headers: dict[str, str]) -> float:
@@ -533,8 +759,15 @@ def _latest_release(repo: str) -> tuple[Any, bool]:
     status, payload, _headers = _api_get(_github_url(repo, "releases/latest"))
     if status == 404:
         return None, False
-    if status in {403, 429}:
+    if status in {401, 403, 429}:
         logger.warning("GitHub releases/latest for %s returned %s: %s", repo, status, _snippet(payload))
+        try:
+            document = _release_from_html(repo)
+        except Exception:
+            logger.warning("public release page for %s could not be read", repo, exc_info=True)
+            document = None
+        if document is not None:
+            return document, False
         return None, True
     if status != 200:
         raise CatalogError(f"GitHub releases/latest for {repo} returned {status}: {_snippet(payload)}")
@@ -682,13 +915,19 @@ def _write_cache(catalog: Catalog) -> None:
         logger.warning("could not persist the mods catalog cache")
 
 
-def _read_cache() -> Catalog | None:
+def _read_cache(strict_schema: bool = True) -> Catalog | None:
     path = _cache_path()
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    if not isinstance(raw, dict) or raw.get("schema") != SCHEMA:
+    if not isinstance(raw, dict):
+        return None
+    schema = raw.get("schema")
+    if strict_schema:
+        if schema != SCHEMA:
+            return None
+    elif not isinstance(schema, int) or schema < 3:
         return None
     try:
         mods = [_mod_from_dict(item) for item in raw.get("mods", [])]

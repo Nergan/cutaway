@@ -365,8 +365,76 @@ def test_unavailable_modrinth_is_a_hover_note_instead_of_a_paragraph():
     assert '<p class="note">No public Modrinth page' not in page
 
 
+def test_public_pages_cover_a_rate_limited_github_api(monkeypatch):
+    profile = """
+    <span itemprop="name codeRepository"> cutaway </span>
+    <span itemprop="name codeRepository"> tamedphantoms-mod </span>
+    """
+    repo_page = """
+    "defaultBranch":"main"
+    "homepageUrl":"https:\\u002F\\u002Fmodrinth.com\\u002Fmod\\u002Ftamed-phantoms"
+    "license":{"spdxId":"MPL-2.0","name":"Mozilla Public License 2.0"}
+    """
+    release_page = """
+    <a href="/Nergan/tamedphantoms-mod/releases/tag/v1.0.0">v1.0.0</a>
+    <div class="markdown-body my-3">
+      <p>Minecraft <strong>1.21.1</strong> / NeoForge</p>
+      <table>
+        <tr><td><code>tamedphantoms-1.0.0.jar</code></td><td>Yes</td><td>this mod</td></tr>
+        <tr><td><code>kotlinforforge-5.8.0-all.jar</code></td><td>Yes</td><td>Kotlin</td></tr>
+      </table>
+    </div>
+    <a href="/Nergan/tamedphantoms-mod/releases/download/v1.0.0/tamedphantoms-1.0.0.jar">jar</a>
+    <a href="/Nergan/tamedphantoms-mod/releases/download/v1.0.0/kotlinforforge-5.8.0-all.jar">dep</a>
+    """
+
+    def fake_get(url, headers, max_bytes=1_000_000):
+        if url.startswith("https://api.github.com/users/Nergan/repos"):
+            return 403, b'{"message":"rate limit"}', {"Retry-After": "0"}
+        if "tab=repositories" in url:
+            return 200, profile.encode(), {}
+        if url == "https://github.com/Nergan/tamedphantoms-mod":
+            return 200, repo_page.encode(), {}
+        if url.startswith("https://raw.githubusercontent.com/") and url.endswith("/README.md"):
+            return 200, b"# Tamed Phantoms\n\nTame them.\n", {}
+        if url.startswith("https://raw.githubusercontent.com/"):
+            return 404, b"", {}
+        if url.endswith("/releases/latest") and "api.github.com" in url:
+            return 403, b'{"message":"rate limit"}', {"Retry-After": "0"}
+        if url.endswith("/releases/latest"):
+            return 200, release_page.encode(), {}
+        raise AssertionError(url)
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    catalog = __import__("minecraft_mods.catalog", fromlist=["fetch_catalog"]).fetch_catalog()
+    assert [mod.repo for mod in catalog.mods] == ["tamedphantoms-mod"]
+    mod = catalog.mods[0]
+    assert mod.modrinth_url == "https://modrinth.com/mod/tamed-phantoms"
+    assert mod.license_id == "MPL-2.0"
+    assert mod.minecraft == "1.21.1"
+    assert [jar.name for jar in mod.mod_jars] == ["tamedphantoms-1.0.0.jar"]
+    assert [jar.name for jar in mod.dependency_jars] == ["kotlinforforge-5.8.0-all.jar"]
+    assert not mod.release_limited
+
+
+def test_rejected_github_token_is_retried_without_it(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "revoked")
+
+    def fake_get(url, headers, max_bytes=1_000_000):
+        if "Authorization" in headers:
+            return 401, b'{"message":"Bad credentials"}', {}
+        return 200, b"[]", {}
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    from minecraft_mods.catalog import _api_get
+
+    status, payload, _headers = _api_get("https://api.github.com/users/Nergan/repos")
+    assert status == 200
+    assert payload == b"[]"
+
+
 def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypatch):
-    def fake_get(url, headers):
+    def fake_get(url, headers, max_bytes=1_000_000):
         if url.startswith("https://raw.githubusercontent.com/") and url.endswith("/README.md"):
             return 200, b"# Tamed Phantoms\n\nTame them with cookies.\n", {}
         if url.startswith("https://raw.githubusercontent.com/"):
