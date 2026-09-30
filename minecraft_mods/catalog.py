@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -56,6 +55,7 @@ _memory_until = 0.0
 _memory_lock = threading.Lock()
 _refresh_lock = threading.Lock()
 _request_lock = threading.Lock()
+_api_lock = threading.Lock()
 
 
 class CatalogError(RuntimeError):
@@ -89,6 +89,7 @@ class ModEntry:
     modrinth_url: str
     modrinth_status: str
     license_text: str = ""
+    release_limited: bool = False
 
 
 @dataclass
@@ -309,11 +310,11 @@ def _build_mod(
     license_info = repo.get("license") or {}
     license_id = str(license_info.get("spdx_id") or "")
     license_name = str(license_info.get("name") or "")
-    readme = _github_text(name, "readme")
-    readme_ru = _github_text(name, "contents/README.ru.md")
+    readme = _raw_first(name, branch, ("README.md", "README.rst", "README"))
+    readme_ru = _raw_text(name, branch, "README.ru.md")
     title_en, description_en = parse_readme(readme or "")
     title_ru, description_ru = parse_readme(readme_ru or "")
-    release = _github_json(name, "releases/latest")
+    release, release_limited = _latest_release(name)
     body = ""
     assets: list[dict[str, Any]] = []
     version = ""
@@ -328,7 +329,7 @@ def _build_mod(
     project = by_repo.get(name.lower())
     declared = ""
     if project is None:
-        workflow = _github_text(name, "contents/.github/workflows/release.yml")
+        workflow = _raw_text(name, branch, ".github/workflows/release.yml")
         declared_match = _MODRINTH_ID.search(workflow or "")
         declared = declared_match.group(1) if declared_match else ""
         if declared:
@@ -339,7 +340,7 @@ def _build_mod(
         authenticated=authenticated,
     )
     display = title_en or title_ru or _fallback_name(name)
-    license_text = _github_text(name, "license") or ""
+    license_text = _raw_first(name, branch, ("LICENSE", "LICENSE.md", "LICENSE.txt")) or ""
     return ModEntry(
         repo=name,
         name=display,
@@ -360,6 +361,7 @@ def _build_mod(
         modrinth_url=modrinth_url,
         modrinth_status=status,
         license_text=license_text.strip(),
+        release_limited=release_limited,
     )
 
 
@@ -370,9 +372,11 @@ def _list_mod_repos() -> list[dict[str, Any]]:
     found: list[dict[str, Any]] = []
     pages = 0
     while url and pages < 10:
-        status, payload, headers = _http_get(url, GITHUB_HEADERS)
+        status, payload, headers = _api_get(url)
         if status != 200:
-            raise CatalogError(f"GitHub repository list returned {status}.")
+            raise CatalogError(
+                f"GitHub repository list returned {status}: {_snippet(payload)}"
+            )
         batch = json.loads(payload)
         if not isinstance(batch, list):
             raise CatalogError("GitHub repository list had an unexpected shape.")
@@ -449,45 +453,80 @@ def _index_modrinth(projects: list[dict[str, Any]]) -> dict[str, dict[str, Any]]
     return indexed
 
 
-def _github_text(repo: str, suffix: str) -> str | None:
-    status, payload, _headers = _http_get(_github_url(repo, suffix), GITHUB_HEADERS)
+def _github_headers() -> dict[str, str]:
+    headers = dict(GITHUB_HEADERS)
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _api_get(url: str) -> tuple[int, bytes, dict[str, str]]:
+    """Call the GitHub API one request at a time and retry a rate limit once."""
+    with _api_lock:
+        status, payload, headers = _http_get(url, _github_headers())
+        if status not in {403, 429}:
+            return status, payload, headers
+        delay = _retry_after(headers)
+        logger.warning("GitHub returned %s for %s: %s", status, url, _snippet(payload))
+        time.sleep(delay)
+        return _http_get(url, _github_headers())
+
+
+def _retry_after(headers: dict[str, str]) -> float:
+    raw = headers.get("Retry-After") or headers.get("retry-after") or ""
+    try:
+        return min(2.0, max(0.0, float(raw)))
+    except ValueError:
+        return 1.0
+
+
+def _snippet(payload: bytes) -> str:
+    return payload.decode("utf-8", "replace")[:300].replace("\n", " ")
+
+
+def _raw_first(repo: str, branch: str, paths: tuple[str, ...]) -> str | None:
+    for path in paths:
+        text = _raw_text(repo, branch, path)
+        if text is not None:
+            return text
+    return None
+
+
+def _raw_text(repo: str, branch: str, path: str) -> str | None:
+    quoted_path = urllib.parse.quote(path, safe="/")
+    url = (
+        f"https://raw.githubusercontent.com/{GITHUB_USER}/"
+        f"{urllib.parse.quote(repo)}/{urllib.parse.quote(branch)}/{quoted_path}"
+    )
+    status, payload, _headers = _http_get(
+        url,
+        {"User-Agent": GITHUB_HEADERS["User-Agent"], "Accept": "text/plain"},
+    )
     if status == 404:
         return None
     if status != 200:
-        raise CatalogError(f"GitHub {suffix} for {repo} returned {status}.")
+        logger.warning("raw %s for %s returned %s: %s", path, repo, status, _snippet(payload))
+        return None
+    return payload.decode("utf-8", "replace")
+
+
+def _latest_release(repo: str) -> tuple[Any, bool]:
+    status, payload, _headers = _api_get(_github_url(repo, "releases/latest"))
+    if status == 404:
+        return None, False
+    if status in {403, 429}:
+        logger.warning("GitHub releases/latest for %s returned %s: %s", repo, status, _snippet(payload))
+        return None, True
+    if status != 200:
+        raise CatalogError(f"GitHub releases/latest for {repo} returned {status}: {_snippet(payload)}")
     document = json.loads(payload)
-    if not isinstance(document, dict):
-        return None
-    return _decode_content(document)
-
-
-def _github_json(repo: str, suffix: str) -> Any:
-    status, payload, _headers = _http_get(_github_url(repo, suffix), GITHUB_HEADERS)
-    if status == 404:
-        return None
-    if status != 200:
-        raise CatalogError(f"GitHub {suffix} for {repo} returned {status}.")
-    return json.loads(payload)
+    return (document if isinstance(document, dict) else None), False
 
 
 def _github_url(repo: str, suffix: str) -> str:
     base = f"https://api.github.com/repos/{GITHUB_USER}/{urllib.parse.quote(repo)}"
-    if suffix == "readme":
-        return f"{base}/readme"
-    if suffix == "license":
-        return f"{base}/license"
-    if suffix.startswith("contents/"):
-        path = urllib.parse.quote(suffix.removeprefix("contents/"), safe="/")
-        return f"{base}/contents/{path}"
     return f"{base}/{suffix}"
-
-
-def _decode_content(document: dict[str, Any]) -> str:
-    if document.get("encoding") == "base64":
-        raw = base64.b64decode(str(document.get("content") or ""))
-        return raw.decode("utf-8", "replace")
-    content = document.get("content")
-    return str(content or "")
 
 
 def _http_get(url: str, headers: dict[str, str]) -> tuple[int, bytes, dict[str, str]]:
@@ -635,4 +674,5 @@ def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
         modrinth_url=str(raw.get("modrinth_url") or ""),
         modrinth_status=str(raw.get("modrinth_status") or ""),
         license_text=str(raw.get("license_text") or ""),
+        release_limited=bool(raw.get("release_limited")),
     )

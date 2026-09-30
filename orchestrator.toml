@@ -429,7 +429,7 @@ entrypoint = "minecraft_mods.minecraft_mods"
 prefix = "/mods"
 requirements = "minecraft_mods/requirements.txt"
 startup = "lazy"
-env_allowlist = ["MODRINTH_TOKEN"]
+env_allowlist = ["MODRINTH_TOKEN", "GITHUB_TOKEN"]
 
 [projects.minecraft_mods.limits]
 request_rate = 60
@@ -445,7 +445,7 @@ idle_timeout_seconds = 900
 startup_timeout_seconds = 30
 
 [projects.minecraft_mods.network]
-allowed_hosts = ["api.github.com", "api.modrinth.com"]
+allowed_hosts = ["api.github.com", "raw.githubusercontent.com", "api.modrinth.com"]
 allow_private = false
 requests_per_minute = 80
 

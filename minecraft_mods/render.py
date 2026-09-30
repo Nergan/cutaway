@@ -27,6 +27,7 @@ _TEXT = {
         "deps": "deps",
         "files": "jars",
         "no_release": "No GitHub release yet.",
+        "rate_limit": "GitHub is rate-limiting this server, so the jar links are missing for now.",
         "no_jars": "The latest release has no jar files.",
         "unclassified": "These jars are in the release; the mod jar could not be picked out of them.",
         "license_missing": "License is not set",
@@ -52,6 +53,7 @@ _TEXT = {
         "deps": "зависимости",
         "files": "jar",
         "no_release": "Релиза на GitHub пока нет.",
+        "rate_limit": "GitHub временно ограничил запросы с этого сервера, поэтому ссылок на jar сейчас нет.",
         "no_jars": "В последнем релизе нет jar-файлов.",
         "unclassified": "Эти jar лежат в релизе; отделить файл мода от зависимостей не получилось.",
         "license_missing": "Лицензия не указана",
@@ -166,6 +168,8 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
 
 
 def _files(mod: ModEntry, text: dict) -> str:
+    if mod.release_limited and not mod.mod_jars and not mod.dependency_jars:
+        return f'<p class="note">{html.escape(text["rate_limit"])}</p>'
     if not mod.has_release:
         return f'<p class="note">{html.escape(text["no_release"])}</p>'
     if not mod.mod_jars and not mod.dependency_jars:

@@ -2,6 +2,7 @@ from minecraft_mods.catalog import (
     JarLink,
     ModEntry,
     Catalog,
+    _build_mod,
     classify_jars,
     classify_modrinth,
     github_repo_of,
@@ -201,6 +202,36 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert 'href="/mods?lang=en"' in page
 
 
+def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypatch):
+    def fake_get(url, headers):
+        if url.startswith("https://raw.githubusercontent.com/") and url.endswith("/README.md"):
+            return 200, b"# Tamed Phantoms\n\nTame them with cookies.\n", {}
+        if url.startswith("https://raw.githubusercontent.com/"):
+            return 404, b"not found", {}
+        if url.endswith("/releases/latest"):
+            return 403, b'{"message":"API rate limit exceeded"}', {"Retry-After": "0"}
+        raise AssertionError(url)
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    mod = _build_mod(
+        {
+            "name": "tamedphantoms-mod",
+            "html_url": "https://github.com/Nergan/tamedphantoms-mod",
+            "default_branch": "main",
+            "license": {"spdx_id": "MPL-2.0", "name": "Mozilla Public License 2.0"},
+        },
+        {},
+        False,
+        "",
+    )
+    assert mod.name == "Tamed Phantoms"
+    assert mod.description_en == "Tame them with cookies."
+    assert mod.release_limited
+    assert not mod.has_release
+    page = render_page(Catalog(mods=[mod]), "en", "name")
+    assert "rate-limiting" in page
+
+
 def test_minecraft_mods_is_registered_on_the_public_prefix():
     config = load_runtime_config(ROOT, profile="local", isolation="embedded")
     project = config.projects["minecraft_mods"]
@@ -208,5 +239,7 @@ def test_minecraft_mods_is_registered_on_the_public_prefix():
     assert project.entrypoint == "minecraft_mods.minecraft_mods"
     assert project.run and project.deploy
     assert "MODRINTH_TOKEN" in project.env_allowlist
+    assert "GITHUB_TOKEN" in project.env_allowlist
     assert "api.github.com" in project.network.allowed_hosts
+    assert "raw.githubusercontent.com" in project.network.allowed_hosts
     assert "api.modrinth.com" in project.network.allowed_hosts
