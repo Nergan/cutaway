@@ -188,8 +188,10 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "MPL-2.0" in page
     assert "This is the license body." in page
     assert "blob/main/LICENSE" not in page
-    assert 'class="ext"' in page
-    assert 'class="jar"' in page
+    assert 'class="btn ext"' in page
+    assert 'class="btn jar"' in page
+    assert "<details" in page
+    assert "--radius: 6px" in page
     assert 'class="custom-select"' not in page
     assert "на главную" not in page
     assert "Minecraft mods by" in page

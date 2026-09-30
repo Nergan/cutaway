@@ -94,7 +94,7 @@ def render_inline(text: str, repo_url: str) -> str:
         if match.group(1) is not None:
             href = _safe_href(match.group(2), repo_url)
             label = html.escape(match.group(1))
-            parts.append(f'<a href="{href}" class="ext">{label}</a>' if href else label)
+            parts.append(f'<a href="{href}" class="inline">{label}</a>' if href else label)
         elif match.group(3) is not None:
             parts.append(f"<code>{html.escape(match.group(3))}</code>")
         elif match.group(4) is not None:
@@ -103,7 +103,7 @@ def render_inline(text: str, repo_url: str) -> str:
             raw = match.group(5).rstrip(".,;:")
             href = _safe_href(raw, repo_url)
             label = html.escape(raw)
-            parts.append(f'<a href="{href}" class="ext">{label}</a>' if href else label)
+            parts.append(f'<a href="{href}" class="inline">{label}</a>' if href else label)
             parts.append(html.escape(match.group(5)[len(raw) :]))
         cursor = match.end()
     parts.append(html.escape(text[cursor:]))
@@ -124,12 +124,14 @@ def _app(catalog: Catalog, lang: str, text: dict) -> str:
         moment = datetime.fromtimestamp(catalog.fetched_at, timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         stamp = f'<p class="stamp">{html.escape(text["updated"])} {moment}</p>'
     return f"""
+<div class="page">
 <header class="mast">
   <p>Minecraft mods by <a class="by" href="https://github.com/Nergan"><em>Nargan</em></a> <a class="lang" href="/mods?lang={other}">{other_label}</a></p>
 </header>
 {notes}
 <div class="mods">{cards}</div>
 {stamp}
+</div>
 """
 
 
@@ -144,10 +146,10 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
     meta_html = f'<span class="meta">{html.escape(" · ".join(meta))}</span>' if meta else ""
     desc_html = f'<p class="desc">{render_inline(description, mod.github_url)}</p>' if description else ""
     links = [
-        f'<a class="ext" href="{html.escape(mod.github_url, quote=True)}">GitHub</a>'
+        f'<a class="btn ext" href="{html.escape(mod.github_url, quote=True)}">GitHub</a>'
     ]
     if mod.modrinth_url:
-        links.append(f'<a class="ext" href="{html.escape(mod.modrinth_url, quote=True)}">Modrinth</a>')
+        links.append(f'<a class="btn ext" href="{html.escape(mod.modrinth_url, quote=True)}">Modrinth</a>')
     status = text["modrinth"].get(mod.modrinth_state, "")
     status_html = f'<p class="note">{html.escape(status)}</p>' if status else ""
     return f"""
@@ -184,18 +186,18 @@ def _file_row(label: str, jars) -> str:
     for jar in jars:
         if not jar.url.startswith(("https://", "http://")):
             continue
-        links.append(f'<a class="jar" href="{html.escape(jar.url, quote=True)}">{html.escape(jar.name)}</a>')
+        links.append(f'<a class="btn jar" href="{html.escape(jar.url, quote=True)}">{html.escape(jar.name)}</a>')
     if not links:
         return ""
     return f'<p class="files"><span class="kind">{html.escape(label)}</span>{"".join(links)}</p>'
 
 
 def _license(mod: ModEntry, text: dict) -> str:
-    label = _license_label(mod, text)
-    body = ""
-    if mod.license_text:
-        body = f'<pre class="license-text">{html.escape(mod.license_text)}</pre>'
-    return f'<div class="license"><span class="kind">{html.escape(label)}</span>{body}</div>'
+    label = html.escape(_license_label(mod, text))
+    if not mod.license_text:
+        return f'<p class="license"><span class="kind">{label}</span></p>'
+    body = html.escape(mod.license_text)
+    return f'<details class="license"><summary>{label}</summary><pre class="license-text">{body}</pre></details>'
 
 
 def _license_label(mod: ModEntry, text: dict) -> str:
