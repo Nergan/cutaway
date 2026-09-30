@@ -5,6 +5,7 @@ from minecraft_mods.catalog import (
     _build_mod,
     classify_jars,
     classify_modrinth,
+    modrinth_website,
     github_repo_of,
     is_mod_repo_name,
     minecraft_and_loaders,
@@ -180,6 +181,7 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
         modrinth_url="https://modrinth.com/mod/tamed-phantoms",
         modrinth_status="processing",
         license_text="Mozilla Public License Version 2.0\nThis is the license body.",
+        readme_ru="# Приручение\n\nПодробности тут.",
     )
     page = render_page(Catalog(mods=[mod], fetched_at=1_700_000_000), "ru", "name")
     assert "Приручение фантомов" in page
@@ -188,10 +190,14 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "kotlinforforge-5.8.0-all.jar" in page
     assert "MPL-2.0" in page
     assert "This is the license body." in page
+    assert "Подробности тут." in page
     assert "blob/main/LICENSE" not in page
     assert 'class="btn ext"' in page
     assert 'class="btn jar"' in page
-    assert "<details" in page
+    assert "<dialog" in page
+    assert "<details" not in page
+    assert "donate-widget.js" in page
+    assert "column-width: 300px" in page
     assert "--radius: 6px" in page
     assert 'class="custom-select"' not in page
     assert "на главную" not in page
@@ -200,6 +206,163 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "::selection" in page
     assert "::-webkit-scrollbar" in page
     assert 'href="/mods?lang=en"' in page
+    assert 'href="/mods/tamedphantoms-mod/jars.zip"' in page
+    assert 'download="tamedphantoms-mod.zip"' in page
+    assert 'class="btn zip"' in page
+    assert 'class="file-list"' in page
+    assert "скачать всё" in page
+    assert ">мод<" in page
+    assert ".readme a" in page
+
+
+def test_addon_release_treats_this_addon_as_the_mod_jar():
+    body = """
+Minecraft **1.21.1** / NeoForge
+
+| File | Required | Source |
+| --- | --- | --- |
+| `reallyusefulribbits-*.jar` | Yes | this addon |
+| `kotlinforforge-5.8.0-all.jar` | Yes | [Kotlin for Forge](https://modrinth.com/mod/kotlin-for-forge) |
+| `Ribbits-1.21.1-NeoForge-4.1.6.jar` | Yes | [Ribbits](https://modrinth.com/mod/ribbits) |
+"""
+    assets = [
+        _asset("reallyusefulribbits-1.0.0.jar"),
+        _asset("kotlinforforge-5.8.0-all.jar"),
+        _asset("Ribbits-1.21.1-NeoForge-4.1.6.jar"),
+        _asset("geckolib-neoforge-1.21.1-4.7.6.jar"),
+    ]
+    mod_jars, deps, classified = classify_jars(assets, body)
+    assert classified
+    assert [jar.name for jar in mod_jars] == ["reallyusefulribbits-1.0.0.jar"]
+    assert "kotlinforforge-5.8.0-all.jar" in [jar.name for jar in deps]
+    assert "geckolib-neoforge-1.21.1-4.7.6.jar" in [jar.name for jar in deps]
+
+
+def test_jar_archive_packs_the_card_files(monkeypatch):
+    import io
+    import zipfile
+
+    from minecraft_mods.catalog import build_jar_archive
+
+    def fake_get(url, headers, max_bytes=1_000_000):
+        return 200, f"bytes:{url}".encode(), {}
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    mod = ModEntry(
+        repo="reallyusefulribbits-mod",
+        name="Really Useful Ribbits",
+        description_en="",
+        description_ru="",
+        github_url="https://github.com/Nergan/reallyusefulribbits-mod",
+        license_id="MPL-2.0",
+        license_name="MPL",
+        license_url="",
+        version="v1.0.0!",
+        minecraft="1.21.1",
+        loaders=["NeoForge"],
+        mod_jars=[JarLink("reallyusefulribbits-1.0.0.jar", "https://example.test/mod.jar")],
+        dependency_jars=[JarLink("kotlinforforge-5.8.0-all.jar", "https://example.test/dep.jar")],
+        jars_classified=True,
+        has_release=True,
+        modrinth_state="published",
+        modrinth_url="https://modrinth.com/mod/really-useful-ribbits",
+        modrinth_status="",
+    )
+    payload, filename = build_jar_archive(mod)
+    assert filename == "reallyusefulribbits-mod.zip"
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert archive.namelist() == [
+            "reallyusefulribbits-1.0.0.jar",
+            "kotlinforforge-5.8.0-all.jar",
+        ]
+
+
+def test_readme_markdown_renders_tables_and_drops_raw_html():
+    from minecraft_mods.render import render_markdown
+
+    rendered = render_markdown(
+        "\n".join([
+            "| File | Required |",
+            "| --- | --- |",
+            "| `mod.jar` | Yes |",
+            "",
+            "See [the guide](README.md).",
+            "",
+            "<script>alert(1)</script>",
+        ]),
+        "https://github.com/Nergan/tamedphantoms-mod",
+    )
+    assert "<table>" in rendered
+    assert "<td>mod.jar</td>" in rendered or "mod.jar" in rendered
+    assert 'href="https://github.com/Nergan/tamedphantoms-mod/blob/main/README.md"' in rendered
+    assert 'src="https://raw.githubusercontent.com/Nergan/tamedphantoms-mod/main/ico.png"' in render_markdown(
+        "![logo](ico.png)",
+        "https://github.com/Nergan/tamedphantoms-mod",
+    )
+    assert 'src="https://raw.githubusercontent.com/Nergan/placed-sticks-mod/main/logo.png"' in render_markdown(
+        '<img src="https://github.com/Nergan/placed-sticks-mod/blob/main/logo.png" alt="logo">',
+        "https://github.com/Nergan/placed-sticks-mod",
+    )
+    assert "<script>" not in rendered
+    assert "alert(1)" not in rendered
+
+
+def test_about_website_is_the_only_modrinth_page(monkeypatch):
+    def fake_get(url, headers, max_bytes=1_000_000):
+        if url.endswith("/README.md"):
+            return 200, b"# Placed Sticks\n\nPlace sticks.\n", {}
+        if "raw.githubusercontent.com" in url:
+            return 404, b"", {}
+        if url.endswith("/releases/latest"):
+            return 404, b"", {}
+        raise AssertionError(url)
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    repo = {
+        "name": "placed-sticks-mod",
+        "html_url": "https://github.com/Nergan/placed-sticks-mod",
+        "default_branch": "main",
+        "license": {"spdx_id": "MPL-2.0", "name": "MPL"},
+    }
+    hidden = _build_mod(repo, {}, False, "")
+    assert hidden.modrinth_state == "unavailable"
+    assert hidden.modrinth_url == ""
+    listed = _build_mod({**repo, "homepage": "https://modrinth.com/mod/placed-sticks/"}, {}, False, "")
+    assert listed.modrinth_url == "https://modrinth.com/mod/placed-sticks"
+    assert listed.modrinth_state == "linked"
+    assert modrinth_website("https://github.com/Nergan/placed-sticks-mod") == ""
+    assert modrinth_website("") == ""
+    page = render_page(Catalog(mods=[listed, hidden]), "en", "name")
+    assert page.count('href="https://modrinth.com/mod/placed-sticks"') == 1
+    assert 'class="btn ext is-disabled"' in page
+    assert '<p class="note">No public Modrinth page' not in page
+
+
+def test_unavailable_modrinth_is_a_hover_note_instead_of_a_paragraph():
+    mod = ModEntry(
+        repo="placed-sticks-mod",
+        name="Placed Sticks",
+        description_en="Place sticks.",
+        description_ru="",
+        github_url="https://github.com/Nergan/placed-sticks-mod",
+        license_id="MPL-2.0",
+        license_name="MPL",
+        license_url="",
+        version="1.0.0",
+        minecraft="1.20.1",
+        loaders=["Forge"],
+        mod_jars=[],
+        dependency_jars=[],
+        jars_classified=False,
+        has_release=False,
+        modrinth_state="unavailable",
+        modrinth_url="https://modrinth.com/mod/placed-sticks",
+        modrinth_status="",
+    )
+    page = render_page(Catalog(mods=[mod]), "en", "name")
+    assert 'class="btn ext is-disabled"' in page
+    assert "No public Modrinth page" in page
+    assert '<p class="note">No public Modrinth page' not in page
 
 
 def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypatch):

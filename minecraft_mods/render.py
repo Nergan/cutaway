@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import re
 import urllib.parse
+from html.parser import HTMLParser
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -23,7 +24,10 @@ _TEXT = {
     "en": {
         "title": "Minecraft mods",
         "empty": "No repositories ending in mod were found.",
-        "jar": "jar",
+        "jar": "mod",
+        "download_all": "download all",
+        "zip_busy": "preparing zip…",
+        "zip_fail": "could not build the zip",
         "deps": "deps",
         "files": "jars",
         "no_release": "No GitHub release yet.",
@@ -31,6 +35,8 @@ _TEXT = {
         "no_jars": "The latest release has no jar files.",
         "unclassified": "These jars are in the release; the mod jar could not be picked out of them.",
         "license_missing": "License is not set",
+        "readme": "README",
+        "close": "Close",
         "updated": "updated",
         "stale": "Could not refresh the list. Showing the last saved copy.",
         "fetch": "Could not load the list from GitHub.",
@@ -49,7 +55,10 @@ _TEXT = {
     "ru": {
         "title": "Minecraft mods",
         "empty": "Репозиториев с именем на mod не найдено.",
-        "jar": "jar",
+        "jar": "мод",
+        "download_all": "скачать всё",
+        "zip_busy": "готовится zip…",
+        "zip_fail": "не удалось собрать zip",
         "deps": "зависимости",
         "files": "jar",
         "no_release": "Релиза на GitHub пока нет.",
@@ -57,6 +66,8 @@ _TEXT = {
         "no_jars": "В последнем релизе нет jar-файлов.",
         "unclassified": "Эти jar лежат в релизе; отделить файл мода от зависимостей не получилось.",
         "license_missing": "Лицензия не указана",
+        "readme": "README",
+        "close": "Закрыть",
         "updated": "обновлено",
         "stale": "Не удалось обновить список. Показана прошлая сохранённая копия.",
         "fetch": "Не удалось загрузить список с GitHub.",
@@ -145,24 +156,35 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
     meta.extend(mod.loaders)
     if mod.version:
         meta.append(f"v{mod.version}")
-    meta_html = f'<span class="meta">{html.escape(" · ".join(meta))}</span>' if meta else ""
+    meta_html = f'<p class="meta">{html.escape(" · ".join(meta))}</p>' if meta else ""
     desc_html = f'<p class="desc">{render_inline(description, mod.github_url)}</p>' if description else ""
     links = [
         f'<a class="btn ext" href="{html.escape(mod.github_url, quote=True)}">GitHub</a>'
     ]
-    if mod.modrinth_url:
-        links.append(f'<a class="btn ext" href="{html.escape(mod.modrinth_url, quote=True)}">Modrinth</a>')
     status = text["modrinth"].get(mod.modrinth_state, "")
+    if mod.modrinth_url and mod.modrinth_state not in {"unavailable", "missing"}:
+        links.append(f'<a class="btn ext" href="{html.escape(mod.modrinth_url, quote=True)}">Modrinth</a>')
+    else:
+        tip = text["modrinth"]["unavailable"]
+        links.append(
+            f'<span class="btn ext is-disabled" role="link" aria-disabled="true" tabindex="0" title="{html.escape(tip, quote=True)}">Modrinth<span class="tip">{html.escape(tip)}</span></span>'
+        )
+        if mod.modrinth_state in {"", "unavailable", "missing"}:
+            status = ""
+    license_button, license_dialog = _license(mod, text)
+    readme_button, readme_dialog = _readme(mod, lang, text)
     status_html = f'<p class="note">{html.escape(status)}</p>' if status else ""
     return f"""
 <article class="mod">
   <h2>{html.escape(mod.name)}</h2>
   {meta_html}
   {desc_html}
-  <p class="links">{"".join(links)}</p>
+  <p class="links">{"".join(links)}{license_button}{readme_button}</p>
   {status_html}
   {_files(mod, text)}
-  {_license(mod, text)}
+  {_download_all(mod, text)}
+  {license_dialog}
+  {readme_dialog}
 </article>
 """
 
@@ -175,14 +197,34 @@ def _files(mod: ModEntry, text: dict) -> str:
     if not mod.mod_jars and not mod.dependency_jars:
         return f'<p class="note">{html.escape(text["no_jars"])}</p>'
     rows: list[str] = []
+    note = ""
     if mod.jars_classified and mod.mod_jars:
         rows.append(_file_row(text["jar"], mod.mod_jars))
         if mod.dependency_jars:
             rows.append(_file_row(text["deps"], mod.dependency_jars))
     else:
         rows.append(_file_row(text["files"], [*mod.mod_jars, *mod.dependency_jars]))
-        rows.append(f'<p class="note">{html.escape(text["unclassified"])}</p>')
-    return "".join(rows)
+        note = f'<p class="note">{html.escape(text["unclassified"])}</p>'
+    body = "".join(row for row in rows if row)
+    if not body:
+        return note
+    return f'<div class="file-list">{body}</div>{note}'
+
+
+def _download_all(mod: ModEntry, text: dict) -> str:
+    if not mod.mod_jars and not mod.dependency_jars:
+        return ""
+    href = f"/mods/{urllib.parse.quote(mod.repo)}/jars.zip"
+    filename = f"{mod.repo}.zip"
+    label = html.escape(text["download_all"])
+    busy = html.escape(text["zip_busy"], quote=True)
+    fail = html.escape(text["zip_fail"], quote=True)
+    file_attr = html.escape(filename, quote=True)
+    return (
+        f'<p class="card-foot"><a class="btn zip" href="{html.escape(href, quote=True)}" '
+        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}">'
+        f'{label}<span class="zip-kind">.zip</span></a></p>'
+    )
 
 
 def _file_row(label: str, jars) -> str:
@@ -193,15 +235,121 @@ def _file_row(label: str, jars) -> str:
         links.append(f'<a class="btn jar" href="{html.escape(jar.url, quote=True)}">{html.escape(jar.name)}</a>')
     if not links:
         return ""
-    return f'<p class="files"><span class="kind">{html.escape(label)}</span>{"".join(links)}</p>'
+    return f'<span class="kind">{html.escape(label)}</span><div class="jars">{"".join(links)}</div>'
 
 
-def _license(mod: ModEntry, text: dict) -> str:
+def _license(mod: ModEntry, text: dict) -> tuple[str, str]:
     label = html.escape(_license_label(mod, text))
     if not mod.license_text:
-        return f'<p class="license"><span class="kind">{label}</span></p>'
+        return f'<span class="kind">{label}</span>', ""
+    dialog_id = _dom_id("license", mod.repo)
     body = html.escape(mod.license_text)
-    return f'<details class="license"><summary>{label}</summary><pre class="license-text">{body}</pre></details>'
+    button = f'<button type="button" class="btn pop" data-open="{dialog_id}">{label}</button>'
+    return button, _sheet(dialog_id, label, f'<pre class="license-text">{body}</pre>', text)
+
+
+def _readme(mod: ModEntry, lang: str, text: dict) -> tuple[str, str]:
+    if lang == "ru":
+        source = mod.readme_ru or mod.readme_en
+    else:
+        source = mod.readme_en or mod.readme_ru
+    if not source:
+        return "", ""
+    dialog_id = _dom_id("readme", mod.repo)
+    title = html.escape(text["readme"])
+    body = render_markdown(source, mod.github_url, mod.branch)
+    button = f'<button type="button" class="btn pop" data-open="{dialog_id}">{title}</button>'
+    return button, _sheet(dialog_id, title, f'<div class="readme">{body}</div>', text)
+
+
+def _sheet(dialog_id: str, title: str, body: str, text: dict) -> str:
+    close = html.escape(text["close"])
+    return f"""
+<dialog id="{dialog_id}" class="sheet">
+  <div class="sheet-head">
+    <h3>{title}</h3>
+    <form method="dialog"><button class="sheet-close" aria-label="{close}">×</button></form>
+  </div>
+  <div class="sheet-body">{body}</div>
+</dialog>
+"""
+
+
+def render_markdown(text: str, repo_url: str, branch: str = "main") -> str:
+    """Render readme Markdown, then drop anything that is not document markup."""
+    import markdown
+
+    rendered = markdown.markdown(
+        text,
+        extensions=["tables", "fenced_code", "sane_lists"],
+    )
+    cleaner = _MarkdownHTML(repo_url, branch)
+    cleaner.feed(rendered)
+    cleaner.close()
+    return "".join(cleaner.parts)
+
+
+class _MarkdownHTML(HTMLParser):
+    _ALLOWED = {
+        "p", "h1", "h2", "h3", "h4", "h5", "h6",
+        "ul", "ol", "li", "pre", "code", "strong", "em",
+        "a", "table", "thead", "tbody", "tr", "th", "td",
+        "blockquote", "hr", "br", "img",
+    }
+    _VOID = {"br", "hr", "img"}
+    _SKIP = {"script", "style", "iframe", "object", "embed"}
+
+    def __init__(self, repo_url: str, branch: str = "main"):
+        super().__init__(convert_charrefs=True)
+        self.repo_url = repo_url
+        self.branch = branch or "main"
+        self.parts: list[str] = []
+        self._skip = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self._SKIP:
+            self._skip += 1
+            return
+        if self._skip or tag not in self._ALLOWED:
+            return
+        self.parts.append(f"<{tag}{self._attributes(tag, attrs)}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._SKIP:
+            if self._skip:
+                self._skip -= 1
+            return
+        if self._skip or tag not in self._ALLOWED or tag in self._VOID:
+            return
+        self.parts.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip:
+            self.parts.append(html.escape(data))
+
+    def _attributes(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        kept: list[str] = []
+        for key, value in attrs:
+            if key.startswith("on"):
+                continue
+            if tag == "a" and key == "href":
+                href = _safe_href(value or "", self.repo_url)
+                if href:
+                    kept.append(f' href="{href}"')
+            elif tag == "img" and key == "src":
+                src = _image_src(value or "", self.repo_url, self.branch)
+                if src:
+                    kept.append(f' src="{src}"')
+            elif tag == "img" and key == "alt":
+                kept.append(f' alt="{html.escape(value or "", quote=True)}"')
+            elif tag == "img" and key in {"width", "height"} and value and re.fullmatch(r"\d{1,4}", value):
+                kept.append(f' {key}="{value}"')
+        return "".join(kept)
+
+
+def _dom_id(prefix: str, repo: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "-", repo)
+    return html.escape(f"{prefix}-{safe}", quote=True)
 
 
 def _license_label(mod: ModEntry, text: dict) -> str:
@@ -219,6 +367,40 @@ def _notes(catalog: Catalog, text: dict) -> list[str]:
     if catalog.partial:
         notes.append(text["partial"])
     return notes
+
+
+def _image_src(url: str, repo_url: str, branch: str) -> str | None:
+    """Point a readme image at raw file bytes. GitHub blob pages are not images."""
+    candidate = url.strip()
+    if candidate.startswith(("http://", "https://")):
+        parsed = urlsplit(candidate)
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme not in {"http", "https"} or not host or parsed.username or parsed.password:
+            return None
+        if host == "github.com":
+            parts = [part for part in parsed.path.split("/") if part]
+            if len(parts) >= 5 and parts[2] in {"blob", "raw"}:
+                rest = "/".join(urllib.parse.unquote(part) for part in parts[4:])
+                raw = f"https://raw.githubusercontent.com/{parts[0]}/{parts[1]}/{parts[3]}/{rest}"
+                return html.escape(raw, quote=True)
+        return html.escape(candidate, quote=True)
+    path = candidate
+    while path.startswith("./"):
+        path = path[2:]
+    if not path or path.startswith("/") or ".." in path.split("/"):
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9_./~+-]+", path):
+        return None
+    repo = urlsplit(repo_url)
+    repo_parts = [part for part in repo.path.split("/") if part]
+    if len(repo_parts) < 2:
+        return None
+    safe_branch = branch if re.fullmatch(r"[A-Za-z0-9._/-]+", branch) else "main"
+    raw = (
+        f"https://raw.githubusercontent.com/{repo_parts[0]}/{repo_parts[1]}/"
+        f"{safe_branch}/{path}"
+    )
+    return html.escape(raw, quote=True)
 
 
 def _safe_href(url: str, repo_url: str) -> str | None:

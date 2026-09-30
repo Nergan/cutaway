@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import re
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, Response
 
-from minecraft_mods.catalog import get_catalog
+from minecraft_mods.catalog import CatalogError, build_jar_archive, get_catalog
 from minecraft_mods.render import render_page
 
 router = APIRouter()
+_REPO_NAME = re.compile(r"[A-Za-z0-9._-]{1,120}")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -19,6 +21,25 @@ async def mods_home(request: Request) -> HTMLResponse:
     sort = request.query_params.get("sort") or "name"
     catalog = await asyncio.to_thread(get_catalog)
     return HTMLResponse(render_page(catalog, lang, sort))
+
+
+@router.get("/{repo}/jars.zip")
+async def download_jars(repo: str) -> Response:
+    if not _REPO_NAME.fullmatch(repo):
+        raise HTTPException(status_code=404)
+    catalog = await asyncio.to_thread(get_catalog)
+    mod = next((item for item in catalog.mods if item.repo == repo), None)
+    if mod is None or not (mod.mod_jars or mod.dependency_jars):
+        raise HTTPException(status_code=404)
+    try:
+        payload, filename = await asyncio.to_thread(build_jar_archive, mod)
+    except CatalogError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _language(request: Request) -> str:

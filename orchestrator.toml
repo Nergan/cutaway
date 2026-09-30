@@ -434,9 +434,9 @@ env_allowlist = ["MODRINTH_TOKEN", "GITHUB_TOKEN"]
 [projects.minecraft_mods.limits]
 request_rate = 60
 request_bytes = 1048576
-response_bytes = 8388608
+response_bytes = 67108864
 max_concurrency = 4
-request_timeout_seconds = 60
+request_timeout_seconds = 120
 memory_mb = 384
 cpu_percent = 100
 max_processes = 2
@@ -445,7 +445,7 @@ idle_timeout_seconds = 900
 startup_timeout_seconds = 30
 
 [projects.minecraft_mods.network]
-allowed_hosts = ["api.github.com", "raw.githubusercontent.com", "api.modrinth.com"]
+allowed_hosts = ["api.github.com", "raw.githubusercontent.com", "github.com", "*.githubusercontent.com", "api.modrinth.com"]
 allow_private = false
 requests_per_minute = 80
 

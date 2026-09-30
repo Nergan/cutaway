@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>__TITLE__</title>
   <link rel="icon" type="image/jpeg" href="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mods/favicon.jpg">
+  <script src="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/donate-widget.js" data-lang="__LANG__" data-position="bottom-right" defer></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -37,7 +38,7 @@
       font-family: Verdana, Arial, Helvetica, sans-serif;
       font-size: 10pt;
       line-height: 1.5;
-      padding: 28px 16px 40px;
+      padding: 28px 18px 72px;
     }
 
     ::selection {
@@ -63,7 +64,7 @@
     }
 
     .page {
-      max-width: 760px;
+      max-width: 1300px;
       margin: 0 auto;
     }
 
@@ -93,6 +94,8 @@
     .by:hover em,
     .by:focus-visible em {
       color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     .lang {
@@ -104,17 +107,27 @@
       text-underline-offset: 2px;
     }
 
+    .mods {
+      column-width: 300px;
+      column-gap: 16px;
+    }
+
     .mod {
-      margin: 0 0 12px;
+      display: inline-flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 0;
+      margin: 0 0 16px;
       padding: 12px 14px 13px;
+      break-inside: avoid;
+      vertical-align: top;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
     }
 
     .mod h2 {
-      display: inline;
-      margin: 0 0.55em 0 0;
+      margin: 0;
       font-size: 13pt;
       font-weight: bold;
       line-height: 1.35;
@@ -128,6 +141,7 @@
     }
 
     .meta {
+      margin: 4px 0 0;
       font-size: 8.5pt;
     }
 
@@ -149,12 +163,34 @@
       text-underline-offset: 2px;
     }
 
-    .links,
-    .files {
+    .links {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 6px 8px;
+    }
+
+    .file-list {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 6px 10px;
+      align-items: start;
+      margin-top: 8px;
+    }
+
+    .jars {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .card-foot {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: auto;
+      padding-top: 10px;
     }
 
     .kind {
@@ -162,68 +198,237 @@
       margin-right: 2px;
     }
 
-    a.btn {
+    .btn {
       display: inline-block;
       padding: 3px 9px;
       border-radius: var(--radius);
       border: 1px solid var(--border);
       background: var(--btn);
       color: var(--text);
+      font: inherit;
       font-size: 8.5pt;
       line-height: 1.45;
       text-decoration: none;
+      cursor: pointer;
     }
 
-    a.btn.ext {
+    .btn.ext {
       background: transparent;
       border-color: var(--accent);
       color: var(--accent);
     }
 
-    a.btn.ext::after {
+    .btn.ext::after {
       content: " \2197";
       font-size: 0.85em;
     }
 
-    a.btn.jar {
+    .btn.jar {
+      max-width: 100%;
       border-style: dashed;
       border-color: var(--primary);
       color: var(--primary);
       font-family: Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
     }
 
-    a.btn.jar::before {
+    .btn.jar::before {
       content: "\2193 ";
     }
 
-    a.btn:hover,
-    a.btn:focus-visible {
-      filter: brightness(1.12);
+    .btn.pop {
+      background: transparent;
+      color: var(--text);
     }
 
-    details.license {
-      margin-top: 8px;
+    .btn.zip {
+      background: color-mix(in srgb, var(--primary) 88%, #2c241e);
+      border-color: color-mix(in srgb, var(--primary) 88%, #2c241e);
+      color: var(--selection-color);
+      font-weight: bold;
     }
 
-    details.license summary {
-      cursor: pointer;
-      color: var(--text-muted);
-      font-size: 8.5pt;
+    .btn.zip .zip-kind {
+      margin-left: 0.35em;
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: normal;
     }
 
-    .license-text {
-      margin: 6px 0 0;
-      max-height: 9em;
-      overflow: auto;
-      white-space: pre-wrap;
-      font-family: "Courier New", Courier, monospace;
-      font-size: 8pt;
-      line-height: 1.4;
-      color: var(--text-muted);
+    .btn.zip.is-busy,
+    .btn.zip.is-busy:hover,
+    .btn.zip.is-busy:focus-visible {
+      opacity: 0.55;
+      cursor: not-allowed;
+      filter: none;
+    }
+
+    .btn.zip.is-busy::before {
+      content: "";
+      display: inline-block;
+      width: 0.75em;
+      height: 0.75em;
+      margin-right: 0.4em;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      vertical-align: -0.1em;
+      animation: zip-spin 0.7s linear infinite;
+    }
+
+    @keyframes zip-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn.zip.is-busy::before {
+        animation: none;
+      }
+    }
+
+    .btn.is-disabled {
+      position: relative;
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn.is-disabled .tip {
+      display: none;
+      position: absolute;
+      z-index: 6;
+      left: 0;
+      top: calc(100% + 6px);
+      width: max-content;
+      max-width: 240px;
+      padding: 6px 8px;
       background: var(--inset);
       border: 1px solid var(--border);
       border-radius: var(--radius);
+      color: var(--text);
+      font-family: Verdana, Arial, Helvetica, sans-serif;
+      font-size: 8pt;
+      line-height: 1.4;
+      white-space: normal;
+      text-align: left;
+    }
+
+    .btn.is-disabled:hover .tip,
+    .btn.is-disabled:focus-visible .tip {
+      display: block;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      filter: brightness(1.12);
+    }
+
+    dialog.sheet {
+      width: min(640px, calc(100vw - 32px));
+      max-height: min(78vh, 720px);
+      margin: auto;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    dialog.sheet::backdrop {
+      background: rgba(20, 16, 14, 0.72);
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-head h3 {
+      margin: 0;
+      font-size: 12pt;
+    }
+
+    .sheet-head form {
+      margin: 0;
+    }
+
+    .sheet-close {
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 16pt;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .sheet-body {
+      padding: 12px 14px 16px;
+      overflow: auto;
+      max-height: calc(78vh - 64px);
+    }
+
+    .license-text {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 8.5pt;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .readme h2,
+    .readme h3,
+    .readme h4,
+    .readme h5 {
+      margin: 0.8em 0 0.3em;
+      font-size: 11pt;
+    }
+
+    .readme p,
+    .readme ul,
+    .readme ol,
+    .readme blockquote {
+      margin: 0.4em 0;
+    }
+
+    .readme pre {
+      margin: 0.5em 0;
       padding: 8px 10px;
+      overflow: auto;
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .readme table {
+      width: 100%;
+      margin: 0.6em 0;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+
+    .readme th,
+    .readme td {
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .readme a,
+    .readme a:visited {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .readme img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0.4em 0;
     }
 
     code {
@@ -240,5 +445,49 @@
 </head>
 <body>
   __APP__
+  <script>
+    document.querySelectorAll("[data-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const dialog = document.getElementById(button.getAttribute("data-open"));
+        if (dialog && typeof dialog.showModal === "function") dialog.showModal();
+      });
+    });
+    document.querySelectorAll("dialog.sheet").forEach((dialog) => {
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+    });
+    document.querySelectorAll("a.btn.zip").forEach((link) => {
+      const idle = link.innerHTML;
+      link.addEventListener("click", async (event) => {
+        event.preventDefault();
+        if (link.classList.contains("is-busy") || link.getAttribute("aria-disabled") === "true") return;
+        link.classList.add("is-busy");
+        link.setAttribute("aria-busy", "true");
+        link.setAttribute("aria-disabled", "true");
+        link.textContent = link.dataset.busy || "";
+        try {
+          const response = await fetch(link.href);
+          if (!response.ok) throw new Error(String(response.status));
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const save = document.createElement("a");
+          save.href = url;
+          save.download = link.dataset.file || "mods.zip";
+          document.body.appendChild(save);
+          save.click();
+          save.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
+          link.innerHTML = idle;
+        } catch (error) {
+          link.textContent = link.dataset.fail || "";
+        } finally {
+          link.classList.remove("is-busy");
+          link.removeAttribute("aria-busy");
+          link.removeAttribute("aria-disabled");
+        }
+      });
+    });
+  </script>
 </body>
 </html>

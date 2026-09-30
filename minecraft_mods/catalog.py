@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 
 GITHUB_USER = "Nergan"
 MODRINTH_USER = "nargan"
-SCHEMA = 2
+SCHEMA = 5
 FRESH_SECONDS = 60 * 60
 STALE_SECONDS = 10 * 60
 MAX_BYTES = 1_000_000
+JAR_BYTES = 32 * 1024 * 1024
+ARCHIVE_BYTES = 64 * 1024 * 1024
 
 GITHUB_HEADERS = {
     "User-Agent": "nargan-cutaway-mods",
@@ -38,7 +40,7 @@ MODRINTH_HEADERS = {
 }
 
 _MOD_SOURCE = re.compile(
-    r"\b(this (?:mod|compat|port)|этот мод|этот компат|этот порт)\b",
+    r"\b(this (?:mod|compat|port|addon)|этот мод|этот компат|этот порт|этот аддон)\b",
     re.IGNORECASE,
 )
 _TABLE_ROW = re.compile(
@@ -90,6 +92,9 @@ class ModEntry:
     modrinth_status: str
     license_text: str = ""
     release_limited: bool = False
+    readme_en: str = ""
+    readme_ru: str = ""
+    branch: str = "main"
 
 
 @dataclass
@@ -220,6 +225,26 @@ def classify_modrinth(
     return "missing", "", ""
 
 
+def modrinth_website(homepage: str) -> str:
+    """Public Modrinth page from the GitHub About website field, if that field is one."""
+    raw = (homepage or "").strip()
+    if not raw:
+        return ""
+    if "://" not in raw:
+        raw = "https://" + raw
+    parsed = urllib.parse.urlsplit(raw)
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if parsed.scheme not in {"http", "https"} or host != "modrinth.com" or parsed.username or parsed.password:
+        return ""
+    parts = [part for part in parsed.path.split("/") if part]
+    sections = {"mod", "plugin", "datapack", "shader", "resourcepack", "modpack", "project"}
+    if len(parts) < 2 or parts[0] not in sections:
+        return ""
+    return "https://modrinth.com/" + "/".join(parts)
+
+
 def github_repo_of(url: str) -> str:
     match = re.search(r"github\.com/Nergan/([^/#?\s]+)", url or "", re.IGNORECASE)
     if not match:
@@ -268,16 +293,13 @@ def get_catalog() -> Catalog:
 
 
 def fetch_catalog() -> Catalog:
-    token = os.getenv("MODRINTH_TOKEN", "").strip()
     repos = _list_mod_repos()
-    projects, authenticated = _load_modrinth_projects(token)
-    by_repo = _index_modrinth(projects)
     partial = False
     mods: list[ModEntry] = []
     workers = min(4, max(1, len(repos)))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(_build_mod, repo, by_repo, authenticated, token): repo for repo in repos
+            pool.submit(_build_mod, repo, {}, False, ""): repo for repo in repos
         }
         for future in as_completed(futures):
             repo = futures[future]
@@ -294,7 +316,7 @@ def fetch_catalog() -> Catalog:
         fetched_at=now,
         expires_at=now + ttl,
         partial=partial,
-        modrinth_authenticated=authenticated,
+        modrinth_authenticated=False,
     )
 
 
@@ -326,19 +348,12 @@ def _build_mod(
         version = str(release.get("tag_name") or "").lstrip("v")
     mod_jars, dep_jars, classified = classify_jars(assets, body)
     minecraft, loaders = minecraft_and_loaders(body)
-    project = by_repo.get(name.lower())
-    declared = ""
-    if project is None:
-        workflow = _raw_text(name, branch, ".github/workflows/release.yml")
-        declared_match = _MODRINTH_ID.search(workflow or "")
-        declared = declared_match.group(1) if declared_match else ""
-        if declared:
-            project = _modrinth_project(declared, token if authenticated else "")
-    state, modrinth_url, status = classify_modrinth(
-        project,
-        declared_slug=declared or str((project or {}).get("slug") or ""),
-        authenticated=authenticated,
-    )
+    del by_repo, authenticated, token
+    website = modrinth_website(str(repo.get("homepage") or ""))
+    if website:
+        state, modrinth_url, status = "linked", website, ""
+    else:
+        state, modrinth_url, status = "unavailable", "", ""
     display = title_en or title_ru or _fallback_name(name)
     license_text = _raw_first(name, branch, ("LICENSE", "LICENSE.md", "LICENSE.txt")) or ""
     return ModEntry(
@@ -362,6 +377,9 @@ def _build_mod(
         modrinth_status=status,
         license_text=license_text.strip(),
         release_limited=release_limited,
+        readme_en=(readme or "").strip(),
+        readme_ru=(readme_ru or "").strip(),
+        branch=branch,
     )
 
 
@@ -529,7 +547,42 @@ def _github_url(repo: str, suffix: str) -> str:
     return f"{base}/{suffix}"
 
 
-def _http_get(url: str, headers: dict[str, str]) -> tuple[int, bytes, dict[str, str]]:
+def build_jar_archive(mod: ModEntry) -> tuple[bytes, str]:
+    """Download every jar on the card and pack them into one zip."""
+    import io
+    import zipfile
+
+    jars = [*mod.mod_jars, *mod.dependency_jars]
+    if not jars:
+        raise CatalogError(f"{mod.repo} has no jars to archive.")
+    buffer = io.BytesIO()
+    total = 0
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
+        seen: set[str] = set()
+        for jar in jars:
+            if jar.name in seen or not jar.url.startswith(("https://", "http://")):
+                continue
+            seen.add(jar.name)
+            status, payload, _headers = _http_get(
+                jar.url,
+                {"User-Agent": GITHUB_HEADERS["User-Agent"]},
+                max_bytes=JAR_BYTES,
+            )
+            if status != 200 or not payload:
+                raise CatalogError(f"Download of {jar.name} returned {status}.")
+            total += len(payload)
+            if total > ARCHIVE_BYTES:
+                raise CatalogError("The jar archive is too large.")
+            archive.writestr(jar.name, payload)
+    safe_repo = re.sub(r"[^A-Za-z0-9._-]+", "-", mod.repo).strip("-") or "mods"
+    return buffer.getvalue(), f"{safe_repo}.zip"
+
+
+def _http_get(
+    url: str,
+    headers: dict[str, str],
+    max_bytes: int = MAX_BYTES,
+) -> tuple[int, bytes, dict[str, str]]:
     request = urllib.request.Request(url, headers=headers)
     governed = bool(os.getenv("CUTAWAY_PROJECT_NETWORK_HOSTS", "").strip())
     if governed:
@@ -541,15 +594,15 @@ def _http_get(url: str, headers: dict[str, str]) -> tuple[int, bytes, dict[str, 
     else:
         opener = urllib.request.build_opener()
     try:
-        with opener.open(request, timeout=20) as response:
-            payload = response.read(MAX_BYTES + 1)
+        with opener.open(request, timeout=45) as response:
+            payload = response.read(max_bytes + 1)
             status = int(getattr(response, "status", 200))
             response_headers = {key: value for key, value in response.headers.items()}
     except urllib.error.HTTPError as exc:
         payload = exc.read(8192) if exc.fp is not None else b""
         status = int(exc.code)
         response_headers = {key: value for key, value in exc.headers.items()} if exc.headers else {}
-    if len(payload) > MAX_BYTES:
+    if len(payload) > max_bytes:
         raise CatalogError("Outbound response exceeds the size limit.")
     return status, payload, response_headers
 
@@ -675,4 +728,7 @@ def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
         modrinth_status=str(raw.get("modrinth_status") or ""),
         license_text=str(raw.get("license_text") or ""),
         release_limited=bool(raw.get("release_limited")),
+        readme_en=str(raw.get("readme_en") or ""),
+        readme_ru=str(raw.get("readme_ru") or ""),
+        branch=str(raw.get("branch") or "main"),
     )
