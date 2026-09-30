@@ -39,9 +39,12 @@ jobs:
           fi
 
           encoded="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote("naragan/" + os.environ["REPO_NAME"], safe=""))')"
-          namespace_id="$(curl -fsS "https://gitlab.com/api/v4/users?username=naragan" | python3 -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["id"] if rows else "")')"
-          if [ -z "${namespace_id}" ]; then
-            echo "GitLab user naragan was not found."
+          # /users returns the account id. Project creation needs the personal namespace id, which is a different number.
+          namespace_code="$(curl -sS -o /tmp/gitlab-namespace.json -w "%{http_code}" --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" "https://gitlab.com/api/v4/namespaces/naragan")"
+          namespace_id="$(python3 -c 'import json; row=json.load(open("/tmp/gitlab-namespace.json", encoding="utf-8")); print(row.get("id") or "")' 2>/dev/null || true)"
+          if [ "${namespace_code}" != "200" ] || [ -z "${namespace_id}" ]; then
+            echo "GitLab namespace naragan lookup failed with HTTP ${namespace_code}."
+            python3 -c 'import pathlib; print(pathlib.Path("/tmp/gitlab-namespace.json").read_text(encoding="utf-8", errors="replace")[:2000])'
             exit 1
           fi
 
