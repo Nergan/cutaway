@@ -423,6 +423,32 @@ allowed_hosts = []
 allow_private = false
 requests_per_minute = 0
 
+[projects.minecraft_mods]
+directory = "minecraft_mods"
+entrypoint = "minecraft_mods.minecraft_mods"
+prefix = "/mods"
+requirements = "minecraft_mods/requirements.txt"
+startup = "lazy"
+env_allowlist = ["MODRINTH_TOKEN"]
+
+[projects.minecraft_mods.limits]
+request_rate = 60
+request_bytes = 1048576
+response_bytes = 8388608
+max_concurrency = 4
+request_timeout_seconds = 60
+memory_mb = 384
+cpu_percent = 100
+max_processes = 2
+max_connections = 16
+idle_timeout_seconds = 900
+startup_timeout_seconds = 30
+
+[projects.minecraft_mods.network]
+allowed_hosts = ["api.github.com", "api.modrinth.com"]
+allow_private = false
+requests_per_minute = 80
+
 [projects.another]
 directory = "another"
 entrypoint = "another.main"

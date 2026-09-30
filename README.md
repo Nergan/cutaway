@@ -91,6 +91,11 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 * **Description:** A first-person cyberpunk city rendered entirely as glowing ASCII, walked by everyone who opens the page. The district is generated procedurally from a seed and every position in it belongs to the server.
 * **Core Capabilities:** Authoritative 20 Hz simulation with client-side prediction and reconciliation, a ten-byte-per-player binary WebSocket protocol, interest management, proximity and district chat. A WebGL2 raycaster draws the character grid in one instanced call against a glyph atlas that carries its own neon bleed, with a Canvas2D fallback and adaptive quality. Binary 256 m tiles are decoded in a Web Worker and cached in MongoDB; a second implementation of the world port imports tagged GeoJSON from OpenStreetMap into the identical tile format.
 
+#### 11. [Mods](./minecraft_mods/) (Minecraft mod list)
+
+* **Description:** A catalog of Minecraft mods whose GitHub repositories end with `mod`. The route is `/mods`.
+* **Core Capabilities:** Reads the public GitHub account, shows each mod's summary, license, GitHub and Modrinth links, the mod jar from the latest release, and the companion jars from that release. `MODRINTH_TOKEN` marks projects that are still in review.
+
 ---
 
 ## Deployment & Setup
