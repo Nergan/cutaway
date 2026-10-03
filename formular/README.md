@@ -23,6 +23,10 @@ Formular relies on file-content detection (via Magic Bytes), not file extensions
 | **Spreadsheets (CSV, XLSX)**| `CSV`, `PDF` | Pandas, LibreOffice |
 | **Archives (ZIP, RAR, 7Z, TAR, GZ)**| `ZIP`, `7Z`, `TAR`, `GZ` | p7zip-full |
 
+## Planned Redesign
+
+A conceptual redesign (shared workspace, background jobs, public API, AI operations) is documented in [`docs/`](docs/README.md) (in Russian). AI agents should start with [`AGENTS.md`](AGENTS.md).
+
 ## Technology Stack
 - **Backend Environment:** FastAPI, Python 3.11, Docker (Debian Slim)
 - **Conversion Engines:** LibreOffice (headless), Pandoc, PyMuPDF, FFmpeg, DjvuLibre, xmltodict.
