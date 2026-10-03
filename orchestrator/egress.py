@@ -12,7 +12,7 @@ import time
 from collections import deque
 from urllib.parse import urlsplit
 
-from shared_network import NetworkPolicyError, validate_outbound_url
+from shared_network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
 
 
 class AllowlistProxy:
@@ -44,7 +44,7 @@ class AllowlistProxy:
         server.close()
         await server.wait_closed()
 
-    def _admit(self, host: str, port: int) -> None:
+    def _admit(self, host: str, port: int) -> str:
         if self.requests_per_minute > 0:
             now = time.monotonic()
             while self._times and self._times[0] < now - 60:
@@ -58,6 +58,9 @@ class AllowlistProxy:
             allowed_hosts=self.allowed_hosts,
             allow_private=self.allow_private,
         )
+        if self.allow_private:
+            return host
+        return preferred_outbound_ip(host, port, allow_private=False)
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -74,20 +77,20 @@ class AllowlistProxy:
         try:
             if method == "CONNECT":
                 host, port = _split_host_port(target, 443)
-                self._admit(host, port)
+                destination = self._admit(host, port)
                 writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
                 await writer.drain()
-                remote_reader, remote_writer = await asyncio.open_connection(host, port)
+                remote_reader, remote_writer = await asyncio.open_connection(destination, port)
             else:
                 parsed = urlsplit(target)
                 host = parsed.hostname or ""
                 port = parsed.port or (443 if parsed.scheme == "https" else 80)
-                self._admit(host, port)
+                destination = self._admit(host, port)
                 path = parsed.path or "/"
                 if parsed.query:
                     path = f"{path}?{parsed.query}"
                 rewritten = f"{method} {path} HTTP/1.1\r\n".encode("ascii")
-                remote_reader, remote_writer = await asyncio.open_connection(host, port)
+                remote_reader, remote_writer = await asyncio.open_connection(destination, port)
                 remote_writer.write(rewritten + _forward_headers(header))
                 await remote_writer.drain()
         except (NetworkPolicyError, OSError, ValueError):

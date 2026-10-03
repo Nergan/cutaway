@@ -1,4 +1,5 @@
 import asyncio
+import socket
 import sys
 import time
 from dataclasses import replace
@@ -9,7 +10,7 @@ import pytest
 from orchestrator.config import load_runtime_config
 from orchestrator.governor import PolicyViolation, ProjectGovernor
 from orchestrator.supervisor import ProjectSupervisor, WorkerUnavailable
-from shared_network import NetworkPolicyError, validate_outbound_url
+from shared_network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
 from shared_runtime import SubprocessFailure, run_process
 
 
@@ -88,6 +89,35 @@ def test_outbound_policy_blocks_ports_private_networks_and_unknown_hosts(monkeyp
             "http://127.0.0.1/",
             allowed_hosts=("127.0.0.1",),
         )
+
+
+def _dns(monkeypatch, *addresses: str) -> None:
+    def getaddrinfo(host, port, *args, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, port)) for address in addresses]
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+
+def test_allowlisted_name_survives_platform_internal_dns(monkeypatch):
+    monkeypatch.setenv("CUTAWAY_PROJECT_NETWORK_RPM", "0")
+    hosts = ("huggingface.co", "*.huggingface.co", "*.hf.co")
+    _dns(monkeypatch, "10.1.2.3", "18.165.122.11", "169.254.169.254")
+
+    parsed = validate_outbound_url("https://huggingface.co/org/model/resolve/main/file.onnx", allowed_hosts=hosts)
+    assert parsed.hostname == "huggingface.co"
+    assert preferred_outbound_ip("huggingface.co", 443, allow_private=False) == "18.165.122.11"
+
+    _dns(monkeypatch, "10.1.2.3")
+    validate_outbound_url("https://huggingface.co/org/model/resolve/main/file.onnx", allowed_hosts=hosts)
+    assert preferred_outbound_ip("huggingface.co", 443, allow_private=False) == "10.1.2.3"
+
+    _dns(monkeypatch, "169.254.169.254")
+    with pytest.raises(NetworkPolicyError, match="special-purpose"):
+        validate_outbound_url("https://huggingface.co/org/model/resolve/main/file.onnx", allowed_hosts=hosts)
+
+    _dns(monkeypatch, "10.1.2.3")
+    with pytest.raises(NetworkPolicyError, match="special-purpose"):
+        validate_outbound_url("https://10.1.2.3/file", allowed_hosts=("10.1.2.3",))
 
 
 def test_shared_subprocess_runner_captures_output_and_kills_timeout():

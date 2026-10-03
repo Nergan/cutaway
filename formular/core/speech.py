@@ -276,7 +276,7 @@ def _fetch(url: str, dest: Path, *, trim: bool = True) -> None:
             if "budget" in str(exc).lower() and attempt < 5:
                 time.sleep(2)
                 continue
-            raise SpeechError("The download was blocked by the network policy.", 502) from exc
+            raise SpeechError(f"The download was blocked by the network policy. {exc}", 502) from exc
         try:
             with opener.open(request, timeout=180) as response, partial.open("wb") as handle:
                 total = 0
