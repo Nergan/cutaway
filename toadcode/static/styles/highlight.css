@@ -2,25 +2,77 @@
     background: transparent !important;
 }
 
-.code-editor-wrapper pre.hljs {
+.code-editor-shell {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Подсветка лежит под прозрачным textarea и обязана совпадать с ним построчно, без переноса. */
+.hljs-backdrop,
+.hljs-backdrop code,
+.hljs-backdrop code span {
+    box-sizing: border-box;
+    margin: 0;
+    font-family: var(--code-font) !important;
+    font-size: var(--code-size) !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: "liga" 0, "calt" 0 !important;
+    letter-spacing: 0 !important;
+    word-spacing: 0 !important;
+    line-height: var(--code-line) !important;
+    tab-size: 4 !important;
+    white-space: pre !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
+.hljs-backdrop {
+    position: absolute;
+    inset: 0;
     pointer-events: none;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: var(--code-pad-y) calc(var(--code-pad-x) + var(--hl-sbw, 0px)) var(--code-pad-y) var(--code-gutter);
+    color: #e9ecef;
+}
+
+.hljs-backdrop code {
+    display: inline-block;
+    min-width: 100%;
+    width: max-content;
+    vertical-align: top;
+    padding: 0 !important;
+    border: 0;
+    background: transparent !important;
+}
+
+textarea.code-editor::selection {
+    background: rgba(255, 220, 0, 0.35);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 /* Line Numbers specific logic */
 .line-numbers {
     position: absolute;
     top: 0; left: 0; bottom: 0;
-    width: 3rem; padding: 1rem 0.5rem 1rem 0;
+    width: 3rem;
+    padding: var(--code-pad-y) 0.5rem var(--code-pad-y) 0;
     text-align: right; overflow: hidden;
     border-right: 1px solid rgba(255,255,255,0.1);
     user-select: none; pointer-events: none;
     color: rgba(255,255,255,0.3);
-    font-size: 14px; line-height: 1.5;
+    font-size: var(--code-size);
+    line-height: var(--code-line);
     background: transparent;
-    font-family: 'Consolas', monospace !important;
+    font-family: var(--code-font) !important;
+    font-variant-ligatures: none;
     z-index: 2;
-}
-
-.code-editor, pre.hljs {
-    padding-left: 3.5rem !important;
 }

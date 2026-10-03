@@ -83,6 +83,7 @@
         if (activeFilePath) {
             const f = vfs.find(x => x.path === activeFilePath);
             if (f && !f.is_dir) {
+                ui.codeInput.dataset.filename = f.path || '';
                 ui.codeInput.value = f.content || '';
                 ui.codeInput.dispatchEvent(new Event('input'));
                 updateCurrentFilePathUI(f.path);
@@ -174,6 +175,7 @@
         ui.noFileScreen.style.display = 'flex';
         ui.currentFilePath.innerHTML = `<i class="bi bi-terminal me-1"></i> Ready`;
         ui.downloadCurrentFileBtn.classList.add('d-none');
+        ui.codeInput.dataset.filename = '';
         ui.codeInput.value = '';
         ui.codeInput.dispatchEvent(new Event('input')); 
         ui.charCount.textContent = '0 characters';
@@ -1147,6 +1149,7 @@
         if (file && !file.is_dir) {
             activeFilePath = path;
             ui.noFileScreen.style.display = 'none';
+            ui.codeInput.dataset.filename = path;
             ui.codeInput.value = file.content;
             
             updateCurrentFilePathUI(path);

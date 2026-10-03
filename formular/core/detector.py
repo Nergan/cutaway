@@ -2,6 +2,8 @@ import magic
 import re
 import zipfile
 
+from formular.core.registry import ALLOWED_CONVERSIONS
+
 MIME_MAP = {
     'application/pdf': 'pdf',
     'text/html': 'html',
@@ -47,41 +49,6 @@ MIME_MAP = {
     'text/toml': 'toml',
     'application/xml': 'xml',
     'text/xml': 'xml'
-}
-
-ALLOWED_CONVERSIONS = {
-    'docx': ['pdf', 'html', 'txt', 'md'],
-    'doc': ['pdf', 'html', 'txt', 'md'],
-    'pptx': ['pdf', 'html', 'txt', 'md', 'xml'],
-    'pdf': ['html', 'txt', 'md'],
-    'html': ['pdf', 'md', 'txt', 'xml'],
-    'md': ['pdf', 'html', 'txt'],
-    'txt': ['pdf', 'html', 'md', 'json', 'yaml', 'toml', 'xml'],
-    'rtf': ['pdf', 'html', 'txt', 'md'],
-    'odt': ['pdf', 'html', 'txt', 'md'],
-    'epub': ['pdf', 'html', 'txt', 'md'],
-    'djvu': ['pdf', 'html', 'txt', 'md'],
-    'json': ['yaml', 'toml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'yaml': ['json', 'toml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'toml': ['json', 'yaml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'xml': ['json', 'yaml', 'toml', 'md', 'txt', 'html', 'pdf'],
-    'jpg': ['jpg', 'png', 'webp', 'pdf'],
-    'png': ['png', 'jpg', 'webp', 'pdf'],
-    'webp': ['webp', 'jpg', 'png', 'pdf'],
-    'svg': ['png', 'jpg', 'pdf'],
-    'gif': ['gif', 'mp4', 'png'],
-    'mp3': ['mp3', 'wav', 'ogg', 'mp4', 'webm'],
-    'wav': ['wav', 'mp3', 'ogg', 'mp4', 'webm'],
-    'ogg': ['ogg', 'mp3', 'wav', 'mp4', 'webm'],
-    'mp4': ['mp4', 'webm', 'gif', 'mp3', 'ogg'],
-    'webm': ['webm', 'mp4', 'gif', 'mp3', 'ogg'],
-    'csv': ['pdf'],
-    'xlsx': ['csv', 'pdf'],
-    'zip': ['7z', 'tar', 'gz'],
-    'rar': ['zip', '7z', 'tar', 'gz'],
-    '7z': ['zip', 'tar', 'gz'],
-    'tar': ['zip', '7z', 'gz'],
-    'gz': ['zip', '7z', 'tar']
 }
 
 def detect_file_format(file_path: str, filename: str) -> str:

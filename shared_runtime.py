@@ -73,6 +73,7 @@ async def run_process(
     check: bool = True,
     allowed_returncodes: frozenset[int] = frozenset({0}),
     output_limit: int = _OUTPUT_LIMIT,
+    background: bool = False,
 ) -> ProcessResult:
     """Run a child in its own killable group with bounded output buffers."""
     argv = tuple(str(item) for item in args)
@@ -104,6 +105,14 @@ async def run_process(
     }
     if os.name == "posix":
         kwargs["start_new_session"] = True
+        if background:
+            def _lower_priority() -> None:
+                try:
+                    os.nice(19)
+                except OSError:
+                    return
+
+            kwargs["preexec_fn"] = _lower_priority
 
     async with _SUBPROCESS_SLOTS:
         process = await asyncio.create_subprocess_exec(*argv, **kwargs)

@@ -1,5 +1,14 @@
 window.Formular = window.Formular || {};
 
+window.Formular.sharedAudioContext = function() {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    if (!window.Formular.audioContext || window.Formular.audioContext.state === 'closed') {
+        window.Formular.audioContext = new AudioContext();
+    }
+    return window.Formular.audioContext;
+};
+
 function formatMediaTime(seconds) {
     if (isNaN(seconds)) return "0:00";
     const m = Math.floor(seconds / 60);
@@ -16,9 +25,24 @@ function formatTrimTime(seconds) {
 }
 
 window.Formular.initCustomSelect = function(selectEl) {
+    if (typeof selectEl._formularDestroy === 'function') {
+        selectEl._formularDestroy();
+    }
     if (selectEl.nextElementSibling && selectEl.nextElementSibling.classList.contains('custom-select-wrapper')) {
         selectEl.nextElementSibling.remove();
     }
+    const generation = {};
+    selectEl._formularGeneration = generation;
+    const dispose = [];
+    const listen = (target, type, handler) => {
+        if (selectEl._formularGeneration !== generation) return;
+        target.addEventListener(type, handler);
+        dispose.push(() => target.removeEventListener(type, handler));
+    };
+    selectEl._formularDestroy = () => {
+        selectEl._formularGeneration = null;
+        dispose.splice(0).forEach((fn) => fn());
+    };
     selectEl.style.display = 'none';
     
     const origFmt = selectEl.dataset.originalFormat || '';
@@ -167,31 +191,33 @@ window.Formular.initCustomSelect = function(selectEl) {
         return args;
     }
 
+    const allowedFfmpegFlags = new Set([
+        '-ss', '-to', '-t', '-vn', '-an', '-sn', '-b:v', '-b:a', '-crf', '-preset',
+        '-cpu-used', '-deadline', '-row-mt', '-threads', '-ar', '-ac', '-q:a', '-q:v',
+        '-vf', '-af', '-r', '-s'
+    ]);
+    const bareFfmpegFlags = new Set(['-vn', '-an', '-sn']);
+    const allowedFilters = new Set([
+        'scale', 'crop', 'hue', 'negate', 'colorchannelmixer', 'format',
+        'atempo', 'aecho', 'bass', 'volume', 'fps', 'setsar'
+    ]);
+
     function isValidFFmpegFlags(flagsStr) {
         const trimmed = flagsStr.trim();
         if (!trimmed) return true;
-
         if (/(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(trimmed)) return false;
+        if (/filename|textfile|fontfile|subtitles|movie/i.test(trimmed)) return false;
 
-        const tokens = parseFFmpegArgs(trimmed);
-        if (tokens.length === 0) return true;
-
-        const badFlags = new Set(['-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map']);
-
+        const tokens = parseFFmpegArgs(trimmed).map((token) => token.replace(/^['"]|['"]$/g, ''));
         for (let i = 0; i < tokens.length; i++) {
-            const rawToken = tokens[i];
-            const token = rawToken.replace(/^['"]|['"]$/g, '');
-            const isFlag = /^-+[a-zA-Z0-9_:]+/.test(token);
-
-            if (isFlag) {
-                if (badFlags.has(token.toLowerCase())) {
-                    return false;
-                }
-            } else {
-                if (i === 0) return false;
-                const prevToken = tokens[i - 1].replace(/^['"]|['"]$/g, '');
-                const prevIsFlag = /^-+[a-zA-Z0-9_:]+/.test(prevToken);
-                if (!prevIsFlag) return false;
+            const token = tokens[i];
+            if (!allowedFfmpegFlags.has(token)) return false;
+            if (bareFfmpegFlags.has(token)) continue;
+            const value = tokens[++i];
+            if (!value || value.startsWith('-')) return false;
+            if (token === '-vf' || token === '-af') {
+                const names = value.split(',').map((part) => part.split('=')[0].split(':')[0]);
+                if (names.some((name) => !allowedFilters.has(name))) return false;
             }
         }
         return true;
@@ -244,11 +270,17 @@ window.Formular.initCustomSelect = function(selectEl) {
             if (id === fileId) return; 
             const f = window.Formular.LocalFiles[id];
             
+            const serverFormat = (f.serverFormat || '').toLowerCase();
+            const visualFormats = ['mp4', 'webm', 'gif', 'jpg', 'jpeg', 'png', 'webp', 'bmp', 'svg'];
+            const audioFormats = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
             let isValid = false;
-            if (audioOnly.includes(origFmt)) {
+            if (serverFormat) {
+                if (audioOnly.includes(origFmt)) isValid = visualFormats.includes(serverFormat);
+                else isValid = audioFormats.includes(serverFormat);
+            } else if (audioOnly.includes(origFmt)) {
                 if (f.type.startsWith('video/') || f.type.startsWith('image/')) isValid = true;
-            } else {
-                if (f.type.startsWith('audio/')) isValid = true;
+            } else if (f.type.startsWith('audio/')) {
+                isValid = true;
             }
             
             if (isValid) {
@@ -275,11 +307,12 @@ window.Formular.initCustomSelect = function(selectEl) {
             selectedMergeId = '';
         }
         populateMergeDropdown();
+        updateTabVisibility(currentSelectedFormat || origFmt, true);
         validateForm();
     };
-    window.addEventListener('formular:filesUpdated', onFilesUpdated);
+    listen(window, 'formular:filesUpdated', onFilesUpdated);
 
-    function updateTabVisibility(format) {
+    function updateTabVisibility(format, keepTab) {
         const isMedia = mediaFormats.includes(format);
         optionsContainer.querySelector('.media-settings').style.display = isMedia ? 'block' : 'none';
         
@@ -290,6 +323,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             
             const candidates = populateMergeDropdown();
             if (tabMerge) tabMerge.style.display = candidates > 0 ? 'block' : 'none';
+            if (keepTab) return;
 
             if (audioOnly.includes(format)) {
                 if (tabAudio) tabAudio.style.display = 'block';
@@ -351,7 +385,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     
     if (card) {
         card.addEventListener('card:removed', () => {
-            window.removeEventListener('formular:filesUpdated', onFilesUpdated);
+            if (typeof selectEl._formularDestroy === 'function') selectEl._formularDestroy();
             if (state.audioPlayer) { state.audioPlayer.pause(); state.audioPlayer.removeAttribute('src'); state.audioPlayer.load(); }
             if (state.videoPlayer) { state.videoPlayer.pause(); state.videoPlayer.removeAttribute('src'); state.videoPlayer.load(); }
         });
@@ -401,7 +435,8 @@ window.Formular.initCustomSelect = function(selectEl) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
         
-        const ctx = new AudioContext();
+        const ctx = window.Formular.sharedAudioContext();
+        if (!ctx) return;
         const source = ctx.createMediaElementSource(mediaEl);
         
         const bassFilter = ctx.createBiquadFilter();
@@ -517,11 +552,11 @@ window.Formular.initCustomSelect = function(selectEl) {
             updatePlayhead(e);
         });
 
-        document.addEventListener('mousemove', (e) => {
+        listen(document, 'mousemove', (e) => {
             if (isScrubbing) updatePlayhead(e);
         });
 
-        document.addEventListener('mouseup', () => {
+        listen(document, 'mouseup', () => {
             isScrubbing = false;
         });
     }
@@ -619,7 +654,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                 startBoxHeight = parseFloat(vcCropBox.style.height || 100);
             });
 
-            document.addEventListener('mousemove', (e) => {
+            listen(document, 'mousemove', (e) => {
                 if (!isDragging && !isResizing) return;
                 const dx = ((e.clientX - startX) / vcContainer.clientWidth) * 100;
                 const dy = ((e.clientY - startY) / vcContainer.clientHeight) * 100;
@@ -643,11 +678,11 @@ window.Formular.initCustomSelect = function(selectEl) {
                 updateCropInput();
             });
 
-            document.addEventListener('mouseup', () => { isDragging = false; isResizing = false; });
+            listen(document, 'mouseup', () => { isDragging = false; isResizing = false; });
         }
     }
 
-    document.addEventListener('mousemove', (e) => {
+    listen(document, 'mousemove', (e) => {
         if (!isTrimming || mediaDuration === 0) return;
         const rect = vtTrack.getBoundingClientRect();
         let percent = ((e.clientX - rect.left) / rect.width);
@@ -659,7 +694,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         updateTrimUI();
     });
 
-    document.addEventListener('mouseup', () => { isTrimming = false; });
+    listen(document, 'mouseup', () => { isTrimming = false; });
 
     optionsContainer.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', (e) => {

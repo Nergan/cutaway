@@ -1,19 +1,35 @@
+:root {
+    --code-font: Consolas, "Courier New", monospace;
+    --code-size: 14px;
+    --code-line: 21px;
+    --code-pad-y: 1rem;
+    --code-pad-x: 1rem;
+    --code-gutter: 3.5rem;
+}
+
 .code-editor {
     flex-grow: 1;
+    box-sizing: border-box;
+    min-width: 0;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
-    padding: 1rem;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.5;
+    padding: var(--code-pad-y) var(--code-pad-x) var(--code-pad-y) var(--code-gutter);
+    font-family: var(--code-font);
+    font-size: var(--code-size);
+    font-weight: 400;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+    letter-spacing: 0;
+    line-height: var(--code-line);
+    tab-size: 4;
     color: #e9ecef;
     resize: none;
-    white-space: pre-wrap;
+    white-space: pre;
     overflow: auto;
+    overflow-wrap: normal;
+    word-break: normal;
     transition: border-color 0.15s ease-in-out;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
 }
 
 .code-editor:focus {
@@ -56,17 +72,19 @@
 }
 
 @media (max-width: 768px) {
-    .code-editor {
-        font-size: 13px;
-        padding: 0.75rem;
-        border-width: 1px;
+    :root {
+        --code-size: 13px;
+        --code-line: 20px;
+        --code-pad-y: 0.75rem;
     }
 }
 
 @media (max-width: 576px) {
-    .code-editor {
-        font-size: 12px;
-        padding: 0.5rem;
+    :root {
+        --code-size: 12px;
+        --code-line: 18px;
+        --code-pad-y: 0.5rem;
+        --code-pad-x: 0.5rem;
     }
 }
 

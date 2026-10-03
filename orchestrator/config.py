@@ -44,6 +44,14 @@ class ProjectLimits:
     restart_backoff_seconds: float = 5.0
     nofile: int = 128
     fsize_mb: int = 256
+    heavy_jobs: int = -1
+    cpu_exempt_nice: int = 0
+
+    def resolved_heavy_jobs(self) -> int:
+        """Сколько тяжёлых процессов разрешено. -1 сохраняет старую формулу."""
+        if self.heavy_jobs >= 0:
+            return self.heavy_jobs
+        return max(1, min(2, self.max_concurrency))
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any] | None) -> "ProjectLimits":
@@ -70,6 +78,7 @@ class ProjectLimits:
             "restart_max",
             "nofile",
             "fsize_mb",
+            "cpu_exempt_nice",
         ):
             if getattr(result, name) < 0:
                 raise ValueError(f"Limit {name} must not be negative.")
@@ -81,17 +90,19 @@ class NetworkPolicy:
     allowed_hosts: tuple[str, ...] = ()
     allow_private: bool = False
     requests_per_minute: int = 0
+    enforce_allowlist: bool = False
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any] | None) -> "NetworkPolicy":
         raw = raw or {}
-        unknown = sorted(set(raw) - {"allowed_hosts", "allow_private", "requests_per_minute"})
+        unknown = sorted(set(raw) - {"allowed_hosts", "allow_private", "requests_per_minute", "enforce_allowlist"})
         if unknown:
             raise ValueError(f"Unknown network policy keys: {', '.join(unknown)}")
         return cls(
             allowed_hosts=tuple(str(host).lower().rstrip(".") for host in raw.get("allowed_hosts", ())),
             allow_private=bool(raw.get("allow_private", False)),
             requests_per_minute=int(raw.get("requests_per_minute", 0)),
+            enforce_allowlist=bool(raw.get("enforce_allowlist", False)),
         )
 
 

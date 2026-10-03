@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 import uuid
@@ -7,12 +8,20 @@ import tempfile
 from pathlib import Path
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from formular.core.detector import detect_file_format, get_allowed_targets
 from formular.core.converter import convert_document
+from formular.core.errors import FormularError
+from formular.core.language import detect_language
+from formular.core.plan import path_cost, shortest_path
+from formular.core.registry import DIRECT_EDGES, public_operations
+from formular.core.workspace import WorkspaceStore, touch_busy
 from shared_limits import RateLimiter, body_size_limit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -27,6 +36,46 @@ CONVERSION_SLOTS = asyncio.Semaphore(
 )
 UPLOAD_RATE = RateLimiter(limit=10, window_seconds=60)
 CONVERT_RATE = RateLimiter(limit=10, window_seconds=60)
+def _bounded_int(name: str, default: int, low: int, high: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except ValueError:
+        value = default
+    return min(high, max(low, value))
+
+
+WORKSPACES = WorkspaceStore(
+    Path(tempfile.gettempdir()) / "formular_workspaces",
+    ttl_seconds=_bounded_int("FORMULAR_WORKSPACE_TTL_SECONDS", 86_400, 60, 86_400),
+    max_total_bytes=_bounded_int("FORMULAR_JOB_DISK_MB", 1024, 64, 4096) * 1024 * 1024,
+)
+
+_PRIVATE_HEADERS = {
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+class PlanRequest(BaseModel):
+    source: str = Field(..., max_length=32)
+    target: str = Field(..., max_length=32)
+
+
+class LanguageRequest(BaseModel):
+    text: str = Field(..., max_length=20000)
+
+
+def _http_error(exc: FormularError) -> HTTPException:
+    return HTTPException(status_code=exc.status, detail=exc.message)
+
+
+async def _pulse_busy() -> None:
+    """Пока идёт конвертация, супервизор не должен принять тишину за простой."""
+    while True:
+        touch_busy()
+        await asyncio.sleep(20)
 
 
 def session_dir(raw_id: str) -> Path:
@@ -174,6 +223,7 @@ async def convert_file(
     working_input = task_dir / f"working_input.{detected_format}"
     shutil.copy(input_file, working_input)
     
+    pulse = asyncio.create_task(_pulse_busy())
     try:
         async with CONVERSION_SLOTS:
             await asyncio.wait_for(
@@ -191,13 +241,23 @@ async def convert_file(
                 timeout=900,
             )
         if not output_path.is_file() or output_path.stat().st_size > MAX_OUTPUT_BYTES:
-            raise ValueError("Converted output exceeds the configured limit.")
+            raise FormularError("Converted output exceeds the configured limit.", 413)
     except asyncio.TimeoutError:
         shutil.rmtree(task_dir, ignore_errors=True)
         raise HTTPException(status_code=504, detail="Conversion timed out.")
-    except Exception as e:
+    except FormularError as exc:
         shutil.rmtree(task_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise _http_error(exc)
+    except Exception:
+        logger.exception("formular conversion failed")
+        shutil.rmtree(task_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail="Conversion failed.")
+    finally:
+        pulse.cancel()
+        try:
+            await pulse
+        except asyncio.CancelledError:
+            pass
         
     encoded_filename = quote(output_filename)
     
@@ -205,6 +265,74 @@ async def convert_file(
         path=output_path,
         filename=output_filename,
         media_type='application/octet-stream',
-        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}"},
+        headers={
+            'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+            'X-Content-Type-Options': 'nosniff',
+            'Cache-Control': 'no-store',
+        },
         background=BackgroundTask(shutil.rmtree, task_dir, ignore_errors=True)
     )
+
+
+@router.post("/ai/language")
+async def detect_text_language(body: LanguageRequest):
+    if not body.text.strip():
+        raise HTTPException(status_code=422, detail="Text is required.")
+    return JSONResponse(
+        detect_language(body.text),
+        headers={**_PRIVATE_HEADERS, "X-AI-Operation": "text.language"},
+    )
+
+
+@router.get("/operations")
+async def list_operations():
+    return {"operations": public_operations()}
+
+
+@router.post("/plan")
+async def plan_conversion(body: PlanRequest):
+    source = body.source.strip().lower()
+    target = body.target.strip().lower()
+    if not source or not target:
+        raise HTTPException(status_code=422, detail="Source and target formats are required.")
+    path = shortest_path(DIRECT_EDGES, source, target)
+    if path is None:
+        raise HTTPException(status_code=422, detail=f"No conversion path found from {source} to {target}.")
+    return {"path": path, "cost": path_cost(path)}
+
+
+@router.post("/workspaces", dependencies=[Depends(CONVERT_RATE)])
+async def create_workspace():
+    try:
+        info = await asyncio.to_thread(WORKSPACES.create)
+    except FormularError as exc:
+        raise _http_error(exc)
+    return JSONResponse(
+        {
+            "id": info.token,
+            "expires_at": info.expires,
+            "ttl_seconds": WORKSPACES.ttl_seconds,
+        },
+        headers=_PRIVATE_HEADERS,
+    )
+
+
+@router.get("/workspaces/{token}")
+async def read_workspace(token: str):
+    try:
+        info = await asyncio.to_thread(WORKSPACES.open, token)
+    except FormularError as exc:
+        raise _http_error(exc)
+    return JSONResponse(
+        {"expires_at": info.expires, "created_at": info.created},
+        headers=_PRIVATE_HEADERS,
+    )
+
+
+@router.delete("/workspaces/{token}")
+async def delete_workspace(token: str):
+    try:
+        await asyncio.to_thread(WORKSPACES.delete, token)
+    except FormularError as exc:
+        raise _http_error(exc)
+    return JSONResponse({"deleted": True}, headers=_PRIVATE_HEADERS)

@@ -110,7 +110,16 @@ html, body {
         transform: none !important;
     }
 
-    .main-workspace { flex-direction: column; }
+    .main-workspace { flex-direction: column; min-width: 0; }
+
+    /* В колонке width:0 больше не сдерживает широкое превью, а схлопывает поле ввода до левого поля. */
+    .editor-section {
+        width: auto;
+        max-width: 100%;
+        align-self: stretch;
+        flex: 1 1 0%;
+        min-height: 0;
+    }
     
     .sidebar { 
         width: 100% !important; max-width: 100%; 

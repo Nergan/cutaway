@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import ProjectConfig, RuntimeConfig
+from .egress import AllowlistProxy
 
 try:
     import psutil
@@ -24,6 +25,32 @@ except ImportError:  # pragma: no cover - deployment installs it; fallback stays
 
 
 logger = logging.getLogger(__name__)
+
+
+def _process_nice(process: Any, exempt_nice: int) -> int | None:
+    if exempt_nice <= 0 or os.name != "posix" or psutil is None:
+        return None
+    try:
+        return int(process.nice())
+    except (psutil.Error, OSError, AttributeError, ValueError):
+        return None
+
+
+def cpu_contribution(percent: float, nice: int | None, exempt_nice: int) -> float:
+    """Низкий приоритет не считается поводом остановить worker. Память считается всегда."""
+    if exempt_nice > 0 and nice is not None and nice >= exempt_nice:
+        return 0.0
+    return percent
+
+
+def busy_marker_fresh(path: Path, *, now: float | None = None, window_seconds: float = 90.0) -> bool:
+    """Свежий файл занятости значит, что worker выполняет фоновую работу без HTTP."""
+    try:
+        modified = path.stat().st_mtime
+    except OSError:
+        return False
+    current = time.time() if now is None else now
+    return (current - modified) < window_seconds
 SAFE_ENV_KEYS = {
     "ALL_PROXY",
     "HTTP_PROXY",
@@ -69,6 +96,7 @@ class WorkerRuntime:
     cpu_over_since: float | None = None
     metrics: WorkerMetrics = field(default_factory=WorkerMetrics)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    egress: AllowlistProxy | None = None
 
 
 class ProjectSupervisor:
@@ -125,7 +153,12 @@ class ProjectSupervisor:
         candidate = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         return candidate if candidate.is_file() else None
 
-    def _worker_env(self, project: ProjectConfig, runtime_dir: Path) -> dict[str, str]:
+    def _worker_env(
+        self,
+        project: ProjectConfig,
+        runtime_dir: Path,
+        egress: AllowlistProxy | None = None,
+    ) -> dict[str, str]:
         env: dict[str, str] = {}
         for key, value in os.environ.items():
             if key in SAFE_ENV_KEYS or key.startswith("LC_"):
@@ -158,7 +191,8 @@ class ProjectSupervisor:
                 "CUTAWAY_PROJECT_NETWORK_HOSTS": ",".join(network_hosts),
                 "CUTAWAY_PROJECT_ALLOW_PRIVATE_NETWORK": "1" if project.network.allow_private else "0",
                 "CUTAWAY_PROJECT_NETWORK_RPM": str(project.network.requests_per_minute),
-                "CUTAWAY_HEAVY_JOBS": str(max(1, min(2, project.limits.max_concurrency))),
+                "CUTAWAY_HEAVY_JOBS": str(project.limits.resolved_heavy_jobs()),
+                "CUTAWAY_BUSY_FILE": str(runtime_dir / "busy"),
                 "CUTAWAY_CLOUDINARY_CONCURRENCY": str(
                     max(1, min(2, project.limits.max_concurrency))
                 ),
@@ -171,7 +205,16 @@ class ProjectSupervisor:
                 "PYTHONUNBUFFERED": "1",
             }
         )
-        if not network_hosts:
+        if egress is not None:
+            env.update(
+                {
+                    "ALL_PROXY": egress.url,
+                    "HTTP_PROXY": egress.url,
+                    "HTTPS_PROXY": egress.url,
+                    "NO_PROXY": "127.0.0.1,localhost",
+                }
+            )
+        elif not network_hosts:
             env.update(
                 {
                     "ALL_PROXY": "http://127.0.0.1:9",
@@ -234,6 +277,20 @@ class ProjectSupervisor:
             await self._spawn(worker)
             return worker
 
+    async def _open_egress(self, worker: WorkerRuntime) -> None:
+        policy = worker.project.network
+        if not policy.enforce_allowlist or worker.egress is not None:
+            return
+        if not policy.allowed_hosts:
+            raise RuntimeError(f"Project {worker.project.project_id} has no hosts for its egress allowlist.")
+        proxy = AllowlistProxy(
+            policy.allowed_hosts,
+            allow_private=policy.allow_private,
+            requests_per_minute=policy.requests_per_minute,
+        )
+        await proxy.start()
+        worker.egress = proxy
+
     async def _spawn(self, worker: WorkerRuntime) -> None:
         project = worker.project
         runtime_dir = self._runtime_dir(project)
@@ -263,9 +320,10 @@ class ProjectSupervisor:
         ]
         worker.status = "starting"
         worker.last_error = None
+        await self._open_egress(worker)
         kwargs: dict[str, Any] = {
             "cwd": str(self.config.root),
-            "env": self._worker_env(project, runtime_dir),
+            "env": self._worker_env(project, runtime_dir, worker.egress),
         }
         if os.name == "posix":
             kwargs["start_new_session"] = True
@@ -360,6 +418,11 @@ class ProjectSupervisor:
         worker.process = None
         worker.started_at = None
         worker.cpu_over_since = None
+        egress = worker.egress
+        worker.egress = None
+        if egress is not None:
+            with contextlib.suppress(Exception):
+                await egress.close()
         if expected:
             worker.status = "stopped"
             worker.last_error = None
@@ -460,9 +523,11 @@ class ProjectSupervisor:
             return None
 
         now = time.monotonic()
+        busy_file = self._runtime_dir(worker.project) / "busy"
         if (
             worker.project.limits.idle_timeout_seconds > 0
             and now - worker.last_request > worker.project.limits.idle_timeout_seconds
+            and not busy_marker_fresh(busy_file)
         ):
             async with worker.lock:
                 await self._stop_worker(worker, expected=True, reason="idle timeout")
@@ -520,7 +585,12 @@ class ProjectSupervisor:
         for process in processes:
             try:
                 memory += process.memory_info().rss
-                cpu += process.cpu_percent(interval=None)
+                nice = _process_nice(process, worker.project.limits.cpu_exempt_nice)
+                cpu += cpu_contribution(
+                    process.cpu_percent(interval=None),
+                    nice,
+                    worker.project.limits.cpu_exempt_nice,
+                )
                 connections += len(process.net_connections(kind="inet"))
                 live_processes += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied):

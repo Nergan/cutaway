@@ -133,6 +133,7 @@ window.Formular.initUploader = function() {
                         window.Formular.Toast.show(`${fileData.filename}: ${fileData.error}`, 'error');
                         p.remove();
                     } else {
+                        file.serverFormat = fileData.format;
                         window.Formular.LocalFiles[fileData.id] = file; // Cache the frontend file representation for thumbnails
                         window.dispatchEvent(new CustomEvent('formular:filesUpdated')); // Sync UI drops
                         
