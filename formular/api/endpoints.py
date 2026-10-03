@@ -222,7 +222,8 @@ async def convert_file(
     encoded_filename = quote(output_filename)
     headers = {'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}"}
     if operation is not None:
-        headers.update(speech.public_headers(operation, audio_opts))
+        source = working_input if operation == "speak" else None
+        headers.update(speech.public_headers(operation, audio_opts, source))
     
     return FileResponse(
         path=output_path,

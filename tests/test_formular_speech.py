@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from formular.core.speech import (
+    LANGUAGE_VOICES,
     SpeechError,
     VOICES,
     get_voice,
@@ -16,8 +17,11 @@ from formular.core.speech import (
     prepare_text,
     public_headers,
     trim_cache,
+    voice_for,
     voice_from_opts,
+    voices_for_text,
 )
+from formular.core.speech_lang import segment_languages
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -111,6 +115,64 @@ def _conversions() -> dict[str, list[str]]:
         ):
             return ast.literal_eval(node.value)
     raise AssertionError("ALLOWED_CONVERSIONS was not found")
+
+
+def test_text_is_split_by_language_and_keeps_every_character():
+    samples = {
+        "en": "This is a test for the new voice.",
+        "de": "Das ist nicht gut und auch wichtig.",
+        "fr": "Les amis sont dans la maison avec nous.",
+        "es": "Los amigos están aquí para comer.",
+        "nl": "Het is niet voor mij en ook niet voor hem.",
+        "sv": "Det är inte ett problem för mig.",
+        "ru": "Это русский текст, и он не украинский.",
+        "uk": "Це український текст, і він не російський.",
+    }
+    for lang, sentence in samples.items():
+        pieces = segment_languages(sentence)
+        assert [item[0] for item in pieces] == [lang]
+        assert "".join(item[1] for item in pieces) == sentence
+
+    mixed = "This is a test. Das ist nicht gut. Це український текст."
+    pieces = segment_languages(mixed)
+    assert [item[0] for item in pieces] == ["en", "de", "uk"]
+    assert "".join(item[1] for item in pieces) == mixed
+
+    inline = "Hello Привет"
+    pieces = segment_languages(inline)
+    assert [item[0] for item in pieces] == ["en", "ru"]
+    assert "".join(item[1] for item in pieces) == inline
+
+
+def test_language_voices_follow_gender_and_stay_permissive():
+    norman = get_voice("norman")
+    cori = get_voice("cori")
+    assert voice_for(norman, "en").id == "norman"
+    assert voice_for(norman, "ru").id == "norman"
+    assert voice_for(norman, "de").id == "de-mls"
+    assert voice_for(norman, "nl").id == "nl-rdh"
+    assert voice_for(cori, "nl").id == "nl-nathalie"
+    assert voice_for(norman, "uk").sid == 1
+    assert voice_for(cori, "uk").sid == 0
+    assert voice_for(cori, "es").id == "es-carlfm"
+    spoken = voices_for_text(norman, "This is a test. Das ist nicht gut.")
+    assert [voice.id for voice in spoken] == ["norman", "de-mls"]
+    for voice in LANGUAGE_VOICES:
+        lowered = voice.license.lower()
+        assert "nc" not in lowered
+        assert "sa" not in lowered
+        assert model_file_url(voice.repo, voice.onnx).startswith("https://huggingface.co/")
+
+
+def test_spoken_headers_name_every_language_voice():
+    source = ROOT / ".pytest-tmp" / "speech-note.txt"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("This is a test. Das ist nicht gut.", encoding="utf-8")
+    headers = public_headers("speak", '{"voice":"ljspeech"}', source)
+    assert "ljspeech-high" in headers["X-AI-Model"]
+    assert "de_DE-mls-medium" in headers["X-AI-Model"]
+    assert "CC-BY-4.0" in headers["X-AI-License"]
+    assert "public-domain" in headers["X-AI-License"]
 
 
 def test_backup_catalog_offers_transcripts_and_speech():

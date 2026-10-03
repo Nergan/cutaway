@@ -10,7 +10,12 @@ import pytest
 from orchestrator.config import load_runtime_config
 from orchestrator.governor import PolicyViolation, ProjectGovernor
 from orchestrator.supervisor import ProjectSupervisor, WorkerUnavailable
-from shared_network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
+from shared_network import (
+    _REQUEST_TIMES,
+    NetworkPolicyError,
+    preferred_outbound_ip,
+    validate_outbound_url,
+)
 from shared_runtime import SubprocessFailure, run_process
 
 
@@ -118,6 +123,32 @@ def test_allowlisted_name_survives_platform_internal_dns(monkeypatch):
     _dns(monkeypatch, "10.1.2.3")
     with pytest.raises(NetworkPolicyError, match="special-purpose"):
         validate_outbound_url("https://10.1.2.3/file", allowed_hosts=("10.1.2.3",))
+
+
+def test_redirect_checks_do_not_spend_the_request_budget(monkeypatch):
+    monkeypatch.setenv("CUTAWAY_PROJECT_NETWORK_RPM", "1")
+    _REQUEST_TIMES.clear()
+    hosts = ("huggingface.co",)
+    try:
+        validate_outbound_url(
+            "https://huggingface.co/org/model/resolve/main/file",
+            allowed_hosts=hosts,
+            resolve_dns=False,
+            charge_rate=False,
+        )
+        validate_outbound_url(
+            "https://huggingface.co/org/model/resolve/main/file",
+            allowed_hosts=hosts,
+            resolve_dns=False,
+        )
+        with pytest.raises(NetworkPolicyError, match="budget"):
+            validate_outbound_url(
+                "https://huggingface.co/org/model/resolve/main/file",
+                allowed_hosts=hosts,
+                resolve_dns=False,
+            )
+    finally:
+        _REQUEST_TIMES.clear()
 
 
 def test_shared_subprocess_runner_captures_output_and_kills_timeout():

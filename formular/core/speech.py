@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
 
+from formular.core.speech_lang import segment_languages
+
 _TRANSCRIBE_SOURCES = frozenset({"mp3", "wav", "ogg", "mp4", "webm"})
 _SPEAK_TARGETS = frozenset({"mp3", "wav", "ogg"})
 _MAX_TEXT_CHARS = 4000
@@ -48,6 +50,7 @@ class Voice:
     onnx: str
     license: str
     sample: str = _SAMPLE
+    sid: int = 0
 
 
 # Public-domain datasets, trained from scratch or from another public-domain voice.
@@ -91,6 +94,95 @@ VOICES = (
 )
 
 
+# One voice per language we can ship under the permissive-license rule.
+# English stays on the voice the user picked. A language with no entry is
+# spoken by that English voice.
+LANGUAGE_VOICES = (
+    Voice(
+        "de-mls",
+        "German",
+        "any",
+        "de",
+        "csukuangfj/vits-piper-de_DE-mls-medium",
+        "de_DE-mls-medium.onnx",
+        "CC-BY-4.0",
+        "Das ist ein Beispiel dieser Stimme.",
+    ),
+    Voice(
+        "fr-mls",
+        "French",
+        "any",
+        "fr",
+        "csukuangfj/vits-piper-fr_FR-mls-medium",
+        "fr_FR-mls-medium.onnx",
+        "CC-BY-4.0",
+        "Ceci est un exemple de cette voix.",
+    ),
+    Voice(
+        "es-carlfm",
+        "Spanish",
+        "male",
+        "es",
+        "csukuangfj/vits-piper-es_ES-carlfm-x_low",
+        "es_ES-carlfm-x_low.onnx",
+        "public-domain",
+        "Este es un ejemplo de esta voz.",
+    ),
+    Voice(
+        "nl-rdh",
+        "Dutch",
+        "male",
+        "nl",
+        "csukuangfj/vits-piper-nl_BE-rdh-medium",
+        "nl_BE-rdh-medium.onnx",
+        "CC0-1.0",
+        "Dit is een voorbeeld van deze stem.",
+    ),
+    Voice(
+        "nl-nathalie",
+        "Dutch",
+        "female",
+        "nl",
+        "csukuangfj/vits-piper-nl_BE-nathalie-x_low",
+        "nl_BE-nathalie-x_low.onnx",
+        "CC0-1.0",
+        "Dit is een voorbeeld van deze stem.",
+    ),
+    Voice(
+        "sv-nst",
+        "Swedish",
+        "any",
+        "sv",
+        "csukuangfj/vits-piper-sv_SE-nst-medium",
+        "sv_SE-nst-medium.onnx",
+        "CC0-1.0",
+        "Det här är ett exempel på den här rösten.",
+    ),
+    Voice(
+        "uk-mykyta",
+        "Ukrainian",
+        "male",
+        "uk",
+        "csukuangfj/vits-piper-uk_UA-ukrainian_tts-medium",
+        "uk_UA-ukrainian_tts-medium.onnx",
+        "CC0-1.0",
+        "Це приклад цього голосу.",
+        sid=1,
+    ),
+    Voice(
+        "uk-lada",
+        "Ukrainian",
+        "female",
+        "uk",
+        "csukuangfj/vits-piper-uk_UA-ukrainian_tts-medium",
+        "uk_UA-ukrainian_tts-medium.onnx",
+        "CC0-1.0",
+        "Це приклад цього голосу.",
+        sid=0,
+    ),
+)
+
+
 def kind(source: str, target: str) -> str | None:
     if source in _TRANSCRIBE_SOURCES and target == "txt":
         return "transcribe"
@@ -104,6 +196,28 @@ def get_voice(voice_id: str) -> Voice:
         if voice.id == voice_id:
             return voice
     raise SpeechError("Unknown voice.", 404)
+
+
+def voice_for(primary: Voice, lang: str) -> Voice:
+    if lang == "en":
+        return primary
+    matches = [item for item in LANGUAGE_VOICES if item.lang == lang]
+    if not matches:
+        return primary
+    same = [item for item in matches if item.gender in {primary.gender, "any"}]
+    return same[0] if same else matches[0]
+
+
+def voices_for_text(primary: Voice, text: str) -> list[Voice]:
+    chosen: list[Voice] = []
+    seen: set[str] = set()
+    for lang, _chunk in segment_languages(text):
+        voice = voice_for(primary, lang)
+        if voice.id in seen:
+            continue
+        seen.add(voice.id)
+        chosen.append(voice)
+    return chosen or [primary]
 
 
 def voice_from_opts(raw: str | None) -> Voice:
@@ -141,17 +255,29 @@ def public_voices() -> list[dict[str, str | bool]]:
     ]
 
 
-def public_headers(operation: str, audio_opts: str | None = None) -> dict[str, str]:
+def public_headers(
+    operation: str,
+    audio_opts: str | None = None,
+    source: Path | None = None,
+) -> dict[str, str]:
     headers = {"X-Content-Type-Options": "nosniff"}
     if operation == "transcribe":
         headers["X-AI-Operation"] = "speech.transcribe"
         headers["X-AI-Model"] = _WHISPER_REPO
         headers["X-AI-License"] = "MIT"
         return headers
-    voice = voice_from_opts(audio_opts)
+    primary = voice_from_opts(audio_opts)
+    voices = [primary]
+    if source is not None and source.is_file():
+        try:
+            spoken = prepare_text(source.read_text(encoding="utf-8", errors="replace"))
+        except (OSError, SpeechError):
+            spoken = ""
+        if spoken:
+            voices = voices_for_text(primary, spoken)
     headers["X-AI-Operation"] = "speech.speak"
-    headers["X-AI-Model"] = voice.repo
-    headers["X-AI-License"] = voice.license
+    headers["X-AI-Model"] = ",".join(voice.repo for voice in voices)
+    headers["X-AI-License"] = ",".join(dict.fromkeys(voice.license for voice in voices))
     return headers
 
 
@@ -358,7 +484,7 @@ def _ensure_espeak() -> Path:
 
 
 def _ensure_voice_files(voice: Voice) -> tuple[Path, Path]:
-    folder = cache_root() / "voices" / voice.id
+    folder = cache_root() / "voices" / voice.repo.rsplit("/", 1)[-1]
     model = _ensure_file(voice.repo, voice.onnx, folder / voice.onnx)
     tokens = _ensure_file(voice.repo, "tokens.txt", folder / "tokens.txt")
     return model, tokens
@@ -372,9 +498,7 @@ def _ensure_whisper() -> tuple[Path, Path, Path]:
     return encoder, decoder, tokens
 
 
-def _tts_to_wav(voice: Voice, text: str, dest: Path) -> None:
-    sherpa = _sherpa()
-    espeak = _ensure_espeak()
+def _synthesize(sherpa, espeak: Path, voice: Voice, text: str):
     model, tokens = _ensure_voice_files(voice)
     config = sherpa.OfflineTtsConfig(
         model=sherpa.OfflineTtsModelConfig(
@@ -390,15 +514,52 @@ def _tts_to_wav(voice: Voice, text: str, dest: Path) -> None:
     )
     engine = sherpa.OfflineTts(config)
     try:
-        audio = engine.generate(text, sid=0, speed=1.0)
+        audio = engine.generate(text, sid=voice.sid, speed=1.0)
         samples = audio.samples
         if samples is None or len(samples) == 0:
             raise SpeechError("The voice produced no audio.", 422)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if not sherpa.write_wave(str(dest), samples, audio.sample_rate):
-            raise SpeechError("The voice audio could not be stored.", 500)
+        return list(samples), int(audio.sample_rate)
     finally:
         del engine
+
+
+def _resample(samples: list[float], src: int, dst: int) -> list[float]:
+    if src == dst or not samples:
+        return samples
+    import numpy as np
+
+    array = np.asarray(samples, dtype=np.float32)
+    count = max(1, int(round(len(array) * dst / src)))
+    source_x = np.linspace(0.0, 1.0, num=len(array), endpoint=False)
+    target_x = np.linspace(0.0, 1.0, num=count, endpoint=False)
+    return np.interp(target_x, source_x, array).astype(np.float32).tolist()
+
+
+def _render_speech(primary: Voice, text: str, dest: Path) -> None:
+    sherpa = _sherpa()
+    espeak = _ensure_espeak()
+    pieces: list[float] = []
+    rate = 22050
+    previous = None
+    for lang, chunk in segment_languages(text):
+        spoken = chunk.strip()
+        if not spoken:
+            continue
+        voice = voice_for(primary, lang)
+        samples, src = _synthesize(sherpa, espeak, voice, spoken)
+        if previous is not None and previous != voice.id:
+            pieces.extend([0.0] * int(0.12 * rate))
+        pieces.extend(_resample(samples, src, rate))
+        previous = voice.id
+    if not pieces:
+        raise SpeechError("The voice produced no audio.", 422)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not sherpa.write_wave(str(dest), pieces, rate):
+        raise SpeechError("The voice audio could not be stored.", 500)
+
+
+def _tts_to_wav(voice: Voice, text: str, dest: Path) -> None:
+    _render_speech(voice, text, dest)
 
 
 def _speak(voice: Voice, text: str, dest: Path, target: str) -> None:

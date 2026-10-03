@@ -122,6 +122,7 @@ def validate_outbound_url(
     allowed_hosts: tuple[str, ...] | None = None,
     allow_private: bool | None = None,
     resolve_dns: bool = True,
+    charge_rate: bool = True,
 ) -> SplitResult:
     """Validate scheme, destination and resolved addresses immediately before use."""
     try:
@@ -156,7 +157,9 @@ def validate_outbound_url(
             allow_private=private_allowed,
         )
 
-    _enforce_rate()
+    # A redirect is the same download. The egress counter records the new connection.
+    if charge_rate:
+        _enforce_rate()
     return parsed
 
 
@@ -192,6 +195,7 @@ class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
             newurl,
             allowed_hosts=self.allowed_hosts,
             allow_private=self.allow_private,
+            charge_rate=False,
         )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 

@@ -388,7 +388,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             mediaBox.style.display = 'none';
             aiBox.style.display = 'block';
             voiceList.style.display = 'block';
-            note.textContent = 'English voices. The first sample downloads the voice. This uses AI.';
+            note.textContent = 'The selected voice speaks English. German, French, Spanish, Dutch, Swedish and Ukrainian follow the text, including a file in several languages. German and French voices are CC-BY 4.0 (Multilingual LibriSpeech). This uses AI.';
             ensureVoices();
             rememberVoice();
             return;

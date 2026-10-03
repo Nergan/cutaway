@@ -489,7 +489,7 @@ cpu_exempt_nice = 19
 [profiles.hf.projects.formular.network]
 allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co"]
 allow_private = false
-requests_per_minute = 600
+requests_per_minute = 2400
 enforce_allowlist = true
 
 [profiles.hf.projects.netlazy.env_defaults]

@@ -40,7 +40,7 @@ def test_hf_formular_can_download_weights_inside_the_memory_budget():
     assert formular.limits.fsize_mb == 4096
     assert formular.limits.cpu_exempt_nice == 19
     assert formular.network.enforce_allowlist is True
-    assert formular.network.requests_per_minute >= 400
+    assert formular.network.requests_per_minute >= 2000
     assert "huggingface.co" in formular.network.allowed_hosts
     declared = sum(project.limits.memory_mb for project in config.projects.values() if project.run)
     assert declared <= config.global_memory_budget_mb

@@ -21,7 +21,7 @@ env_allowlist = [
 # Cloudinary не добавлять: зеркала нет (решение D13).
 allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co"]
 allow_private = false
-requests_per_minute = 600
+requests_per_minute = 2400
 
 [profiles.hf.projects.formular.env_defaults]
 FORMULAR_WORKSPACE_TTL_SECONDS = "86400"   # решение D4: не больше суток
