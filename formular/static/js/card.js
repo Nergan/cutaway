@@ -3,8 +3,15 @@ window.Formular = window.Formular || {};
 window.Formular.createCard = function(file) {
     const sortableContainer = document.getElementById('sortableContainer');
     const sizeMB = (file.size / (1024*1024)).toFixed(2);
+    const aiTargets = {
+        mp3: ['txt'], wav: ['txt'], ogg: ['txt'], mp4: ['txt'], webm: ['txt'],
+        txt: ['mp3', 'wav', 'ogg']
+    };
     let optionsHTML = '<option value="" disabled selected>Target format...</option>';
-    file.allowed_targets.forEach(t => { optionsHTML += `<option value="${t}">${t.toUpperCase()}</option>`; });
+    file.allowed_targets.forEach(t => {
+        const ai = (aiTargets[file.format] || []).includes(t);
+        optionsHTML += `<option value="${t}"${ai ? ' data-ai="true"' : ''}>${t.toUpperCase()}</option>`;
+    });
 
     const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[file.id] : null;
     const ext = (file.format || '').toLowerCase();
@@ -142,7 +149,9 @@ window.Formular.createCard = function(file) {
         const customTriggerSpan = cardElement.querySelector('.custom-select-trigger span');
         if (customTriggerSpan && targetFormat) {
             const hasStar = Boolean(customTriggerSpan.querySelector('.star-icon'));
-            customTriggerSpan.innerHTML = targetFormat.toUpperCase() + (hasStar ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
+            const selectedOption = Array.from(selectBox.options).find(item => item.value === targetFormat);
+            const aiMark = selectedOption && selectedOption.dataset.ai === 'true' ? ' <span class="ai-mark">AI</span>' : '';
+            customTriggerSpan.innerHTML = targetFormat.toUpperCase() + (hasStar ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '') + aiMark;
         }
         
         convertBtn.disabled = true;
@@ -178,13 +187,15 @@ window.Formular.createCard = function(file) {
 
         try {
             const response = await fetch('./api/convert', { method: 'POST', body: fd, signal: activeController.signal });
-            
-            if (response.status === 400 || response.status === 500) {
-                const errorJson = await response.json();
-                throw new Error(errorJson.detail || "Conversion error");
+
+            if (!response.ok) {
+                let message = "Conversion engine failure.";
+                try {
+                    const errorJson = await response.json();
+                    if (typeof errorJson.detail === 'string') message = errorJson.detail;
+                } catch (parseError) {}
+                throw new Error(message);
             }
-            
-            if (!response.ok) throw new Error("Conversion engine failure.");
 
             const blob = await response.blob();
             let outExt = targetFormat === 'gz' ? 'tar.gz' : targetFormat;

@@ -73,39 +73,3 @@ body::before {
 ::-webkit-scrollbar-thumb:hover { 
     background: var(--orange); 
 }
-
-.ai-panel {
-    position: fixed;
-    left: 16px;
-    bottom: 16px;
-    z-index: 30;
-    width: min(320px, calc(100vw - 32px));
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: var(--gray);
-    border: 1px solid var(--light-gray);
-}
-
-.ai-badge {
-    align-self: flex-start;
-    margin: 0;
-    padding: 0 6px;
-    background: var(--orange);
-    color: var(--black);
-    font-size: 12px;
-}
-
-.ai-panel textarea {
-    min-height: 72px;
-    resize: vertical;
-    background: var(--black);
-    color: var(--text-light);
-    border: 1px solid var(--light-gray);
-}
-
-.ai-panel label,
-#aiLanguageResult {
-    margin: 0;
-}

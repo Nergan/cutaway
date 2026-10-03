@@ -1,14 +1,5 @@
 window.Formular = window.Formular || {};
 
-window.Formular.sharedAudioContext = function() {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return null;
-    if (!window.Formular.audioContext || window.Formular.audioContext.state === 'closed') {
-        window.Formular.audioContext = new AudioContext();
-    }
-    return window.Formular.audioContext;
-};
-
 function formatMediaTime(seconds) {
     if (isNaN(seconds)) return "0:00";
     const m = Math.floor(seconds / 60);
@@ -25,24 +16,9 @@ function formatTrimTime(seconds) {
 }
 
 window.Formular.initCustomSelect = function(selectEl) {
-    if (typeof selectEl._formularDestroy === 'function') {
-        selectEl._formularDestroy();
-    }
     if (selectEl.nextElementSibling && selectEl.nextElementSibling.classList.contains('custom-select-wrapper')) {
         selectEl.nextElementSibling.remove();
     }
-    const generation = {};
-    selectEl._formularGeneration = generation;
-    const dispose = [];
-    const listen = (target, type, handler) => {
-        if (selectEl._formularGeneration !== generation) return;
-        target.addEventListener(type, handler);
-        dispose.push(() => target.removeEventListener(type, handler));
-    };
-    selectEl._formularDestroy = () => {
-        selectEl._formularGeneration = null;
-        dispose.splice(0).forEach((fn) => fn());
-    };
     selectEl.style.display = 'none';
     
     const origFmt = selectEl.dataset.originalFormat || '';
@@ -64,6 +40,10 @@ window.Formular.initCustomSelect = function(selectEl) {
 
     optionsContainer.innerHTML = `
         <div class="formats-grid"></div>
+        <div class="ai-settings" style="display: none;">
+            <div class="ai-note"><span class="ai-mark">AI</span> <span class="ai-note-text"></span></div>
+            <div class="voice-list"></div>
+        </div>
         <div class="media-settings" style="display: none;">
             
             <div class="vt-wrapper" style="display:none;">
@@ -180,6 +160,102 @@ window.Formular.initCustomSelect = function(selectEl) {
     const imageOnly = ['jpg','png','webp','svg'];
     let currentSelectedFormat = selectEl.value;
     const card = selectEl.closest('.file-card');
+    const speechSources = ['mp3', 'wav', 'ogg', 'mp4', 'webm'];
+    const speechTargets = ['mp3', 'wav', 'ogg'];
+    const speechVoices = [
+        { id: 'norman', label: 'Norman · male · EN' },
+        { id: 'john', label: 'John · male · EN' },
+        { id: 'ljspeech', label: 'LJ Speech · female · EN' },
+        { id: 'cori', label: 'Cori · female · EN-GB' }
+    ];
+    let selectedVoiceId = 'norman';
+
+    function rememberVoice() {
+        selectEl.dataset.speech = '1';
+        selectEl.dataset.audioOpts = JSON.stringify({ voice: selectedVoiceId });
+        selectEl.dataset.videoOpts = '';
+        selectEl.dataset.customFfmpeg = '';
+        selectEl.dataset.mergeId = '';
+        selectEl.dataset.mergeLoop = 'false';
+    }
+
+    function clearSpeechOpts() {
+        if (selectEl.dataset.speech !== '1') return;
+        delete selectEl.dataset.speech;
+        selectEl.dataset.audioOpts = '';
+        selectEl.dataset.videoOpts = '';
+        selectEl.dataset.customFfmpeg = '';
+        selectEl.dataset.mergeId = '';
+        selectEl.dataset.mergeLoop = 'false';
+    }
+
+    function ensureVoices() {
+        const list = optionsContainer.querySelector('.voice-list');
+        if (!list || list.childElementCount) return;
+        speechVoices.forEach(voice => {
+            const row = document.createElement('div');
+            row.className = 'voice-row';
+            const pick = document.createElement('div');
+            pick.className = 'voice-pick' + (voice.id === selectedVoiceId ? ' active' : '');
+            pick.dataset.voice = voice.id;
+            pick.textContent = voice.label;
+            const play = document.createElement('button');
+            play.type = 'button';
+            play.className = 'btn-preset voice-play';
+            play.dataset.voice = voice.id;
+            play.title = 'Play sample';
+            play.innerHTML = '<i class="bi bi-play-fill"></i>';
+            pick.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedVoiceId = voice.id;
+                list.querySelectorAll('.voice-pick').forEach(item => item.classList.remove('active'));
+                pick.classList.add('active');
+                rememberVoice();
+            });
+            play.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedVoiceId = voice.id;
+                list.querySelectorAll('.voice-pick').forEach(item => item.classList.remove('active'));
+                pick.classList.add('active');
+                rememberVoice();
+                playSample(voice.id, play);
+            });
+            row.appendChild(pick);
+            row.appendChild(play);
+            list.appendChild(row);
+        });
+    }
+
+    async function playSample(id, button) {
+        const icon = button.querySelector('i');
+        button.disabled = true;
+        if (icon) icon.className = 'bi bi-hourglass-split';
+        try {
+            const response = await fetch('./api/voices/' + encodeURIComponent(id) + '/sample');
+            if (!response.ok) {
+                let message = 'The voice sample is not ready.';
+                try {
+                    const body = await response.json();
+                    if (typeof body.detail === 'string') message = body.detail;
+                } catch (parseError) {}
+                throw new Error(message);
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            if (!window.Formular.sampleAudio) window.Formular.sampleAudio = new Audio();
+            const audio = window.Formular.sampleAudio;
+            audio.pause();
+            if (audio._sampleUrl) URL.revokeObjectURL(audio._sampleUrl);
+            audio._sampleUrl = url;
+            audio.src = url;
+            await audio.play();
+        } catch (err) {
+            if (window.Formular.Toast) window.Formular.Toast.show(err.message || 'The voice sample failed.', 'error');
+        } finally {
+            button.disabled = false;
+            if (icon) icon.className = 'bi bi-play-fill';
+        }
+    }
 
     function parseFFmpegArgs(str) {
         const args = [];
@@ -191,33 +267,31 @@ window.Formular.initCustomSelect = function(selectEl) {
         return args;
     }
 
-    const allowedFfmpegFlags = new Set([
-        '-ss', '-to', '-t', '-vn', '-an', '-sn', '-b:v', '-b:a', '-crf', '-preset',
-        '-cpu-used', '-deadline', '-row-mt', '-threads', '-ar', '-ac', '-q:a', '-q:v',
-        '-vf', '-af', '-r', '-s'
-    ]);
-    const bareFfmpegFlags = new Set(['-vn', '-an', '-sn']);
-    const allowedFilters = new Set([
-        'scale', 'crop', 'hue', 'negate', 'colorchannelmixer', 'format',
-        'atempo', 'aecho', 'bass', 'volume', 'fps', 'setsar'
-    ]);
-
     function isValidFFmpegFlags(flagsStr) {
         const trimmed = flagsStr.trim();
         if (!trimmed) return true;
-        if (/(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(trimmed)) return false;
-        if (/filename|textfile|fontfile|subtitles|movie/i.test(trimmed)) return false;
 
-        const tokens = parseFFmpegArgs(trimmed).map((token) => token.replace(/^['"]|['"]$/g, ''));
+        if (/(\.\.)|(\/)|(\\)|([&;|`$<>])/.test(trimmed)) return false;
+
+        const tokens = parseFFmpegArgs(trimmed);
+        if (tokens.length === 0) return true;
+
+        const badFlags = new Set(['-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v', '-c:a', '-map']);
+
         for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-            if (!allowedFfmpegFlags.has(token)) return false;
-            if (bareFfmpegFlags.has(token)) continue;
-            const value = tokens[++i];
-            if (!value || value.startsWith('-')) return false;
-            if (token === '-vf' || token === '-af') {
-                const names = value.split(',').map((part) => part.split('=')[0].split(':')[0]);
-                if (names.some((name) => !allowedFilters.has(name))) return false;
+            const rawToken = tokens[i];
+            const token = rawToken.replace(/^['"]|['"]$/g, '');
+            const isFlag = /^-+[a-zA-Z0-9_:]+/.test(token);
+
+            if (isFlag) {
+                if (badFlags.has(token.toLowerCase())) {
+                    return false;
+                }
+            } else {
+                if (i === 0) return false;
+                const prevToken = tokens[i - 1].replace(/^['"]|['"]$/g, '');
+                const prevIsFlag = /^-+[a-zA-Z0-9_:]+/.test(prevToken);
+                if (!prevIsFlag) return false;
             }
         }
         return true;
@@ -270,17 +344,11 @@ window.Formular.initCustomSelect = function(selectEl) {
             if (id === fileId) return; 
             const f = window.Formular.LocalFiles[id];
             
-            const serverFormat = (f.serverFormat || '').toLowerCase();
-            const visualFormats = ['mp4', 'webm', 'gif', 'jpg', 'jpeg', 'png', 'webp', 'bmp', 'svg'];
-            const audioFormats = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
             let isValid = false;
-            if (serverFormat) {
-                if (audioOnly.includes(origFmt)) isValid = visualFormats.includes(serverFormat);
-                else isValid = audioFormats.includes(serverFormat);
-            } else if (audioOnly.includes(origFmt)) {
+            if (audioOnly.includes(origFmt)) {
                 if (f.type.startsWith('video/') || f.type.startsWith('image/')) isValid = true;
-            } else if (f.type.startsWith('audio/')) {
-                isValid = true;
+            } else {
+                if (f.type.startsWith('audio/')) isValid = true;
             }
             
             if (isValid) {
@@ -307,12 +375,34 @@ window.Formular.initCustomSelect = function(selectEl) {
             selectedMergeId = '';
         }
         populateMergeDropdown();
-        updateTabVisibility(currentSelectedFormat || origFmt, true);
         validateForm();
     };
-    listen(window, 'formular:filesUpdated', onFilesUpdated);
+    window.addEventListener('formular:filesUpdated', onFilesUpdated);
 
-    function updateTabVisibility(format, keepTab) {
+    function updateTabVisibility(format) {
+        const aiBox = optionsContainer.querySelector('.ai-settings');
+        const voiceList = optionsContainer.querySelector('.voice-list');
+        const note = optionsContainer.querySelector('.ai-note-text');
+        const mediaBox = optionsContainer.querySelector('.media-settings');
+        if (origFmt === 'txt' && speechTargets.includes(format)) {
+            mediaBox.style.display = 'none';
+            aiBox.style.display = 'block';
+            voiceList.style.display = 'block';
+            note.textContent = 'English voices. The first sample downloads the voice. This uses AI.';
+            ensureVoices();
+            rememberVoice();
+            return;
+        }
+        if (speechSources.includes(origFmt) && format === 'txt') {
+            mediaBox.style.display = 'none';
+            aiBox.style.display = 'block';
+            voiceList.style.display = 'none';
+            note.textContent = 'Speech to text, up to 3 minutes. This uses AI.';
+            clearSpeechOpts();
+            return;
+        }
+        aiBox.style.display = 'none';
+        clearSpeechOpts();
         const isMedia = mediaFormats.includes(format);
         optionsContainer.querySelector('.media-settings').style.display = isMedia ? 'block' : 'none';
         
@@ -323,7 +413,6 @@ window.Formular.initCustomSelect = function(selectEl) {
             
             const candidates = populateMergeDropdown();
             if (tabMerge) tabMerge.style.display = candidates > 0 ? 'block' : 'none';
-            if (keepTab) return;
 
             if (audioOnly.includes(format)) {
                 if (tabAudio) tabAudio.style.display = 'block';
@@ -347,7 +436,11 @@ window.Formular.initCustomSelect = function(selectEl) {
         optDiv.className = 'format-chip';
         
         const isOriginal = (opt.value === origFmt);
-        optDiv.innerHTML = isOriginal ? `${opt.text} <i class="bi bi-stars star-icon"></i>` : opt.text;
+        const ai = opt.dataset.ai === 'true';
+        optDiv.dataset.ai = ai ? 'true' : 'false';
+        optDiv.innerHTML = opt.text
+            + (isOriginal ? ' <i class="bi bi-stars star-icon"></i>' : '')
+            + (ai ? ' <span class="ai-mark">AI</span>' : '');
         
         optDiv.dataset.value = opt.value;
         optDiv.addEventListener('click', (e) => {
@@ -359,7 +452,8 @@ window.Formular.initCustomSelect = function(selectEl) {
             
             const spanEl = trigger.querySelector('span');
             const isModified = Boolean(spanEl.querySelector('.star-icon')) || (opt.value === origFmt);
-            spanEl.innerHTML = opt.text + (isModified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
+            const aiMark = opt.dataset.ai === 'true' ? ' <span class="ai-mark">AI</span>' : '';
+            spanEl.innerHTML = opt.text + (isModified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '') + aiMark;
 
             updateTabVisibility(opt.value);
             validateForm();
@@ -385,7 +479,7 @@ window.Formular.initCustomSelect = function(selectEl) {
     
     if (card) {
         card.addEventListener('card:removed', () => {
-            if (typeof selectEl._formularDestroy === 'function') selectEl._formularDestroy();
+            window.removeEventListener('formular:filesUpdated', onFilesUpdated);
             if (state.audioPlayer) { state.audioPlayer.pause(); state.audioPlayer.removeAttribute('src'); state.audioPlayer.load(); }
             if (state.videoPlayer) { state.videoPlayer.pause(); state.videoPlayer.removeAttribute('src'); state.videoPlayer.load(); }
         });
@@ -435,8 +529,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
         
-        const ctx = window.Formular.sharedAudioContext();
-        if (!ctx) return;
+        const ctx = new AudioContext();
         const source = ctx.createMediaElementSource(mediaEl);
         
         const bassFilter = ctx.createBiquadFilter();
@@ -552,11 +645,11 @@ window.Formular.initCustomSelect = function(selectEl) {
             updatePlayhead(e);
         });
 
-        listen(document, 'mousemove', (e) => {
+        document.addEventListener('mousemove', (e) => {
             if (isScrubbing) updatePlayhead(e);
         });
 
-        listen(document, 'mouseup', () => {
+        document.addEventListener('mouseup', () => {
             isScrubbing = false;
         });
     }
@@ -654,7 +747,7 @@ window.Formular.initCustomSelect = function(selectEl) {
                 startBoxHeight = parseFloat(vcCropBox.style.height || 100);
             });
 
-            listen(document, 'mousemove', (e) => {
+            document.addEventListener('mousemove', (e) => {
                 if (!isDragging && !isResizing) return;
                 const dx = ((e.clientX - startX) / vcContainer.clientWidth) * 100;
                 const dy = ((e.clientY - startY) / vcContainer.clientHeight) * 100;
@@ -678,11 +771,11 @@ window.Formular.initCustomSelect = function(selectEl) {
                 updateCropInput();
             });
 
-            listen(document, 'mouseup', () => { isDragging = false; isResizing = false; });
+            document.addEventListener('mouseup', () => { isDragging = false; isResizing = false; });
         }
     }
 
-    listen(document, 'mousemove', (e) => {
+    document.addEventListener('mousemove', (e) => {
         if (!isTrimming || mediaDuration === 0) return;
         const rect = vtTrack.getBoundingClientRect();
         let percent = ((e.clientX - rect.left) / rect.width);
@@ -694,7 +787,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         updateTrimUI();
     });
 
-    listen(document, 'mouseup', () => { isTrimming = false; });
+    document.addEventListener('mouseup', () => { isTrimming = false; });
 
     optionsContainer.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -764,8 +857,11 @@ window.Formular.initCustomSelect = function(selectEl) {
         
         selectEl.value = currentSelectedFormat;
         const hasMediaMods = optionsContainer.querySelector('.media-settings').style.display !== 'none';
+        const speechActive = selectEl.dataset.speech === '1';
         
-        if (hasMediaMods) {
+        if (speechActive) {
+            rememberVoice();
+        } else if (hasMediaMods) {
             const audioOpts = {
                 tempo: parseFloat(optionsContainer.querySelector('.s-tempo').value),
                 reverb: parseFloat(optionsContainer.querySelector('.s-reverb').value),
@@ -796,6 +892,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         
         const activeChip = grid.querySelector('.format-chip.active');
         const formatText = activeChip ? activeChip.dataset.value.toUpperCase() : currentSelectedFormat.toUpperCase();
+        const aiMark = activeChip && activeChip.dataset.ai === 'true' ? ' <span class="ai-mark">AI</span>' : '';
         let modified = false;
         if (hasMediaMods) {
             const a = JSON.parse(selectEl.dataset.audioOpts || "{}");
@@ -805,7 +902,7 @@ window.Formular.initCustomSelect = function(selectEl) {
             }
         }
         
-        trigger.querySelector('span').innerHTML = formatText + (modified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '');
+        trigger.querySelector('span').innerHTML = formatText + (modified ? ' <i class="bi bi-stars star-icon" style="color: var(--orange); margin-left: 4px;"></i>' : '') + aiMark;
         optionsContainer.classList.remove('open');
         trigger.classList.remove('open');
         

@@ -13,4 +13,4 @@ cairosvg
 pyyaml
 toml
 xmltodict
-defusedxml
+sherpa-onnx

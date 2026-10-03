@@ -25,7 +25,7 @@ Formular relies on file-content detection (via Magic Bytes), not file extensions
 
 ## Planned Redesign
 
-A conceptual redesign (shared workspace, background jobs, public API, AI operations) is documented in [`docs/`](docs/README.md) (in Russian). AI agents should start with [`AGENTS.md`](AGENTS.md).
+A conceptual redesign (shared workspace, background jobs, public API, AI operations) is documented in [`docs/`](docs/README.md) (in Russian). AI agents should start with [`AGENTS.md`](AGENTS.md). Speech to text and text to speech are already in the current interface.
 
 ## Technology Stack
 - **Backend Environment:** FastAPI, Python 3.11, Docker (Debian Slim)

@@ -164,6 +164,28 @@ body.bulk-active #toast-container { bottom: 100px; }
 .format-chip.active .star-icon {
     color: var(--black) !important;
 }
+.ai-mark {
+    color: var(--orange);
+    font-size: 0.65rem;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    margin-left: 4px;
+}
+.format-chip.active .ai-mark,
+.f-chip.active .ai-mark { color: var(--black); }
+.ai-note {
+    color: var(--text-light);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    margin: 2px 0 10px;
+}
+.ai-settings {
+    background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 107, 53, 0.2);
+    border-radius: 8px; padding: 12px; margin-bottom: 10px;
+}
+.voice-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.voice-row .voice-pick { flex: 1; justify-content: flex-start; text-align: left; padding: 6px 8px; font-size: 0.78rem; }
+.voice-play { flex: 0 0 36px; width: 36px; padding: 6px 0; }
 .format-chip:hover { background: rgba(255, 107, 53, 0.2); border-color: var(--orange-light); transform: translateY(-1px); }
 .format-chip.active { 
     background: var(--orange); color: var(--black); font-weight: bold; border-color: var(--orange);
@@ -188,14 +210,14 @@ body.bulk-active #toast-container { bottom: 100px; }
 .media-settings label:first-child { margin-top: 0; }
 
 .preset-btns, .filter-chips { display: flex; gap: 6px; margin-bottom: 12px; }
-.btn-preset, .f-chip { 
+.btn-preset, .f-chip, .voice-pick { 
     flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.15); 
     color: var(--text-muted); font-size: 0.8rem; letter-spacing: 0.5px; padding: 8px 4px; border-radius: 4px; 
     cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; 
     line-height: 1.1; word-wrap: break-word; text-align: center; 
 }
-.btn-preset:hover, .f-chip:hover { border-color: var(--orange-light); color: var(--orange-light); transform: translateY(-1px); background: rgba(255, 107, 53, 0.05); }
-.btn-preset.active, .f-chip.active { border-color: var(--orange); color: var(--black); background: var(--orange); font-weight: bold; box-shadow: 0 2px 8px rgba(255,107,53,0.3); }
+.btn-preset:hover, .f-chip:hover, .voice-pick:hover { border-color: var(--orange-light); color: var(--orange-light); transform: translateY(-1px); background: rgba(255, 107, 53, 0.05); }
+.btn-preset.active, .f-chip.active, .voice-pick.active { border-color: var(--orange); color: var(--black); background: var(--orange); font-weight: bold; box-shadow: 0 2px 8px rgba(255,107,53,0.3); }
 
 .merge-files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 130px; overflow-y: auto; padding-right: 4px; }
 .merge-chip { 

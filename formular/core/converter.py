@@ -12,13 +12,8 @@ import cairosvg
 import json
 import yaml
 import toml
+import shlex
 from shared_runtime import ProcessResult, SubprocessFailure, run_process
-
-from formular.core.errors import FormularError
-from formular.core.ffmpeg_flags import custom_ffmpeg_args
-from formular.core.plan import shortest_path
-from formular.core.registry import DIRECT_EDGES
-from formular.core.xmlio import parse_xml
 
 try:
     from .html_pdf import render_html_to_pdf
@@ -31,27 +26,52 @@ MAX_ARCHIVE_UNPACKED_BYTES = int(
     os.getenv("FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES", str(256 * 1024 * 1024))
 )
 
-def _load_opts(raw, field: str) -> dict:
-    if raw is None or str(raw).strip() == "":
-        return {}
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise FormularError(f"{field} must be a JSON object.", 422) from exc
-    if not isinstance(data, dict):
-        raise FormularError(f"{field} must be a JSON object.", 422)
-    return data
-
-
-def _clock_value(value) -> str:
-    text = str(value).strip()
-    if not re.fullmatch(r"\d{1,6}(\.\d{1,3})?", text):
-        raise FormularError("Trim values must be seconds.", 422)
-    return text
-
+DIRECT_EDGES = {
+    'docx': ['pdf', 'html', 'txt', 'md'],
+    'doc': ['pdf', 'docx'],
+    'pptx': ['pdf'],
+    'rtf': ['pdf', 'docx', 'html', 'txt', 'md'],
+    'odt': ['pdf', 'docx'],
+    'txt': ['pdf', 'html', 'md', 'docx', 'json'],  
+    'html': ['pdf', 'md', 'txt', 'docx'],
+    'md': ['html', 'txt', 'docx'],
+    'epub': ['html', 'txt', 'md'],
+    'pdf': ['html', 'txt'],
+    'djvu': ['pdf'],
+    'csv': ['pdf'],
+    'xlsx': ['csv', 'pdf'],
+    'svg': ['png', 'pdf'],
+    'jpg': ['png', 'webp', 'pdf'],
+    'png': ['jpg', 'webp', 'pdf'],
+    'webp': ['jpg', 'png', 'pdf'],
+    'gif': ['png', 'mp4'],
+    'mp4': ['webm', 'gif', 'mp3', 'ogg'],
+    'webm': ['mp4', 'gif', 'mp3', 'ogg'],
+    'mp3': ['wav', 'ogg', 'mp4', 'webm'],
+    'wav': ['mp3', 'ogg', 'mp4', 'webm'],
+    'ogg': ['mp3', 'wav', 'mp4', 'webm'],
+    'zip': ['7z', 'tar', 'gz'],
+    'rar': ['zip', '7z', 'tar', 'gz'],
+    '7z': ['zip', 'tar', 'gz'],
+    'tar': ['zip', '7z', 'gz'],
+    'gz': ['zip', '7z', 'tar'],
+    'json': ['yaml', 'toml', 'xml', 'txt'],
+    'yaml': ['json', 'toml', 'xml', 'txt'],
+    'toml': ['json', 'yaml', 'xml', 'txt'],
+    'xml': ['json', 'yaml', 'toml', 'txt']
+}
 
 def find_shortest_path(start, end):
-    return shortest_path(DIRECT_EDGES, start, end)
+    queue = [(start, [start])]
+    visited = set()
+    while queue:
+        (node, path) = queue.pop(0)
+        if node == end: return path
+        if node not in visited:
+            visited.add(node)
+            for neighbor in DIRECT_EDGES.get(node, []):
+                queue.append((neighbor, path + [neighbor]))
+    return None
 
 def _local_media_protocols(cmd):
     argv = [str(item) for item in cmd]
@@ -69,7 +89,6 @@ async def _run_process(*cmd, timeout=300, capture_stdout=False) -> ProcessResult
             timeout=timeout,
             capture_stdout=capture_stdout,
             check=False,
-            background=True,
         )
     except SubprocessFailure as exc:
         raise Exception(str(exc)) from exc
@@ -161,12 +180,12 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     af = []
     
     trim_start, trim_end = None, None
-    for field, opts_str in (("audio_opts", audio_opts), ("video_opts", video_opts)):
-        opts = _load_opts(opts_str, field)
-        if opts.get("trim_start"):
-            trim_start = _clock_value(opts["trim_start"])
-        if opts.get("trim_end"):
-            trim_end = _clock_value(opts["trim_end"])
+    for opts_str in filter(None, [audio_opts, video_opts]):
+        try:
+            opts = json.loads(opts_str)
+            if opts.get('trim_start'): trim_start = opts['trim_start']
+            if opts.get('trim_end'): trim_end = opts['trim_end']
+        except: pass
 
     is_input_audio = from_fmt in ['mp3', 'wav', 'ogg']
     
@@ -200,63 +219,59 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
         if trim_end: cmd.extend(["-to", str(trim_end)])
     
     if video_opts and to_fmt not in ['mp3', 'wav', 'ogg']:
-        v_opts = _load_opts(video_opts, "video_opts")
-        if v_opts.get('resize'):
-            res_val = str(v_opts['resize']).strip().lower()
-            parts = res_val.split('x')
-            if len(parts) != 2 or not all(part.isdigit() for part in parts):
-                raise FormularError("Resize must look like 1280x720.", 422)
-            rw, rh = int(parts[0]), int(parts[1])
-            if not 2 <= rw <= 7680 or not 2 <= rh <= 7680:
-                raise FormularError("Resize is out of range.", 422)
-            rw = rw if rw % 2 == 0 else max(2, rw - 1)
-            rh = rh if rh % 2 == 0 else max(2, rh - 1)
-            vf.append(f"scale={rw}:{rh}")
+        try:
+            v_opts = json.loads(video_opts)
+            if v_opts.get('resize'):
+                res_val = str(v_opts['resize']).strip().lower()
+                if 'x' in res_val:
+                    parts = res_val.split('x')
+                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                        rw, rh = int(parts[0]), int(parts[1])
+                        rw = rw if rw % 2 == 0 else max(2, rw - 1)
+                        rh = rh if rh % 2 == 0 else max(2, rh - 1)
+                        vf.append(f"scale={rw}:{rh}")
+                    else:
+                        vf.append(f"scale={res_val}")
+                else:
+                    vf.append(f"scale={res_val}")
 
-        if v_opts.get('crop'):
-            crop_val = str(v_opts['crop']).strip()
-            c_parts = crop_val.split(':')
-            if len(c_parts) != 4 or not all(part.isdigit() for part in c_parts):
-                raise FormularError("Crop must be width:height:x:y.", 422)
-            cw, ch, cx, cy = [int(part) for part in c_parts]
-            if max(cw, ch, cx, cy) > 7680:
-                raise FormularError("Crop is out of range.", 422)
-            cw = cw if cw % 2 == 0 else max(2, cw - 1)
-            ch = ch if ch % 2 == 0 else max(2, ch - 1)
-            cx = cx if cx % 2 == 0 else max(0, cx - 1)
-            cy = cy if cy % 2 == 0 else max(0, cy - 1)
-            vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
+            if v_opts.get('crop'):
+                crop_val = str(v_opts['crop']).strip()
+                c_parts = crop_val.split(':')
+                if len(c_parts) == 4 and all(p.isdigit() for p in c_parts):
+                    cw, ch, cx, cy = [int(p) for p in c_parts]
+                    cw = cw if cw % 2 == 0 else max(2, cw - 1)
+                    ch = ch if ch % 2 == 0 else max(2, ch - 1)
+                    cx = cx if cx % 2 == 0 else max(0, cx - 1)
+                    cy = cy if cy % 2 == 0 else max(0, cy - 1)
+                    vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
+                else:
+                    vf.append(f"crop={crop_val}")
 
-        visual_filter = v_opts.get('filter')
-        if visual_filter == 'grayscale':
-            vf.append("hue=s=0")
-        elif visual_filter == 'sepia':
-            vf.append("colorchannelmixer=rr=.393:rg=.769:rb=.189:gr=.349:gg=.686:gb=.168:br=.272:bg=.534:bb=.131")
-        elif visual_filter == 'invert':
-            vf.append("negate")
-        elif visual_filter:
-            raise FormularError("Unknown video filter.", 422)
+            if v_opts.get('filter') == 'grayscale':
+                vf.append("hue=s=0")
+            elif v_opts.get('filter') == 'sepia':
+                vf.append("colorchannelmixer=rr=.393:rg=.769:rb=.189:gr=.349:gg=.686:gb=.168:br=.272:bg=.534:bb=.131")
+            elif v_opts.get('filter') == 'invert':
+                vf.append("negate")
+        except: pass
 
     if vf and to_fmt in ['mp4', 'webm']:
         vf.append("format=yuv420p")
 
     if audio_opts and to_fmt not in ['jpg', 'png', 'webp']:
-        a_opts = _load_opts(audio_opts, "audio_opts")
         try:
+            a_opts = json.loads(audio_opts)
             tempo = float(a_opts.get('tempo', 1.0))
+            tempo = max(0.5, min(2.0, tempo))
+            if tempo != 1.0: af.append(f"atempo={tempo}")
             reverb = float(a_opts.get('reverb', 0))
+            if reverb > 0:
+                decay = min(1.0, max(0.0, reverb / 100.0))
+                af.append(f"aecho=0.8:0.9:1000:{decay}")
             bass = float(a_opts.get('bass', 0))
-        except (TypeError, ValueError) as exc:
-            raise FormularError("Audio options must be numbers.", 422) from exc
-        tempo = max(0.5, min(2.0, tempo))
-        if tempo != 1.0:
-            af.append(f"atempo={tempo}")
-        if reverb > 0:
-            decay = min(1.0, max(0.0, reverb / 100.0))
-            af.append(f"aecho=0.8:0.9:1000:{decay}")
-        if bass != 0:
-            bass = max(-20.0, min(20.0, bass))
-            af.append(f"bass=g={bass}")
+            if bass != 0: af.append(f"bass=g={bass}")
+        except: pass
 
     has_video = False
     if from_fmt in ['jpg', 'png', 'webp', 'gif', 'mp4', 'webm']:
@@ -284,12 +299,34 @@ async def _run_ffmpeg(input_path: str, output_path: str, from_fmt: str, to_fmt: 
     if not custom_ffmpeg:
         if has_video:
             if to_fmt == 'webm':
-                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "2"])
+                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "4"])
             elif to_fmt == 'mp4':
-                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2"])
+                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
 
     if custom_ffmpeg:
-        cmd.extend(custom_ffmpeg_args(custom_ffmpeg))
+        try:
+            custom_args = shlex.split(custom_ffmpeg)
+            bad_flags = {
+                '-i', '-f', '-d', '-y', '-n', '-vcodec', '-acodec', '-c:v',
+                '-c:a', '-map', '-protocol_whitelist', '-protocol_blacklist',
+                '-filter_script', '-filter_complex_script', '-report',
+                '-passlogfile', '-vstats_file', '-progress',
+            }
+            for i, arg in enumerate(custom_args):
+                if any(c in arg for c in ['/', '\\', '..', '&', '|', ';', '$', '`', '<', '>']):
+                    raise ValueError("Invalid characters detected in custom FFmpeg flags.")
+                is_flag = arg.startswith('-') and len(arg) > 1
+                if is_flag:
+                    if arg.lower() in bad_flags:
+                        raise ValueError(f"Restricted FFmpeg flag provided: {arg}")
+                else:
+                    if i == 0 or not custom_args[i - 1].startswith('-'):
+                        raise ValueError(f"Invalid option syntax: '{arg}' must be preceded by a flag starting with '-'.")
+                cmd.append(arg)
+        except ValueError as ve:
+            raise Exception(str(ve))
+        except Exception: 
+            raise Exception("Invalid custom FFmpeg arguments syntax.")
 
     cmd.append(output_path)
     
@@ -304,8 +341,7 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
     else:
         path = find_shortest_path(from_fmt, to_fmt)
 
-    if not path:
-        raise FormularError(f"No conversion path found from {from_fmt} to {to_fmt}.", 422)
+    if not path: raise Exception(f"No conversion path found from {from_fmt} to {to_fmt}")
 
     current_input = input_path
     temp_files = []
@@ -426,8 +462,9 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
                 if from_fmt == 'json': data = json.loads(content)
                 elif from_fmt == 'yaml': data = yaml.safe_load(content)
                 elif from_fmt == 'toml': data = toml.loads(content)
-                elif from_fmt == 'xml':
-                    data = parse_xml(content)
+                elif from_fmt == 'xml': 
+                    import xmltodict
+                    data = xmltodict.parse(content)
         with open(output_path, 'w', encoding='utf-8') as f:
             if to_fmt == 'json': json.dump(data, f, indent=4)
             elif to_fmt == 'yaml': yaml.dump(data, f, default_flow_style=False)
@@ -469,23 +506,23 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
     if (has_ffmpeg_opts or from_fmt == to_fmt) and from_fmt in FFMPEG_MEDIA + IMAGE_MEDIA and to_fmt in FFMPEG_MEDIA + IMAGE_MEDIA:
         if to_fmt in ['mp3', 'ogg', 'wav'] and from_fmt in ['mp4', 'webm'] and not merge_path:
             if not await _has_audio(input_path):
-                raise FormularError("No audio track found in the video file.", 422)
+                raise Exception("No audio track found in the video file.")
         await _run_ffmpeg(input_path, output_path, from_fmt, to_fmt, audio_opts, video_opts, custom_ffmpeg, merge_path, merge_loop)
         return
 
     if from_fmt in FFMPEG_MEDIA and to_fmt in FFMPEG_MEDIA:
         if to_fmt in ['mp3', 'ogg'] and from_fmt in ['mp4', 'webm']:
             if not await _has_audio(input_path):
-                raise FormularError("No audio track found in the video file.", 422)
+                raise Exception("No audio track found in the video file.")
             
         cmd = ["ffmpeg", "-y", "-nostdin", "-i", input_path]
         
         has_video = not (from_fmt in ['mp3', 'wav', 'ogg'])
         if has_video:
             if to_fmt == 'webm':
-                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "2"])
+                cmd.extend(["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "4", "-row-mt", "1", "-threads", "4"])
             elif to_fmt == 'mp4':
-                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2"])
+                cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
                 
         cmd.append(output_path)
         await _run_process(*cmd, timeout=600)
