@@ -11,6 +11,8 @@ from formular.core.speech import (
     LANGUAGE_VOICES,
     SpeechError,
     VOICES,
+    _letter_metadata_blob,
+    _mark_letter_model,
     get_voice,
     kind,
     model_file_url,
@@ -162,6 +164,25 @@ def test_language_voices_follow_gender_and_stay_permissive():
         assert "nc" not in lowered
         assert "sa" not in lowered
         assert model_file_url(voice.repo, voice.onnx).startswith("https://huggingface.co/")
+
+
+def test_ukrainian_voice_reads_letters_and_the_mark_is_written_once():
+    assert voice_for(get_voice("norman"), "uk").characters
+    assert voice_for(get_voice("cori"), "uk").characters
+    assert all(voice.characters for voice in LANGUAGE_VOICES if voice.lang == "uk")
+    assert all(not voice.characters for voice in list(VOICES) + list(LANGUAGE_VOICES) if voice.lang != "uk")
+    blob = _letter_metadata_blob()
+    assert b"characters" in blob
+    path = ROOT / ".pytest-tmp" / "letter-mark.bin"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"model")
+    note = path.with_name(path.name + ".letters")
+    note.unlink(missing_ok=True)
+    _mark_letter_model(path)
+    marked = path.read_bytes()
+    _mark_letter_model(path)
+    assert path.read_bytes() == marked
+    assert marked.endswith(blob)
 
 
 def test_spoken_headers_name_every_language_voice():

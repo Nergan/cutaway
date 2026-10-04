@@ -51,6 +51,9 @@ class Voice:
     license: str
     sample: str = _SAMPLE
     sid: int = 0
+    # The published file header asks for pronunciation data. This voice was
+    # trained on letters, and those data turn a paragraph into a few seconds.
+    characters: bool = False
 
 
 # Public-domain datasets, trained from scratch or from another public-domain voice.
@@ -168,6 +171,7 @@ LANGUAGE_VOICES = (
         "CC0-1.0",
         "Це приклад цього голосу.",
         sid=1,
+        characters=True,
     ),
     Voice(
         "uk-lada",
@@ -179,6 +183,7 @@ LANGUAGE_VOICES = (
         "CC0-1.0",
         "Це приклад цього голосу.",
         sid=0,
+        characters=True,
     ),
 )
 
@@ -483,10 +488,55 @@ def _ensure_espeak() -> Path:
     return root
 
 
+def _encode_varint(number: int) -> bytes:
+    out = bytearray()
+    while True:
+        piece = number & 0x7F
+        number >>= 7
+        if number:
+            out.append(piece | 0x80)
+        else:
+            out.append(piece)
+            return bytes(out)
+
+
+def _encode_bytes(field: int, payload: bytes) -> bytes:
+    tag = _encode_varint((field << 3) | 2)
+    return tag + _encode_varint(len(payload)) + payload
+
+
+def _letter_metadata_blob() -> bytes:
+    # Piper stores a pad, a start mark and an end mark as the first three symbols.
+    entries = (
+        ("frontend", "characters"),
+        ("add_blank", "1"),
+        ("blank_id", "0"),
+        ("bos_id", "1"),
+        ("eos_id", "2"),
+        ("use_eos_bos", "1"),
+    )
+    blob = bytearray()
+    for key, value in entries:
+        entry = _encode_bytes(1, key.encode("utf-8")) + _encode_bytes(2, value.encode("utf-8"))
+        blob.extend(_encode_bytes(14, entry))
+    return bytes(blob)
+
+
+def _mark_letter_model(path: Path) -> None:
+    note = path.with_name(path.name + ".letters")
+    if note.is_file():
+        return
+    with path.open("ab") as handle:
+        handle.write(_letter_metadata_blob())
+    note.write_text("ok", encoding="utf-8")
+
+
 def _ensure_voice_files(voice: Voice) -> tuple[Path, Path]:
     folder = cache_root() / "voices" / voice.repo.rsplit("/", 1)[-1]
     model = _ensure_file(voice.repo, voice.onnx, folder / voice.onnx)
     tokens = _ensure_file(voice.repo, "tokens.txt", folder / "tokens.txt")
+    if voice.characters:
+        _mark_letter_model(model)
     return model, tokens
 
 
@@ -498,19 +548,23 @@ def _ensure_whisper() -> tuple[Path, Path, Path]:
     return encoder, decoder, tokens
 
 
-def _synthesize(sherpa, espeak: Path, voice: Voice, text: str):
+def _synthesize(sherpa, espeak: Path | None, voice: Voice, text: str):
     model, tokens = _ensure_voice_files(voice)
+    if voice.characters:
+        # The letter list is lowercase. The engine folds only ASCII bytes.
+        text = text.lower()
     config = sherpa.OfflineTtsConfig(
         model=sherpa.OfflineTtsModelConfig(
             vits=sherpa.OfflineTtsVitsModelConfig(
                 model=str(model),
                 lexicon="",
                 tokens=str(tokens),
-                data_dir=str(espeak),
+                data_dir="" if voice.characters else str(espeak),
             ),
             num_threads=1,
             provider="cpu",
-        )
+        ),
+        max_num_sentences=1,
     )
     engine = sherpa.OfflineTts(config)
     try:
@@ -537,15 +591,17 @@ def _resample(samples: list[float], src: int, dst: int) -> list[float]:
 
 def _render_speech(primary: Voice, text: str, dest: Path) -> None:
     sherpa = _sherpa()
-    espeak = _ensure_espeak()
-    pieces: list[float] = []
-    rate = 22050
-    previous = None
+    planned: list[tuple[Voice, str]] = []
     for lang, chunk in segment_languages(text):
         spoken = chunk.strip()
         if not spoken:
             continue
-        voice = voice_for(primary, lang)
+        planned.append((voice_for(primary, lang), spoken))
+    espeak = _ensure_espeak() if any(not voice.characters for voice, _spoken in planned) else None
+    pieces: list[float] = []
+    rate = 22050
+    previous = None
+    for voice, spoken in planned:
         samples, src = _synthesize(sherpa, espeak, voice, spoken)
         if previous is not None and previous != voice.id:
             pieces.extend([0.0] * int(0.12 * rate))
