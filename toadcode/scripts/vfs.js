@@ -8,6 +8,7 @@
     let focusedIndex = -1;
     let anchorIndex = -1;
     let maxRepoSize = 10 * 1024 * 1024;
+    const historyBytes = 2 * 1024 * 1024;
     
     let historyStack = [];
     let historyIndex = -1;
@@ -50,11 +51,60 @@
         charCount: document.getElementById('charCount'),
         repoSizeText: document.getElementById('repoSizeText'),
         repoSizeProgress: document.getElementById('repoSizeProgress'),
-        uuidDisplay: document.getElementById('uuid-display')
+        uuidDisplay: document.getElementById('uuid-display'),
+        loadBar: document.getElementById('loadBar'),
+        loadBarFill: document.getElementById('loadBarFill'),
+        loadBarText: document.getElementById('loadBarText')
+    };
+
+    let loadDepth = 0;
+    let storageNotice = false;
+
+    const repoBytes = () => {
+        let size = 0;
+        for (const file of vfs) {
+            if (!file.is_dir && file.content) size += file.content.length;
+        }
+        return size;
+    };
+
+    const yieldToUi = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const paintLoad = (label, ratio) => {
+        if (!ui.loadBar) return;
+        ui.loadBar.classList.add('is-active');
+        ui.loadBar.setAttribute('aria-busy', 'true');
+        if (ui.loadBarText) ui.loadBarText.textContent = label;
+        const known = typeof ratio === 'number';
+        ui.loadBar.classList.toggle('is-busy', !known);
+        if (ui.loadBarFill) {
+            ui.loadBarFill.style.width = known ? `${Math.min(100, Math.max(0, Math.round(ratio * 100)))}%` : '';
+        }
+    };
+
+    const beginLoad = (label) => {
+        loadDepth += 1;
+        paintLoad(label, null);
+    };
+
+    const updateLoad = (ratio, label) => {
+        if (loadDepth > 0) paintLoad(label, ratio);
+    };
+
+    const endLoad = () => {
+        loadDepth = Math.max(0, loadDepth - 1);
+        if (loadDepth === 0 && ui.loadBar) {
+            ui.loadBar.classList.remove('is-active', 'is-busy');
+            ui.loadBar.setAttribute('aria-busy', 'false');
+        }
     };
 
     const saveStateToHistory = () => {
         if (window.IS_READONLY) return;
+        if (storageNotice && repoBytes() > historyBytes) {
+            checkTotalSize();
+            return;
+        }
         const state = {
             vfs: JSON.parse(JSON.stringify(vfs)),
             activeFilePath,
@@ -154,10 +204,21 @@
     };
 
     const persistState = () => {
-        if (!window.IS_READONLY) {
-            localStorage.setItem('toadcode_vfs', JSON.stringify(vfs));
+        if (window.IS_READONLY) return;
+        if (storageNotice && repoBytes() > historyBytes) {
             checkTotalSize();
+            return;
         }
+        try {
+            localStorage.setItem('toadcode_vfs', JSON.stringify(vfs));
+            storageNotice = false;
+        } catch (error) {
+            if (!storageNotice) {
+                storageNotice = true;
+                showNotification('Browser storage is full. This tab keeps the repository until you reload.', true);
+            }
+        }
+        checkTotalSize();
     };
 
     const updateCurrentFilePathUI = (path) => {
@@ -203,34 +264,82 @@
     };
 
     const processFiles = async (entries) => {
-        let newFiles = [];
+        if (!entries.length) return false;
+        beginLoad('Reading');
+        const newFiles = [];
         let ignoredCount = 0;
-        for (const entry of entries) {
-            if (entry.is_dir) {
-                newFiles.push({ path: entry.path.endsWith('/') ? entry.path : entry.path + '/', is_dir: true, content: '' });
-                continue;
+        let added = 0;
+        const total = entries.length;
+        try {
+            for (let index = 0; index < entries.length; index++) {
+                const entry = entries[index];
+                if (entry.is_dir) {
+                    newFiles.push({ path: entry.path.endsWith('/') ? entry.path : entry.path + '/', is_dir: true, content: '' });
+                } else {
+                    const room = maxRepoSize - repoBytes() - added;
+                    const size = entry.file && entry.file.size ? entry.file.size : 0;
+                    if (size > room) {
+                        if (!(await isTextContent(entry.file))) {
+                            ignoredCount++;
+                        } else {
+                            showNotification('Repository is larger than 10 MB.', true);
+                            return false;
+                        }
+                    } else if (await isTextContent(entry.file)) {
+                        const content = await entry.file.text();
+                        if (content.length > room) {
+                            showNotification('Repository is larger than 10 MB.', true);
+                            return false;
+                        }
+                        added += content.length;
+                        newFiles.push({ path: entry.path, is_dir: false, content });
+                    } else {
+                        ignoredCount++;
+                    }
+                }
+                if (index % 8 === 0) {
+                    updateLoad((index + 1) / total, `Reading ${index + 1} / ${total}`);
+                    await yieldToUi();
+                }
             }
-            if (await isTextContent(entry.file)) {
-                newFiles.push({ path: entry.path, is_dir: false, content: await entry.file.text() });
-            } else {
-                ignoredCount++;
-            }
-        }
 
-        if (newFiles.length > 0) {
-            newFiles = hoistRoot(newFiles);
-            newFiles.forEach(nf => {
+            if (newFiles.length === 0) {
+                showNotification('No valid files found to upload.', true);
+                return false;
+            }
+
+            const rooted = hoistRoot(newFiles);
+            rooted.forEach(nf => {
                 const existing = vfs.findIndex(f => f.path === nf.path);
                 if (existing >= 0) vfs[existing] = nf;
                 else vfs.push(nf);
             });
-            saveStateToHistory();
+            updateLoad(1, 'Opening');
+            await yieldToUi();
             renderTree();
+            updateLoad(1, 'Saving');
+            await yieldToUi();
+            saveStateToHistory();
             if (ignoredCount > 0) showNotification(`Ignored ${ignoredCount} binary files.`);
-        } else {
-            showNotification('No valid files found to upload.', true);
+            return true;
+        } finally {
+            endLoad();
         }
     };
+
+    const readAllEntries = (reader) => new Promise((resolve) => {
+        const all = [];
+        const readBatch = () => {
+            reader.readEntries((batch) => {
+                if (!batch.length) resolve(all);
+                else {
+                    all.push(...batch);
+                    readBatch();
+                }
+            });
+        };
+        readBatch();
+    });
 
     const traverseFileTree = async (item, path = '') => {
         let entries = [];
@@ -243,28 +352,34 @@
             }
         } else if (item.isDirectory) {
             entries.push({ path: path + item.name + '/', is_dir: true });
-            const dirReader = item.createReader();
-            const childEntries = await new Promise(resolve => dirReader.readEntries(resolve));
+            const childEntries = await readAllEntries(item.createReader());
             for (let i = 0; i < childEntries.length; i++) {
                 entries.push(...await traverseFileTree(childEntries[i], path + item.name + '/'));
+                if (i % 24 === 0) {
+                    updateLoad(null, 'Scanning');
+                    await yieldToUi();
+                }
             }
         }
         return entries;
     };
 
     const handleZipBlob = async (blob, targetSubpath = '') => {
+        beginLoad('Unpacking');
         try {
             const zip = await JSZip.loadAsync(blob);
             const entries = [];
             const rootFolders = new Set();
-            for (const p in zip.files) {
+            const names = Object.keys(zip.files);
+            for (const p of names) {
                 const parts = p.split('/');
                 if (parts.length > 1) rootFolders.add(parts[0]);
             }
             let rootPrefix = rootFolders.size === 1 ? Array.from(rootFolders)[0] + '/' : '';
             if (targetSubpath && !targetSubpath.endsWith('/')) targetSubpath += '/';
 
-            for (const p in zip.files) {
+            for (let index = 0; index < names.length; index++) {
+                const p = names[index];
                 let relativePath = p;
                 if (rootPrefix && relativePath.startsWith(rootPrefix)) {
                     relativePath = relativePath.substring(rootPrefix.length);
@@ -282,12 +397,19 @@
                     const fileBlob = await zipObj.async("blob");
                     entries.push({ path: relativePath, is_dir: false, file: fileBlob });
                 }
+                if (index % 8 === 0) {
+                    updateLoad((index + 1) / names.length, `Unpacking ${index + 1} / ${names.length}`);
+                    await yieldToUi();
+                }
             }
-            if (entries.length > 0) await processFiles(entries);
-            else showNotification("Folder/subpath not found or empty in ZIP.", true);
-
+            if (entries.length > 0) return await processFiles(entries);
+            showNotification("Folder/subpath not found or empty in ZIP.", true);
+            return false;
         } catch (e) {
             showNotification('Failed to parse ZIP file', true);
+            return false;
+        } finally {
+            endLoad();
         }
     };
 
@@ -864,15 +986,20 @@
                 e.preventDefault();
                 dragOverlay.classList.add('d-none');
                 if (e.dataTransfer.types.includes('Files')) {
-                    const items = e.dataTransfer.items;
-                    const promises = [];
-                    for (let i = 0; i < items.length; i++) {
-                        const item = items[i].webkitGetAsEntry();
-                        if (item) promises.push(traverseFileTree(item));
+                    beginLoad('Scanning');
+                    try {
+                        const items = e.dataTransfer.items;
+                        const promises = [];
+                        for (let i = 0; i < items.length; i++) {
+                            const item = items[i].webkitGetAsEntry();
+                            if (item) promises.push(traverseFileTree(item));
+                        }
+                        const results = await Promise.all(promises);
+                        const entries = results.flat();
+                        if (entries.length > 0) await processFiles(entries);
+                    } finally {
+                        endLoad();
                     }
-                    const results = await Promise.all(promises);
-                    const entries = results.flat();
-                    if (entries.length > 0) await processFiles(entries);
                 }
             });
 
@@ -908,9 +1035,14 @@
                 }
                 if (promises.length > 0) {
                     e.preventDefault();
-                    const results = await Promise.all(promises);
-                    const entries = results.flat();
-                    if (entries.length > 0) await processFiles(entries);
+                    beginLoad('Scanning');
+                    try {
+                        const results = await Promise.all(promises);
+                        const entries = results.flat();
+                        if (entries.length > 0) await processFiles(entries);
+                    } finally {
+                        endLoad();
+                    }
                 }
             });
 
@@ -978,7 +1110,12 @@
             });
         } else {
             ui.forkBtn?.addEventListener('click', () => {
-                localStorage.setItem('toadcode_vfs', JSON.stringify(vfs));
+                try {
+                    localStorage.setItem('toadcode_vfs', JSON.stringify(vfs));
+                } catch (error) {
+                    showNotification('Browser storage is full. The copy could not be opened for editing.', true);
+                    return;
+                }
                 window.location.href = '/toadcode/';
             });
         }
@@ -1079,15 +1216,17 @@
     };
 
     const fetchGithubZip = async (zipUrl, subpath) => {
-        showNotification("Fetching remote repository...");
+        beginLoad('Downloading');
         try {
             const res = await fetch(`/toadcode/api/proxy-zip?url=${encodeURIComponent(zipUrl)}`);
             if (!res.ok) throw new Error();
             const blob = await res.blob();
-            await handleZipBlob(blob, subpath);
-            showNotification("Repository loaded successfully!");
+            const loaded = await handleZipBlob(blob, subpath);
+            if (loaded) showNotification("Repository loaded successfully!");
         } catch (e) {
             showNotification("Failed to fetch repository. Ensure the URL is valid and public.", true);
+        } finally {
+            endLoad();
         }
     };
 
@@ -1183,9 +1322,9 @@
 
     const checkTotalSize = () => {
         if (window.IS_READONLY) return;
-        const size = new Blob([JSON.stringify(vfs)]).size;
+        const size = repoBytes();
         const mb = (size / 1024 / 1024);
-        const pct = Math.min((mb / 10) * 100, 100);
+        const pct = Math.min((size / maxRepoSize) * 100, 100);
         
         if (ui.repoSizeText && ui.repoSizeProgress) {
             ui.repoSizeText.textContent = mb.toFixed(2);
