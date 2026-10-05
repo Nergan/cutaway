@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from minecraft_mods.catalog import Catalog, ModEntry
+from minecraft_mods.catalog import Catalog, ModEntry, loader_panels, loader_slug
 
 _PAGE = Path(__file__).with_name("page.html")
 _INLINE = re.compile(
@@ -150,10 +150,12 @@ def _app(catalog: Catalog, lang: str, text: dict) -> str:
 
 def _card(mod: ModEntry, lang: str, text: dict) -> str:
     description = mod.description_ru if lang == "ru" else mod.description_en
+    panels = loader_panels(mod)
     meta = []
     if mod.minecraft:
         meta.append(f"Minecraft {mod.minecraft}")
-    meta.extend(mod.loaders)
+    if not panels:
+        meta.extend(mod.loaders)
     if mod.version:
         meta.append(f"v{mod.version}")
     meta_html = f'<p class="meta">{html.escape(" · ".join(meta))}</p>' if meta else ""
@@ -181,29 +183,58 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
   {desc_html}
   <p class="links">{"".join(links)}{license_button}{readme_button}</p>
   {status_html}
-  {_files(mod, text)}
-  {_download_all(mod, text)}
+  {_loader_tabs(mod, panels, text) if panels else _files(mod, text)}
+  {"" if panels else _download_all(mod, text)}
   {license_dialog}
   {readme_dialog}
 </article>
 """
 
 
-def _files(mod: ModEntry, text: dict) -> str:
-    if mod.release_limited and not mod.mod_jars and not mod.dependency_jars:
+def _loader_tabs(mod: ModEntry, panels: list[tuple[str, list, list]], text: dict) -> str:
+    buttons: list[str] = []
+    bodies: list[str] = []
+    for index, (loader, mod_jars, dependency_jars) in enumerate(panels):
+        slug = loader_slug(loader)
+        active = index == 0
+        selected = "true" if active else "false"
+        current = " is-active" if active else ""
+        buttons.append(
+            f'<button type="button" class="loader-tab{current}" role="tab" '
+            f'aria-selected="{selected}" data-loader="{slug}">{html.escape(loader)}</button>'
+        )
+        hidden = "" if active else " hidden"
+        bodies.append(
+            f'<div class="loader-panel" role="tabpanel" data-loader-panel="{slug}"{hidden}>'
+            f"{_files(mod, text, mod_jars, dependency_jars)}"
+            f"{_download_all(mod, text, slug)}"
+            f"</div>"
+        )
+    return f'<div class="loader-tabs" role="tablist">{"".join(buttons)}</div>{"".join(bodies)}'
+
+
+def _files(
+    mod: ModEntry,
+    text: dict,
+    mod_jars: list | None = None,
+    dependency_jars: list | None = None,
+) -> str:
+    mod_jars = mod.mod_jars if mod_jars is None else mod_jars
+    dependency_jars = mod.dependency_jars if dependency_jars is None else dependency_jars
+    if mod.release_limited and not mod_jars and not dependency_jars:
         return f'<p class="note">{html.escape(text["rate_limit"])}</p>'
     if not mod.has_release:
         return f'<p class="note">{html.escape(text["no_release"])}</p>'
-    if not mod.mod_jars and not mod.dependency_jars:
+    if not mod_jars and not dependency_jars:
         return f'<p class="note">{html.escape(text["no_jars"])}</p>'
     rows: list[str] = []
     note = ""
-    if mod.jars_classified and mod.mod_jars:
-        rows.append(_file_row(text["jar"], mod.mod_jars))
-        if mod.dependency_jars:
-            rows.append(_file_row(text["deps"], mod.dependency_jars))
+    if mod.jars_classified and mod_jars:
+        rows.append(_file_row(text["jar"], mod_jars))
+        if dependency_jars:
+            rows.append(_file_row(text["deps"], dependency_jars))
     else:
-        rows.append(_file_row(text["files"], [*mod.mod_jars, *mod.dependency_jars]))
+        rows.append(_file_row(text["files"], [*mod_jars, *dependency_jars]))
         note = f'<p class="note">{html.escape(text["unclassified"])}</p>'
     body = "".join(row for row in rows if row)
     if not body:
@@ -211,11 +242,14 @@ def _files(mod: ModEntry, text: dict) -> str:
     return f'<div class="file-list">{body}</div>{note}'
 
 
-def _download_all(mod: ModEntry, text: dict) -> str:
-    if not mod.mod_jars and not mod.dependency_jars:
+def _download_all(mod: ModEntry, text: dict, loader: str = "") -> str:
+    if not loader and not mod.mod_jars and not mod.dependency_jars:
         return ""
     href = f"/mods/{urllib.parse.quote(mod.repo)}/jars.zip"
     filename = f"{mod.repo}.zip"
+    if loader:
+        href = f"{href}?loader={urllib.parse.quote(loader)}"
+        filename = f"{mod.repo}-{loader}.zip"
     label = html.escape(text["download_all"])
     busy = html.escape(text["zip_busy"], quote=True)
     fail = html.escape(text["zip_fail"], quote=True)

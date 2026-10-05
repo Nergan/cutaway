@@ -193,6 +193,43 @@
       padding-top: 10px;
     }
 
+    .loader-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    button.loader-tab {
+      padding: 2px 8px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 8pt;
+      line-height: 1.45;
+      cursor: pointer;
+    }
+
+    button.loader-tab.is-active {
+      background: var(--btn);
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    button.loader-tab:hover,
+    button.loader-tab:focus-visible {
+      color: var(--text);
+      border-color: var(--primary);
+    }
+
+    .loader-panel:not([hidden]) {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+    }
+
     .kind {
       font-size: 8pt;
       margin-right: 2px;
@@ -455,6 +492,21 @@
     document.querySelectorAll("dialog.sheet").forEach((dialog) => {
       dialog.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close();
+      });
+    });
+    document.querySelectorAll(".loader-tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        const card = button.closest(".mod");
+        if (!card) return;
+        const slug = button.getAttribute("data-loader");
+        card.querySelectorAll(".loader-tab").forEach((item) => {
+          const on = item === button;
+          item.classList.toggle("is-active", on);
+          item.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        card.querySelectorAll("[data-loader-panel]").forEach((panel) => {
+          panel.hidden = panel.getAttribute("data-loader-panel") !== slug;
+        });
       });
     });
     document.querySelectorAll("a.btn.zip").forEach((link) => {

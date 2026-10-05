@@ -104,6 +104,8 @@ def test_release_table_splits_the_mod_jar_from_companion_jars():
         "kotlinforforge-5.8.0-all.jar",
         "Patchouli-1.21.1-93-NEOFORGE.jar",
     ]
+    assert mod_jars[0].loaders == ["NeoForge"]
+    assert [jar.loaders for jar in deps] == [["NeoForge"], ["NeoForge"]]
     minecraft, loaders = minecraft_and_loaders(TAMED_BODY)
     assert minecraft == "1.21.1"
     assert loaders == ["NeoForge"]
@@ -122,6 +124,10 @@ def test_compat_release_keeps_both_loaders_and_does_not_treat_hamsters_as_the_mo
         "create-1.20.1-6.0.8.jar",
         "hamsters-forge-1.0.3-1.20.1.jar",
     }
+    by_name = {jar.name: jar.loaders for jar in [*mod_jars, *deps]}
+    assert by_name["hamsterscreatecompat-1.20.1-1.0.0.jar"] == ["NeoForge", "Forge"]
+    assert by_name["create-1.20.1-6.0.8.jar"] == ["NeoForge", "Forge"]
+    assert by_name["hamsters-forge-1.0.3-1.20.1.jar"] == ["Forge"]
     minecraft, loaders = minecraft_and_loaders(HAMSTERS_BODY)
     assert minecraft == "1.20.1"
     assert loaders == ["NeoForge", "Forge"]
@@ -207,6 +213,8 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "::-webkit-scrollbar" in page
     assert 'href="/mods?lang=en"' in page
     assert 'href="/mods/tamedphantoms-mod/jars.zip"' in page
+    assert "loader=" not in page
+    assert 'class="loader-tab' not in page
     assert 'download="tamedphantoms-mod.zip"' in page
     assert 'class="btn zip"' in page
     assert 'class="file-list"' in page
@@ -236,6 +244,8 @@ Minecraft **1.21.1** / NeoForge
     assert [jar.name for jar in mod_jars] == ["reallyusefulribbits-1.0.0.jar"]
     assert "kotlinforforge-5.8.0-all.jar" in [jar.name for jar in deps]
     assert "geckolib-neoforge-1.21.1-4.7.6.jar" in [jar.name for jar in deps]
+    assert mod_jars[0].loaders == ["NeoForge"]
+    assert all(jar.loaders == ["NeoForge"] for jar in deps)
 
 
 def test_jar_archive_packs_the_card_files(monkeypatch):
@@ -275,6 +285,250 @@ def test_jar_archive_packs_the_card_files(monkeypatch):
             "reallyusefulribbits-1.0.0.jar",
             "kotlinforforge-5.8.0-all.jar",
         ]
+
+
+MULTI_BODY = """
+Minecraft **1.21.1** / Fabric, NeoForge or Forge
+
+| File | Required | Source |
+| --- | --- | --- |
+| `critters-fabric-1.0.0.jar` | Yes | this mod |
+| `critters-neoforge-1.0.0.jar` | Yes | this mod |
+| `critters-forge-1.0.0.jar` | Yes | this mod |
+| `fabric-language-kotlin-1.13.2.jar` | Yes | [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin) |
+| `kotlinforforge-5.8.0-all.jar` | Yes | [Kotlin for Forge](https://modrinth.com/mod/kotlin-for-forge) |
+| `geckolib-forge-1.21.1.jar` | No | [GeckoLib](https://modrinth.com/mod/geckolib) |
+| `architectury-9.2.14.jar` | Yes | [Architectury](https://modrinth.com/mod/architectury) |
+"""
+
+
+def _catalog_mod(repo: str, body: str, assets: list[dict]) -> ModEntry:
+    mod_jars, deps, classified = classify_jars(assets, body)
+    minecraft, loaders = minecraft_and_loaders(body)
+    return ModEntry(
+        repo=repo,
+        name=repo,
+        description_en="",
+        description_ru="",
+        github_url=f"https://github.com/Nergan/{repo}",
+        license_id="MPL-2.0",
+        license_name="MPL",
+        license_url="",
+        version="1.0.0",
+        minecraft=minecraft,
+        loaders=loaders,
+        mod_jars=mod_jars,
+        dependency_jars=deps,
+        jars_classified=classified,
+        has_release=True,
+        modrinth_state="linked",
+        modrinth_url="https://modrinth.com/mod/example",
+        modrinth_status="",
+    )
+
+
+def _panel(page: str, slug: str) -> str:
+    marker = f'data-loader-panel="{slug}"'
+    start = page.index(marker) + len(marker)
+    next_panel = page.find('data-loader-panel="', start)
+    article = page.find("</article>", start)
+    end = next_panel if next_panel != -1 else article
+    return page[start:end]
+
+
+def test_each_loader_tab_lists_and_packs_only_its_jars(monkeypatch):
+    import io
+    import zipfile
+
+    from minecraft_mods.catalog import CatalogError, build_jar_archive
+
+    assets = [
+        _asset("critters-forge-1.0.0.jar"),
+        _asset("critters-fabric-1.0.0.jar"),
+        _asset("critters-neoforge-1.0.0.jar"),
+        _asset("fabric-language-kotlin-1.13.2.jar"),
+        _asset("kotlinforforge-5.8.0-all.jar"),
+        _asset("geckolib-forge-1.21.1.jar"),
+        _asset("architectury-9.2.14.jar"),
+    ]
+    mod = _catalog_mod("critters-mod", MULTI_BODY, assets)
+    by_name = {jar.name: jar.loaders for jar in [*mod.mod_jars, *mod.dependency_jars]}
+    assert by_name["critters-fabric-1.0.0.jar"] == ["Fabric"]
+    assert by_name["critters-neoforge-1.0.0.jar"] == ["NeoForge"]
+    assert by_name["critters-forge-1.0.0.jar"] == ["Forge"]
+    assert by_name["fabric-language-kotlin-1.13.2.jar"] == ["Fabric"]
+    assert by_name["kotlinforforge-5.8.0-all.jar"] == ["NeoForge", "Forge"]
+    assert by_name["geckolib-forge-1.21.1.jar"] == ["Forge"]
+    assert by_name["architectury-9.2.14.jar"] == ["Fabric", "NeoForge", "Forge"]
+
+    page = render_page(Catalog(mods=[mod]), "ru", "name")
+    assert page.count('role="tab"') == 3
+    assert 'class="loader-tab is-active"' in page
+    assert 'aria-selected="true"' in page
+    assert page.count("скачать всё") == 3
+    assert "Minecraft 1.21.1 · v1.0.0" in page
+    assert "Minecraft 1.21.1 · Fabric" not in page
+    fabric = _panel(page, "fabric")
+    neoforge = _panel(page, "neoforge")
+    forge = _panel(page, "forge")
+    assert "critters-fabric-1.0.0.jar" in fabric
+    assert "fabric-language-kotlin-1.13.2.jar" in fabric
+    assert "architectury-9.2.14.jar" in fabric
+    assert "kotlinforforge" not in fabric
+    assert "geckolib-forge" not in fabric
+    assert "critters-neoforge" not in fabric
+    assert 'href="/mods/critters-mod/jars.zip?loader=fabric"' in fabric
+    assert 'download="critters-mod-fabric.zip"' in fabric
+    assert "critters-neoforge-1.0.0.jar" in neoforge
+    assert "kotlinforforge-5.8.0-all.jar" in neoforge
+    assert "fabric-language-kotlin" not in neoforge
+    assert "geckolib-forge" not in neoforge
+    assert 'href="/mods/critters-mod/jars.zip?loader=neoforge"' in neoforge
+    assert 'download="critters-mod-neoforge.zip"' in neoforge
+    assert " hidden" in neoforge
+    assert "critters-forge-1.0.0.jar" in forge
+    assert "kotlinforforge-5.8.0-all.jar" in forge
+    assert "geckolib-forge-1.21.1.jar" in forge
+    assert "fabric-language-kotlin" not in forge
+    assert 'href="/mods/critters-mod/jars.zip?loader=forge"' in forge
+    assert 'download="critters-mod-forge.zip"' in forge
+
+    def fake_get(url, headers, max_bytes=1_000_000):
+        return 200, url.encode(), {}
+
+    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
+    payload, filename = build_jar_archive(mod, "fabric")
+    assert filename == "critters-mod-fabric.zip"
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert archive.namelist() == [
+            "critters-fabric-1.0.0.jar",
+            "fabric-language-kotlin-1.13.2.jar",
+            "architectury-9.2.14.jar",
+        ]
+    _payload, forge_name = build_jar_archive(mod, "forge")
+    assert forge_name == "critters-mod-forge.zip"
+    try:
+        build_jar_archive(mod, "quilt")
+    except CatalogError as exc:
+        assert exc.status == 404
+    else:
+        raise AssertionError("quilt")
+
+
+def test_an_untagged_mod_jar_stays_with_the_other_loader_when_fabric_is_named():
+    body = """
+Minecraft **1.21.1** / NeoForge, Fabric
+
+| File | Required | Source |
+| --- | --- | --- |
+| `tamedphantoms-1.0.0.jar` | Yes | this mod |
+| `tamedphantoms-fabric-1.0.0.jar` | Yes | this mod |
+| `kotlinforforge-5.8.0-all.jar` | Yes | [Kotlin for Forge](https://modrinth.com/mod/kotlin-for-forge) |
+"""
+    mod_jars, deps, _classified = classify_jars(
+        [
+            _asset("tamedphantoms-1.0.0.jar"),
+            _asset("tamedphantoms-fabric-1.0.0.jar"),
+            _asset("kotlinforforge-5.8.0-all.jar"),
+        ],
+        body,
+    )
+    by_name = {jar.name: jar.loaders for jar in [*mod_jars, *deps]}
+    assert by_name["tamedphantoms-1.0.0.jar"] == ["NeoForge"]
+    assert by_name["tamedphantoms-fabric-1.0.0.jar"] == ["Fabric"]
+    assert by_name["kotlinforforge-5.8.0-all.jar"] == ["NeoForge"]
+
+
+def test_a_loader_column_or_heading_tags_a_jar_whose_name_does_not():
+    column = """
+Minecraft **1.21.1** / Fabric, NeoForge
+
+| File | Loader | Required | Source |
+| --- | --- | --- | --- |
+| `critters-1.0.0.jar` | Fabric | Yes | this mod |
+| `critters-neoforge-1.0.0.jar` | NeoForge | Yes | this mod |
+"""
+    mod_jars, _deps, classified = classify_jars(
+        [_asset("critters-1.0.0.jar"), _asset("critters-neoforge-1.0.0.jar")],
+        column,
+    )
+    assert classified
+    assert {jar.name: jar.loaders for jar in mod_jars} == {
+        "critters-1.0.0.jar": ["Fabric"],
+        "critters-neoforge-1.0.0.jar": ["NeoForge"],
+    }
+
+    headed = """
+Minecraft **1.21.1** / Fabric, NeoForge
+
+## Fabric
+| File | Required | Source |
+| `critters-1.0.0.jar` | Yes | this mod |
+
+## NeoForge
+| File | Required | Source |
+| `critters-1.0.1.jar` | Yes | this mod |
+"""
+    mod_jars, _deps, _classified = classify_jars(
+        [_asset("critters-1.0.0.jar"), _asset("critters-1.0.1.jar")],
+        headed,
+    )
+    assert {jar.name: jar.loaders for jar in mod_jars} == {
+        "critters-1.0.0.jar": ["Fabric"],
+        "critters-1.0.1.jar": ["NeoForge"],
+    }
+
+
+def test_identical_loader_sets_stay_one_download():
+    body = """
+Minecraft **1.21.1** / Fabric, NeoForge
+
+| File | Required | Source |
+| --- | --- | --- |
+| `critters-1.0.0.jar` | Yes | this mod |
+| `library-1.0.0.jar` | Yes | [Library](https://example.test/library) |
+"""
+    mod = _catalog_mod(
+        "critters-mod",
+        body,
+        [_asset("critters-1.0.0.jar"), _asset("library-1.0.0.jar")],
+    )
+    assert mod.mod_jars[0].loaders == []
+    page = render_page(Catalog(mods=[mod]), "en", "name")
+    assert 'class="loader-tab' not in page
+    assert 'href="/mods/critters-mod/jars.zip"' in page
+    assert "loader=" not in page
+
+
+def test_html_release_notes_keep_a_loader_column():
+    from minecraft_mods.catalog import _html_release_notes
+
+    page = """
+    <div class="markdown-body">
+      <p>Minecraft <strong>1.21.1</strong> / Fabric, NeoForge</p>
+      <table>
+        <tr><td><code>critters-1.0.0.jar</code></td><td>Fabric</td><td>Yes</td><td>this mod</td></tr>
+      </table>
+    </div>
+    """
+    mod_jars, _deps, classified = classify_jars([_asset("critters-1.0.0.jar")], _html_release_notes(page))
+    assert classified
+    assert mod_jars[0].loaders == ["Fabric"]
+
+
+def test_cached_jar_keeps_its_loaders():
+    from minecraft_mods.catalog import _mod_from_dict
+
+    mod = _mod_from_dict(
+        {
+            "repo": "critters-mod",
+            "name": "Critters",
+            "mod_jars": [{"name": "critters-fabric-1.0.0.jar", "url": "https://example.test/a.jar", "loaders": ["Fabric"]}],
+            "dependency_jars": [{"name": "old.jar", "url": "https://example.test/b.jar"}],
+        }
+    )
+    assert mod.mod_jars[0].loaders == ["Fabric"]
+    assert mod.dependency_jars[0].loaders == []
 
 
 def test_readme_markdown_renders_tables_and_drops_raw_html():

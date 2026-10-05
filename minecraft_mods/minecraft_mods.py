@@ -24,7 +24,7 @@ async def mods_home(request: Request) -> HTMLResponse:
 
 
 @router.get("/{repo}/jars.zip")
-async def download_jars(repo: str) -> Response:
+async def download_jars(repo: str, loader: str = "") -> Response:
     if not _REPO_NAME.fullmatch(repo):
         raise HTTPException(status_code=404)
     catalog = await asyncio.to_thread(get_catalog)
@@ -32,9 +32,9 @@ async def download_jars(repo: str) -> Response:
     if mod is None or not (mod.mod_jars or mod.dependency_jars):
         raise HTTPException(status_code=404)
     try:
-        payload, filename = await asyncio.to_thread(build_jar_archive, mod)
+        payload, filename = await asyncio.to_thread(build_jar_archive, mod, loader or None)
     except CatalogError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
     return Response(
         content=payload,
         media_type="application/zip",

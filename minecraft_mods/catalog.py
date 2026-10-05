@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_USER = "Nergan"
 MODRINTH_USER = "nargan"
-SCHEMA = 5
+SCHEMA = 6
 FRESH_SECONDS = 60 * 60
 STALE_SECONDS = 10 * 60
 MAX_BYTES = 1_000_000
@@ -44,10 +44,6 @@ _MOD_SOURCE = re.compile(
     r"\b(this (?:mod|compat|port|addon)|этот мод|этот компат|этот порт|этот аддон)\b",
     re.IGNORECASE,
 )
-_TABLE_ROW = re.compile(
-    r"^\|\s*`([^`]+)`\s*\|\s*([^|]*)\|\s*([^|]*)\|",
-    re.MULTILINE,
-)
 _MODRINTH_ID = re.compile(r"(?m)^\s*modrinth-id:\s*([A-Za-z0-9_-]+)\s*$")
 _MC_VERSION = re.compile(r"Minecraft\s+\*\*([^*]+)\*\*|Minecraft\s+([0-9][^\s/]*)", re.IGNORECASE)
 _H1 = re.compile(r"^#\s+(.+)$", re.MULTILINE)
@@ -62,13 +58,19 @@ _api_lock = threading.Lock()
 
 
 class CatalogError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int = 502) -> None:
+        super().__init__(message)
+        self.status = status
+
+
+TAB_LOADERS = ("Fabric", "NeoForge", "Forge")
 
 
 @dataclass
 class JarLink:
     name: str
     url: str
+    loaders: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -134,22 +136,19 @@ def parse_readme(markdown: str) -> tuple[str, str]:
 
 
 def classify_jars(assets: list[dict[str, Any]], body: str) -> tuple[list[JarLink], list[JarLink], bool]:
-    """Split release jars into the mod itself and companion jars shipped beside it."""
+    """Split release jars into the mod itself and companion jars shipped beside it.
+
+    Each jar is tagged with the loaders it belongs to. A card with two or three
+    different sets grows one tab per loader.
+    """
     jars = {
         str(asset.get("name") or ""): str(asset.get("browser_download_url") or "")
         for asset in assets
         if str(asset.get("name") or "").lower().endswith(".jar") and not _auxiliary_jar(str(asset.get("name") or ""))
     }
-    mod_patterns: list[str] = []
-    dep_patterns: list[str] = []
-    for match in _TABLE_ROW.finditer(body or ""):
-        pattern = match.group(1).strip()
-        if not pattern.lower().endswith(".jar"):
-            continue
-        if _MOD_SOURCE.search(match.group(3)):
-            mod_patterns.append(pattern)
-        else:
-            dep_patterns.append(pattern)
+    rows = _jar_table(body)
+    mod_patterns = [pattern for pattern, _rest, is_mod in rows if is_mod]
+    dep_patterns = [pattern for pattern, _rest, is_mod in rows if not is_mod]
 
     used: set[str] = set()
     mod_jars = _take(jars, mod_patterns, used)
@@ -163,6 +162,7 @@ def classify_jars(assets: list[dict[str, Any]], body: str) -> tuple[list[JarLink
         classified = True
     else:
         dep_jars.extend(_link(jars, name) for name in leftover)
+    _stamp_loaders(mod_jars, dep_jars, body)
     return mod_jars, dep_jars, classified
 
 
@@ -187,6 +187,33 @@ def minecraft_and_loaders(body: str) -> tuple[str, list[str]]:
     if "quilt" in lowered:
         loaders.append("Quilt")
     return minecraft, loaders
+
+
+def loader_panels(mod: ModEntry) -> list[tuple[str, list[JarLink], list[JarLink]]]:
+    """Tabs for a card. Empty when every loader would show the same jars."""
+    panels: list[tuple[str, list[JarLink], list[JarLink]]] = []
+    for loader in TAB_LOADERS:
+        own = [jar for jar in mod.mod_jars if loader in jar.loaders]
+        deps = [jar for jar in mod.dependency_jars if loader in jar.loaders]
+        if own or deps:
+            panels.append((loader, own, deps))
+    if len(panels) < 2:
+        return []
+    signatures = {
+        (tuple(jar.name for jar in own), tuple(jar.name for jar in deps))
+        for _loader, own, deps in panels
+    }
+    if len(signatures) < 2:
+        return []
+    return panels
+
+
+def loader_slug(loader: str) -> str:
+    return {"Fabric": "fabric", "NeoForge": "neoforge", "Forge": "forge"}.get(loader, "")
+
+
+def _canonical_loader(value: str) -> str | None:
+    return {"fabric": "Fabric", "neoforge": "NeoForge", "forge": "Forge"}.get(value.strip().lower())
 
 
 def classify_modrinth(
@@ -592,8 +619,7 @@ def _html_release_notes(page: str) -> str:
         cells = _html_cells(row)
         if not cells or not cells[0].lower().endswith(".jar"):
             continue
-        padded = (cells + ["", "", ""])[:3]
-        lines.append(f"| `{padded[0]}` | {padded[1]} | {padded[2]} |")
+        lines.append("| `" + cells[0] + "` | " + " | ".join(cells[1:]) + " |")
     return "\n".join(lines)
 
 
@@ -780,14 +806,21 @@ def _github_url(repo: str, suffix: str) -> str:
     return f"{base}/{suffix}"
 
 
-def build_jar_archive(mod: ModEntry) -> tuple[bytes, str]:
-    """Download every jar on the card and pack them into one zip."""
+def build_jar_archive(mod: ModEntry, loader: str | None = None) -> tuple[bytes, str]:
+    """Download the card's jars, or one loader's jars, and pack them into one zip."""
     import io
     import zipfile
 
     jars = [*mod.mod_jars, *mod.dependency_jars]
+    suffix = ""
+    if loader:
+        canonical = _canonical_loader(loader)
+        if canonical is None:
+            raise CatalogError(f"Unknown loader {loader}.", status=404)
+        jars = [jar for jar in jars if canonical in jar.loaders]
+        suffix = f"-{canonical.lower()}"
     if not jars:
-        raise CatalogError(f"{mod.repo} has no jars to archive.")
+        raise CatalogError(f"{mod.repo} has no jars to archive.", status=404)
     buffer = io.BytesIO()
     total = 0
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
@@ -808,7 +841,7 @@ def build_jar_archive(mod: ModEntry) -> tuple[bytes, str]:
                 raise CatalogError("The jar archive is too large.")
             archive.writestr(jar.name, payload)
     safe_repo = re.sub(r"[^A-Za-z0-9._-]+", "-", mod.repo).strip("-") or "mods"
-    return buffer.getvalue(), f"{safe_repo}.zip"
+    return buffer.getvalue(), f"{safe_repo}{suffix}.zip"
 
 
 def _http_get(
@@ -874,6 +907,90 @@ def _name_matches(name: str, pattern: str) -> bool:
 
 def _link(jars: dict[str, str], name: str) -> JarLink:
     return JarLink(name=name, url=jars[name])
+
+
+def _jar_table(body: str) -> list[tuple[str, str, bool]]:
+    """Jar rows as (pattern, surrounding text, whether the row is the mod itself)."""
+    heading = ""
+    rows: list[tuple[str, str, bool]] = []
+    for raw in (body or "").splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("#"):
+            heading = stripped.lstrip("#").strip()
+            continue
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        pattern = cells[0].strip("`").strip()
+        if not pattern.lower().endswith(".jar"):
+            continue
+        rest = " ".join(cell.strip("`").strip() for cell in cells[1:])
+        if heading:
+            rest = f"{rest} {heading}".strip()
+        is_mod = any(_MOD_SOURCE.search(cell) for cell in cells[1:])
+        rows.append((pattern, rest, is_mod))
+    return rows
+
+
+def _loader_signals(text: str) -> list[str]:
+    lowered = text.lower()
+    found: set[str] = set()
+    if re.search(r"neo[\s_-]?forge", lowered):
+        found.add("NeoForge")
+    if "fabric" in lowered:
+        found.add("Fabric")
+    scrubbed = re.sub(r"neo[\s_-]?forge", " ", lowered)
+    if re.search(r"kotlin[\s_-]*for[\s_-]*forge", scrubbed):
+        found.add("NeoForge")
+        found.add("Forge")
+        scrubbed = re.sub(r"kotlin[\s_-]*for[\s_-]*forge", " ", scrubbed)
+    if re.search(r"forge", scrubbed):
+        found.add("Forge")
+    return [loader for loader in TAB_LOADERS if loader in found]
+
+
+def _signals_for_jar(name: str, rows: list[tuple[str, str, bool]]) -> list[str]:
+    signals = _loader_signals(name)
+    if signals:
+        return signals
+    for pattern, rest, _is_mod in rows:
+        if _name_matches(name, pattern):
+            return _loader_signals(rest)
+    return []
+
+
+def _stamp_loaders(mod_jars: list[JarLink], dep_jars: list[JarLink], body: str) -> None:
+    declared = [loader for loader in minecraft_and_loaders(body)[1] if loader in TAB_LOADERS]
+    rows = _jar_table(body)
+    jars = [*mod_jars, *dep_jars]
+    for jar in jars:
+        signals = _signals_for_jar(jar.name, rows)
+        if signals and declared:
+            narrowed = [loader for loader in signals if loader in declared]
+            jar.loaders = narrowed or signals
+        else:
+            jar.loaders = list(signals)
+    if not any(jar.loaders for jar in jars):
+        if len(declared) == 1:
+            for jar in jars:
+                jar.loaders = list(declared)
+        return
+    tagged_mod = {loader for jar in mod_jars for loader in jar.loaders}
+    for jar in mod_jars:
+        if jar.loaders or not declared:
+            continue
+        remaining = [loader for loader in declared if loader not in tagged_mod]
+        jar.loaders = remaining or list(declared)
+    present = [loader for loader in TAB_LOADERS if any(loader in jar.loaders for jar in jars)]
+    if len(present) < 2:
+        if len(present) == 1:
+            for jar in jars:
+                if not jar.loaders:
+                    jar.loaders = list(present)
+        return
+    for jar in jars:
+        if not jar.loaders:
+            jar.loaders = list(present)
 
 
 def _is_image(line: str) -> bool:
@@ -943,6 +1060,17 @@ def _read_cache(strict_schema: bool = True) -> Catalog | None:
     )
 
 
+def _jar_from_dict(item: dict[str, Any]) -> JarLink:
+    loaders = item.get("loaders") or []
+    if not isinstance(loaders, list):
+        loaders = []
+    return JarLink(
+        name=str(item["name"]),
+        url=str(item["url"]),
+        loaders=[str(loader) for loader in loaders],
+    )
+
+
 def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
     return ModEntry(
         repo=str(raw["repo"]),
@@ -956,10 +1084,8 @@ def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
         version=str(raw.get("version") or ""),
         minecraft=str(raw.get("minecraft") or ""),
         loaders=list(raw.get("loaders") or []),
-        mod_jars=[JarLink(name=str(item["name"]), url=str(item["url"])) for item in raw.get("mod_jars") or []],
-        dependency_jars=[
-            JarLink(name=str(item["name"]), url=str(item["url"])) for item in raw.get("dependency_jars") or []
-        ],
+        mod_jars=[_jar_from_dict(item) for item in raw.get("mod_jars") or []],
+        dependency_jars=[_jar_from_dict(item) for item in raw.get("dependency_jars") or []],
         jars_classified=bool(raw.get("jars_classified")),
         has_release=bool(raw.get("has_release")),
         modrinth_state=str(raw.get("modrinth_state") or "missing"),
