@@ -7,6 +7,7 @@
     let expandedDirs = new Set();
     let focusedIndex = -1;
     let anchorIndex = -1;
+    let suppressTreeClick = false;
     let maxRepoSize = 10 * 1024 * 1024;
     const historyBytes = 2 * 1024 * 1024;
     
@@ -741,14 +742,22 @@
         }, { passive: false });
 
         const endLasso = () => {
-            if (isLassoing) {
-                isLassoing = false;
-                if (lassoBox) lassoBox.remove();
-            }
+            if (!isLassoing) return;
+            isLassoing = false;
+            if (lassoBox) lassoBox.remove();
+            // Keep the lasso selection through the click that ends the gesture.
+            suppressTreeClick = true;
+            setTimeout(() => { suppressTreeClick = false; }, 700);
         };
 
         document.addEventListener('mouseup', endLasso);
         document.addEventListener('touchend', endLasso);
+        document.addEventListener('click', (e) => {
+            if (!suppressTreeClick) return;
+            suppressTreeClick = false;
+            e.preventDefault();
+            e.stopPropagation();
+        }, true);
     };
 
     const initiateRenameInline = (itemEl) => {
