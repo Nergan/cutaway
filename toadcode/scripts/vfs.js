@@ -523,6 +523,11 @@
         
         items.forEach((item, index) => {
             item.addEventListener('click', (e) => {
+                if (suppressTreeClick) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 e.stopPropagation();
                 if (e.target.closest('.rename-btn, .delete-btn, .inline-edit-input')) return;
                 
@@ -677,10 +682,16 @@
         let isLassoing = false;
         let lassoBox = null;
         let startX, startY;
+        let lassoToken = 0;
+        let blockClickToken = 0;
+        let blockClickTimer = null;
 
         const startLasso = (clientX, clientY, e) => {
             if (e.target.closest('.tree-item')) return;
             isLassoing = true;
+            lassoToken += 1;
+            blockClickToken = lassoToken;
+            suppressTreeClick = true;
             startX = clientX;
             startY = clientY + ui.fileTree.scrollTop;
             
@@ -690,7 +701,10 @@
             
             if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
                 selectedTreeNodes.clear();
-                Array.from(ui.fileTree.querySelectorAll('.tree-item.selected')).forEach(i => i.classList.remove('selected'));
+                focusedIndex = -1;
+                Array.from(ui.fileTree.querySelectorAll('.tree-item.selected, .tree-item.focused-item')).forEach(i => {
+                    i.classList.remove('selected', 'focused-item');
+                });
             }
         };
 
@@ -733,7 +747,10 @@
             });
         };
 
-        document.addEventListener('mousemove', (e) => moveLasso(e.clientX, e.clientY, e));
+        document.addEventListener('mousemove', (e) => {
+            if (!e.buttons) return;
+            moveLasso(e.clientX, e.clientY, e);
+        });
         document.addEventListener('touchmove', (e) => {
             if (isLassoing) {
                 moveLasso(e.touches[0].clientX, e.touches[0].clientY, e);
@@ -744,19 +761,47 @@
         const endLasso = () => {
             if (!isLassoing) return;
             isLassoing = false;
-            if (lassoBox) lassoBox.remove();
-            // Keep the lasso selection through the click that ends the gesture.
-            suppressTreeClick = true;
-            setTimeout(() => { suppressTreeClick = false; }, 700);
+            const kept = Array.from(selectedTreeNodes);
+            const moved = lassoBox && ((parseFloat(lassoBox.style.width) || 0) > 0 || (parseFloat(lassoBox.style.height) || 0) > 0);
+            const token = lassoToken;
+            if (!moved) {
+                blockClickToken = 0;
+                suppressTreeClick = false;
+                clearTimeout(blockClickTimer);
+            } else {
+                suppressTreeClick = true;
+                clearTimeout(blockClickTimer);
+                blockClickTimer = setTimeout(() => {
+                    if (blockClickToken !== token) return;
+                    blockClickToken = 0;
+                    suppressTreeClick = false;
+                }, 400);
+            }
+            if (lassoBox) {
+                lassoBox.remove();
+                lassoBox = null;
+            }
+            if (!moved) return;
+            setTimeout(() => {
+                if (token !== lassoToken) return;
+                selectedTreeNodes = new Set(kept);
+                ui.fileTree.querySelectorAll('.tree-item').forEach((item) => {
+                    item.classList.toggle('selected', selectedTreeNodes.has(item.dataset.path));
+                });
+            }, 0);
         };
 
-        document.addEventListener('mouseup', endLasso);
-        document.addEventListener('touchend', endLasso);
+        document.addEventListener('pointerup', endLasso, true);
+        document.addEventListener('pointercancel', endLasso, true);
+        document.addEventListener('mouseup', endLasso, true);
+        document.addEventListener('touchend', endLasso, true);
         document.addEventListener('click', (e) => {
-            if (!suppressTreeClick) return;
-            suppressTreeClick = false;
+            if (!suppressTreeClick || blockClickToken === 0) return;
             e.preventDefault();
             e.stopPropagation();
+            blockClickToken = 0;
+            clearTimeout(blockClickTimer);
+            setTimeout(() => { suppressTreeClick = false; }, 0);
         }, true);
     };
 
@@ -897,6 +942,7 @@
         ui.addFolderBtn?.addEventListener('click', () => initiateCreateInline(true));
         
         ui.fileTree.addEventListener('click', (e) => {
+            if (suppressTreeClick) return;
             if (!e.target.closest('.tree-item')) {
                 selectedTreeNodes.clear();
                 focusedIndex = -1;
