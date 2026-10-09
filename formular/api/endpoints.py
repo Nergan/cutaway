@@ -14,8 +14,6 @@ from starlette.background import BackgroundTask
 
 from pydantic import BaseModel, Field
 
-from formular.core.detector import detect_file_format, get_allowed_targets
-from formular.core.converter import convert_document
 from formular.core import speech
 from shared_limits import RateLimiter, body_size_limit, too_large_detail
 
@@ -104,6 +102,9 @@ def _sweep_stale_sessions():
 
 
 def _describe_stored(file_id: str, original_name: str, file_path: Path, size: int) -> dict:
+    # The format stack pulls in libmagic. Upload limits are checked before this.
+    from formular.core.detector import detect_file_format, get_allowed_targets
+
     detected_format = detect_file_format(str(file_path), original_name)
     allowed_targets = get_allowed_targets(detected_format)
     if detected_format == "unknown" or not allowed_targets:
@@ -244,6 +245,8 @@ async def _convert(
     task_dir.mkdir(parents=True, exist_ok=True)
     
     output_path = task_dir / output_filename
+    from formular.core.detector import detect_file_format
+
     detected_format = detect_file_format(str(input_file), original_name)
     
     working_input = task_dir / f"working_input.{detected_format}"
@@ -265,6 +268,8 @@ async def _convert(
                     timeout=900,
                 )
             else:
+                from formular.core.converter import convert_document
+
                 await asyncio.wait_for(
                     convert_document(
                         str(working_input),

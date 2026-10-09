@@ -32,6 +32,7 @@ def test_the_index_names_the_file_budget(client: TestClient):
 
 
 def test_a_text_file_can_be_created_and_read_back(client: TestClient):
+    pytest.importorskip("magic")
     created = client.post(
         "/formular/api/files",
         files=[("files", ("note.txt", b"hello", "text/plain"))],
