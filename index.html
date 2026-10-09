@@ -429,15 +429,15 @@
 
 <main class="container">
     <div class="header-section">
-        <h1 class="welcome-text" data-i18n="welcome">Welcome to the Nargan's website, here you will find some of my pet-projects.</h1>
+        <h1 class="welcome-text">Welcome to the Nargan's website, here you will find some of my pet-projects.</h1>
         <div class="contacts">
             <a href="https://github.com/Nergan" target="_blank" class="contact-link github">
                 <i class="bi bi-github"></i>
-                github.com/Nergan
+                <span class="contact-label">github.com/Nergan</span>
             </a>
             <a href="https://t.me/kiry_vampy" target="_blank" class="contact-link telegram">
                 <i class="bi bi-telegram"></i>
-                @kiry_vampy
+                <span class="contact-label">@kiry_vampy</span>
             </a>
         </div>
     </div>
@@ -454,190 +454,104 @@
 <script>
     console.log('Greetings from GitHub!')
 
-    const projectsConfig = [
-        { i18n: 1, plugin: "evenfest", link: "/evenfest", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/evenfest/favicon.png" },
-        { i18n: 2, plugin: "snake", link: "/snake", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/snake/favicon.png" },
-        { i18n: 3, plugin: "toadcode", link: "/toadcode", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/toadcode/favicon.png" },
-        { i18n: 5, plugin: "formular", link: "/formular", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/formular/favicon.png" },
-        { i18n: 6, plugin: "yellow_mirror", link: "/yellow-mirror", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/yellow-mirror/favicon.png" },
-        { i18n: 8, plugin: "dnd", link: "/dnd", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/dnd/menu favicon.png" },
-        { i18n: 9, plugin: "markbin", link: "/markbin", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/markbin/favicon.png" },
-        { i18n: 10, plugin: "kanban", link: "/kanban", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/kanban/favicon.png" },
-        { i18n: 11, plugin: "netlazy", link: "/netlazy", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/netlazy/favicon.png" },
-        { i18n: 12, plugin: "ascii_city", link: "/ascii-city", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/ascii-city/favicon.png" },
-        { i18n: 15, plugin: "minecraft_mods", link: "/mods", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mods/favicon.jpg", cover: true },
-        // { i18n: 13, plugin: "age", link: "/age", icon: "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/age/favicon.png" },
-        { i18n: 14, plugin: "soon", link: "/soon", icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234a3c31'/%3E%3Cpath d='M3 12c3-6 7-8 10-8' stroke='%23d4a373' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='12.5' cy='4' r='1.3' fill='%23d98a59'/%3E%3C/svg%3E" }
-    ];
+    let homeCatalog = null;
 
-    const translations = {
-        en: {
-            welcome: "Welcome to the Nargan's website, here you will find some of my pet-projects.",
-            project1_title: "evenfest",
-            project1_desc: "cosplay community website",
-            project1_category: "art",
-            project2_title: "snake",
-            project2_desc: "just snake",
-            project2_category: "game",
-            project3_title: '<span style="color: lime">toad</span>code',
-            project3_desc: 'open workspace',
-            project3_category: "dev",
-            project5_title: "formular",
-            project5_desc: "any to any",
-            project5_category: "doc",
-            project6_title: "yellow mirror",
-            project6_desc: "simple web browser",
-            project6_category: "web",
-            project8_title: "d&d tools",
-            project8_desc: "tools for d&d",
-            project8_category: "game",
-            project9_title: '<span style="color: #e06c75">mark</span>bin',
-            project9_desc: "markdown editor&viewer&sharer",
-            project9_category: "doc",
-            project10_title: 'kanban',
-            project10_desc: "lite kanban board",
-            project10_category: "management",
-            project11_title: "netlazy",
-            project11_desc: "just dating",
-            project11_category: "social",
-            project12_title: "ascii city",
-            project12_desc: "a city of characters, together",
-            project12_category: "game",
-            project15_title: "mods",
-            project15_desc: "my minecraft mods",
-            project15_category: "game",
-            // project13_title: "age",
-            // project13_desc: "a world that folds around you",
-            // project13_category: "game",
-            project14_title: "soon",
-            project14_desc: "perhaps there will be ideas for new projects here...",
-            project14_category: "soon",
-            learn_more: "Learn more",
-            donate: "support me on boosty plsss <3"
-        },
-        ru: {
-            welcome: "Добро пожаловать на мой сайт-визитку, здесь вы найдете некоторые из моих пет-проектов.",
-            project1_title: "evenfest",
-            project1_desc: "сайт сообщества косплееров",
-            project1_category: "творчество",
-            project2_title: "змейка",
-            project2_desc: "просто змейка",
-            project2_category: "игры",
-            project3_title: '<span style="color: lime">toad</span>code',
-            project3_desc: 'pastebin на максималках',
-            project3_category: "разработка",
-            project5_title: "formular",
-            project5_desc: "конвертер файлов",
-            project5_category: "прикладные задачи",
-            project6_title: "yellow mirror",
-            project6_desc: "веб зеркало",
-            project6_category: "веб",
-            project8_title: "d&d tools",
-            project8_desc: "инструменты для d&d",
-            project8_category: "игры",
-            project9_title: '<span style="color: #e06c75">mark</span>bin',
-            project9_desc: "редактор+ markdown",
-            project9_category: "документы",
-            project10_title: 'kanban',
-            project10_desc: "доска kanban",
-            project10_category: "управление",
-            project11_title: "netlazy",
-            project11_desc: "просто дэйтинг",
-            project11_category: "общение",
-            project12_title: "ascii city",
-            project12_desc: "город из символов, вместе",
-            project12_category: "игры",
-            project15_title: "моды",
-            project15_desc: "мои моды для minecraft",
-            project15_category: "игры",
-            // project13_title: "age",
-            // project13_desc: "мир, что складывается вокруг тебя",
-            // project13_category: "игры",
-            project14_title: "soon",
-            project14_desc: "perhaps there will be ideas for new projects here...",
-            project14_category: "скоро",
-            learn_more: "Подробнее",
-            donate: "Поддержать на Boosty"
-        }
-    };
+    function activeLang() {
+        const lang = navigator.language || navigator.userLanguage;
+        return lang && lang.toLowerCase().startsWith("ru") ? "ru" : "en";
+    }
 
-    function renderProjects() {
-        const container = document.getElementById('projects-container');
-        container.innerHTML = projectsConfig.map(p => {
-            const hasLearnMore = (p.plugin === "netlazy");
+    function textOf(field, lang) {
+        if (!field) return "";
+        if (typeof field === "string") return field;
+        return field[lang] || field.en || "";
+    }
+
+    function esc(value) {
+        return String(value ?? "").replace(/[&<>"']/g, ch => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+        }[ch]));
+    }
+
+    function renderProjects(lang) {
+        const container = document.getElementById("projects-container");
+        const projects = (homeCatalog && homeCatalog.projects) || [];
+        const learnTitle = esc(textOf(homeCatalog && homeCatalog.ui && homeCatalog.ui.learn_more, lang));
+        container.innerHTML = projects.map(project => {
+            const cover = project.cover ? " project-icon-cover" : "";
+            const coverImg = project.cover ? " custom-icon-cover" : "";
+            const learn = project.learn_more
+                ? `<a href="${esc(project.learn_more)}" class="learn-more-icon-btn" title="${learnTitle}"><i class="bi bi-info-circle"></i></a>`
+                : "";
             return `
-            <div class="col" ${p.id ? `data-project="${p.id}"` : ''} ${p.plugin ? `data-plugin="${p.plugin}"` : ''}>
+            <div class="col" data-plugin="${esc(project.plugin || project.id)}">
                 <div class="project-card">
-                    <a href="${p.link}" class="project-link-stretched"></a>
-                    <div class="project-icon icon-${p.i18n}${p.cover ? ' project-icon-cover' : ''}">
-                        <img src="${p.icon}" alt="icon" class="custom-icon${p.cover ? ' custom-icon-cover' : ''}">
+                    <a href="${esc(project.href)}" class="project-link-stretched"></a>
+                    <div class="project-icon${cover}">
+                        <img src="${esc(project.icon)}" alt="" class="custom-icon${coverImg}">
                     </div>
-                    <h5 class="card-title" data-i18n="project${p.i18n}_title"></h5>
-                    <p class="card-text" data-i18n="project${p.i18n}_desc"></p>
+                    <h5 class="card-title">${textOf(project.title_html, lang)}</h5>
+                    <p class="card-text">${esc(textOf(project.description, lang))}</p>
                     <div class="card-footer-links">
-                        <span class="badge-category" data-i18n="project${p.i18n}_category"></span>
+                        <span class="badge-category">${esc(textOf(project.category, lang))}</span>
                         <div class="footer-actions">
                             <div class="corner-decoration">
                                 <i class="bi bi-arrow-up-right"></i>
                             </div>
-                            ${hasLearnMore ? `
-                            <a href="/netlazy/welcome" class="learn-more-icon-btn" data-i18n-title="learn_more" title="Learn more">
-                                <i class="bi bi-info-circle"></i>
-                            </a>
-                            ` : ''}
+                            ${learn}
                         </div>
                     </div>
                 </div>
-            </div>
-            `;
-        }).join('');
+            </div>`;
+        }).join("");
+    }
+
+    function applyHome(lang) {
+        if (!homeCatalog) return;
+        const welcome = document.querySelector(".welcome-text");
+        if (welcome) welcome.textContent = textOf(homeCatalog.welcome, lang);
+        if (homeCatalog.title) document.title = homeCatalog.title;
+        for (const kind of ["github", "telegram"]) {
+            const link = homeCatalog.links && homeCatalog.links[kind];
+            const node = document.querySelector(".contact-link." + kind);
+            if (!link || !node) continue;
+            node.href = link.url;
+            const label = node.querySelector(".contact-label");
+            if (label) label.textContent = link.label;
+        }
+        const donateWidget = document.querySelector("nargan-donate");
+        if (donateWidget) donateWidget.setAttribute("lang", lang);
+        renderProjects(lang);
+    }
+
+    async function loadHome() {
+        const response = await fetch("/api");
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        homeCatalog = await response.json();
+        applyHome(activeLang());
+        const counterEl = document.getElementById("visitor-counter");
+        if (counterEl && !sessionStorage.getItem("tracked_this_session") && typeof homeCatalog.visitors === "number") {
+            counterEl.textContent = "visitors " + homeCatalog.visitors;
+        }
     }
 
     async function fetchSystemStatus() {
         try {
-            const response = await fetch('/api/status');
+            const response = await fetch("/api/status");
             if (response.ok) {
                 const data = await response.json();
                 const plugins = data.plugins || {};
-                
-                document.querySelectorAll('.col[data-plugin]').forEach(col => {
-                    const pluginName = col.getAttribute('data-plugin');
-                const unavailable = new Set(['disabled', 'offline', 'circuit_open']);
-                if (plugins[pluginName] && unavailable.has(plugins[pluginName].status)) {
-                        col.classList.add('offline');
+                document.querySelectorAll(".col[data-plugin]").forEach(col => {
+                    const pluginName = col.getAttribute("data-plugin");
+                    const unavailable = new Set(["disabled", "offline", "circuit_open"]);
+                    if (plugins[pluginName] && unavailable.has(plugins[pluginName].status)) {
+                        col.classList.add("offline");
                     }
                 });
             }
         } catch (error) {
-            console.warn('Could not fetch system status for UI dimming', error);
+            console.warn("Could not fetch system status for UI dimming", error);
         }
-    }
-
-    function setLanguage(lang) {
-        if (!translations[lang]) lang = 'en';
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (translations[lang][key]) el.innerHTML = translations[lang][key];
-            else if (translations['en'][key]) el.innerHTML = translations['en'][key];
-        });
-
-        // Localize tooltips
-        document.querySelectorAll('[data-i18n-title]').forEach(el => {
-            const key = el.getAttribute('data-i18n-title');
-            if (translations[lang][key]) el.setAttribute('title', translations[lang][key]);
-            else if (translations['en'][key]) el.setAttribute('title', translations['en'][key]);
-        });
-
-        // Update donate widget language
-        const donateWidget = document.querySelector('nargan-donate');
-        if (donateWidget) {
-            donateWidget.setAttribute('lang', lang);
-        }
-    }
-
-    function detectLanguage() {
-        const lang = navigator.language || navigator.userLanguage;
-        return lang && lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
     }
 
     function getVisitorId() {
@@ -724,10 +638,12 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        renderProjects();
-        const lang = detectLanguage();
-        setLanguage(lang);
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            await loadHome();
+        } catch (error) {
+            console.warn('Home catalog unavailable', error);
+        }
         fetchSystemStatus();
         trackVisitor();
         loadRandomBackground();

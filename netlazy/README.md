@@ -22,3 +22,7 @@
 *   `infrastructure/` — MongoDB repositories, CDN storage integration, and media processing.
 *   `presentation/` — FastAPI routers and cryptographic request signature validation.
 *   `frontend/` — Client-side SPA built with Vue 3 and Vite, configured for optional Capacitor native app builds.
+
+## HTTP
+
+The hub serves the app at `/netlazy`. JSON routes are under `/netlazy/api`: auth, profile, feed, inbox, tags, security, and health. `GET /netlazy/api` is not a single index; each of those groups has its own prefix.

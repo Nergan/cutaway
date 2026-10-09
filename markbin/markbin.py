@@ -44,15 +44,27 @@ async def create_indexes():
     # Native MongoDB TTL cleanup: automatically deletes documents when 'expires_at' is reached
     await codes_collection.create_index("expires_at", expireAfterSeconds=0)
 
-@router.post('/api/save', dependencies=save_guards)
-async def save_doc(doc: DocRequest):
+def _document_href(doc_id: str) -> str:
+    return f"/markbin/api/docs/{doc_id}"
+
+
+def _stored_reply(doc_id: str, expires_at=None) -> dict:
+    reply = {"id": doc_id, "href": _document_href(doc_id)}
+    if expires_at is not None:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        reply["expires_at"] = expires_at.isoformat()
+    return reply
+
+
+async def _save(doc: DocRequest) -> dict:
     # Include TTL in the hash to allow identical content to have distinct expirations
     hash_input = doc.content + str(doc.ttl_seconds or 0)
     content_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
-    
+
     existing_doc = await codes_collection.find_one({"hash": content_hash})
     if existing_doc:
-        return {"uuid": existing_doc["uuid"]}
+        return _stored_reply(existing_doc["uuid"], existing_doc.get("expires_at"))
 
     doc_id = uuid.uuid4().hex[:8]
     doc_payload = {
@@ -60,19 +72,48 @@ async def save_doc(doc: DocRequest):
         "content": doc.content,
         "hash": content_hash
     }
-    
+    expires_at = None
     if doc.ttl_seconds and doc.ttl_seconds > 0:
-        doc_payload["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=doc.ttl_seconds)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=doc.ttl_seconds)
+        doc_payload["expires_at"] = expires_at
 
     try:
         await codes_collection.insert_one(doc_payload)
-        return {"uuid": doc_id}
     except DuplicateKeyError:
         # Lost a race against a concurrent identical save, so reuse its document.
         existing_doc = await codes_collection.find_one({"hash": content_hash})
         if not existing_doc:
             raise HTTPException(status_code=409, detail="Concurrent write conflict, please retry.")
-        return {"uuid": existing_doc["uuid"]}
+        return _stored_reply(existing_doc["uuid"], existing_doc.get("expires_at"))
+    return _stored_reply(doc_id, expires_at)
+
+
+@router.get('/api')
+async def api_index():
+    return {
+        "create": {"method": "POST", "path": "/markbin/api/docs"},
+        "read": {"method": "GET", "path": "/markbin/api/docs/{id}"},
+        "page_save": {"method": "POST", "path": "/markbin/api/save"},
+    }
+
+
+@router.get('/api/docs')
+async def docs_index():
+    return {
+        "create": {"method": "POST", "path": "/markbin/api/docs"},
+        "read": {"method": "GET", "path": "/markbin/api/docs/{id}"},
+    }
+
+
+@router.post('/api/docs', status_code=201, dependencies=save_guards)
+async def create_doc(doc: DocRequest):
+    return await _save(doc)
+
+
+@router.post('/api/save', dependencies=save_guards)
+async def save_doc(doc: DocRequest):
+    saved = await _save(doc)
+    return {"uuid": saved["id"]}
 
 @router.get('/api/docs/{doc_uuid}')
 async def get_doc(doc_uuid: str):
@@ -89,9 +130,9 @@ async def get_doc(doc_uuid: str):
         if datetime.now(timezone.utc) >= expires_at:
             raise HTTPException(status_code=404, detail="Document expired")
             
-        return {"content": doc["content"], "expires_at": expires_at.isoformat()}
-        
-    return {"content": doc["content"]}
+        return {"id": doc["uuid"], "content": doc["content"], "expires_at": expires_at.isoformat()}
+
+    return {"id": doc["uuid"], "content": doc["content"]}
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request):

@@ -22,3 +22,7 @@
 *   `infrastructure/` — Репозитории MongoDB, интеграция с CDN и обработка медиафайлов.
 *   `presentation/` — Роутеры FastAPI и валидация криптографических подписей запросов.
 *   `frontend/` — Клиентская часть (SPA) на Vue 3 и Vite с поддержкой сборки нативного приложения через Capacitor.
+
+## HTTP
+
+Хаб отдаёт приложение на `/netlazy`. JSON-маршруты лежат под `/netlazy/api`: auth, profile, feed, inbox, tags, security и health.

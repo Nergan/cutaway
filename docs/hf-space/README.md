@@ -36,7 +36,7 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 
 ### 🚀 Root Hub
 
-* **landing (`index.html`, `main.py`):** A custom directory dashboard that translates across languages, tracks visitor counts, dynamically dims offline projects, and loads random ambient background videos.
+* **landing (`index.html`, `main.py`):** A directory of the projects. It follows the browser language, shows the visitor count, dims projects the hub reports as offline, and plays a random background video. `GET /api` returns that same page as JSON: the title, the welcome line in English and Russian, the GitHub and Telegram links, the visitor count, and the project cards.
 
 ### 📁 Application Registry
 
@@ -54,7 +54,7 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 #### 3. [Markbin](./markbin/) (Markdown Editor & Shared Bin)
 
 * **Description:** A Markdown rendering, viewing, and sharing workspace powered by the Vditor engine.
-* **Core Capabilities:** Interactive visual editing, custom auto-generating tables of contents, client-side downloading, and self-destructing links. Incorporates MongoDB-backed TTL indexes, managing automatic document deletion when specified expiration timestamps are reached.
+* **Core Capabilities:** Interactive visual editing, custom auto-generating tables of contents, client-side downloading, and self-destructing links. Incorporates MongoDB-backed TTL indexes, managing automatic document deletion when specified expiration timestamps are reached. `POST /markbin/api/docs` stores a document and `GET /markbin/api/docs/{id}` reads it back. The page still saves through `POST /markbin/api/save`.
 
 #### 4. [Kanban](./kanban/) (Lite Board Organizer)
 
@@ -63,14 +63,14 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 
 #### 5. [D&D Tools](./dnd/) (Game Master Utilities)
 
-* **Description:** Utilities for Dungeons & Dragons 5th Edition (2024 ruleset).
+* **Description:** Utilities for the 2014 wild-shape rules. `GET /dnd/api/beasts` answers the same search the page does.
 * **Core Capabilities:**
-  * **Bestiary & Wild Shape Helper:** A searchable and filterable database supporting synonym matching, exclusion tags (`-`), language toggle, and complex multi-variable normalized sorting.
-  * **Foundry VTT Character Viewer:** An actor `.json` import pipeline rendering character sheets natively on the web. Parses Roll expressions and dynamic rich-text references.
+  * **Bestiary & Wild Shape Helper:** Search, filters, exclusion tags (`-`), and stat sorting, including a short word such as a stem of “speed”. Each card names its source. Wild-shape tiers are calculated from challenge rating and movement.
+  * **Foundry VTT Character Viewer:** Reads an actor export from Foundry 0.8 through 14 in the browser. Roll expressions become buttons. Description markup is shown as text.
 
 #### 6. [Evenfest](./evenfest/) (Cosplay Community Website)
 
-* **Description:** A template-driven website configured directly via MongoDB backends, using Jinja2 layouts to dynamically output community news, photographers, tickets, and rules.
+* **Description:** A template-driven website configured via MongoDB, using Jinja2 layouts for community news, photographers, tickets, and rules. `GET /evenfest/api/pages` lists those pages, and `GET /evenfest/api/pages/{id}` returns the text the page shows.
 
 #### 7. [Snake](./snake/) (Organic Arcade)
 
@@ -89,7 +89,7 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 #### 10. [Mods](./minecraft_mods/) (Minecraft mod list)
 
 * **Description:** A catalog of Minecraft mods whose GitHub repositories end with `mod`. The route is `/mods`.
-* **Core Capabilities:** Reads the public GitHub account, shows each mod's summary, license, GitHub and Modrinth links, the mod jar from the latest release, and the companion jars from that release. `MODRINTH_TOKEN` marks projects that are still in review.
+* **Core Capabilities:** Reads the public GitHub account, shows each mod's summary, license, GitHub and Modrinth links, the mod jar from the latest release, and the companion jars from that release. `GET /mods/api/mods` returns those cards, and `q`, `loader`, `minecraft`, and `license` narrow the list. `MODRINTH_TOKEN` marks projects that are still in review.
 
 ---
 

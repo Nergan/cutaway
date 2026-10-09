@@ -3,6 +3,8 @@
 > **Read this in another language:**  
 > [English](README.md) | [Русская версия](README.ru.md)
 
+The hub does not run or publish this directory.
+
 **Another VPN** is a private, cross-platform, DPI-resistant circumvention and networking system engineered with a strict **Zero-Knowledge device identity** model, **Post-Quantum hybrid cryptography**, and a **custom lightweight userspace TCP/IP stack**.
 
 The project is structured around a Hexagonal (Ports & Adapters) architecture across a polyglot monorepo (Go, TypeScript/Cloudflare Workers, Python/FastAPI, Flutter/Kotlin).

@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from shared_limits import RateLimiter, body_size_limit
 
 from .config import RuntimeConfig, load_runtime_config
+from .home import home_payload
 from .loader import LoadedProject, call_lifecycle, install_project
 from .proxy import ProjectProxy
 from .supervisor import ProjectSupervisor
@@ -182,6 +183,16 @@ def create_hub_app(config: RuntimeConfig = CONFIG) -> FastAPI:
             "isolation": config.isolation,
             "database": "online" if app.state.stats_available else "degraded",
         }
+
+    unpublished = frozenset(
+        project_id
+        for project_id, project in config.projects.items()
+        if not project.deploy
+    )
+
+    @app.get("/api")
+    async def home_index() -> dict[str, Any]:
+        return home_payload(int(app.state.total_visitors or 0), omit=unpublished)
 
     @app.get("/api/status")
     async def get_system_status() -> JSONResponse:

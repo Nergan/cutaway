@@ -35,10 +35,14 @@ All endpoints are prefixed with `/markbin` (configurable in the FastAPI router).
 
 | Method | Path               | Description                                                                                   |
 |--------|--------------------|-----------------------------------------------------------------------------------------------|
+| `GET`  | `/api`             | Route map.                                                                                    |
+| `POST` | `/api/docs`        | Stores Markdown. `201` with `id`, `href`, and `expires_at` when a lifetime was set.           |
+| `GET`  | `/api/docs/{id}`   | Reads that document: `id`, `content`, and `expires_at` when it expires.                       |
+| `POST` | `/api/save`        | The same store the page uses. Returns `{"uuid": "<8-char hex>"}`.                             |
 | `GET`  | `/`                | Edit mode – empty editor with draft restoration.                                              |
-| `GET`  | `/{uuid}`          | View mode – renders the stored Markdown document with exact visual parity.                    |
-| `POST` | `/api/save`        | Saves a raw Markdown payload. Returns `{"uuid": "<8‑char hex>"}`.                             |
-| `GET`  | `/api/docs/{uuid}` | Retrieves the raw Markdown content for a given UUID. Returns `{"content": "..."}`.            |
+| `GET`  | `/{uuid}`          | View mode – renders the stored Markdown document.                                             |
+
+`POST /api/docs` and `POST /api/save` take `{"content": "...", "ttl_seconds": 3600}`. `ttl_seconds` may be omitted. The same text and the same lifetime return the existing id. A missing or expired id is `404`.
 
 ### Embedding in Another FastAPI App
 

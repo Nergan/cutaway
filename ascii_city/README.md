@@ -22,7 +22,9 @@ the server owns every position in it.
 ## Running it
 
 The project is registered in `orchestrator.toml` and served by the hub at
-`/ascii-city`. Nothing special is needed beyond the repository's own setup:
+`/ascii-city`. `GET /ascii-city/api/world` describes the district, and
+`GET /ascii-city/api/room` describes who is in it. Movement and chat stay on
+the WebSocket. Nothing special is needed beyond the repository's own setup:
 
 ```bash
 ./build.sh          # installs Python deps and runs the client build

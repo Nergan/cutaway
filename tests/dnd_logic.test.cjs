@@ -210,4 +210,13 @@ assert.ok(!plain.includes("alert"));
 assert.ok(plain.includes("[[/r 1d8]]"));
 assert.equal(foundry.safeImg("javascript:alert(1)"), "");
 
+const speedNames = query.searchCreatures(db, { q: "\u0441\u043a\u043e\u0440\u043e\u0441", cat: "all", lang: "ru" }).beasts.map(beast => beast.n_en);
+assert.equal(speedNames.length, db.length);
+assert.equal(speedNames[0], "Giant eagle");
+assert.equal(query.searchCreatures(db, { q: "space eel", cat: "lvl4", lang: "en" }).beasts.length, 0);
+assert.equal(query.searchCreatures(db, { q: "space eel", cat: "lvl8", lang: "en" }).beasts[0].n_en, "Space Eel");
+const wolfNames = query.searchCreatures(db, { q: "wolf", lang: "en" }).beasts.map(beast => beast.n_en);
+assert.ok(wolfNames.includes("Wolf"));
+console.log("SEARCH " + JSON.stringify({ speed: speedNames, wolf: wolfNames }));
+
 console.log("dnd logic ok");

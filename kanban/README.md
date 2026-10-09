@@ -1,7 +1,7 @@
 # Kanban Board
 
 A minimalist, drag‑and‑drop Kanban board served as a single‑page web application via FastAPI.  
-All data persists in the browser’s `localStorage` – no backend storage required.
+All data persists in the browser’s `localStorage` – no backend storage required. The hub serves the board at `/kanban`.
 
 ## Features
 

@@ -10,9 +10,47 @@ from fastapi.responses import HTMLResponse, Response
 
 from minecraft_mods.catalog import CatalogError, build_jar_archive, get_catalog
 from minecraft_mods.render import render_page
+from minecraft_mods.search import mod_document, select_mods
 
 router = APIRouter()
 _REPO_NAME = re.compile(r"[A-Za-z0-9._-]{1,120}")
+
+
+@router.get("/api")
+async def api_index() -> dict:
+    return {
+        "mods": "/mods/api/mods",
+        "query": ["q", "loader", "minecraft", "license"],
+    }
+
+
+@router.get("/api/mods")
+async def list_mods(
+    q: str = "",
+    loader: str = "",
+    minecraft: str = "",
+    license: str = "",
+) -> dict:
+    if max(len(q), len(loader), len(minecraft), len(license)) > 200:
+        raise HTTPException(status_code=400, detail="Filter is too long.")
+    catalog = await asyncio.to_thread(get_catalog)
+    mods = select_mods(
+        catalog.mods,
+        q=q,
+        loader=loader,
+        minecraft=minecraft,
+        license_name=license,
+    )
+    return {
+        "q": q,
+        "loader": loader,
+        "minecraft": minecraft,
+        "license": license,
+        "count": len(mods),
+        "partial": catalog.partial,
+        "error": catalog.error,
+        "mods": [mod_document(mod) for mod in mods],
+    }
 
 
 @router.get("/", response_class=HTMLResponse)

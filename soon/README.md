@@ -24,3 +24,5 @@ python main.py --web
 ```
 
 Откройте [http://localhost:8000/soon](http://localhost:8000/soon). Нужны `MONGODB_URI` и переменные Cloudinary (`CLOUDINARY_URL` или `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`), иначе картинки не сохраняются.
+
+`GET /soon/api/board` читает общую доску. `POST /soon/api/upload` сохраняет картинку, `GET /soon/api/media/{id}` отдаёт одну сохранённую картинку. Штрихи и курсоры идут по WebSocket на `/soon/ws`.

@@ -17,15 +17,11 @@ The art is procedurally generated too, and there is an editor for it at
 
 ## Running it
 
-Registered in `orchestrator.toml` and served by the hub at `/age`. Nothing
-beyond the repository's own setup:
+The tree stays in the repository. The hub does not build, start, or publish it.
+Run it on its own when you want the world; then `GET /age/api/world` is the
+snapshot the page draws, and the editor is at `/age/atelier`.
 
-```bash
-./build.sh          # installs Python deps and runs the client build
-python main.py      # the hub, with Age on /age
-```
-
-Standalone, without the hub:
+Standalone:
 
 ```bash
 cd age && npm install && npm run build

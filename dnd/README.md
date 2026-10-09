@@ -16,30 +16,33 @@ A streamlined FastAPI subproject designed for Dungeons & Dragons players and Gam
 - **Sheet Rendering:** Core stats, saving throws, skills, spell slots, concentration, conditions, initiative, death saves, AC formula, features, a spellbook grouped by level, inventory, and biography.
 - **Foundry Syntax Support:** Roll macros (`[[/r ...]]`) become buttons that roll in the browser. Inline references become their labels. Description HTML from the file is shown as text, not inserted as markup.
 
-## 🏗 Project Structure
+## API
+
+The hub serves the tools at `/dnd`. `GET /dnd/api` lists the query fields.
+
+`GET /dnd/api/beasts?q=скорос&cat=all&lang=ru` returns the same creatures the bestiary page would show, in the same order. `q` is the search box. `cat` is `all`, `fam`, `lvl2`, `lvl4`, or `lvl8`. `lang` is `ru` or `en` and chooses which name, size, tags, and habitats are searched and which name breaks a tie. Each beast is the stored record plus `categories`.
+
+## Project structure
+
 ```console
 dnd/
-├── __init__.py # Package initializer
-├── router.py # FastAPI APIRouter configuration
+├── main.py
+├── bestiary.py
 ├── scripts/
-│ ├── druid_query.js # Search words and wild-shape tiers
-│ ├── druid_helper.js # Bestiary cards, filters, and UI state
-│ ├── foundry_actor.js # Foundry 0.8–14 actor reader
-│ └── foundry_blank_viewer.js # Sheet rendering and roll buttons
+│   ├── druid_query.js
+│   ├── druid_helper.js
+│   ├── foundry_actor.js
+│   └── foundry_blank_viewer.js
 ├── static/
-│ └── db.json # Static creature database (CR, stats, tags, habitats)
-├── styles/
-│ ├── druid_helper.css # Druid helper theming & responsive layout
-│ ├── foundry_blank_viewer.css # Character sheet styling & animations
-│ └── menu.css # Landing page split-screen & video background
+│   ├── db.json
+│   └── styles/
 └── templates/
-├── druid_helper.html # Druid Helper entry point
-├── foundry_blank_viewer.html # Foundry Viewer entry point
-└── menu.html # Hub landing page
+    ├── menu.html
+    ├── druid_helper.html
+    └── foundry_blank_viewer.html
 ```
 
-
-## 🔌 Integration & Usage
+## Integration
 This project is structured as a FastAPI `APIRouter` and is intended to be included in a larger FastAPI application.
 
 1. **Mount the Router:** Import the router in your main FastAPI app and mount it under the `/dnd` prefix. Ensure your main app serves static files if you want to customize the asset pipeline, though the templates reference paths relative to the router.

@@ -63,39 +63,6 @@ const UI = {
   }
 };
 
-const SYNONYMS = {
-  ru: {
-    'кошка': ['кот', 'котик', 'кошка', 'кошачий', 'кошачья', 'львица', 'тигрица'],
-    'собака': ['пес', 'пёс', 'собака', 'собачка', 'щенок'],
-    'лошадь': ['конь', 'лошадь', 'скакун', 'жеребец', 'кобыла', 'пони'],
-    'вьючное': ['грузоподъемность', 'груз', 'нести', 'вьючное', 'вьючный', 'вьючные'],
-    'ездовое': ['маунт', 'верхом', 'седло', 'кататься', 'ездовой', 'ездовое', 'верховое', 'верховая'],
-    'яд': ['яд', 'отрава', 'токсин', 'отравлен', 'ядом', 'отравление'],
-    'сбить': ['сбить', 'ног', 'упасть', 'опрокинуть', 'таран', 'сбивает'],
-    'захват': ['захват', 'схватить', 'удержать', 'опутать', 'опутан', 'схвачен'],
-    'паутина': ['паутина', 'паутину', 'паутине', 'паучь', 'web'],
-    'язык': ['язык', 'говорит', 'понимает', 'речь'],
-    'сопротивление': ['иммунитет', 'сопротивление', 'невосприимчивость', 'устойчивость', 'резист'],
-    'особенный': ['особенный', 'уникальный', 'специфичный', 'магия', 'магический'],
-    'рой': ['рой', 'рои', 'стая']
-  },
-  en: {
-    'cat': ['cat', 'kitty', 'feline', 'tomcat'],
-    'dog': ['dog', 'hound', 'canine', 'pup'],
-    'horse': ['horse', 'steed', 'stallion', 'mare', 'pony'],
-    'pack': ['carrying capacity', 'carry', 'burden', 'pack'],
-    'mount': ['riding', 'saddle', 'ride', 'mount', 'steed'],
-    'poison': ['toxin', 'poisoned', 'venom', 'poison'],
-    'prone': ['knock', 'fall', 'ram', 'prone'],
-    'grapple': ['grab', 'hold', 'restrain', 'grapple'],
-    'web': ['web', 'spider web', 'webs'],
-    'language': ['speak', 'understand', 'speech', 'language'],
-    'immunity': ['resistance', 'immune', 'resist', 'immunity'],
-    'special': ['unique', 'specific', 'magic', 'magical', 'special'],
-    'swarm': ['flock', 'school', 'swarm']
-  }
-};
-
 let currentLang = localStorage.getItem('wildwood_lang') || 'ru';
 let db = [];
 let currentCat = 'all';
@@ -239,8 +206,6 @@ function loadDatabase() {
     });
 }
 
-function normalize(str) { return str.replace(/ё/g, 'е').toLowerCase(); }
-
 function formatSpeed(sp) {
   sp = sp || {};
   const texts = UI[currentLang];
@@ -259,35 +224,6 @@ const fmtMod = (val) => {
   return val > 0 ? '+' + val : val;
 };
 
-function getSenseDistance(creature, senseType) {
-  let sensesStr = (creature.sn_ru || []).concat(creature.sn_en || []).join(' ').toLowerCase();
-  let regex;
-  if (senseType === 'blind') regex = /(?:blind|слепо)[^\d]*(\d+)/i;
-  else if (senseType === 'dark') regex = /(?:dark|т[её]мн)[^\d]*(\d+)/i;
-  else if (senseType === 'tremor') regex = /(?:tremor|вибрац)[^\d]*(\d+)/i;
-  else if (senseType === 'true') regex = /(?:true|истин)[^\d]*(\d+)/i;
-
-  if (!regex) return -1;
-  let match = sensesStr.match(regex);
-  return match ? parseInt(match[1]) : -1;
-}
-
-function getStatValue(c, key) {
-  const speed = c.sp || {};
-  if (key === 'speed') return Math.max(speed.w||0, speed.f||0, speed.s||0, speed.c||0, speed.b||0);
-  if (key.startsWith('sp_')) return speed[key.split('_')[1]] || 0;
-  if (key.startsWith('sn_') && key !== 'sn_any') {
-    let dist = getSenseDistance(c, key.split('_')[1]);
-    return dist > 0 ? dist : 0;
-  }
-  if (key === 'sn_any') {
-    let sru = c.sn_ru || []; let sen = c.sn_en || [];
-    return (sru.length > 0 || sen.length > 0) ? 1 : 0;
-  }
-  let v = c[key];
-  return (typeof v === 'number') ? v : (parseInt(v) || 0);
-}
-
 let activeSortKeys = [];
 
 function esc(value) {
@@ -298,104 +234,13 @@ function esc(value) {
 
 function processQuery() {
   if (!db.length) return;
-  const query = DruidQuery.classifyQuery(searchInput.value);
-  let filterWords = query.filters;
-  let negativeWords = query.negative;
-  activeSortKeys = query.sort.slice();
-
-  let filtered = db.filter(c => {
-    if (currentCat !== 'all' && !DruidQuery.categoriesFor(c).includes(currentCat)) return false;
-    
-    let cName = currentLang === 'ru' ? c.n_ru : c.n_en;
-    let cSz = currentLang === 'ru' ? c.sz_ru : c.sz_en;
-    let cTg = (currentLang === 'ru' ? c.tg_ru : c.tg_en) || [];
-    let cHb = (currentLang === 'ru' ? c.hb_ru : c.hb_en) || [];
-    let searchableText = normalize([
-      cName, c.n_en, cSz, c.cr, c.src, c.src_ru,
-      cTg.join(" "), cHb.join(" "),
-      (c.sn_ru || []).join(" "), (c.sn_en || []).join(" ")
-    ].join(" "));
-    
-    const speed = c.sp || {};
-    if (speed.w) searchableText += " walk ходьба ходьбу";
-    if (speed.f) searchableText += " fly полет полёт flyby";
-    if (speed.s) searchableText += " swim плавание";
-    if (speed.c) searchableText += " climb лазание";
-    if (speed.b) searchableText += " burrow копание";
-
-    if ((c.sn_ru && c.sn_ru.length > 0) || (c.sn_en && c.sn_en.length > 0)) {
-        searchableText += " чувства senses зрение vision sight";
-    }
-
-    const synDict = SYNONYMS[currentLang];
-    for (let [key, synArray] of Object.entries(synDict)) {
-      if (synArray.some(s => searchableText.includes(s))) {
-        searchableText += " " + key + " " + synArray.join(" ");
-      }
-    }
-
-    for (let nw of negativeWords) {
-        if (searchableText.includes(nw)) return false;
-    }
-    
-    for (let w of filterWords) {
-      if (!searchableText.includes(w)) return false;
-    }
-    
-    return true;
+  const result = DruidQuery.searchCreatures(db, {
+    q: searchInput.value,
+    cat: currentCat,
+    lang: currentLang
   });
-
-  if (activeSortKeys.length > 0) {
-    // Phase 1: Calculate global Min/Max for active stats to normalize scores
-    let statsData = {};
-    activeSortKeys.forEach(key => {
-      let min = Infinity;
-      let max = -Infinity;
-      filtered.forEach(c => {
-        let val = getStatValue(c, key);
-        if (val < min) min = val;
-        if (val > max) max = val;
-        
-        if (!c._sortVals) c._sortVals = {};
-        c._sortVals[key] = val;
-      });
-      statsData[key] = { min, max };
-    });
-
-    // Phase 2: Calculate total multi-variate score and sort descending
-    filtered.sort((a, b) => {
-      let scoreA = 0;
-      let scoreB = 0;
-      
-      activeSortKeys.forEach(key => {
-        let sd = statsData[key];
-        let range = sd.max - sd.min;
-        
-        if (range > 0) {
-          scoreA += (a._sortVals[key] - sd.min) / range;
-          scoreB += (b._sortVals[key] - sd.min) / range;
-        }
-      });
-      
-      if (Math.abs(scoreA - scoreB) > 0.0001) {
-        return scoreB - scoreA;
-      }
-      
-      // Tie Breaker (Alphabetical)
-      let nA = currentLang === 'ru' ? a.n_ru : a.n_en;
-      let nB = currentLang === 'ru' ? b.n_ru : b.n_en;
-      return nA.localeCompare(nB);
-    });
-  } else {
-    // Default Alphabetical Sort
-    filtered.sort((a, b) => {
-      let nA = currentLang === 'ru' ? a.n_ru : a.n_en;
-      let nB = currentLang === 'ru' ? b.n_ru : b.n_en;
-      return nA.localeCompare(nB);
-    });
-  }
-  
-  renderData(filtered);
+  activeSortKeys = result.sort.slice();
+  renderData(result.beasts);
 }
 
 function renderData(data) {

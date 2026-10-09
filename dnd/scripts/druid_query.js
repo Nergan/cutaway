@@ -119,5 +119,156 @@
     return cats;
   }
 
-  return { classifyQuery, categoriesFor, crValue, matchesLoose };
+  const SYNONYMS = {
+    ru: {
+      "кошка": ["кот", "котик", "кошка", "кошачий", "кошачья", "львица", "тигрица"],
+      "собака": ["пес", "пёс", "собака", "собачка", "щенок"],
+      "лошадь": ["конь", "лошадь", "скакун", "жеребец", "кобыла", "пони"],
+      "вьючное": ["грузоподъемность", "груз", "нести", "вьючное", "вьючный", "вьючные"],
+      "ездовое": ["маунт", "верхом", "седло", "кататься", "ездовой", "ездовое", "верховое", "верховая"],
+      "яд": ["яд", "отрава", "токсин", "отравлен", "ядом", "отравление"],
+      "сбить": ["сбить", "ног", "упасть", "опрокинуть", "таран", "сбивает"],
+      "захват": ["захват", "схватить", "удержать", "опутать", "опутан", "схвачен"],
+      "паутина": ["паутина", "паутину", "паутине", "паучь", "web"],
+      "язык": ["язык", "говорит", "понимает", "речь"],
+      "сопротивление": ["иммунитет", "сопротивление", "невосприимчивость", "устойчивость", "резист"],
+      "особенный": ["особенный", "уникальный", "специфичный", "магия", "магический"],
+      "рой": ["рой", "рои", "стая"]
+    },
+    en: {
+      "cat": ["cat", "kitty", "feline", "tomcat"],
+      "dog": ["dog", "hound", "canine", "pup"],
+      "horse": ["horse", "steed", "stallion", "mare", "pony"],
+      "pack": ["carrying capacity", "carry", "burden", "pack"],
+      "mount": ["riding", "saddle", "ride", "mount", "steed"],
+      "poison": ["toxin", "poisoned", "venom", "poison"],
+      "prone": ["knock", "fall", "ram", "prone"],
+      "grapple": ["grab", "hold", "restrain", "grapple"],
+      "web": ["web", "spider web", "webs"],
+      "language": ["speak", "understand", "speech", "language"],
+      "immunity": ["resistance", "immune", "resist", "immunity"],
+      "special": ["unique", "specific", "magic", "magical", "special"],
+      "swarm": ["flock", "school", "swarm"]
+    }
+  };
+
+  const SENSE_DISTANCE = {
+    blind: /(?:blind|слепо)[^\d]*(\d+)/i,
+    dark: /(?:dark|т[её]мн)[^\d]*(\d+)/i,
+    tremor: /(?:tremor|вибрац)[^\d]*(\d+)/i,
+    true: /(?:true|истин)[^\d]*(\d+)/i
+  };
+
+  function normalizeText(value) {
+    return String(value || "").replace(/ё/g, "е").toLowerCase();
+  }
+
+  function senseDistance(creature, senseType) {
+    const pattern = SENSE_DISTANCE[senseType];
+    if (!pattern) return -1;
+    const senses = (creature.sn_ru || []).concat(creature.sn_en || []).join(" ");
+    const match = senses.match(pattern);
+    return match ? parseInt(match[1], 10) : -1;
+  }
+
+  function statValue(creature, key) {
+    const speed = creature.sp || {};
+    if (key === "speed") return Math.max(speed.w || 0, speed.f || 0, speed.s || 0, speed.c || 0, speed.b || 0);
+    if (key.startsWith("sp_")) return speed[key.split("_")[1]] || 0;
+    if (key.startsWith("sn_") && key !== "sn_any") {
+      const distance = senseDistance(creature, key.split("_")[1]);
+      return distance > 0 ? distance : 0;
+    }
+    if (key === "sn_any") return (creature.sn_ru || []).length || (creature.sn_en || []).length ? 1 : 0;
+    const value = creature[key];
+    return typeof value === "number" ? value : (parseInt(value, 10) || 0);
+  }
+
+  function searchableText(creature, lang) {
+    const name = lang === "ru" ? creature.n_ru : creature.n_en;
+    const size = lang === "ru" ? creature.sz_ru : creature.sz_en;
+    const tags = (lang === "ru" ? creature.tg_ru : creature.tg_en) || [];
+    const habitats = (lang === "ru" ? creature.hb_ru : creature.hb_en) || [];
+    let text = normalizeText([
+      name, creature.n_en, size, creature.cr, creature.src, creature.src_ru,
+      tags.join(" "), habitats.join(" "),
+      (creature.sn_ru || []).join(" "), (creature.sn_en || []).join(" ")
+    ].join(" "));
+    const speed = creature.sp || {};
+    if (speed.w) text += " walk ходьба ходьбу";
+    if (speed.f) text += " fly полет полёт flyby";
+    if (speed.s) text += " swim плавание";
+    if (speed.c) text += " climb лазание";
+    if (speed.b) text += " burrow копание";
+    if ((creature.sn_ru && creature.sn_ru.length) || (creature.sn_en && creature.sn_en.length)) {
+      text += " чувства senses зрение vision sight";
+    }
+    const synonyms = SYNONYMS[lang] || SYNONYMS.ru;
+    for (const [key, forms] of Object.entries(synonyms)) {
+      if (forms.some(form => text.includes(form))) text += " " + key + " " + forms.join(" ");
+    }
+    return text;
+  }
+
+  function byName(lang) {
+    return (left, right) => {
+      const a = lang === "ru" ? left.n_ru : left.n_en;
+      const b = lang === "ru" ? right.n_ru : right.n_en;
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    };
+  }
+
+  // Same answers as the bestiary page: category, words, exclusions, then sort.
+  function searchCreatures(creatures, options) {
+    const settings = options || {};
+    const lang = settings.lang === "en" ? "en" : "ru";
+    const cat = settings.cat || settings.tier || "all";
+    const query = classifyQuery(settings.q || settings.query || "");
+    let found = (creatures || []).filter(creature => {
+      if (cat !== "all" && !categoriesFor(creature).includes(cat)) return false;
+      const text = searchableText(creature, lang);
+      if (query.negative.some(word => text.includes(word))) return false;
+      return query.filters.every(word => text.includes(word));
+    });
+    if (query.sort.length) {
+      const bounds = {};
+      for (const key of query.sort) {
+        let min = Infinity;
+        let max = -Infinity;
+        for (const creature of found) {
+          const value = statValue(creature, key);
+          if (value < min) min = value;
+          if (value > max) max = value;
+          creature._sortVals = creature._sortVals || {};
+          creature._sortVals[key] = value;
+        }
+        bounds[key] = { min, max };
+      }
+      found.sort((left, right) => {
+        let scoreLeft = 0;
+        let scoreRight = 0;
+        for (const key of query.sort) {
+          const span = bounds[key].max - bounds[key].min;
+          if (span > 0) {
+            scoreLeft += (left._sortVals[key] - bounds[key].min) / span;
+            scoreRight += (right._sortVals[key] - bounds[key].min) / span;
+          }
+        }
+        if (Math.abs(scoreLeft - scoreRight) > 0.0001) return scoreRight - scoreLeft;
+        return byName(lang)(left, right);
+      });
+    } else {
+      found.sort(byName(lang));
+    }
+    return {
+      sort: query.sort,
+      filters: query.filters,
+      negative: query.negative,
+      beasts: found
+    };
+  }
+
+  return { classifyQuery, categoriesFor, crValue, matchesLoose, searchCreatures, statValue };
 });
