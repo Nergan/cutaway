@@ -188,6 +188,28 @@ h3 { font-size: 1.5rem; border-bottom: 1px dashed var(--border-color); padding-b
 .char-info { flex-grow: 1; }
 .char-info h2 { font-size: 2.4rem; margin: 0 0 0.4rem 0; border: none; }
 .char-sub { font-style: italic; font-size: 1.05rem; color: var(--text-sub); }
+.char-edition { margin-top: 0.35rem; font-size: 0.85rem; letter-spacing: 0.04em; color: var(--text-heading); }
+.actor-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.stat-formula { font-size: 0.82rem; color: var(--text-sub); margin-top: 0.25rem; }
+.core-extra { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.4rem; }
+.core-extra .stat-box, .speed-line, .sense-line, .condition-line {
+  background: var(--table-bg); border: 1px solid var(--table-border); border-radius: 16px;
+  padding: 0.55rem 0.8rem;
+}
+.speed-line, .sense-line, .condition-line { margin-top: 0.7rem; }
+.condition-line { color: var(--text-accent); }
+.save-label, tr.proficient td, td.proficient { color: var(--text-heading); font-weight: bold; }
+.slot-line { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.4rem 0 1rem; }
+.slot-pip {
+  background: var(--table-bg); border: 1px solid var(--table-border); border-radius: 14px; padding: 0.35rem 0.7rem;
+}
+.item-meta { display: block; font-weight: normal; font-size: 0.85rem; color: var(--text-sub); margin-top: 0.2rem; }
+.coin-line { font-style: italic; margin-bottom: 0.8rem; }
+button.foundry-roll {
+  font: inherit; color: var(--text-accent); font-weight: bold; background: transparent;
+  border: none; padding: 0; cursor: pointer; text-decoration: underline;
+}
+.roll-result { color: var(--text-highlight); font-weight: bold; }
 
 .tabs { display: flex; flex-wrap: wrap; gap: 0.8rem; margin: 2rem 0 1.5rem 0; border-bottom: 1px dashed var(--border-color); padding-bottom: 1rem; }
 .tab-content { display: none; }

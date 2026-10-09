@@ -5,15 +5,16 @@ A streamlined FastAPI subproject designed for Dungeons & Dragons players and Gam
 ## ✨ Features
 
 ### 🌿 Druid Helper
-- **Dynamic Bestiary:** Search, filter, and sort creatures using natural language queries. Supports partial matches, synonyms, and stat-based sorting.
-- **Wild Shape Tiers:** Creatures are automatically categorized by Druid level (Lvl 2, 4, 8) with movement type restrictions (Land, Swim, Fly).
+- **Dynamic Bestiary:** Search, filter, and sort creatures using natural language queries. Supports partial matches, synonyms, and stat-based sorting. A short word such as «скорос» sorts by speed instead of searching for that exact string.
+- **Wild Shape Tiers:** Level 2, 4, and 8 lists are calculated from challenge rating and swim or fly speed, so a flying creature cannot appear in an earlier tier.
+- **Sources:** Each card names where the creature comes from: the 2014 System Reference Document, a published book, or Homebrew. SRD numbers follow that document (CC BY 4.0, Wizards of the Coast). The list stays one JSON file; tiers are not stored, because they can be derived.
 - **Bilingual Interface:** Instant toggle between Russian and English UI/text.
 - **Responsive Design:** Collapsible sidebar, masonry card layout, dark/light theme persistence, and optimized mobile overlay.
 
 ### 📜 Foundry VTT Character Viewer
-- **Local JSON Parsing:** Drag-and-drop or upload `.json` actor files exported from Foundry VTT.
-- **Complete Sheet Rendering:** Automatically parses and displays Core Stats, Features & Traits, Spellbooks, Inventory, and Biography.
-- **Foundry Syntax Support:** Renders Foundry's custom markdown, roll macros (`[[/r ...]]`), and inline references into clean, readable HTML.
+- **Local JSON Parsing:** Drag-and-drop or upload `.json` actor files exported from Foundry VTT. The same reader accepts Foundry 0.8–9 (`data`), Foundry 10 through 14 (`system`), and dnd5e 1.x through 5.x, including activity-based items.
+- **Sheet Rendering:** Core stats, saving throws, skills, spell slots, concentration, conditions, initiative, death saves, AC formula, features, a spellbook grouped by level, inventory, and biography.
+- **Foundry Syntax Support:** Roll macros (`[[/r ...]]`) become buttons that roll in the browser. Inline references become their labels. Description HTML from the file is shown as text, not inserted as markup.
 
 ## 🏗 Project Structure
 ```console
@@ -21,8 +22,10 @@ dnd/
 ├── __init__.py # Package initializer
 ├── router.py # FastAPI APIRouter configuration
 ├── scripts/
-│ ├── druid_helper.js # Bestiary logic, search, filter, sorting & UI state
-│ └── foundry_blank_viewer.js # JSON parsing, Foundry macro processing & tab rendering
+│ ├── druid_query.js # Search words and wild-shape tiers
+│ ├── druid_helper.js # Bestiary cards, filters, and UI state
+│ ├── foundry_actor.js # Foundry 0.8–14 actor reader
+│ └── foundry_blank_viewer.js # Sheet rendering and roll buttons
 ├── static/
 │ └── db.json # Static creature database (CR, stats, tags, habitats)
 ├── styles/

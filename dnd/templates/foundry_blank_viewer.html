@@ -26,7 +26,7 @@
 
     <!-- UPLOAD SECTION -->
     <div id="upload-section" class="spirit-card" style="margin-top: 1rem;">
-      <p>Select a Foundry VTT <strong>.json</strong> actor file to read the character blank</p>
+      <p>Select a Foundry VTT <strong>.json</strong> actor file to read the character blank. Exports from Foundry 0.8 through 14 and dnd5e 1.x through 5.x use the same reader.</p>
       <input type="file" id="file-input" accept=".json" style="display:none;">
       
       <div id="drop-zone" onclick="document.getElementById('file-input').click()">
@@ -45,8 +45,10 @@
         <div class="char-info">
           <h2 id="char-name">Character Name</h2>
           <div class="char-sub" id="char-subtitle">Level 1 Class | Race | Background</div>
+          <div class="char-edition" id="char-edition"></div>
         </div>
       </div>
+      <div id="actor-picker" class="actor-picker" style="display:none;"></div>
 
       <!-- Navigation -->
       <div class="tabs">
@@ -69,14 +71,15 @@
           </thead>
           <tbody>
             <tr>
-              <td><span id="stat-ac" class="stat-ac">10</span></td>
+              <td><span id="stat-ac" class="stat-ac">10</span><div id="stat-ac-formula" class="stat-formula"></div></td>
               <td><span id="stat-hp" class="stat-vital">0 / 0</span></td>
               <td><span id="stat-speed" class="stat-ac">30 ft</span></td>
             </tr>
           </tbody>
         </table>
 
-        <h3>Attribute Roots</h3>
+        <h3>Attributes and saving throws</h3>
+        <p class="stat-formula">Scores on the first row, saving throws on the second. A bold save is proficient.</p>
         <table class="data-table">
           <thead>
             <tr>
@@ -92,8 +95,15 @@
             <tr id="attr-row">
               <!-- Injected via JS -->
             </tr>
+            <tr id="save-row"></tr>
           </tbody>
         </table>
+        <div id="core-extra" class="core-extra"></div>
+        <div id="speed-line" class="speed-line"></div>
+        <div id="sense-line" class="sense-line"></div>
+        <div id="condition-line" class="condition-line"></div>
+        <h3>Skills</h3>
+        <div id="skill-table"></div>
       </div>
 
       <!-- TAB: FEATURES -->
@@ -105,6 +115,7 @@
       <!-- TAB: SPELLS -->
       <div id="tab-spells" class="tab-content">
         <h3>Mystic Weavings</h3>
+        <div id="slot-line" class="slot-line"></div>
         <div id="list-spells"></div>
       </div>
 
@@ -136,6 +147,7 @@
   </div>
 </footer>
 
+<script src="/dnd/scripts/foundry_actor.js"></script>
 <script src="/dnd/scripts/foundry_blank_viewer.js"></script>
 </body>
 </html>

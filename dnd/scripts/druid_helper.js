@@ -35,8 +35,8 @@ const UI = {
     hintSort: "<strong>Сортировка:</strong> скрытность, восприятие, скорость, урон, хп, кд, сил, лвк, тел, чувства (слепое, тёмное и т.д.).",
     hintFilter: "<strong>Фильтры:</strong> особенный, рой, яд, сбить, ездовое, захват, паутина, язык, иммунитет, чувства. <br><strong>Исключение:</strong> минус перед словом (напр. <i>-паук</i>).",
     hintSize: "<strong>Размер:</strong> крошечный, маленький, средний, большой, огромный, гигантский.",
-    hintHab: "<strong>Местность:</strong> лес, болото, горы, арктика, вода, город, подземелье, пустыня, космос.",
-    hintNote: "* Система понимает синонимы и неполные слова (напр. \"скрыт\", \"хп\").",
+    hintHab: "<strong>Местность:</strong> лес, луг, холмы, болото, горы, арктика, вода, берег, город, подземелье, пустыня, джунгли, космос.",
+    hintNote: "* Неполное слово тоже считается: «скорос» сортирует как «скорость», «скрыт» как скрытность. Карточка подписана источником (SRD или книга, либо Homebrew). Числа существ SRD сверены с System Reference Document 5.1 (CC BY 4.0, Wizards of the Coast).",
     statAc: "КД", statHp: "ХП", statSt: "Скрыт.", statPr: "Воспр.", statDm: "Ср. Урон",
     statStr: "СИЛ", statDex: "ЛВК", statCon: "ТЕЛ",
     lblSenses: "Чувства", beast: "зверь",
@@ -54,8 +54,8 @@ const UI = {
     hintSort: "<strong>Sort by:</strong> stealth, perception, speed, damage, hp, ac, str, dex, con, senses (blindsight, darkvision, etc.).",
     hintFilter: "<strong>Filters:</strong> special, swarm, poison, prone, mount, grapple, web, language, immunity, senses. <br><strong>Exclude:</strong> minus before word (e.g. <i>-spider</i>).",
     hintSize: "<strong>Size:</strong> tiny, small, medium, large, huge, gargantuan.",
-    hintHab: "<strong>Habitat:</strong> forest, swamp, mountain, arctic, water, urban, underdark, desert, space.",
-    hintNote: "* The system understands synonyms and partial words (e.g., \"stealt\", \"hp\").",
+    hintHab: "<strong>Habitat:</strong> forest, grassland, hills, swamp, mountain, arctic, water, coast, urban, underdark, desert, jungle, space.",
+    hintNote: "* A short word still counts: \"stealt\" sorts as stealth, \"скорос\" as speed. Each card names its source (SRD, a book, or Homebrew). SRD numbers follow the System Reference Document 5.1 (CC BY 4.0, Wizards of the Coast).",
     statAc: "AC", statHp: "HP", statSt: "Stealth", statPr: "Perc.", statDm: "Avg. Dmg",
     statStr: "STR", statDex: "DEX", statCon: "CON",
     lblSenses: "Senses", beast: "beast",
@@ -73,6 +73,7 @@ const SYNONYMS = {
     'яд': ['яд', 'отрава', 'токсин', 'отравлен', 'ядом', 'отравление'],
     'сбить': ['сбить', 'ног', 'упасть', 'опрокинуть', 'таран', 'сбивает'],
     'захват': ['захват', 'схватить', 'удержать', 'опутать', 'опутан', 'схвачен'],
+    'паутина': ['паутина', 'паутину', 'паутине', 'паучь', 'web'],
     'язык': ['язык', 'говорит', 'понимает', 'речь'],
     'сопротивление': ['иммунитет', 'сопротивление', 'невосприимчивость', 'устойчивость', 'резист'],
     'особенный': ['особенный', 'уникальный', 'специфичный', 'магия', 'магический'],
@@ -87,6 +88,7 @@ const SYNONYMS = {
     'poison': ['toxin', 'poisoned', 'venom', 'poison'],
     'prone': ['knock', 'fall', 'ram', 'prone'],
     'grapple': ['grab', 'hold', 'restrain', 'grapple'],
+    'web': ['web', 'spider web', 'webs'],
     'language': ['speak', 'understand', 'speech', 'language'],
     'immunity': ['resistance', 'immune', 'resist', 'immunity'],
     'special': ['unique', 'specific', 'magic', 'magical', 'special'],
@@ -240,6 +242,7 @@ function loadDatabase() {
 function normalize(str) { return str.replace(/ё/g, 'е').toLowerCase(); }
 
 function formatSpeed(sp) {
+  sp = sp || {};
   const texts = UI[currentLang];
   const fmt = (lbl, val) => `<span class="${val > 0 && val < 30 ? 'speed-slow' : ''}"><strong>${lbl}</strong> ${val} ft.</span>`;
   let parts = [];
@@ -270,8 +273,9 @@ function getSenseDistance(creature, senseType) {
 }
 
 function getStatValue(c, key) {
-  if (key === 'speed') return Math.max(c.sp.w||0, c.sp.f||0, c.sp.s||0, c.sp.c||0, c.sp.b||0);
-  if (key.startsWith('sp_')) return c.sp[key.split('_')[1]] || 0;
+  const speed = c.sp || {};
+  if (key === 'speed') return Math.max(speed.w||0, speed.f||0, speed.s||0, speed.c||0, speed.b||0);
+  if (key.startsWith('sp_')) return speed[key.split('_')[1]] || 0;
   if (key.startsWith('sn_') && key !== 'sn_any') {
     let dist = getSenseDistance(c, key.split('_')[1]);
     return dist > 0 ? dist : 0;
@@ -286,71 +290,38 @@ function getStatValue(c, key) {
 
 let activeSortKeys = [];
 
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
 function processQuery() {
   if (!db.length) return;
-  let q = normalize(searchInput.value).trim();
-  let words = q.split(/\s+/).filter(w => w.length > 0);
-  
-  const STAT_WORDS = [
-    'скрыт', 'stealt', 'восприя', 'percep', 'урон', 'damag', 'хп', 'хит', 'hp', 
-    'кд', 'брон', 'ac', 'скорост', 'speed', 'сил', 'str', 'ловк', 'лвк', 'dex', 'тел', 'con'
-  ];
-  
-  let sortKeysSet = new Set();
-  let filterWords = [];
-  let negativeWords = [];
-
-  for (let w of words) {
-      if (w.startsWith('-') && w.length > 1) {
-          negativeWords.push(w.substring(1));
-          continue;
-      }
-
-      let isStat = STAT_WORDS.some(st => w.includes(st));
-      if (isStat) {
-          if (['скрыт', 'stealt'].some(st => w.includes(st))) sortKeysSet.add('st');
-          if (['восприя', 'percep'].some(st => w.includes(st))) sortKeysSet.add('pr');
-          if (['урон', 'damag'].some(st => w.includes(st))) sortKeysSet.add('dm');
-          if (['хп', 'хит', 'hp'].some(st => w.includes(st))) sortKeysSet.add('hp');
-          if (['кд', 'брон', 'ac'].some(st => w.includes(st))) sortKeysSet.add('ac');
-          if (['скорост', 'speed'].some(st => w.includes(st))) sortKeysSet.add('speed');
-          if (['сил', 'str'].some(st => w.includes(st))) sortKeysSet.add('str');
-          if (['ловк', 'лвк', 'dex'].some(st => w.includes(st))) sortKeysSet.add('dex');
-          if (['тел', 'con'].some(st => w.includes(st))) sortKeysSet.add('con');
-      } else {
-          filterWords.push(w);
-          
-          if (['ходьб', 'walk'].some(st => w.includes(st))) sortKeysSet.add('sp_w');
-          if (['полет', 'полёт', 'fly'].some(st => w.includes(st))) sortKeysSet.add('sp_f');
-          if (['плава', 'swim'].some(st => w.includes(st))) sortKeysSet.add('sp_s');
-          if (['лазан', 'climb'].some(st => w.includes(st))) sortKeysSet.add('sp_c');
-          if (['копан', 'burrow'].some(st => w.includes(st))) sortKeysSet.add('sp_b');
-          
-          if (['слеп', 'blind'].some(st => w.includes(st))) sortKeysSet.add('sn_blind');
-          if (['темн', 'тёмн', 'dark'].some(st => w.includes(st))) sortKeysSet.add('sn_dark');
-          if (['вибрац', 'tremor'].some(st => w.includes(st))) sortKeysSet.add('sn_tremor');
-          if (['истин', 'true'].some(st => w.includes(st))) sortKeysSet.add('sn_true');
-          
-          if (['чувств', 'sens', 'зрен', 'vision', 'sight'].some(st => w.includes(st))) sortKeysSet.add('sn_any');
-      }
-  }
-
-  activeSortKeys = Array.from(sortKeysSet);
+  const query = DruidQuery.classifyQuery(searchInput.value);
+  let filterWords = query.filters;
+  let negativeWords = query.negative;
+  activeSortKeys = query.sort.slice();
 
   let filtered = db.filter(c => {
-    if (currentCat !== 'all' && !c.cat.includes(currentCat)) return false;
+    if (currentCat !== 'all' && !DruidQuery.categoriesFor(c).includes(currentCat)) return false;
     
     let cName = currentLang === 'ru' ? c.n_ru : c.n_en;
     let cSz = currentLang === 'ru' ? c.sz_ru : c.sz_en;
-    let cTg = currentLang === 'ru' ? c.tg_ru : c.tg_en;
-    let cHb = currentLang === 'ru' ? c.hb_ru : c.hb_en;
-    let searchableText = normalize(cName + " " + c.n_en + " " + cSz + " " + cTg.join(" ") + " " + cHb.join(" ") + " " + (c.sn_ru || []).join(" ") + " " + (c.sn_en || []).join(" "));
+    let cTg = (currentLang === 'ru' ? c.tg_ru : c.tg_en) || [];
+    let cHb = (currentLang === 'ru' ? c.hb_ru : c.hb_en) || [];
+    let searchableText = normalize([
+      cName, c.n_en, cSz, c.cr, c.src, c.src_ru,
+      cTg.join(" "), cHb.join(" "),
+      (c.sn_ru || []).join(" "), (c.sn_en || []).join(" ")
+    ].join(" "));
     
-    if (c.sp.w) searchableText += " walk ходьба ходьбу";
-    if (c.sp.f) searchableText += " fly полет полёт flyby";
-    if (c.sp.s) searchableText += " swim плавание";
-    if (c.sp.c) searchableText += " climb лазание";
-    if (c.sp.b) searchableText += " burrow копание";
+    const speed = c.sp || {};
+    if (speed.w) searchableText += " walk ходьба ходьбу";
+    if (speed.f) searchableText += " fly полет полёт flyby";
+    if (speed.s) searchableText += " swim плавание";
+    if (speed.c) searchableText += " climb лазание";
+    if (speed.b) searchableText += " burrow копание";
 
     if ((c.sn_ru && c.sn_ru.length > 0) || (c.sn_en && c.sn_en.length > 0)) {
         searchableText += " чувства senses зрение vision sight";
@@ -462,23 +433,25 @@ function renderData(data) {
   data.forEach((c, index) => {
     let cName = currentLang === 'ru' ? c.n_ru : c.n_en;
     let cSz = currentLang === 'ru' ? c.sz_ru : c.sz_en;
-    let cTg = currentLang === 'ru' ? c.tg_ru : c.tg_en;
-    let cHb = currentLang === 'ru' ? c.hb_ru : c.hb_en;
+    let cTg = (currentLang === 'ru' ? c.tg_ru : c.tg_en) || [];
+    let cHb = (currentLang === 'ru' ? c.hb_ru : c.hb_en) || [];
     let cSn = currentLang === 'ru' ? (c.sn_ru || []) : (c.sn_en || []);
     
-    let tagsHTML = cTg.map(t => `<div class="tag ${(t.includes('Особенный') || t.includes('Special')) ? 'special' : ''}">${t}</div>`).join('');
-    let habHTML = cHb.length ? `<div class="tag habitat">${cHb.join(', ')}</div>` : '';
+    let tagsHTML = cTg.map(t => `<div class="tag ${(t.includes('Особенный') || t.includes('Special')) ? 'special' : ''}">${esc(t)}</div>`).join('');
+    let habHTML = cHb.length ? `<div class="tag habitat">${esc(cHb.join(', '))}</div>` : '';
+    let sourceName = currentLang === 'ru' ? (c.src_ru || c.src || '') : (c.src || '');
+    let sourceHTML = sourceName ? `<div class="tag source">${esc(sourceName)}</div>` : '';
     let crLabel = currentLang === 'ru' ? 'ПО' : 'CR';
     
-    let sensesBlock = cSn.length > 0 ? `<div class="senses-block ${hlSenses}"><strong>${texts.lblSenses}:</strong> ${cSn.join(', ')}</div>` : '';
+    let sensesBlock = cSn.length > 0 ? `<div class="senses-block ${hlSenses}"><strong>${texts.lblSenses}:</strong> ${esc(cSn.join(', '))}</div>` : '';
 
     let cardHTML = `
       <div class="card">
         <div class="card-header">
-          <div><div class="name">${cName}</div><div class="en-name">${c.n_en}</div></div>
-          <div class="cr-badge">${crLabel} ${c.cr}</div>
+          <div><div class="name">${esc(cName)}</div><div class="en-name">${esc(c.n_en)}</div></div>
+          <div class="cr-badge">${crLabel} ${esc(c.cr)}</div>
         </div>
-        <div class="basic-info">${cSz} ${texts.beast}</div>
+        <div class="basic-info">${esc(cSz)} ${texts.beast}</div>
         
         <div class="stat-row">
           <div class="stat-box ${hl('hp')}"><span>${texts.statHp}:</span> <strong>${c.hp}</strong></div>
@@ -501,7 +474,7 @@ function renderData(data) {
         
         ${sensesBlock}
 
-        <div class="tags">${habHTML}${tagsHTML}</div>
+        <div class="tags">${sourceHTML}${habHTML}${tagsHTML}</div>
       </div>
     `;
     

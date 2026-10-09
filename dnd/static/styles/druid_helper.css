@@ -426,6 +426,7 @@ h1 {
 }
 .tag.special { background: var(--tag-spec-bg); color: var(--tag-spec-text); font-weight: bold; }
 .tag.habitat { font-style: italic; border-color: var(--text-accent); }
+.tag.source { letter-spacing: 0.04em; border-color: var(--text-accent); color: var(--text-accent); }
 
 .no-results {
   text-align: center;
