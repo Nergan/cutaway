@@ -615,7 +615,8 @@ def test_unavailable_modrinth_is_a_hover_note_instead_of_a_paragraph():
     )
     page = render_page(Catalog(mods=[mod]), "en", "name")
     assert 'class="btn ext is-disabled"' in page
-    assert "No public Modrinth page" in page
+    assert page.count("No public Modrinth page") == 1
+    assert 'title="No public Modrinth page' not in page
     assert '<p class="note">No public Modrinth page' not in page
 
 

@@ -169,7 +169,7 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
     else:
         tip = text["modrinth"]["unavailable"]
         links.append(
-            f'<span class="btn ext is-disabled" role="link" aria-disabled="true" tabindex="0" title="{html.escape(tip, quote=True)}">Modrinth<span class="tip">{html.escape(tip)}</span></span>'
+            f'<span class="btn ext is-disabled" role="link" aria-disabled="true" tabindex="0">Modrinth<span class="tip">{html.escape(tip)}</span></span>'
         )
         if mod.modrinth_state in {"", "unavailable", "missing"}:
             status = ""

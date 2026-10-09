@@ -153,6 +153,7 @@ body::before {
               border-color 0.3s ease,
               box-shadow 0.3s ease;
   user-select: none;
+  cursor: pointer;
 }
 .sidebar:hover { background: var(--sidebar-hover-bg); }
 .sidebar > * {
