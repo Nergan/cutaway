@@ -23,6 +23,24 @@ Formular relies on file-content detection (via Magic Bytes), not file extensions
 | **Spreadsheets (CSV, XLSX)**| `CSV`, `PDF` | Pandas, LibreOffice |
 | **Archives (ZIP, RAR, 7Z, TAR, GZ)**| `ZIP`, `7Z`, `TAR`, `GZ` | p7zip-full |
 
+## API
+
+The live HTTP API is REST under `/formular/api`. `GET /formular/api` returns the size limits and the route map.
+
+| Method | Path | Role |
+|---|---|---|
+| `POST` | `/formular/api/files` | Upload one or more files (`multipart` field `files`). `201` with ids, detected format, and allowed targets |
+| `GET` | `/formular/api/files/{id}` | Metadata for an uploaded file |
+| `POST` | `/formular/api/files/{id}/conversions` | Convert. JSON body `{"to":"mp3"}`, optional `audio`, `video`, `ffmpeg`, `merge_id`, `merge_loop`. The response is the converted file |
+| `GET` | `/formular/api/voices` | Speech voices |
+| `GET` | `/formular/api/voices/{id}/sample` | A short WAV of that voice |
+
+On the public Space a request body cannot exceed 32 MiB. `max_file_bytes` in `GET /formular/api` is the largest single file that still fits. A `413` names both sizes, for example `note.txt is 51.2 MiB. The maximum is 32.0 MiB.`
+
+`POST /formular/api/upload` and `POST /formular/api/convert` are the same two operations, in the form the page already sends. The page keeps using them.
+
+The Russian design notes for a later workspace API are in [`docs/05-api.md`](docs/05-api.md). That later shape is not what the server implements today.
+
 ## Planned Redesign
 
 A conceptual redesign (shared workspace, background jobs, public API, AI operations) is documented in [`docs/`](docs/README.md) (in Russian). AI agents should start with [`AGENTS.md`](AGENTS.md). Speech to text and text to speech are already in the current interface.

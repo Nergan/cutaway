@@ -108,6 +108,7 @@ def test_http_proxy_rejects_body_before_starting_worker():
 
         await upstream_client.aclose()
         assert response.status_code == 413
+        assert response.json()["detail"] == "This request is 5 B. The maximum is 4 B."
         assert supervisor.ensure_calls == 0
 
     asyncio.run(scenario())

@@ -6,15 +6,18 @@ import uuid
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Optional
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
+from pydantic import BaseModel, Field
+
 from formular.core.detector import detect_file_format, get_allowed_targets
 from formular.core.converter import convert_document
 from formular.core import speech
-from shared_limits import RateLimiter, body_size_limit
+from shared_limits import RateLimiter, body_size_limit, too_large_detail
 
 router = APIRouter()
 
@@ -40,6 +43,35 @@ def session_dir(raw_id: str) -> Path:
         raise HTTPException(status_code=400, detail="Invalid session id.")
 
 
+class ConversionRequest(BaseModel):
+    to: str = Field(..., max_length=32)
+    audio: Optional[dict] = None
+    video: Optional[dict] = None
+    ffmpeg: Optional[str] = Field(None, max_length=4000)
+    merge_id: Optional[str] = None
+    merge_loop: bool = False
+
+
+def file_budget() -> int:
+    """Largest single file that still fits in the request once multipart framing is added."""
+    margin = 64 * 1024 if MAX_UPLOAD_BYTES > 128 * 1024 else 0
+    return max(1, MAX_UPLOAD_BYTES - margin)
+
+
+def _api_index() -> dict:
+    budget = file_budget()
+    return {
+        "max_upload_bytes": MAX_UPLOAD_BYTES,
+        "max_file_bytes": budget,
+        "max_output_bytes": MAX_OUTPUT_BYTES,
+        "create_files": "POST /formular/api/files",
+        "read_file": "GET /formular/api/files/{id}",
+        "create_conversion": "POST /formular/api/files/{id}/conversions",
+        "voices": "GET /formular/api/voices",
+        "voice_sample": "GET /formular/api/voices/{id}/sample",
+    }
+
+
 async def enforce_upload_limit(request: Request):
     """Reject oversized bodies before FastAPI parses the multipart form.
 
@@ -56,7 +88,7 @@ async def enforce_upload_limit(request: Request):
     if length > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit.",
+            detail=too_large_detail("This request", length, MAX_UPLOAD_BYTES),
         )
 
 
@@ -71,78 +103,118 @@ def _sweep_stale_sessions():
             continue
 
 
-@router.post('/upload', dependencies=[Depends(enforce_upload_limit), Depends(UPLOAD_RATE)])
-async def upload_files(files: list[UploadFile] = File(...)):
+def _describe_stored(file_id: str, original_name: str, file_path: Path, size: int) -> dict:
+    detected_format = detect_file_format(str(file_path), original_name)
+    allowed_targets = get_allowed_targets(detected_format)
+    if detected_format == "unknown" or not allowed_targets:
+        return {"filename": original_name, "error": "Unsupported file format."}
+    return {
+        "id": file_id,
+        "filename": original_name,
+        "size": size,
+        "format": detected_format,
+        "allowed_targets": allowed_targets,
+    }
+
+
+async def _ingest(files: list[UploadFile]) -> list:
     try:
         await asyncio.to_thread(_sweep_stale_sessions)
     except OSError:
         pass
 
+    budget = file_budget()
     results = []
     for file in files:
         file_id = str(uuid.uuid4())
         safe_dir = TEMP_DIR / file_id
-        
         input_dir = safe_dir / "input"
         input_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Strip any directory component the client put in the upload name.
+
         original_name = Path(file.filename or "").name
         if not original_name:
+            shutil.rmtree(safe_dir, ignore_errors=True)
             results.append({"filename": file.filename, "error": "Missing file name."})
             continue
         file_path = input_dir / original_name
-        
-        # Backstop for chunked requests that arrive without a Content-Length.
+
         size = 0
         oversized = False
-        with open(file_path, "wb") as f:
+        with open(file_path, "wb") as handle:
             while chunk := await file.read(8192 * 1024):
                 size += len(chunk)
-                if size > MAX_UPLOAD_BYTES:
+                if size > budget:
                     oversized = True
                     break
-                f.write(chunk)
+                handle.write(chunk)
 
         if oversized:
             shutil.rmtree(safe_dir, ignore_errors=True)
             results.append({
                 "filename": original_name,
-                "error": f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit.",
+                "error": too_large_detail(original_name, size, budget),
             })
             continue
-        
-        detected_format = detect_file_format(str(file_path), original_name)
-        allowed_targets = get_allowed_targets(detected_format)
-        
-        if detected_format == 'unknown' or not allowed_targets:
+
+        described = _describe_stored(file_id, original_name, file_path, size)
+        if "error" in described:
             shutil.rmtree(safe_dir, ignore_errors=True)
-            results.append({"filename": original_name, "error": "Unsupported file format."})
-            continue
-            
-        results.append({
-            "id": file_id,
-            "filename": original_name,
-            "size": size,
-            "format": detected_format,
-            "allowed_targets": allowed_targets
-        })
-    return {"files": results}
+        results.append(described)
+    return results
+
+
+def _stored_input(file_id: str) -> tuple[Path, Path, str]:
+    safe_dir = session_dir(file_id)
+    input_dir = safe_dir / "input"
+    if not safe_dir.exists() or not input_dir.exists():
+        raise HTTPException(status_code=404, detail="File session expired or not found.")
+    try:
+        input_file = next(input_dir.iterdir())
+    except StopIteration:
+        raise HTTPException(status_code=404, detail="File session expired or not found.")
+    return safe_dir, input_file, input_file.name
+
+
+@router.get("")
+@router.get("/")
+async def api_index():
+    return _api_index()
+
 
 @router.post(
-    '/convert',
-    dependencies=[Depends(body_size_limit(128 * 1024)), Depends(CONVERT_RATE)],
+    "/files",
+    status_code=201,
+    dependencies=[Depends(enforce_upload_limit), Depends(UPLOAD_RATE)],
 )
-async def convert_file(
-    file_id: str = Form(...), 
-    to_format: str = Form(...),
-    audio_opts: str = Form(None),
-    video_opts: str = Form(None),
-    custom_ffmpeg: str = Form(None),
-    merge_id: str = Form(None),
-    merge_loop: str = Form(None)
+async def create_files(files: list[UploadFile] = File(...)):
+    return {"files": await _ingest(files)}
+
+
+@router.get("/files/{file_id}")
+async def read_file(file_id: str):
+    _safe_dir, input_file, original_name = _stored_input(file_id)
+    described = _describe_stored(file_id, original_name, input_file, input_file.stat().st_size)
+    if "error" in described:
+        raise HTTPException(status_code=422, detail=described["error"])
+    return described
+
+
+@router.post("/upload", dependencies=[Depends(enforce_upload_limit), Depends(UPLOAD_RATE)])
+async def upload_files(files: list[UploadFile] = File(...)):
+    """Same creation as POST /files. Kept so the current page does not have to change its URL."""
+    return {"files": await _ingest(files)}
+
+
+async def _convert(
+    file_id: str,
+    to_format: str,
+    audio_opts: str | None,
+    video_opts: str | None,
+    custom_ffmpeg: str | None,
+    merge_id: str | None,
+    merge_loop: bool,
 ):
-    safe_dir = session_dir(file_id)
+    safe_dir, input_file, original_name = _stored_input(file_id)
     input_dir = safe_dir / "input"
     
     if not safe_dir.exists() or not input_dir.exists():
@@ -156,8 +228,8 @@ async def convert_file(
         m_dir = session_dir(merge_id) / "input"
         if m_dir.exists():
             merge_path = str(next(m_dir.iterdir()))
-            
-    is_merge_loop = merge_loop == 'true'
+
+    is_merge_loop = bool(merge_loop)
     
     if '.' in original_name:
         name_without_ext = original_name.rsplit('.', 1)[0]
@@ -231,6 +303,46 @@ async def convert_file(
         media_type='application/octet-stream',
         headers=headers,
         background=BackgroundTask(shutil.rmtree, task_dir, ignore_errors=True)
+    )
+
+
+@router.post(
+    "/files/{file_id}/conversions",
+    dependencies=[Depends(body_size_limit(128 * 1024)), Depends(CONVERT_RATE)],
+)
+async def create_conversion(file_id: str, body: ConversionRequest):
+    return await _convert(
+        file_id,
+        body.to,
+        json.dumps(body.audio) if body.audio is not None else None,
+        json.dumps(body.video) if body.video is not None else None,
+        body.ffmpeg,
+        body.merge_id,
+        body.merge_loop,
+    )
+
+
+@router.post(
+    '/convert',
+    dependencies=[Depends(body_size_limit(128 * 1024)), Depends(CONVERT_RATE)],
+)
+async def convert_file(
+    file_id: str = Form(...),
+    to_format: str = Form(...),
+    audio_opts: str = Form(None),
+    video_opts: str = Form(None),
+    custom_ffmpeg: str = Form(None),
+    merge_id: str = Form(None),
+    merge_loop: str = Form(None),
+):
+    return await _convert(
+        file_id,
+        to_format,
+        audio_opts,
+        video_opts,
+        custom_ffmpeg,
+        merge_id,
+        merge_loop == "true",
     )
 
 

@@ -79,6 +79,49 @@ window.Formular.initUploader = function() {
         }
     };
 
+    function uploadFailure(xhr, file) {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (typeof data.detail === 'string' && data.detail) return data.detail;
+        } catch (error) {}
+        const max = window.Formular.maxFileBytes;
+        if (xhr.status === 413 && max) {
+            return `${file.name} is ${window.Formular.formatBytes(file.size)}. The maximum is ${window.Formular.formatBytes(max)}.`;
+        }
+        return `Network error uploading ${file.name}.`;
+    }
+
+    async function prepareFile(file) {
+        const max = window.Formular.maxFileBytes;
+        if (!max || file.size <= max) return file;
+        let shrunk = null;
+        if (window.Formular.shrinkLossless) {
+            try {
+                shrunk = await window.Formular.shrinkLossless(file);
+            } catch (error) {
+                shrunk = null;
+            }
+        }
+        if (shrunk && shrunk.size < file.size && shrunk.size <= max) {
+            window.Formular.Toast.show(
+                `${file.name} was reduced from ${window.Formular.formatBytes(file.size)} to ${window.Formular.formatBytes(shrunk.size)} without a quality change.`,
+                'info',
+                8000
+            );
+            return shrunk;
+        }
+        const packed = shrunk && shrunk.size < file.size;
+        const sizeText = packed
+            ? `${window.Formular.formatBytes(shrunk.size)} after a lossless pass (was ${window.Formular.formatBytes(file.size)})`
+            : window.Formular.formatBytes(file.size);
+        window.Formular.Toast.show(
+            `${file.name} is ${sizeText}. The maximum is ${window.Formular.formatBytes(max)}.`,
+            'error',
+            8000
+        );
+        return null;
+    }
+
     async function processFiles(files) {
         let validFiles = [];
         for (let i = 0; i < files.length; i++) {
@@ -93,7 +136,14 @@ window.Formular.initUploader = function() {
 
         if (validFiles.length === 0) return;
 
-        Array.from(validFiles).forEach((file) => {
+        const ready = [];
+        for (const file of validFiles) {
+            const prepared = await prepareFile(file);
+            if (prepared) ready.push(prepared);
+        }
+        if (ready.length === 0) return;
+
+        ready.forEach((file) => {
             const formData = new FormData();
             formData.append('files', file);
 
@@ -130,7 +180,7 @@ window.Formular.initUploader = function() {
                     const data = JSON.parse(xhr.responseText);
                     const fileData = data.files[0];
                     if (fileData.error) {
-                        window.Formular.Toast.show(`${fileData.filename}: ${fileData.error}`, 'error');
+                        window.Formular.Toast.show(`${fileData.filename}: ${fileData.error}`, 'error', 8000);
                         p.remove();
                     } else {
                         window.Formular.LocalFiles[fileData.id] = file; // Cache the frontend file representation for thumbnails
@@ -145,7 +195,7 @@ window.Formular.initUploader = function() {
                     }
                     window.Formular.toggleUIState();
                 } else {
-                    window.Formular.Toast.show(`Network error uploading ${file.name}.`, 'error');
+                    window.Formular.Toast.show(uploadFailure(xhr, file), 'error', 8000);
                     p.remove(); window.Formular.toggleUIState();
                 }
             };

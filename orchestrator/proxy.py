@@ -14,6 +14,8 @@ import websockets
 from websockets.exceptions import ConnectionClosed
 
 from .config import ProjectConfig
+from shared_limits import too_large_detail
+
 from .governor import PolicyViolation, ProjectGovernor
 from .supervisor import ProjectSupervisor, WorkerUnavailable
 
@@ -154,7 +156,14 @@ class ProjectProxy:
                 self.supervisor.touch(self.project.project_id)
                 seen += len(body)
                 if self.project.limits.request_bytes and seen > self.project.limits.request_bytes:
-                    raise PolicyViolation(413, "Project request body limit exceeded.")
+                    raise PolicyViolation(
+                        413,
+                        too_large_detail(
+                            "This request",
+                            seen,
+                            self.project.limits.request_bytes,
+                        ),
+                    )
                 self.governor.record_traffic(len(body))
                 yield body
             if not message.get("more_body", False):

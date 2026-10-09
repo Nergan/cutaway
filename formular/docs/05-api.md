@@ -1,5 +1,33 @@
 # Публичный API
 
+Живой formular отдаёт REST ниже. Разделы 1–6 описывают целевую переработку и в текущем коде не реализованы.
+
+## Сейчас
+
+Префикс хаба — `/formular`. Ошибки — JSON `{"detail": "..."}`. Запись больше предела — `413`, и текст называет оба размера: `note.txt is 51.2 MiB. The maximum is 32.0 MiB.` На профиле hf предел запроса `33554432` байт (32 МиБ); один файл чуть меньше, потому что к телу multipart добавляется рамка. Точное значение для файла отдаёт `max_file_bytes`.
+
+| Метод и путь | Назначение |
+|---|---|
+| `GET /api` | Пределы и карта маршрутов: `max_upload_bytes`, `max_file_bytes`, `max_output_bytes` |
+| `POST /api/files` | Создать файлы. Поле multipart `files`, можно несколько. `201` и `{"files":[{"id","filename","size","format","allowed_targets"}]}`. Неподдерживаемый формат остаётся в этом списке с полем `error` |
+| `GET /api/files/{id}` | Метаданные уже загруженного файла |
+| `POST /api/files/{id}/conversions` | Конвертация. JSON `{"to":"mp3","audio":{},"video":{},"ffmpeg":"...","merge_id":"...","merge_loop":false}`. Ответ — байты результата и `Content-Disposition`. Сессии нет — соединение держится до конца |
+| `GET /api/voices` | Голоса озвучки и пометка AI |
+| `GET /api/voices/{id}/sample` | Короткий WAV этого голоса |
+
+`POST /api/upload` и `POST /api/convert` делают то же самое, что создание файла и конвертация: их вызывает текущая страница. У конвертации поля формы `file_id`, `to_format`, `audio_opts`, `video_opts`, `custom_ffmpeg`, `merge_id`, `merge_loop` (`true` / пусто).
+
+Пример:
+
+```bash
+curl -s -F "files=@note.txt" "$ORIGIN/formular/api/files"
+curl -s -X POST "$ORIGIN/formular/api/files/$ID/conversions" \
+  -H "Content-Type: application/json" \
+  -d '{"to":"md"}' -o note.md
+```
+
+Страница до выбора файла показывает `max_file_bytes`. Если файл больше, браузер сначала снимает только то, что не меняет картинку и звук: комментарий JPEG, текстовые чанки PNG, более плотная упаковка ZIP. Видео и звук так не уменьшаются: их байты и есть содержимое. Файл, который после этого всё ещё больше предела, не отправляется.
+
 ## 1. Допустимость
 
 Публичный API политике Hugging Face не противоречит: Gradio-Spaces по умолчанию отдают API, а прямых запретов на API у Docker Spaces нет. Рискованно другое — то, что делает Space похожим на прокси, файлообменник или источник массовой активности. Поэтому:

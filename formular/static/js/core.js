@@ -1,18 +1,27 @@
 window.Formular = window.Formular || {};
 
 window.Formular.Toast = {
-    show(message, type = 'info') {
+    show(message, type = 'info', duration = 4000) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `custom-toast ${type}`;
-        toast.innerHTML = `<i class="bi bi-info-circle me-2"></i> ${message}`;
+        const text = document.createElement('span');
+        text.textContent = message;
+        toast.innerHTML = '<i class="bi bi-info-circle me-2"></i> ';
+        toast.appendChild(text);
         container.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(-100%)';
             setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        }, duration);
     }
+};
+
+window.Formular.formatBytes = function (amount) {
+    if (amount >= 1024 * 1024) return `${(amount / (1024 * 1024)).toFixed(1)} MiB`;
+    if (amount >= 1024) return `${(amount / 1024).toFixed(1)} KiB`;
+    return `${amount} B`;
 };
 
 window.Formular.toggleUIState = function() {

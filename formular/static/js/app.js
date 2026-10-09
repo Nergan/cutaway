@@ -1,5 +1,5 @@
 // --- AUTO CACHE REFRESHER ---
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.5.0';
 if (localStorage.getItem('formular_version') !== APP_VERSION) {
     localStorage.setItem('formular_version', APP_VERSION);
     window.location.reload(true);
@@ -87,10 +87,19 @@ document.addEventListener('DOMContentLoaded', () => {
             window.Formular.updateBulkPanel();
         }
         
-        if (document.getElementById('sortableContainer').children.length === 0 && !e.target.closest('.fab') && !e.target.closest('.bulk-panel')) {
-            document.getElementById('fileInput').click();
-        }
     });
+
+    document.getElementById('emptyState').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('fileInput').click();
+    });
+
+    fetch('./api').then((response) => response.json()).then((data) => {
+        const limit = document.getElementById('uploadLimit');
+        if (!limit || !data.max_file_bytes) return;
+        window.Formular.maxFileBytes = data.max_file_bytes;
+        limit.textContent = `Maximum file size: ${window.Formular.formatBytes(data.max_file_bytes)}`;
+    }).catch(() => {});
 
     document.getElementById('fabAdd').addEventListener('click', (e) => { 
         e.stopPropagation(); 

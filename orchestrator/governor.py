@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import AsyncIterator
 
+from shared_limits import too_large_detail
+
 from .config import ProjectConfig
 
 
@@ -59,7 +61,10 @@ class ProjectGovernor:
             if declared < 0:
                 raise PolicyViolation(400, "Malformed Content-Length.")
             if limits.request_bytes and declared > limits.request_bytes:
-                raise PolicyViolation(413, "Project request body limit exceeded.")
+                raise PolicyViolation(
+                    413,
+                    too_large_detail("This request", declared, limits.request_bytes),
+                )
 
         now = time.monotonic()
         self._collect(now)

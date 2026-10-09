@@ -13,6 +13,19 @@ from typing import Callable, Deque, Dict
 from fastapi import HTTPException, Request
 
 
+def format_bytes(amount: int) -> str:
+    """Short size for limit errors. One decimal so 32 MiB and 51.2 MiB stay distinct."""
+    if amount >= 1024 * 1024:
+        return f"{amount / (1024 * 1024):.1f} MiB"
+    if amount >= 1024:
+        return f"{amount / 1024:.1f} KiB"
+    return f"{amount} B"
+
+
+def too_large_detail(label: str, amount: int, limit: int) -> str:
+    return f"{label} is {format_bytes(amount)}. The maximum is {format_bytes(limit)}."
+
+
 def body_size_limit(max_bytes: int) -> Callable:
     """Reject oversized bodies before FastAPI buffers and validates them.
 
