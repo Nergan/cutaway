@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -109,14 +108,64 @@ def test_cache_trims_samples_before_it_grows_without_a_limit(monkeypatch):
     assert (folder / "keep.bin").is_file()
 
 
-def _conversions() -> dict[str, list[str]]:
-    module = ast.parse((ROOT / "formular" / "core" / "detector.py").read_text(encoding="utf-8"))
-    for node in module.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "ALLOWED_CONVERSIONS" for target in node.targets
-        ):
-            return ast.literal_eval(node.value)
-    raise AssertionError("ALLOWED_CONVERSIONS was not found")
+def test_speech_path_prefers_a_direct_conversion_and_still_reaches_text():
+    from formular.core.graph import (
+        DIRECT_EDGES,
+        ai_targets_for,
+        find_shortest_path,
+        hop_kind,
+        targets_for,
+    )
+
+    assert find_shortest_path("mp3", "wav") == ["mp3", "wav"]
+    assert find_shortest_path("mp4", "ogg") == ["mp4", "ogg"]
+    assert find_shortest_path("docx", "pdf") == ["docx", "pdf"]
+    assert find_shortest_path("docx", "mp3") == ["docx", "txt", "mp3"]
+    assert find_shortest_path("pdf", "wav") == ["pdf", "txt", "wav"]
+    assert find_shortest_path("mp4", "md") == ["mp4", "txt", "md"]
+    assert find_shortest_path("mp4", "pdf") == ["mp4", "txt", "pdf"]
+    assert find_shortest_path("gif", "txt") == ["gif", "mp4", "txt"]
+    assert find_shortest_path("gif", "pdf") == ["gif", "mp4", "txt", "pdf"]
+    assert find_shortest_path("gif", "html") == ["gif", "mp4", "txt", "html"]
+    assert find_shortest_path("gif", "mp3") == ["gif", "mp4", "mp3"]
+    assert find_shortest_path("gif", "png") == ["gif", "png"]
+    assert find_shortest_path("gif", "md") == ["gif", "mp4", "txt", "md"]
+    assert find_shortest_path("webm", "pdf") == ["webm", "txt", "pdf"]
+    assert find_shortest_path("jpg", "mp3") == ["jpg", "pdf", "txt", "mp3"]
+    assert find_shortest_path("webm", "json") == ["webm", "txt", "json"]
+    assert find_shortest_path("csv", "ogg") == ["csv", "pdf", "txt", "ogg"]
+    assert find_shortest_path("zip", "txt") is None
+
+    assert ai_targets_for("mp4")["txt"] == "transcribe"
+    assert ai_targets_for("mp4")["pdf"] == "transcribe"
+    assert "mp3" not in ai_targets_for("mp4")
+    assert ai_targets_for("docx")["mp3"] == "speak"
+    assert "pdf" not in ai_targets_for("docx")
+    assert ai_targets_for("jpg")["wav"] == "speak"
+    assert "txt" not in targets_for("jpg")
+    assert "pdf" in targets_for("mp3")
+    assert ai_targets_for("mp3")["pdf"] == "transcribe"
+    assert targets_for("zip") == ["7z", "tar", "gz"]
+    assert "both" not in ai_targets_for("gif").values()
+
+    for source, targets in ((name, targets_for(name)) for name in set(DIRECT_EDGES) | {"txt"}):
+        for target in targets:
+            if target == source:
+                continue
+            path = find_shortest_path(source, target)
+            assert path is not None and path[0] == source and path[-1] == target
+            kinds = []
+            for left, right in zip(path, path[1:]):
+                kind_name = hop_kind(left, right)
+                assert kind_name or right in DIRECT_EDGES.get(left, ())
+                if kind_name:
+                    kinds.append(kind_name)
+            assert "speak" not in kinds or "transcribe" not in kinds
+            marked = ai_targets_for(source).get(target)
+            if kinds:
+                assert marked == kinds[0]
+            else:
+                assert marked is None
 
 
 def test_text_is_split_by_language_and_keeps_every_character():
@@ -197,11 +246,17 @@ def test_spoken_headers_name_every_language_voice():
 
 
 def test_backup_catalog_offers_transcripts_and_speech():
-    conversions = _conversions()
+    from formular.core.graph import ai_targets_for, targets_for
+
     for source in ("mp3", "wav", "ogg", "mp4", "webm"):
-        assert "txt" in conversions[source]
+        assert "txt" in targets_for(source)
+        assert ai_targets_for(source)["txt"] == "transcribe"
     for target in ("mp3", "wav", "ogg"):
-        assert target in conversions["txt"]
+        assert target in targets_for("txt")
+        assert ai_targets_for("txt")[target] == "speak"
+    for source in ("docx", "pdf", "html", "md", "epub", "csv"):
+        assert "mp3" in targets_for(source)
+        assert ai_targets_for(source)["mp3"] == "speak"
     endpoints = (ROOT / "formular" / "api" / "endpoints.py").read_text(encoding="utf-8")
     assert "speech.convert" in endpoints
     assert "X-AI-Operation" in (ROOT / "formular" / "core" / "speech.py").read_text(encoding="utf-8")

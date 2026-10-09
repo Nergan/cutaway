@@ -15,6 +15,9 @@ import toml
 import shlex
 from shared_runtime import ProcessResult, SubprocessFailure, run_process
 
+from formular.core.graph import find_shortest_path
+from formular.core import speech
+
 try:
     from .html_pdf import render_html_to_pdf
 except ImportError:
@@ -25,53 +28,6 @@ MAX_ARCHIVE_FILES = int(os.getenv("FORMULAR_MAX_ARCHIVE_FILES", "2000"))
 MAX_ARCHIVE_UNPACKED_BYTES = int(
     os.getenv("FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES", str(256 * 1024 * 1024))
 )
-
-DIRECT_EDGES = {
-    'docx': ['pdf', 'html', 'txt', 'md'],
-    'doc': ['pdf', 'docx'],
-    'pptx': ['pdf'],
-    'rtf': ['pdf', 'docx', 'html', 'txt', 'md'],
-    'odt': ['pdf', 'docx'],
-    'txt': ['pdf', 'html', 'md', 'docx', 'json'],  
-    'html': ['pdf', 'md', 'txt', 'docx'],
-    'md': ['html', 'txt', 'docx'],
-    'epub': ['html', 'txt', 'md'],
-    'pdf': ['html', 'txt'],
-    'djvu': ['pdf'],
-    'csv': ['pdf'],
-    'xlsx': ['csv', 'pdf'],
-    'svg': ['png', 'pdf'],
-    'jpg': ['png', 'webp', 'pdf'],
-    'png': ['jpg', 'webp', 'pdf'],
-    'webp': ['jpg', 'png', 'pdf'],
-    'gif': ['png', 'mp4'],
-    'mp4': ['webm', 'gif', 'mp3', 'ogg'],
-    'webm': ['mp4', 'gif', 'mp3', 'ogg'],
-    'mp3': ['wav', 'ogg', 'mp4', 'webm'],
-    'wav': ['mp3', 'ogg', 'mp4', 'webm'],
-    'ogg': ['mp3', 'wav', 'mp4', 'webm'],
-    'zip': ['7z', 'tar', 'gz'],
-    'rar': ['zip', '7z', 'tar', 'gz'],
-    '7z': ['zip', 'tar', 'gz'],
-    'tar': ['zip', '7z', 'gz'],
-    'gz': ['zip', '7z', 'tar'],
-    'json': ['yaml', 'toml', 'xml', 'txt'],
-    'yaml': ['json', 'toml', 'xml', 'txt'],
-    'toml': ['json', 'yaml', 'xml', 'txt'],
-    'xml': ['json', 'yaml', 'toml', 'txt']
-}
-
-def find_shortest_path(start, end):
-    queue = [(start, [start])]
-    visited = set()
-    while queue:
-        (node, path) = queue.pop(0)
-        if node == end: return path
-        if node not in visited:
-            visited.add(node)
-            for neighbor in DIRECT_EDGES.get(node, []):
-                queue.append((neighbor, path + [neighbor]))
-    return None
 
 def _local_media_protocols(cmd):
     argv = [str(item) for item in cmd]
@@ -346,27 +302,44 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
     current_input = input_path
     temp_files = []
     task_dir = os.path.dirname(output_path)
+    operations = []
+    spoken_text = None
 
     try:
         for i in range(len(path) - 1):
             curr_fmt = path[i]
             next_fmt = path[i+1]
-            if i == len(path) - 2: current_output = output_path
+            last = i == len(path) - 2
+            if last: current_output = output_path
             else:
                 fd, temp_path = tempfile.mkstemp(suffix=f".{next_fmt}", dir=task_dir)
                 os.close(fd)
                 temp_files.append(temp_path)
                 current_output = temp_path
-                
-            if i == len(path) - 2:
-                await _direct_convert(current_input, current_output, curr_fmt, next_fmt, audio_opts, video_opts, custom_ffmpeg, merge_path, merge_loop)
+
+            operation = speech.kind(curr_fmt, next_fmt)
+            if operation:
+                operations.append(operation)
+            # The voice belongs to the speak hop. Trim, filters and merge stay on
+            # the last ordinary hop, so a transcript is not passed through ffmpeg.
+            if operation == "speak":
+                spoken_text = pathlib.Path(current_input).read_text(encoding="utf-8", errors="replace")
+                await _direct_convert(
+                    current_input, current_output, curr_fmt, next_fmt, audio_opts,
+                )
+            elif last and operation is None:
+                await _direct_convert(
+                    current_input, current_output, curr_fmt, next_fmt,
+                    audio_opts, video_opts, custom_ffmpeg, merge_path, merge_loop,
+                )
             else:
                 await _direct_convert(current_input, current_output, curr_fmt, next_fmt)
-                
+
             current_input = current_output
-            
+
             if not os.path.exists(current_output) or os.path.getsize(current_output) == 0:
                 raise Exception(f"Intermediate conversion failed at {curr_fmt} -> {next_fmt}")
+        return {"operations": operations, "spoken_text": spoken_text}
     finally:
         for f in temp_files:
             if os.path.exists(f): os.remove(f)
@@ -448,6 +421,18 @@ async def _html_to_pdf_office(input_path: str, output_path: str) -> None:
 
 
 async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_fmt: str, audio_opts: str = None, video_opts: str = None, custom_ffmpeg: str = None, merge_path: str = None, merge_loop: bool = False):
+    operation = speech.kind(from_fmt, to_fmt)
+    if operation is not None:
+        await asyncio.to_thread(
+            speech.convert,
+            operation,
+            pathlib.Path(input_path),
+            pathlib.Path(output_path),
+            to_fmt,
+            audio_opts if operation == "speak" else None,
+        )
+        return
+
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
     if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
         if to_fmt == 'txt':

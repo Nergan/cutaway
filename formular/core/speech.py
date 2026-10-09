@@ -20,10 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
 
+from formular.core.graph import SPEAK_TARGETS as _SPEAK_TARGETS
+from formular.core.graph import hop_kind
 from formular.core.speech_lang import segment_languages
-
-_TRANSCRIBE_SOURCES = frozenset({"mp3", "wav", "ogg", "mp4", "webm"})
-_SPEAK_TARGETS = frozenset({"mp3", "wav", "ogg"})
 _MAX_TEXT_CHARS = 4000
 _MAX_TEXT_BYTES = 1_000_000
 _MAX_AUDIO_SECONDS = 180
@@ -189,11 +188,7 @@ LANGUAGE_VOICES = (
 
 
 def kind(source: str, target: str) -> str | None:
-    if source in _TRANSCRIBE_SOURCES and target == "txt":
-        return "transcribe"
-    if source == "txt" and target in _SPEAK_TARGETS:
-        return "speak"
-    return None
+    return hop_kind(source, target)
 
 
 def get_voice(voice_id: str) -> Voice:
@@ -264,6 +259,7 @@ def public_headers(
     operation: str,
     audio_opts: str | None = None,
     source: Path | None = None,
+    spoken_text: str | None = None,
 ) -> dict[str, str]:
     headers = {"X-Content-Type-Options": "nosniff"}
     if operation == "transcribe":
@@ -273,16 +269,51 @@ def public_headers(
         return headers
     primary = voice_from_opts(audio_opts)
     voices = [primary]
-    if source is not None and source.is_file():
+    spoken = ""
+    if spoken_text is not None:
+        try:
+            spoken = prepare_text(spoken_text)
+        except SpeechError:
+            spoken = ""
+    elif source is not None and source.is_file():
         try:
             spoken = prepare_text(source.read_text(encoding="utf-8", errors="replace"))
         except (OSError, SpeechError):
             spoken = ""
-        if spoken:
-            voices = voices_for_text(primary, spoken)
+    if spoken:
+        voices = voices_for_text(primary, spoken)
     headers["X-AI-Operation"] = "speech.speak"
     headers["X-AI-Model"] = ",".join(voice.repo for voice in voices)
     headers["X-AI-License"] = ",".join(dict.fromkeys(voice.license for voice in voices))
+    return headers
+
+
+def chain_headers(
+    operations: list[str],
+    audio_opts: str | None = None,
+    spoken_text: str | None = None,
+) -> dict[str, str]:
+    """Mark every speech hop in one conversion. Models stay in path order."""
+    headers = {"X-Content-Type-Options": "nosniff"}
+    names: list[str] = []
+    models: list[str] = []
+    licenses: list[str] = []
+    for operation in operations:
+        part = public_headers(
+            operation,
+            audio_opts,
+            spoken_text=spoken_text if operation == "speak" else None,
+        )
+        names.append(part["X-AI-Operation"])
+        if part.get("X-AI-Model"):
+            models.extend(part["X-AI-Model"].split(","))
+        if part.get("X-AI-License"):
+            licenses.extend(part["X-AI-License"].split(","))
+    headers["X-AI-Operation"] = ",".join(dict.fromkeys(names))
+    if models:
+        headers["X-AI-Model"] = ",".join(dict.fromkeys(models))
+    if licenses:
+        headers["X-AI-License"] = ",".join(dict.fromkeys(licenses))
     return headers
 
 

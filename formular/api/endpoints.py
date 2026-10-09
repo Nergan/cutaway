@@ -103,7 +103,7 @@ def _sweep_stale_sessions():
 
 def _describe_stored(file_id: str, original_name: str, file_path: Path, size: int) -> dict:
     # The format stack pulls in libmagic. Upload limits are checked before this.
-    from formular.core.detector import detect_file_format, get_allowed_targets
+    from formular.core.detector import detect_file_format, get_ai_targets, get_allowed_targets
 
     detected_format = detect_file_format(str(file_path), original_name)
     allowed_targets = get_allowed_targets(detected_format)
@@ -115,6 +115,7 @@ def _describe_stored(file_id: str, original_name: str, file_path: Path, size: in
         "size": size,
         "format": detected_format,
         "allowed_targets": allowed_targets,
+        "ai_targets": get_ai_targets(detected_format),
     }
 
 
@@ -252,6 +253,8 @@ async def _convert(
     working_input = task_dir / f"working_input.{detected_format}"
     shutil.copy(input_file, working_input)
     operation = speech.kind(detected_format, to_format)
+    chain_ops: list[str] = []
+    spoken_text = None
     
     try:
         async with CONVERSION_SLOTS:
@@ -270,7 +273,7 @@ async def _convert(
             else:
                 from formular.core.converter import convert_document
 
-                await asyncio.wait_for(
+                produced = await asyncio.wait_for(
                     convert_document(
                         str(working_input),
                         str(output_path),
@@ -284,6 +287,8 @@ async def _convert(
                     ),
                     timeout=900,
                 )
+                chain_ops = produced.get("operations") or []
+                spoken_text = produced.get("spoken_text")
         if not output_path.is_file() or output_path.stat().st_size > MAX_OUTPUT_BYTES:
             raise ValueError("Converted output exceeds the configured limit.")
     except asyncio.TimeoutError:
@@ -301,6 +306,8 @@ async def _convert(
     if operation is not None:
         source = working_input if operation == "speak" else None
         headers.update(speech.public_headers(operation, audio_opts, source))
+    elif chain_ops:
+        headers.update(speech.chain_headers(chain_ops, audio_opts, spoken_text))
     
     return FileResponse(
         path=output_path,

@@ -3,14 +3,13 @@ window.Formular = window.Formular || {};
 window.Formular.createCard = function(file) {
     const sortableContainer = document.getElementById('sortableContainer');
     const sizeMB = (file.size / (1024*1024)).toFixed(2);
-    const aiTargets = {
-        mp3: ['txt'], wav: ['txt'], ogg: ['txt'], mp4: ['txt'], webm: ['txt'],
-        txt: ['mp3', 'wav', 'ogg']
-    };
+    const aiTargets = file.ai_targets || {};
     let optionsHTML = '<option value="" disabled selected>Target format...</option>';
     file.allowed_targets.forEach(t => {
-        const ai = (aiTargets[file.format] || []).includes(t);
-        optionsHTML += `<option value="${t}"${ai ? ' data-ai="true"' : ''}>${t.toUpperCase()}</option>`;
+        const speech = aiTargets[t] || '';
+        const ai = speech === 'speak' || speech === 'transcribe' || speech === 'both';
+        const mark = ai ? ` data-ai="true" data-speech="${speech}"` : '';
+        optionsHTML += `<option value="${t}"${mark}>${t.toUpperCase()}</option>`;
     });
 
     const localFile = window.Formular.LocalFiles ? window.Formular.LocalFiles[file.id] : null;
@@ -35,7 +34,8 @@ window.Formular.createCard = function(file) {
     const cardElement = document.createElement('div');
     cardElement.className = 'file-card';
     cardElement.id = `file-${file.id}`;
-    cardElement.allowedTargets = file.allowed_targets; 
+    cardElement.allowedTargets = file.allowed_targets;
+    cardElement.aiTargets = aiTargets; 
     
     cardElement.innerHTML = `
         <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>

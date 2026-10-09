@@ -1,5 +1,5 @@
 // --- AUTO CACHE REFRESHER ---
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 if (localStorage.getItem('formular_version') !== APP_VERSION) {
     localStorage.setItem('formular_version', APP_VERSION);
     window.location.reload(true);

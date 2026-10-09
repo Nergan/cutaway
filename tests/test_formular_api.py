@@ -42,6 +42,8 @@ def test_a_text_file_can_be_created_and_read_back(client: TestClient):
     assert stored["format"] == "txt"
     assert stored["size"] == 5
     assert "md" in stored["allowed_targets"]
+    assert stored["ai_targets"]["mp3"] == "speak"
+    assert "md" not in stored["ai_targets"]
 
     fetched = client.get(f"/formular/api/files/{stored['id']}")
     assert fetched.status_code == 200

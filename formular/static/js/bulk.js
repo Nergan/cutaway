@@ -33,7 +33,18 @@ window.Formular.updateBulkPanel = function() {
         if (commonFormats && commonFormats.length > 0) {
             bulkTarget.style.display = 'inline-block';
             bulkMessage.style.display = 'none';
-            commonFormats.forEach(f => { bulkTarget.innerHTML += `<option value="${f}">${f.toUpperCase()}</option>`; });
+            commonFormats.forEach(f => {
+                const kinds = [];
+                selectedCards.forEach(card => {
+                    const kind = card.aiTargets && card.aiTargets[f];
+                    if (kind === 'speak' || kind === 'transcribe' || kind === 'both') kinds.push(kind);
+                });
+                let speech = '';
+                if (kinds.includes('speak') || kinds.includes('both')) speech = 'speak';
+                else if (kinds.includes('transcribe')) speech = 'transcribe';
+                const mark = speech ? ` data-ai="true" data-speech="${speech}"` : '';
+                bulkTarget.innerHTML += `<option value="${f}"${mark}>${f.toUpperCase()}</option>`;
+            });
             window.Formular.initCustomSelect(bulkTarget);
             bulkTarget.nextElementSibling.style.display = 'block';
             bulkConvertBtn.disabled = true; 

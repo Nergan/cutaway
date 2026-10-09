@@ -49,41 +49,6 @@ MIME_MAP = {
     'text/xml': 'xml'
 }
 
-ALLOWED_CONVERSIONS = {
-    'docx': ['pdf', 'html', 'txt', 'md'],
-    'doc': ['pdf', 'html', 'txt', 'md'],
-    'pptx': ['pdf', 'html', 'txt', 'md', 'xml'],
-    'pdf': ['html', 'txt', 'md'],
-    'html': ['pdf', 'md', 'txt', 'xml'],
-    'md': ['pdf', 'html', 'txt'],
-    'txt': ['pdf', 'html', 'md', 'json', 'yaml', 'toml', 'xml', 'mp3', 'wav', 'ogg'],
-    'rtf': ['pdf', 'html', 'txt', 'md'],
-    'odt': ['pdf', 'html', 'txt', 'md'],
-    'epub': ['pdf', 'html', 'txt', 'md'],
-    'djvu': ['pdf', 'html', 'txt', 'md'],
-    'json': ['yaml', 'toml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'yaml': ['json', 'toml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'toml': ['json', 'yaml', 'xml', 'md', 'txt', 'html', 'pdf'],
-    'xml': ['json', 'yaml', 'toml', 'md', 'txt', 'html', 'pdf'],
-    'jpg': ['jpg', 'png', 'webp', 'pdf'],
-    'png': ['png', 'jpg', 'webp', 'pdf'],
-    'webp': ['webp', 'jpg', 'png', 'pdf'],
-    'svg': ['png', 'jpg', 'pdf'],
-    'gif': ['gif', 'mp4', 'png'],
-    'mp3': ['mp3', 'wav', 'ogg', 'mp4', 'webm', 'txt'],
-    'wav': ['wav', 'mp3', 'ogg', 'mp4', 'webm', 'txt'],
-    'ogg': ['ogg', 'mp3', 'wav', 'mp4', 'webm', 'txt'],
-    'mp4': ['mp4', 'webm', 'gif', 'mp3', 'ogg', 'txt'],
-    'webm': ['webm', 'mp4', 'gif', 'mp3', 'ogg', 'txt'],
-    'csv': ['pdf'],
-    'xlsx': ['csv', 'pdf'],
-    'zip': ['7z', 'tar', 'gz'],
-    'rar': ['zip', '7z', 'tar', 'gz'],
-    '7z': ['zip', 'tar', 'gz'],
-    'tar': ['zip', '7z', 'gz'],
-    'gz': ['zip', '7z', 'tar']
-}
-
 def detect_file_format(file_path: str, filename: str) -> str:
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     
@@ -143,4 +108,12 @@ def detect_file_format(file_path: str, filename: str) -> str:
     return 'unknown'
 
 def get_allowed_targets(detected_format: str) -> list:
-    return ALLOWED_CONVERSIONS.get(detected_format, [])
+    from formular.core.graph import targets_for
+
+    return targets_for(detected_format)
+
+
+def get_ai_targets(detected_format: str) -> dict:
+    from formular.core.graph import ai_targets_for
+
+    return ai_targets_for(detected_format)

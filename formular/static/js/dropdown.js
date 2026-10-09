@@ -160,8 +160,6 @@ window.Formular.initCustomSelect = function(selectEl) {
     const imageOnly = ['jpg','png','webp','svg'];
     let currentSelectedFormat = selectEl.value;
     const card = selectEl.closest('.file-card');
-    const speechSources = ['mp3', 'wav', 'ogg', 'mp4', 'webm'];
-    const speechTargets = ['mp3', 'wav', 'ogg'];
     const speechVoices = [
         { id: 'norman', label: 'Norman · male · EN' },
         { id: 'john', label: 'John · male · EN' },
@@ -379,25 +377,35 @@ window.Formular.initCustomSelect = function(selectEl) {
     };
     window.addEventListener('formular:filesUpdated', onFilesUpdated);
 
+    function speechKind(format) {
+        const option = Array.from(selectEl.options).find((opt) => opt.value === format);
+        return option && option.dataset.speech ? option.dataset.speech : '';
+    }
+
     function updateTabVisibility(format) {
         const aiBox = optionsContainer.querySelector('.ai-settings');
         const voiceList = optionsContainer.querySelector('.voice-list');
         const note = optionsContainer.querySelector('.ai-note-text');
         const mediaBox = optionsContainer.querySelector('.media-settings');
-        if (origFmt === 'txt' && speechTargets.includes(format)) {
+        const speech = speechKind(format);
+        if (speech === 'speak' || speech === 'both') {
             mediaBox.style.display = 'none';
             aiBox.style.display = 'block';
             voiceList.style.display = 'block';
-            note.textContent = 'The selected voice speaks English. German, French, Spanish, Dutch, Swedish and Ukrainian follow the text, including a file in several languages. German and French voices are CC-BY 4.0 (Multilingual LibriSpeech). This uses AI.';
+            note.textContent = origFmt === 'txt'
+                ? 'The selected voice speaks English. German, French, Spanish, Dutch, Swedish and Ukrainian follow the text, including a file in several languages. German and French voices are CC-BY 4.0 (Multilingual LibriSpeech). This uses AI.'
+                : 'The file is turned into text and then read aloud. The selected voice speaks English. German, French, Spanish, Dutch, Swedish and Ukrainian follow that text. German and French voices are CC-BY 4.0 (Multilingual LibriSpeech). This uses AI.';
             ensureVoices();
             rememberVoice();
             return;
         }
-        if (speechSources.includes(origFmt) && format === 'txt') {
+        if (speech === 'transcribe') {
             mediaBox.style.display = 'none';
             aiBox.style.display = 'block';
             voiceList.style.display = 'none';
-            note.textContent = 'Speech to text, up to 3 minutes. This uses AI.';
+            note.textContent = format === 'txt'
+                ? 'Speech to text, up to 3 minutes. This uses AI.'
+                : 'Speech is transcribed, then converted to this format. Up to 3 minutes. This uses AI.';
             clearSpeechOpts();
             return;
         }
