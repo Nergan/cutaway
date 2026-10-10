@@ -543,8 +543,13 @@
                 const plugins = data.plugins || {};
                 document.querySelectorAll(".col[data-plugin]").forEach(col => {
                     const pluginName = col.getAttribute("data-plugin");
-                    const unavailable = new Set(["disabled", "offline", "circuit_open"]);
-                    if (plugins[pluginName] && unavailable.has(plugins[pluginName].status)) {
+                    const status = plugins[pluginName] && plugins[pluginName].status;
+                    if (status === "disabled") {
+                        col.remove();
+                        return;
+                    }
+                    const unavailable = new Set(["offline", "circuit_open"]);
+                    if (unavailable.has(status)) {
                         col.classList.add("offline");
                     }
                 });

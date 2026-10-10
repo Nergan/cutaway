@@ -190,7 +190,7 @@ PROJECTS = (
 )
 
 
-def home_payload(visitors: int, *, omit: frozenset[str] = frozenset()) -> dict:
+def home_payload(visitors: int, *, only: frozenset[str] | None = None) -> dict:
     return {
         "title": "nargan's projects",
         "welcome": _bilingual(
@@ -206,5 +206,7 @@ def home_payload(visitors: int, *, omit: frozenset[str] = frozenset()) -> dict:
             "donate": _bilingual("support me on boosty plsss <3", "Поддержать на Boosty"),
         },
         "visitors": visitors,
-        "projects": [project for project in PROJECTS if project["id"] not in omit],
+        "projects": [
+            project for project in PROJECTS if only is None or project["id"] in only
+        ],
     }

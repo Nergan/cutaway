@@ -7,7 +7,7 @@ A streamlined FastAPI subproject designed for Dungeons & Dragons players and Gam
 ### 🌿 Druid Helper
 - **Dynamic Bestiary:** Search, filter, and sort creatures using natural language queries. Supports partial matches, synonyms, and stat-based sorting. A short word such as «скорос» sorts by speed instead of searching for that exact string.
 - **Wild Shape Tiers:** Level 2, 4, and 8 lists are calculated from challenge rating and swim or fly speed, so a flying creature cannot appear in an earlier tier.
-- **Sources:** Each card names where the creature comes from: the 2014 System Reference Document, a published book, or Homebrew. SRD numbers follow that document (CC BY 4.0, Wizards of the Coast). The list stays one JSON file; tiers are not stored, because they can be derived.
+- **Sources:** Each card names the book in full: the 2014 System Reference Document, a published book's title, or Homebrew when the creature is not from a published book. SRD numbers follow that document (CC BY 4.0, Wizards of the Coast). The list stays one JSON file; tiers are not stored, because they can be derived.
 - **Bilingual Interface:** Instant toggle between Russian and English UI/text.
 - **Responsive Design:** Collapsible sidebar, masonry card layout, dark/light theme persistence, and optimized mobile overlay.
 

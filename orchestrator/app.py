@@ -184,15 +184,15 @@ def create_hub_app(config: RuntimeConfig = CONFIG) -> FastAPI:
             "database": "online" if app.state.stats_available else "degraded",
         }
 
-    unpublished = frozenset(
+    running = frozenset(
         project_id
         for project_id, project in config.projects.items()
-        if not project.deploy
+        if project.run
     )
 
     @app.get("/api")
     async def home_index() -> dict[str, Any]:
-        return home_payload(int(app.state.total_visitors or 0), omit=unpublished)
+        return home_payload(int(app.state.total_visitors or 0), only=running)
 
     @app.get("/api/status")
     async def get_system_status() -> JSONResponse:

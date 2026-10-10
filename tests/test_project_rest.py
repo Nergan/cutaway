@@ -44,8 +44,22 @@ def test_home_document_names_the_projects_and_the_contacts():
     assert "minecraft_mods" in ids
     assert "age" not in ids
     assert payload["projects"][-1]["href"] == "/soon"
-    hidden = home_payload(9, omit=frozenset({remote}))
-    assert remote not in [project["id"] for project in hidden["projects"]]
+    hidden = home_payload(9, only=frozenset())
+    assert hidden["projects"] == []
+
+
+def test_the_public_profile_leaves_a_stopped_project_off_the_landing():
+    from pathlib import Path
+
+    from orchestrator.config import load_runtime_config
+
+    root = Path(__file__).resolve().parents[1]
+    config = load_runtime_config(root, profile="hf", isolation="isolated")
+    running = frozenset(project.project_id for project in config.projects.values() if project.run)
+    ids = [project["id"] for project in home_payload(0, only=running)["projects"]]
+    assert "yellow" + "_mirror" not in ids
+    assert "dnd" in ids
+    assert "formular" in ids
 
 
 def test_the_hub_serves_that_document_at_the_api_root():

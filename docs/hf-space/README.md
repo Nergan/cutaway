@@ -36,7 +36,7 @@ Some directories exist only in the GitHub monorepo for local work and CI. They a
 
 ### 🚀 Root Hub
 
-* **landing (`index.html`, `main.py`):** A directory of the projects. It follows the browser language, shows the visitor count, dims projects the hub reports as offline, and plays a random background video. `GET /api` returns that same page as JSON: the title, the welcome line in English and Russian, the GitHub and Telegram links, the visitor count, and the project cards.
+* **landing (`index.html`, `main.py`):** A directory of the projects. It follows the browser language, shows the visitor count, leaves out a project the active profile does not run, dims a project the hub reports as offline, and plays a random background video. `GET /api` returns that same page as JSON: the title, the welcome line in English and Russian, the GitHub and Telegram links, the visitor count, and the project cards.
 
 ### 📁 Application Registry
 

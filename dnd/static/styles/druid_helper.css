@@ -466,6 +466,8 @@ h1 {
 
 .hint-popup {
   position: fixed; bottom: 85px; right: 24px; width: 330px; max-width: 90vw;
+  max-height: min(70vh, calc(100dvh - 120px));
+  overflow-y: auto;
   background: var(--card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -475,7 +477,15 @@ h1 {
   z-index: 999; transform: scale(0); transform-origin: bottom right; opacity: 0; pointer-events: none;
   transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
   color: var(--text-main); font-size: 0.95rem; line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
 }
+.hint-popup::-webkit-scrollbar { width: 10px; background: transparent; }
+.hint-popup::-webkit-scrollbar-track { background: var(--scroll-track); border-radius: 10px; }
+.hint-popup::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box;
+}
+.hint-popup::-webkit-scrollbar-thumb:hover { background: var(--text-accent); }
 .hint-popup.active { transform: scale(1); opacity: 1; pointer-events: auto; }
 .hint-popup h3 { color: var(--text-accent); margin-bottom: 0.5rem; font-size: 1.15rem; }
 .hint-popup hr { margin: 10px 0; border: 0; border-top: 1px dashed var(--sidebar-border); }
