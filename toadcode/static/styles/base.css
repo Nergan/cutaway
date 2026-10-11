@@ -46,6 +46,36 @@ html, body {
     width: 0; /* Prevents flex blowout from wide content in Markdown/HTML */
 }
 
+.empty-workspace {
+    text-align: center;
+    padding: 1.75rem 1.25rem;
+}
+.empty-workspace-icon {
+    font-size: 3.4rem;
+    line-height: 1;
+    color: lime;
+    opacity: 0.9;
+    text-shadow: 0 0 18px rgba(0, 255, 0, 0.35);
+    margin-bottom: 0.9rem;
+}
+.empty-workspace-title {
+    font-size: clamp(1.45rem, 2.6vw, 2rem);
+    font-weight: 500;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
+    margin: 0 0 0.65rem;
+    max-width: 16em;
+}
+.empty-workspace-hint {
+    font-size: clamp(0.98rem, 1.6vw, 1.12rem);
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.84);
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+    margin: 0;
+    max-width: 34rem;
+}
+
 .sidebar {
     width: var(--sidebar-width, 250px); 
     min-width: 150px; 

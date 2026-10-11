@@ -110,10 +110,15 @@
             
             <!-- Left: Editor & Footer -->
             <div class="editor-section d-flex flex-column flex-grow-1 position-relative">
-                <div id="noFileScreen" class="flex-column align-items-center justify-content-center h-100 text-muted w-100 position-absolute top-0 start-0 z-3" style="display: flex;">
-                    <i class="bi bi-journal-code display-4 mb-3 opacity-50"></i>
-                    <h5 class="opacity-75 custom-font">No file selected</h5>
-                    <p class="small opacity-50 custom-font text-center px-3">{% if not code_id %}Select a file, drag & drop, upload a ZIP, or Ctrl+V to paste.{% else %}Select a file from the sidebar to view it.{% endif %}</p>
+                <div id="noFileScreen" class="empty-workspace flex-column align-items-center justify-content-center h-100 w-100 position-absolute top-0 start-0 z-3" style="display: flex;">
+                    <i class="bi bi-journal-code empty-workspace-icon" aria-hidden="true"></i>
+                    {% if not code_id %}
+                    <h2 class="empty-workspace-title custom-font">Upload and share your code!</h2>
+                    <p class="empty-workspace-hint custom-font">Select a file, drag &amp; drop, upload a ZIP, or Ctrl+V to paste.</p>
+                    {% else %}
+                    <h2 class="empty-workspace-title custom-font">No file selected</h2>
+                    <p class="empty-workspace-hint custom-font">Select a file from the sidebar to view it.</p>
+                    {% endif %}
                 </div>
                 
                 <div id="editorContainer" class="flex-grow-1 w-100 d-none z-1 position-relative" style="min-width: 0; min-height: 0;">
