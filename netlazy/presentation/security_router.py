@@ -16,16 +16,26 @@ class ChallengeResponse(BaseModel):
     challenge_id: str
     difficulty: int
 
+@router.get("")
+async def security_index():
+    return {
+        "challenge": "/netlazy/api/security/challenge",
+        "ban": "POST /netlazy/api/security/ban?user={id}",
+    }
+
+
 @router.get("/challenge", response_model=ChallengeResponse)
 async def get_challenge():
     await asyncio.sleep(settings.bot_protection_delay)
     data = await security_service.generate_challenge()
     return ChallengeResponse(**data)
 
-@router.post("/ban/{user_id}", dependencies=[Depends(verify_admin)])
-async def cascade_ban_user(user_id: str):
+@router.post("/ban", dependencies=[Depends(verify_admin)])
+async def cascade_ban_user(user: str = ""):
+    if not user:
+        raise HTTPException(status_code=400, detail="Missing user.")
     try:
-        await security_service.cascade_ban_user(user_id)
-        return {"message": f"User {user_id} and all network footprints banned permanently."}
+        await security_service.cascade_ban_user(user)
+        return {"message": f"User {user} and all network footprints banned permanently."}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

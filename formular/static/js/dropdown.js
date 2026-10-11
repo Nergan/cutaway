@@ -229,7 +229,7 @@ window.Formular.initCustomSelect = function(selectEl) {
         button.disabled = true;
         if (icon) icon.className = 'bi bi-hourglass-split';
         try {
-            const response = await fetch('./api/voices/' + encodeURIComponent(id) + '/sample');
+            const response = await fetch('./api/voices?sample=' + encodeURIComponent(id));
             if (!response.ok) {
                 let message = 'The voice sample is not ready.';
                 try {

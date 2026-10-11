@@ -41,6 +41,17 @@ class UserRotateResponse(BaseModel):
     message: str
 
 
+@router.get("")
+async def auth_index():
+    return {
+        "footprint_check": "/netlazy/api/auth/footprint-check",
+        "register": "POST /netlazy/api/auth/register",
+        "anchor": "/netlazy/api/auth/anchor",
+        "rotate": "POST /netlazy/api/auth/rotate",
+        "account": "DELETE /netlazy/api/auth/account",
+    }
+
+
 @router.get("/footprint-check")
 async def check_footprint(request: Request):
     from netlazy.presentation.dependencies import _get_client_footprint

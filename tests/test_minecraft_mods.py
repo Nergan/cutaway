@@ -212,7 +212,7 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "::selection" in page
     assert "::-webkit-scrollbar" in page
     assert 'href="/mods?lang=en"' in page
-    assert 'href="/mods/tamedphantoms-mod/jars.zip"' in page
+    assert 'href="/mods/?download=tamedphantoms-mod"' in page
     assert "loader=" not in page
     assert 'class="loader-tab' not in page
     assert 'download="tamedphantoms-mod.zip"' in page
@@ -377,20 +377,20 @@ def test_each_loader_tab_lists_and_packs_only_its_jars(monkeypatch):
     assert "kotlinforforge" not in fabric
     assert "geckolib-forge" not in fabric
     assert "critters-neoforge" not in fabric
-    assert 'href="/mods/critters-mod/jars.zip?loader=fabric"' in fabric
+    assert 'href="/mods/?download=critters-mod&amp;loader=fabric"' in fabric
     assert 'download="critters-mod-fabric.zip"' in fabric
     assert "critters-neoforge-1.0.0.jar" in neoforge
     assert "kotlinforforge-5.8.0-all.jar" in neoforge
     assert "fabric-language-kotlin" not in neoforge
     assert "geckolib-forge" not in neoforge
-    assert 'href="/mods/critters-mod/jars.zip?loader=neoforge"' in neoforge
+    assert 'href="/mods/?download=critters-mod&amp;loader=neoforge"' in neoforge
     assert 'download="critters-mod-neoforge.zip"' in neoforge
     assert " hidden" in neoforge
     assert "critters-forge-1.0.0.jar" in forge
     assert "kotlinforforge-5.8.0-all.jar" in forge
     assert "geckolib-forge-1.21.1.jar" in forge
     assert "fabric-language-kotlin" not in forge
-    assert 'href="/mods/critters-mod/jars.zip?loader=forge"' in forge
+    assert 'href="/mods/?download=critters-mod&amp;loader=forge"' in forge
     assert 'download="critters-mod-forge.zip"' in forge
 
     def fake_get(url, headers, max_bytes=1_000_000):
@@ -496,7 +496,7 @@ Minecraft **1.21.1** / Fabric, NeoForge
     assert mod.mod_jars[0].loaders == []
     page = render_page(Catalog(mods=[mod]), "en", "name")
     assert 'class="loader-tab' not in page
-    assert 'href="/mods/critters-mod/jars.zip"' in page
+    assert 'href="/mods/?download=critters-mod"' in page
     assert "loader=" not in page
 
 

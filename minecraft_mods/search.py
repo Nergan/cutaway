@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import urllib.parse
 from dataclasses import asdict
 
 from minecraft_mods.catalog import ModEntry, loader_panels
+
+
+def archive_url(repo: str, loader: str = "") -> str:
+    """Zip address on the mods page. The page itself stays /mods/."""
+    pairs = [("download", repo)]
+    if loader:
+        pairs.append(("loader", loader.casefold()))
+    return "/mods/?" + urllib.parse.urlencode(pairs)
 
 
 def select_mods(
@@ -40,11 +49,11 @@ def mod_document(mod: ModEntry) -> dict:
             "loader": name,
             "mod_jars": [asdict(jar) for jar in own],
             "dependency_jars": [asdict(jar) for jar in deps],
-            "download": f"/mods/{mod.repo}/jars.zip?loader={name.casefold()}",
+            "download": archive_url(mod.repo, name),
         }
         for name, own, deps in loader_panels(mod)
     ]
-    document["download"] = f"/mods/{mod.repo}/jars.zip"
+    document["download"] = archive_url(mod.repo)
     return document
 
 

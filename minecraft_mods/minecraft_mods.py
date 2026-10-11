@@ -53,16 +53,18 @@ async def list_mods(
     }
 
 
-@router.get("/", response_class=HTMLResponse)
-async def mods_home(request: Request) -> HTMLResponse:
+@router.get("/")
+async def mods_home(request: Request) -> Response:
+    download = request.query_params.get("download", "")
+    if download:
+        return await _archive(download, request.query_params.get("loader", ""))
     lang = _language(request)
     sort = request.query_params.get("sort") or "name"
     catalog = await asyncio.to_thread(get_catalog)
     return HTMLResponse(render_page(catalog, lang, sort))
 
 
-@router.get("/{repo}/jars.zip")
-async def download_jars(repo: str, loader: str = "") -> Response:
+async def _archive(repo: str, loader: str) -> Response:
     if not _REPO_NAME.fullmatch(repo):
         raise HTTPException(status_code=404)
     catalog = await asyncio.to_thread(get_catalog)

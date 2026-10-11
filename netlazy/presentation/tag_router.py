@@ -12,6 +12,11 @@ class TagResponse(BaseModel):
     hidden: bool = False
     i18n: dict = Field(default_factory=dict)
 
+@router.get("")
+async def tags_index():
+    return {"search": "/netlazy/api/tags/search"}
+
+
 @router.get("/search", response_model=List[TagResponse])
 async def search_tags(
     q: str = Query("", description="Search text.")

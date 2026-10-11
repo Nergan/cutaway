@@ -15,6 +15,11 @@ class FeedSearchRequest(BaseModel):
     bonus: List[str] = []
     abonus: List[str] = []
 
+@router.get("")
+async def feed_index():
+    return {"search": "POST /netlazy/api/feed/search"}
+
+
 @router.post("/search", response_model=List[ProfileResponse])
 async def get_feed(
     body: FeedSearchRequest,

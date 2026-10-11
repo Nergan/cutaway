@@ -13,3 +13,5 @@ Readme and license files are read from raw.githubusercontent.com. The latest rel
 `GET /mods/api` names the query fields. `GET /mods/api/mods` returns every card: name, both descriptions, repository, license, Minecraft version, loaders, jars, Modrinth link and state, and the readme text.
 
 Filters combine. `q` keeps a card when every word occurs in the name, descriptions, repository, license, version, loaders, or jar names. `loader` keeps one loader (`Fabric`, `NeoForge`, `Forge`, or `Quilt`). `minecraft` matches the version text. `license` matches the license id or name. The list stays sorted by name.
+
+`GET /mods/?download={repo}` returns one zip of that mod's jars. `loader` (`fabric`, `neoforge`, or `forge`) keeps a single tab. The address stays on `/mods/`, the same page as the list.

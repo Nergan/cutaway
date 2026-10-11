@@ -66,7 +66,7 @@ def _api_index() -> dict:
         "read_file": "GET /formular/api/files/{id}",
         "create_conversion": "POST /formular/api/files/{id}/conversions",
         "voices": "GET /formular/api/voices",
-        "voice_sample": "GET /formular/api/voices/{id}/sample",
+        "voice_sample": "GET /formular/api/voices?sample={id}",
     }
 
 
@@ -359,12 +359,14 @@ async def convert_file(
 
 
 @router.get('/voices')
-async def list_voices():
+async def list_voices(request: Request, sample: str = ""):
+    if sample:
+        await SAMPLE_RATE(request)
+        return await _voice_sample(sample)
     return {"ai": True, "operation": "speech.speak", "voices": speech.public_voices()}
 
 
-@router.get('/voices/{voice_id}/sample', dependencies=[Depends(SAMPLE_RATE)])
-async def voice_sample(voice_id: str):
+async def _voice_sample(voice_id: str):
     try:
         path = await asyncio.to_thread(speech.sample_path, voice_id)
         headers = speech.public_headers("speak", json.dumps({"voice": voice_id}))

@@ -192,6 +192,7 @@ at art that actually exists.
 
 | Endpoint | Returns |
 | --- | --- |
+| `GET /api/atelier` | The map of the routes below |
 | `GET /api/atelier/catalogue` | Every recipe and every ramp, for the editor |
 | `GET /api/atelier/atlas.png` | The colour page |
 | `GET /api/atelier/atlas-normal.png` | The normal page, same dimensions |
@@ -199,6 +200,7 @@ at art that actually exists.
 | `POST /api/atelier/bake` | One recipe as JSON, back as a PNG |
 | `GET /api/atelier/character.png` | One facing and pose strip |
 | `GET /api/atelier/character-sheet.png` | Every facing and pose in one grid |
+| `GET /api/atelier/import` | The map of the two import routes |
 | `POST /api/atelier/import/ldtk` | An LDtk project, converted |
 | `POST /api/atelier/import/aseprite` | An Aseprite JSON export, converted |
 

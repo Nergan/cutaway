@@ -13,7 +13,7 @@
 | `GET /api/files/{id}` | Метаданные уже загруженного файла |
 | `POST /api/files/{id}/conversions` | Конвертация. JSON `{"to":"mp3","audio":{},"video":{},"ffmpeg":"...","merge_id":"...","merge_loop":false}`. Ответ — байты результата и `Content-Disposition`. Сессии нет — соединение держится до конца |
 | `GET /api/voices` | Голоса озвучки и пометка AI |
-| `GET /api/voices/{id}/sample` | Короткий WAV этого голоса |
+| `GET /api/voices?sample={id}` | Короткий WAV этого голоса, на том же списке голосов |
 
 `POST /api/upload` и `POST /api/convert` делают то же самое, что создание файла и конвертация: их вызывает текущая страница. У конвертации поля формы `file_id`, `to_format`, `audio_opts`, `video_opts`, `custom_ffmpeg`, `merge_id`, `merge_loop` (`true` / пусто).
 

@@ -68,6 +68,17 @@ async def healthz() -> JSONResponse:
     )
 
 
+@router.get("/api")
+async def api_index() -> JSONResponse:
+    return JSONResponse(
+        {
+            "world": "/ascii-city/api/world",
+            "tiles": "/ascii-city/api/world/tiles/{x}/{y}",
+            "room": "/ascii-city/api/room",
+        }
+    )
+
+
 @router.get("/api/world")
 async def world_metadata() -> JSONResponse:
     """Everything the client needs before it starts pulling tiles."""
@@ -109,6 +120,11 @@ async def world_metadata() -> JSONResponse:
             },
         }
     )
+
+
+@router.get("/api/world/tiles")
+async def tiles_index() -> JSONResponse:
+    return JSONResponse({"tile": "/ascii-city/api/world/tiles/{x}/{y}"})
 
 
 @router.get("/api/world/tiles/{tile_x}/{tile_y}")

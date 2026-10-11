@@ -117,8 +117,35 @@ def test_mod_search_filters_loader_name_and_version(monkeypatch):
         assert card["name"] == "Apple"
         assert card["description_en"].startswith("Apple")
         assert card["mod_jars"][0]["name"] == "apple.jar"
-        assert card["download"] == "/mods/apple-mod/jars.zip"
+        assert card["download"] == "/mods/?download=apple-mod"
         assert card["github_url"].endswith("/apple")
+
+
+def test_a_mod_archive_stays_on_the_mods_page(monkeypatch):
+    from minecraft_mods import minecraft_mods
+
+    fabric = _mod("Apple", ["Fabric"])
+
+    def fake_archive(mod, loader=None):
+        assert mod.repo == "apple-mod"
+        assert loader == "fabric"
+        return b"PK", "apple-mod-fabric.zip"
+
+    monkeypatch.setattr(minecraft_mods, "get_catalog", lambda: Catalog(mods=[fabric]))
+    monkeypatch.setattr(minecraft_mods, "build_jar_archive", fake_archive)
+    app = FastAPI()
+    app.include_router(minecraft_mods.router, prefix="/mods")
+    with TestClient(app) as client:
+        page = client.get("/mods/")
+        assert page.status_code == 200
+        assert "jars.zip" not in page.text
+        assert "/mods/?download=apple-mod" in page.text
+        archive = client.get("/mods/", params={"download": "apple-mod", "loader": "fabric"})
+        assert archive.status_code == 200
+        assert archive.content == b"PK"
+        assert "apple-mod-fabric.zip" in archive.headers["content-disposition"]
+        assert client.get("/mods/apple-mod/").status_code == 404
+        assert client.get("/mods/apple-mod/jars.zip").status_code == 404
 
 
 class _Docs:
@@ -191,3 +218,40 @@ def test_evenfest_pages_are_readable_as_json(monkeypatch):
         page = client.get("/evenfest/news")
         assert page.status_code == 200
         assert "Festival day" in page.text
+
+
+def test_voice_sample_stays_on_the_voice_list():
+    from formular.api.endpoints import router
+
+    app = FastAPI()
+    app.include_router(router, prefix="/formular/api")
+    with TestClient(app) as client:
+        index = client.get("/formular/api")
+        assert index.json()["voice_sample"] == "GET /formular/api/voices?sample={id}"
+        listed = client.get("/formular/api/voices")
+        assert listed.status_code == 200
+        assert listed.json()["voices"]
+        assert client.get("/formular/api/voices/any/sample").status_code == 404
+
+
+def test_soon_media_and_room_parents_answer(monkeypatch):
+    import soon.soon as soon
+
+    async def ready():
+        return None
+
+    monkeypatch.setattr(soon, "ensure_indexes", ready)
+    monkeypatch.setattr(soon, "migrate_gridfs_images", ready)
+    app = FastAPI()
+    app.include_router(soon.router, prefix="/soon")
+    with TestClient(app) as client:
+        index = client.get("/soon/api")
+        assert index.status_code == 200
+        assert index.json()["media"] == "/soon/api/media?id={id}"
+        media = client.get("/soon/api/media")
+        assert media.status_code == 200
+        assert "id" in media.json()["media"]
+        assert client.get("/soon/api/media/abc").status_code == 404
+        rooms = client.get("/soon/r", follow_redirects=False)
+        assert rooms.status_code == 307
+        assert rooms.headers["location"] == "/soon/"

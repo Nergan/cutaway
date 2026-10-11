@@ -49,7 +49,7 @@ function stopStream() {
 
 async function connectStream(url) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${window.location.host}/yellow-mirror/ws/${clientId}`);
+    ws = new WebSocket(`${protocol}//${window.location.host}/yellow-mirror/ws?client=${encodeURIComponent(clientId)}`);
 
     ws.onopen = () => {
         ws.send(JSON.stringify({ 

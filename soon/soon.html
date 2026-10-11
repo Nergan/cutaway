@@ -538,7 +538,11 @@
   }
 
   function sorted() { return [...state.objects.values()].sort((a, b) => (a.z || 0) - (b.z || 0)); }
-  function mediaUrl(id) { return PREFIX + "/api/media/" + id; }
+  function mediaUrl(id, unwrap) {
+    const params = new URLSearchParams({ id: id });
+    if (unwrap) params.set("unwrap", "1");
+    return PREFIX + "/api/media?" + params.toString();
+  }
   const MEDIA_MARKER = new TextEncoder().encode("||NLZ_PAYLOAD||");
   const unwrapCache = new Map();
   function findMediaMarker(bytes) {
@@ -576,7 +580,7 @@
     if (url) candidates.push(url);
     if (id) {
       candidates.push(mediaUrl(id));
-      candidates.push(mediaUrl(id) + "?unwrap=1");
+      candidates.push(mediaUrl(id, true));
     }
     for (const src of candidates) {
       try {
@@ -588,7 +592,7 @@
         return objectUrl;
       } catch (_) {}
     }
-    return id ? mediaUrl(id) + "?unwrap=1" : "";
+    return id ? mediaUrl(id, true) : "";
   }
   function imageOf(id, url) {
     if (state.imageCache.has(id)) return state.imageCache.get(id);

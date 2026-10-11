@@ -67,6 +67,11 @@ def _to_response(profile: Profile) -> ProfileResponse:
         score=profile.score
     )
 
+@router.get("")
+async def profile_index():
+    return {"me": "/netlazy/api/profile/me"}
+
+
 @router.get("/me", response_model=ProfileResponse)
 async def get_my_profile(user: User = Depends(verify_request_signature)):
     profile = await profile_service.get_or_create_profile(user.user_id)

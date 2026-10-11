@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from minecraft_mods.catalog import Catalog, ModEntry, loader_panels, loader_slug
+from minecraft_mods.search import archive_url
 
 _PAGE = Path(__file__).with_name("page.html")
 _INLINE = re.compile(
@@ -245,11 +246,8 @@ def _files(
 def _download_all(mod: ModEntry, text: dict, loader: str = "") -> str:
     if not loader and not mod.mod_jars and not mod.dependency_jars:
         return ""
-    href = f"/mods/{urllib.parse.quote(mod.repo)}/jars.zip"
-    filename = f"{mod.repo}.zip"
-    if loader:
-        href = f"{href}?loader={urllib.parse.quote(loader)}"
-        filename = f"{mod.repo}-{loader}.zip"
+    href = archive_url(mod.repo, loader)
+    filename = f"{mod.repo}-{loader}.zip" if loader else f"{mod.repo}.zip"
     label = html.escape(text["download_all"])
     busy = html.escape(text["zip_busy"], quote=True)
     fail = html.escape(text["zip_fail"], quote=True)

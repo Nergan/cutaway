@@ -210,6 +210,20 @@ def fetch_gh_version():
     return json.loads(payload)
 
 
+@router.get("/api")
+async def api_index():
+    return {
+        "health": "/netlazy/api/health",
+        "app_version": "/netlazy/api/app-version",
+        "auth": "/netlazy/api/auth",
+        "profile": "/netlazy/api/profile",
+        "feed": "/netlazy/api/feed",
+        "inbox": "/netlazy/api/inbox",
+        "tags": "/netlazy/api/tags",
+        "security": "/netlazy/api/security",
+    }
+
+
 @router.get("/api/app-version")
 async def get_app_version():
     global _cached_version, _cached_time

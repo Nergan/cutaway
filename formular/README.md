@@ -33,7 +33,7 @@ The live HTTP API is REST under `/formular/api`. `GET /formular/api` returns the
 | `GET` | `/formular/api/files/{id}` | Metadata for an uploaded file |
 | `POST` | `/formular/api/files/{id}/conversions` | Convert. JSON body `{"to":"mp3"}`, optional `audio`, `video`, `ffmpeg`, `merge_id`, `merge_loop`. The response is the converted file |
 | `GET` | `/formular/api/voices` | Speech voices |
-| `GET` | `/formular/api/voices/{id}/sample` | A short WAV of that voice |
+| `GET` | `/formular/api/voices?sample={id}` | A short WAV of that voice, on the same voice list |
 
 On the public Space a request body cannot exceed 32 MiB. `max_file_bytes` in `GET /formular/api` is the largest single file that still fits. A `413` names both sizes, for example `note.txt is 51.2 MiB. The maximum is 32.0 MiB.`
 

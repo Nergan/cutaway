@@ -74,6 +74,18 @@ async def atelier() -> Response:
     return _shell(ATELIER_FILE)
 
 
+@router.get("/api")
+async def api_index() -> JSONResponse:
+    return JSONResponse(
+        {
+            "health": "/age/api/health",
+            "world": "/age/api/world",
+            "atelier": "/age/api/atelier",
+            "dev": "/age/api/dev",
+        }
+    )
+
+
 @router.get("/api/health")
 async def health() -> JSONResponse:
     container = get_container()
@@ -204,6 +216,16 @@ async def debug() -> JSONResponse:
     return JSONResponse(container.room.describe())
 
 
+@router.get("/api/dev")
+async def dev_index() -> JSONResponse:
+    return JSONResponse({"tier": "POST /age/api/dev/tier/{target}"})
+
+
+@router.get("/api/dev/tier")
+async def tier_index() -> JSONResponse:
+    return JSONResponse({"tier": "POST /age/api/dev/tier/{target}"})
+
+
 @router.post("/api/dev/tier/{target}")
 async def force_tier(target: int) -> JSONResponse:
     """Move the accordion now, for demonstration.
@@ -231,6 +253,32 @@ async def force_tier(target: int) -> JSONResponse:
 
 
 # --- the Atelier ------------------------------------------------------------
+
+
+@router.get("/api/atelier")
+async def atelier_index() -> JSONResponse:
+    return JSONResponse(
+        {
+            "catalogue": "/age/api/atelier/catalogue",
+            "atlas": "/age/api/atelier/atlas.png",
+            "atlas_normal": "/age/api/atelier/atlas-normal.png",
+            "atlas_index": "/age/api/atelier/atlas.json",
+            "character": "/age/api/atelier/character.png",
+            "character_sheet": "/age/api/atelier/character-sheet.png",
+            "bake": "POST /age/api/atelier/bake",
+            "import": "/age/api/atelier/import",
+        }
+    )
+
+
+@router.get("/api/atelier/import")
+async def import_index() -> JSONResponse:
+    return JSONResponse(
+        {
+            "ldtk": "POST /age/api/atelier/import/ldtk",
+            "aseprite": "POST /age/api/atelier/import/aseprite",
+        }
+    )
 
 
 @router.get("/api/atelier/catalogue")

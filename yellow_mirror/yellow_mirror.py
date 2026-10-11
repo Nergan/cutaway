@@ -34,8 +34,9 @@ async def _validate_navigation(url: str) -> None:
 async def yellow_mirror_page():
     return FileResponse(BASE_DIR / "yellow-mirror.html")
 
-@router.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    client_id = websocket.query_params.get("client", "")
     await websocket.accept()
 
     if not CLIENT_ID_RE.fullmatch(client_id) or client_id in active_sessions:

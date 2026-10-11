@@ -686,8 +686,19 @@ async def home() -> FileResponse:
     return _page()
 
 
+@router.get("/api")
+async def api_index() -> dict[str, str]:
+    return {
+        "board": "/soon/api/board",
+        "upload": "POST /soon/api/upload",
+        "media": "/soon/api/media?id={id}",
+        "socket": "/soon/ws",
+    }
+
+
+@router.get("/r")
 @router.get("/r/{room}")
-async def room_page(room: str) -> RedirectResponse:
+async def room_page(room: str = "") -> RedirectResponse:
     return RedirectResponse(url="/soon/", status_code=307)
 
 
@@ -744,8 +755,11 @@ def _media_headers(mime: str, filename: str, inline: bool) -> dict[str, str]:
     }
 
 
-@router.get("/api/media/{media_id}")
-async def get_media(media_id: str, unwrap: str = "") -> Response:
+@router.get("/api/media")
+async def get_media(id: str = "", unwrap: str = ""):
+    if not id:
+        return {"media": "/soon/api/media?id={id}", "unwrap": "1"}
+    media_id = id
     if MEDIA_HASH_RE.fullmatch(media_id):
         if not hub.mongo_ok:
             raise HTTPException(status_code=404, detail="Not found.")
