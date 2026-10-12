@@ -22,5 +22,12 @@ d) Distributing, hosting, sublicensing, renting, leasing, or selling the Softwar
 3. GITHUB TERMS OF SERVICE EXCEPTION
 Notwithstanding the restrictions above, by hosting the Software publicly on GitHub, You are granted a limited, non-exclusive, non-transferable, and revocable right to view the source code through the GitHub interface and fork the repository within the GitHub platform solely as permitted by GitHub’s Terms of Service for public repositories. This exception does not grant any rights to run, deploy, or commercially exploit the Software.
 
-4. NO WARRANTY
+4. ALTERNATIVE CLIENTS
+Notwithstanding sections 2 and 3, You may create, run, and distribute an independent client whose purpose is to use the existing netlazy service through its HTTP API. This includes a client on any platform and with its own interface.
+
+For that purpose only, You may read the API behavior, request signatures, and protocol in the Software and reimplement them in the client. You may keep a local copy of the Software while writing that client. You may not republish that copy. That reading and reimplementation is allowed even where section 2 would otherwise treat the protocol as architecture, a derivative work, or a competing use.
+
+This section does not allow You to copy the Software's source code, graphics, or interface into the client, to relicense the Software, or to host, reimplement, or replace the netlazy server.
+
+5. NO WARRANTY
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
