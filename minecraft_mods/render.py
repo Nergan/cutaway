@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from minecraft_mods.catalog import Catalog, ModEntry, loader_panels, loader_slug
+from minecraft_mods.catalog import Catalog, ModEntry, ReleaseCut, loader_panels, loader_slug
 from minecraft_mods.search import archive_url
 
 _PAGE = Path(__file__).with_name("page.html")
@@ -152,10 +152,11 @@ def _app(catalog: Catalog, lang: str, text: dict) -> str:
 def _card(mod: ModEntry, lang: str, text: dict) -> str:
     description = mod.description_ru if lang == "ru" else mod.description_en
     panels = loader_panels(mod)
+    cuts = mod.releases if len(mod.releases) >= 2 else []
     meta = []
     if mod.minecraft:
         meta.append(f"Minecraft {mod.minecraft}")
-    if not panels:
+    if not panels and not cuts:
         meta.extend(mod.loaders)
     if mod.version:
         meta.append(f"v{mod.version}")
@@ -177,6 +178,16 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
     license_button, license_dialog = _license(mod, text)
     readme_button, readme_dialog = _readme(mod, lang, text)
     status_html = f'<p class="note">{html.escape(status)}</p>' if status else ""
+    if cuts:
+        files = _release_tabs(mod, cuts, text)
+        download = ""
+    elif panels:
+        files = _loader_tabs(mod, panels, text)
+        download = ""
+    else:
+        files = _files(mod, text)
+        loader, minecraft, external = _single_download(mod)
+        download = _download_all(mod, text, loader, minecraft, external)
     return f"""
 <article class="mod">
   <h2>{html.escape(mod.name)}</h2>
@@ -184,12 +195,49 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
   {desc_html}
   <p class="links">{"".join(links)}{license_button}{readme_button}</p>
   {status_html}
-  {_loader_tabs(mod, panels, text) if panels else _files(mod, text)}
-  {"" if panels else _download_all(mod, text)}
+  {files}
+  {download}
   {license_dialog}
   {readme_dialog}
 </article>
 """
+
+
+def _single_download(mod: ModEntry) -> tuple[str, str, bool]:
+    if len(mod.releases) != 1:
+        return "", "", False
+    cut = mod.releases[0]
+    return loader_slug(cut.loader), cut.minecraft, bool(cut.archive_url)
+
+
+def _release_tabs(mod: ModEntry, cuts: list[ReleaseCut], text: dict) -> str:
+    buttons: list[str] = []
+    bodies: list[str] = []
+    for index, cut in enumerate(cuts):
+        slug = _release_slug(cut)
+        active = index == 0
+        selected = "true" if active else "false"
+        current = " is-active" if active else ""
+        label = " · ".join(part for part in (cut.minecraft, cut.loader) if part) or cut.tag
+        buttons.append(
+            f'<button type="button" class="loader-tab{current}" role="tab" '
+            f'aria-selected="{selected}" data-loader="{html.escape(slug, quote=True)}">'
+            f"{html.escape(label)}</button>"
+        )
+        hidden = "" if active else " hidden"
+        bodies.append(
+            f'<div class="loader-panel" role="tabpanel" data-loader-panel="{html.escape(slug, quote=True)}"{hidden}>'
+            f"{_files(mod, text, cut.mod_jars, cut.dependency_jars, cut.jars_classified)}"
+            f"{_download_all(mod, text, loader_slug(cut.loader), cut.minecraft, bool(cut.archive_url))}"
+            f"</div>"
+        )
+    return f'<div class="loader-tabs" role="tablist">{"".join(buttons)}</div>{"".join(bodies)}'
+
+
+def _release_slug(cut: ReleaseCut) -> str:
+    raw = "-".join(part for part in (cut.minecraft, loader_slug(cut.loader) or cut.loader) if part).lower()
+    slug = re.sub(r"[^a-z0-9._-]+", "-", raw).strip("-")
+    return slug or cut.tag
 
 
 def _loader_tabs(mod: ModEntry, panels: list[tuple[str, list, list]], text: dict) -> str:
@@ -219,9 +267,11 @@ def _files(
     text: dict,
     mod_jars: list | None = None,
     dependency_jars: list | None = None,
+    classified: bool | None = None,
 ) -> str:
     mod_jars = mod.mod_jars if mod_jars is None else mod_jars
     dependency_jars = mod.dependency_jars if dependency_jars is None else dependency_jars
+    classified = mod.jars_classified if classified is None else classified
     if mod.release_limited and not mod_jars and not dependency_jars:
         return f'<p class="note">{html.escape(text["rate_limit"])}</p>'
     if not mod.has_release:
@@ -230,7 +280,7 @@ def _files(
         return f'<p class="note">{html.escape(text["no_jars"])}</p>'
     rows: list[str] = []
     note = ""
-    if mod.jars_classified and mod_jars:
+    if classified and mod_jars:
         rows.append(_file_row(text["jar"], mod_jars))
         if dependency_jars:
             rows.append(_file_row(text["deps"], dependency_jars))
@@ -243,18 +293,26 @@ def _files(
     return f'<div class="file-list">{body}</div>{note}'
 
 
-def _download_all(mod: ModEntry, text: dict, loader: str = "") -> str:
-    if not loader and not mod.mod_jars and not mod.dependency_jars:
+def _download_all(
+    mod: ModEntry,
+    text: dict,
+    loader: str = "",
+    minecraft: str = "",
+    external: bool = False,
+) -> str:
+    if not loader and not minecraft and not mod.mod_jars and not mod.dependency_jars:
         return ""
-    href = archive_url(mod.repo, loader)
-    filename = f"{mod.repo}-{loader}.zip" if loader else f"{mod.repo}.zip"
+    href = archive_url(mod.repo, loader, minecraft)
+    parts = [part for part in (mod.repo, minecraft, loader) if part]
+    filename = "-".join(parts) + ".zip"
     label = html.escape(text["download_all"])
     busy = html.escape(text["zip_busy"], quote=True)
     fail = html.escape(text["zip_fail"], quote=True)
     file_attr = html.escape(filename, quote=True)
+    ready = ' data-external="true"' if external else ""
     return (
         f'<p class="card-foot"><a class="btn zip" href="{html.escape(href, quote=True)}" '
-        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}">'
+        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}"{ready}>'
         f'{label}<span class="zip-kind">.zip</span></a></p>'
     )
 

@@ -512,6 +512,7 @@
     document.querySelectorAll("a.btn.zip").forEach((link) => {
       const idle = link.innerHTML;
       link.addEventListener("click", async (event) => {
+        if (link.dataset.external === "true") return;
         event.preventDefault();
         if (link.classList.contains("is-busy") || link.getAttribute("aria-disabled") === "true") return;
         link.classList.add("is-busy");

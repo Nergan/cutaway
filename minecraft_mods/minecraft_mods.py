@@ -6,14 +6,21 @@ import asyncio
 import re
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from minecraft_mods.catalog import CatalogError, build_jar_archive, get_catalog
+from minecraft_mods.catalog import (
+    CatalogError,
+    build_jar_archive,
+    choose_release,
+    get_catalog,
+    trusted_bundle,
+)
 from minecraft_mods.render import render_page
 from minecraft_mods.search import mod_document, select_mods
 
 router = APIRouter()
 _REPO_NAME = re.compile(r"[A-Za-z0-9._-]{1,120}")
+_VERSION = re.compile(r"[A-Za-z0-9._+-]{0,40}")
 
 
 @router.get("/api")
@@ -57,22 +64,35 @@ async def list_mods(
 async def mods_home(request: Request) -> Response:
     download = request.query_params.get("download", "")
     if download:
-        return await _archive(download, request.query_params.get("loader", ""))
+        return await _archive(
+            download,
+            request.query_params.get("loader", ""),
+            request.query_params.get("minecraft", ""),
+        )
     lang = _language(request)
     sort = request.query_params.get("sort") or "name"
     catalog = await asyncio.to_thread(get_catalog)
     return HTMLResponse(render_page(catalog, lang, sort))
 
 
-async def _archive(repo: str, loader: str) -> Response:
-    if not _REPO_NAME.fullmatch(repo):
+async def _archive(repo: str, loader: str, minecraft: str) -> Response:
+    if not _REPO_NAME.fullmatch(repo) or not _VERSION.fullmatch(minecraft or ""):
         raise HTTPException(status_code=404)
     catalog = await asyncio.to_thread(get_catalog)
     mod = next((item for item in catalog.mods if item.repo == repo), None)
-    if mod is None or not (mod.mod_jars or mod.dependency_jars):
+    if mod is None:
+        raise HTTPException(status_code=404)
+    has_files = bool(mod.mod_jars or mod.dependency_jars or any(cut.archive_url for cut in mod.releases))
+    if not has_files:
         raise HTTPException(status_code=404)
     try:
-        payload, filename = await asyncio.to_thread(build_jar_archive, mod, loader or None)
+        if mod.releases:
+            cut = choose_release(mod, loader or None, minecraft or None)
+            if trusted_bundle(mod.repo, cut.archive_url):
+                return RedirectResponse(cut.archive_url, status_code=302)
+        payload, filename = await asyncio.to_thread(
+            build_jar_archive, mod, loader or None, minecraft or None
+        )
     except CatalogError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
     return Response(

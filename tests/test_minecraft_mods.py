@@ -567,7 +567,7 @@ def test_about_website_is_the_only_modrinth_page(monkeypatch):
             return 200, b"# Placed Sticks\n\nPlace sticks.\n", {}
         if "raw.githubusercontent.com" in url:
             return 404, b"", {}
-        if url.endswith("/releases/latest"):
+        if "/releases" in url:
             return 404, b"", {}
         raise AssertionError(url)
 
@@ -654,8 +654,10 @@ def test_public_pages_cover_a_rate_limited_github_api(monkeypatch):
             return 200, b"# Tamed Phantoms\n\nTame them.\n", {}
         if url.startswith("https://raw.githubusercontent.com/"):
             return 404, b"", {}
-        if url.endswith("/releases/latest") and "api.github.com" in url:
+        if "api.github.com" in url and "/releases" in url:
             return 403, b'{"message":"rate limit"}', {"Retry-After": "0"}
+        if url.rstrip("/").endswith("/releases"):
+            return 200, release_page.encode(), {}
         if url.endswith("/releases/latest"):
             return 200, release_page.encode(), {}
         raise AssertionError(url)
@@ -694,7 +696,7 @@ def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypa
             return 200, b"# Tamed Phantoms\n\nTame them with cookies.\n", {}
         if url.startswith("https://raw.githubusercontent.com/"):
             return 404, b"not found", {}
-        if url.endswith("/releases/latest"):
+        if "/releases" in url:
             return 403, b'{"message":"API rate limit exceeded"}', {"Retry-After": "0"}
         raise AssertionError(url)
 
@@ -716,6 +718,210 @@ def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypa
     assert not mod.has_release
     page = render_page(Catalog(mods=[mod]), "en", "name")
     assert "rate-limiting" in page
+
+
+def _release(tag: str, names: list[str], body: str = "") -> dict:
+    assets = [
+        {
+            "name": "all-jars.zip",
+            "browser_download_url": f"https://github.com/Nergan/example/releases/download/{tag}/all-jars.zip",
+        }
+    ]
+    assets.extend(
+        {
+            "name": name,
+            "browser_download_url": f"https://github.com/Nergan/example/releases/download/{tag}/{name}",
+        }
+        for name in names
+    )
+    return {"tag_name": tag, "body": body, "assets": assets, "draft": False, "prerelease": False}
+
+
+def test_each_version_and_loader_is_its_own_release_with_a_prebuilt_zip():
+    from minecraft_mods.catalog import cuts_from_releases
+    from minecraft_mods.search import mod_document
+
+    documents = [
+        _release("v1.4.2", ["culllessleaves-1.4.2.jar", "kotlinforforge-5.8.0-all.jar"]),
+        _release(
+            "minecraft-1.21.1-neoforge",
+            [
+                "culllessleaves-neoforge-1.21.1-1.4.3.jar",
+                "kotlinforforge-5.8.0-all.jar",
+                "sodium-neoforge-0.6.13+mc1.21.1.jar",
+            ],
+            "Minecraft **1.21.1** / NeoForge. `all-jars.zip` contains every jar on this page.",
+        ),
+        _release(
+            "minecraft-26.3-fabric",
+            ["placedsticks-fabric-26.3-1.0.0.jar", "fabric-api-0.162.0+26.3.jar"],
+        ),
+        _release(
+            "minecraft-26.3-neoforge",
+            ["placedsticks-neoforge-26.3-1.0.0.jar", "kotlinforforge-6.4.0-all.jar"],
+        ),
+        _release(
+            "minecraft-1.21.1-fabric",
+            ["placedsticks-fabric-1.21.1-1.0.0.jar", "fabric-api-0.116.17+1.21.1.jar"],
+        ),
+    ]
+    cuts = cuts_from_releases("placed-sticks-mod", documents[2:])
+    assert [cut.tag for cut in cuts] == [
+        "minecraft-26.3-fabric",
+        "minecraft-26.3-neoforge",
+        "minecraft-1.21.1-fabric",
+    ]
+    assert cuts[0].archive_name == "all-jars.zip"
+    assert cuts[0].archive_url.endswith("/all-jars.zip")
+    assert [jar.name for jar in cuts[0].mod_jars] == ["placedsticks-fabric-26.3-1.0.0.jar"]
+    assert [jar.name for jar in cuts[0].dependency_jars] == ["fabric-api-0.162.0+26.3.jar"]
+    assert cuts[0].mod_jars[0].loaders == ["Fabric"]
+
+    leaves = cuts_from_releases("cull-less-leaves-for-neoforge-mod", documents[:2])
+    assert [cut.tag for cut in leaves] == ["minecraft-1.21.1-neoforge"]
+    assert [jar.name for jar in leaves[0].mod_jars] == ["culllessleaves-neoforge-1.21.1-1.4.3.jar"]
+    assert "all-jars.zip" not in [jar.name for jar in [*leaves[0].mod_jars, *leaves[0].dependency_jars]]
+
+    button = cuts_from_releases(
+        "patchouli-button-rework-mod",
+        [
+            _release(
+                "minecraft-1.21.1-neoforge",
+                [
+                    "Patchouli-1.21.1-93-NEOFORGE.jar",
+                    "patchoulibutton-neoforge-1.21.1-1.0.0.jar",
+                    "kotlinforforge-5.8.0-all.jar",
+                ],
+            )
+        ],
+    )
+    assert [jar.name for jar in button[0].mod_jars] == ["patchoulibutton-neoforge-1.21.1-1.0.0.jar"]
+    hamsters = cuts_from_releases(
+        "hamsters-create-compat-mod",
+        [
+            _release(
+                "minecraft-1.20.1-forge",
+                [
+                    "create-1.20.1-6.0.8.jar",
+                    "hamsters-forge-1.0.3-1.20.1.jar",
+                    "hamsterscreatecompat-forge-1.20.1-1.0.0.jar",
+                    "kotlinforforge-4.12.0-all.jar",
+                ],
+            )
+        ],
+    )
+    assert [jar.name for jar in hamsters[0].mod_jars] == ["hamsterscreatecompat-forge-1.20.1-1.0.0.jar"]
+
+    born = cuts_from_releases(
+        "ui-born-in-configuration-mod",
+        [
+            _release(
+                "minecraft-1.21.1-neoforge",
+                [
+                    "borninconfiguration-3.2.2.jar",
+                    "born_in_chaos_.Neoforge._1.21.1_1.7.6.jar",
+                    "uiborninconfiguration-neoforge-1.21.1-1.0.0.jar",
+                ],
+            )
+        ],
+    )
+    assert [jar.name for jar in born[0].mod_jars] == ["uiborninconfiguration-neoforge-1.21.1-1.0.0.jar"]
+
+    critters = cuts_from_releases(
+        "more-critters-port-mod",
+        [_release("minecraft-1.21.1-neoforge", ["more_critters-1.4.5.jar", "geckolib-neoforge-1.21.1-4.9.3.jar"])],
+    )
+    assert [jar.name for jar in critters[0].mod_jars] == ["more_critters-1.4.5.jar"]
+
+    mod = ModEntry(
+        repo="placed-sticks-mod",
+        name="Placed Sticks",
+        description_en="Place sticks.",
+        description_ru="",
+        github_url="https://github.com/Nergan/placed-sticks-mod",
+        license_id="MPL-2.0",
+        license_name="MPL",
+        license_url="",
+        version="",
+        minecraft="26.3, 1.21.1",
+        loaders=["Fabric", "NeoForge"],
+        mod_jars=cuts[0].mod_jars,
+        dependency_jars=cuts[0].dependency_jars,
+        jars_classified=True,
+        has_release=True,
+        modrinth_state="linked",
+        modrinth_url="https://modrinth.com/mod/placed-sticks",
+        modrinth_status="",
+        releases=cuts,
+    )
+    page = render_page(Catalog(mods=[mod]), "en", "name")
+    assert page.count('role="tab"') == 3
+    assert "26.3 · Fabric" in page
+    assert "26.3 · NeoForge" in page
+    assert "1.21.1 · Fabric" in page
+    assert "1.21.1 · NeoForge" not in page
+    assert 'href="/mods/?download=placed-sticks-mod&amp;minecraft=26.3&amp;loader=fabric"' in page
+    assert 'data-external="true"' in page
+    assert "all-jars.zip" not in page
+    document = mod_document(mod)
+    assert document["releases"][0]["archive_url"].endswith("/all-jars.zip")
+    assert document["download"].endswith("minecraft=26.3&loader=fabric")
+
+
+def test_download_redirects_to_the_prebuilt_zip(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from minecraft_mods.catalog import ReleaseCut
+    from minecraft_mods.minecraft_mods import router
+
+    cut = ReleaseCut(
+        tag="minecraft-1.21.1-fabric",
+        minecraft="1.21.1",
+        loader="Fabric",
+        mod_jars=[JarLink("tamedphantoms-fabric-1.21.1-1.0.0.jar", "https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-fabric/tamedphantoms-fabric-1.21.1-1.0.0.jar", ["Fabric"])],
+        dependency_jars=[],
+        jars_classified=True,
+        archive_url="https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-fabric/all-jars.zip",
+        archive_name="all-jars.zip",
+    )
+    mod = ModEntry(
+        repo="tamedphantoms-mod",
+        name="Tamed Phantoms",
+        description_en="",
+        description_ru="",
+        github_url="https://github.com/Nergan/tamedphantoms-mod",
+        license_id="",
+        license_name="",
+        license_url="",
+        version="",
+        minecraft="1.21.1",
+        loaders=["Fabric"],
+        mod_jars=cut.mod_jars,
+        dependency_jars=[],
+        jars_classified=True,
+        has_release=True,
+        modrinth_state="missing",
+        modrinth_url="",
+        modrinth_status="",
+        releases=[cut],
+    )
+    monkeypatch.setattr("minecraft_mods.minecraft_mods.get_catalog", lambda: Catalog(mods=[mod]))
+    app = FastAPI()
+    app.include_router(router)
+    response = TestClient(app).get(
+        "/?download=tamedphantoms-mod&minecraft=1.21.1&loader=fabric",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == cut.archive_url
+    missing = TestClient(app).get(
+        "/?download=tamedphantoms-mod&minecraft=1.20.1&loader=fabric",
+        follow_redirects=False,
+    )
+    assert missing.status_code == 404
+    foreign = TestClient(app).get("/?download=tamedphantoms-mod&minecraft=https://evil.example", follow_redirects=False)
+    assert foreign.status_code == 404
 
 
 def test_minecraft_mods_is_registered_on_the_public_prefix():

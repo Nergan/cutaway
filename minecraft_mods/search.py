@@ -8,9 +8,11 @@ from dataclasses import asdict
 from minecraft_mods.catalog import ModEntry, loader_panels
 
 
-def archive_url(repo: str, loader: str = "") -> str:
+def archive_url(repo: str, loader: str = "", minecraft: str = "") -> str:
     """Zip address on the mods page. The page itself stays /mods/."""
     pairs = [("download", repo)]
+    if minecraft:
+        pairs.append(("minecraft", minecraft))
     if loader:
         pairs.append(("loader", loader.casefold()))
     return "/mods/?" + urllib.parse.urlencode(pairs)
@@ -53,7 +55,13 @@ def mod_document(mod: ModEntry) -> dict:
         }
         for name, own, deps in loader_panels(mod)
     ]
-    document["download"] = archive_url(mod.repo)
+    for item in document["releases"]:
+        item["download"] = archive_url(mod.repo, item.get("loader") or "", item.get("minecraft") or "")
+    if mod.releases:
+        cut = mod.releases[0]
+        document["download"] = archive_url(mod.repo, cut.loader, cut.minecraft)
+    else:
+        document["download"] = archive_url(mod.repo)
     return document
 
 
@@ -83,5 +91,8 @@ def _haystack(mod: ModEntry) -> str:
         mod.modrinth_state,
         " ".join(mod.loaders),
         " ".join(jars),
+        " ".join(cut.tag for cut in mod.releases),
+        " ".join(cut.minecraft for cut in mod.releases),
+        " ".join(cut.loader for cut in mod.releases),
     ]
     return " ".join(part for part in parts if part).casefold()

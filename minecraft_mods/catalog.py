@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_USER = "Nergan"
 MODRINTH_USER = "nargan"
-SCHEMA = 6
+SCHEMA = 7
 FRESH_SECONDS = 60 * 60
 STALE_SECONDS = 10 * 60
 MAX_BYTES = 1_000_000
@@ -74,6 +74,20 @@ class JarLink:
 
 
 @dataclass
+class ReleaseCut:
+    """One GitHub release: a Minecraft version paired with one loader."""
+
+    tag: str
+    minecraft: str
+    loader: str
+    mod_jars: list[JarLink]
+    dependency_jars: list[JarLink]
+    jars_classified: bool
+    archive_url: str = ""
+    archive_name: str = ""
+
+
+@dataclass
 class ModEntry:
     repo: str
     name: str
@@ -98,6 +112,7 @@ class ModEntry:
     readme_en: str = ""
     readme_ru: str = ""
     branch: str = "main"
+    releases: list[ReleaseCut] = field(default_factory=list)
 
 
 @dataclass
@@ -190,7 +205,13 @@ def minecraft_and_loaders(body: str) -> tuple[str, list[str]]:
 
 
 def loader_panels(mod: ModEntry) -> list[tuple[str, list[JarLink], list[JarLink]]]:
-    """Tabs for a card. Empty when every loader would show the same jars."""
+    """Tabs for a card. Empty when every loader would show the same jars.
+
+    A repository that publishes one release per version and loader uses those
+    releases as tabs instead of splitting jars inside a single release.
+    """
+    if len(mod.releases) >= 2:
+        return []
     panels: list[tuple[str, list[JarLink], list[JarLink]]] = []
     for loader in TAB_LOADERS:
         own = [jar for jar in mod.mod_jars if loader in jar.loaders]
@@ -209,11 +230,251 @@ def loader_panels(mod: ModEntry) -> list[tuple[str, list[JarLink], list[JarLink]
 
 
 def loader_slug(loader: str) -> str:
-    return {"Fabric": "fabric", "NeoForge": "neoforge", "Forge": "forge"}.get(loader, "")
+    return {"Fabric": "fabric", "NeoForge": "neoforge", "Forge": "forge", "Quilt": "quilt"}.get(loader, "")
 
 
 def _canonical_loader(value: str) -> str | None:
-    return {"fabric": "Fabric", "neoforge": "NeoForge", "forge": "Forge"}.get(value.strip().lower())
+    return {
+        "fabric": "Fabric",
+        "neoforge": "NeoForge",
+        "forge": "Forge",
+        "quilt": "Quilt",
+    }.get(value.strip().lower())
+
+
+_STRUCTURED_TAG = re.compile(r"^minecraft-(.+)-(fabric|neoforge|forge|quilt)$", re.IGNORECASE)
+_LOADER_ORDER = {"Fabric": 0, "NeoForge": 1, "Forge": 2, "Quilt": 3}
+
+
+def parse_release_tag(tag: str) -> tuple[str, str] | None:
+    """Return ``(minecraft version, loader)`` for a ``minecraft-<version>-<loader>`` tag."""
+    match = _STRUCTURED_TAG.match((tag or "").strip())
+    if not match:
+        return None
+    loader = _canonical_loader(match.group(2))
+    if loader is None:
+        return None
+    return match.group(1), loader
+
+
+def cuts_from_releases(repo: str, documents: list[dict[str, Any]]) -> list[ReleaseCut]:
+    """Keep one cut per version and loader. Older single ``v*`` releases stay only when nothing newer exists."""
+    structured: list[ReleaseCut] = []
+    legacy: list[tuple[str, ReleaseCut]] = []
+    for document in documents:
+        if not isinstance(document, dict) or document.get("draft") or document.get("prerelease"):
+            continue
+        tag = str(document.get("tag_name") or "")
+        assets = [item for item in (document.get("assets") or []) if isinstance(item, dict)]
+        body = str(document.get("body") or "")
+        archive_url, archive_name = _bundle_zip(assets)
+        parsed = parse_release_tag(tag)
+        if parsed:
+            minecraft, loader = parsed
+            mod_jars, dep_jars, classified = _jars_for_release(repo, assets, body, loader)
+            structured.append(
+                ReleaseCut(
+                    tag=tag,
+                    minecraft=minecraft,
+                    loader=loader,
+                    mod_jars=mod_jars,
+                    dependency_jars=dep_jars,
+                    jars_classified=classified,
+                    archive_url=archive_url,
+                    archive_name=archive_name,
+                )
+            )
+            continue
+        mod_jars, dep_jars, classified = classify_jars(assets, body)
+        minecraft, _loaders = minecraft_and_loaders(body)
+        legacy.append(
+            (
+                str(document.get("published_at") or ""),
+                ReleaseCut(
+                    tag=tag,
+                    minecraft=minecraft,
+                    loader="",
+                    mod_jars=mod_jars,
+                    dependency_jars=dep_jars,
+                    jars_classified=classified,
+                    archive_url=archive_url,
+                    archive_name=archive_name,
+                ),
+            )
+        )
+    if structured:
+        structured.sort(key=_release_sort_key)
+        return structured
+    if not legacy:
+        return []
+    legacy.sort(key=lambda item: item[0], reverse=True)
+    return [legacy[0][1]]
+
+
+def choose_release(mod: ModEntry, loader: str | None = None, minecraft: str | None = None) -> ReleaseCut:
+    """Pick the release a download is asking for."""
+    if not mod.releases:
+        raise CatalogError(f"{mod.repo} has no release to download.", status=404)
+    canonical = None
+    if loader:
+        canonical = _canonical_loader(loader)
+        if canonical is None:
+            raise CatalogError(f"Unknown loader {loader}.", status=404)
+    wanted_game = (minecraft or "").strip()
+    matches = [
+        cut
+        for cut in mod.releases
+        if (canonical is None or cut.loader == canonical)
+        and (not wanted_game or cut.minecraft == wanted_game)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if canonical is None and not wanted_game and len(mod.releases) == 1:
+        return mod.releases[0]
+    raise CatalogError(f"{mod.repo} has no matching release.", status=404)
+
+
+def trusted_bundle(repo: str, url: str) -> bool:
+    """A prebuilt zip is only the ``all-jars.zip`` asset on this repository's release."""
+    parts = urllib.parse.urlsplit(url or "")
+    if parts.scheme != "https" or parts.netloc != "github.com":
+        return False
+    prefix = f"/{GITHUB_USER}/{repo}/releases/download/"
+    path = urllib.parse.unquote(parts.path)
+    return path.startswith(prefix) and path.lower().endswith("/all-jars.zip")
+
+
+def _release_sort_key(cut: ReleaseCut) -> tuple:
+    numbers = _version_numbers(cut.minecraft)
+    return (
+        0 if numbers else 1,
+        tuple(-number for number in numbers),
+        _LOADER_ORDER.get(cut.loader, 9),
+        cut.tag,
+    )
+
+
+def _version_numbers(version: str) -> tuple[int, ...]:
+    return tuple(int(piece) for piece in re.split(r"[^0-9]+", version) if piece.isdigit())
+
+
+def _bundle_zip(assets: list[dict[str, Any]]) -> tuple[str, str]:
+    for asset in assets:
+        name = str(asset.get("name") or "")
+        if name.lower() == "all-jars.zip":
+            return str(asset.get("browser_download_url") or ""), name
+    return "", ""
+
+
+def _jars_for_release(
+    repo: str,
+    assets: list[dict[str, Any]],
+    body: str,
+    loader: str,
+) -> tuple[list[JarLink], list[JarLink], bool]:
+    jar_assets = [
+        asset
+        for asset in assets
+        if str(asset.get("name") or "").lower().endswith(".jar")
+    ]
+    if _jar_table(body):
+        mod_jars, dep_jars, classified = classify_jars(jar_assets, body)
+    else:
+        mod_jars, dep_jars, classified = _split_by_repo_name(repo, jar_assets)
+    for jar in (*mod_jars, *dep_jars):
+        jar.loaders = [loader]
+    return mod_jars, dep_jars, classified
+
+
+def _split_by_repo_name(
+    repo: str,
+    assets: list[dict[str, Any]],
+) -> tuple[list[JarLink], list[JarLink], bool]:
+    jars = {
+        str(asset.get("name") or ""): str(asset.get("browser_download_url") or "")
+        for asset in assets
+        if str(asset.get("name") or "").lower().endswith(".jar")
+        and not _auxiliary_jar(str(asset.get("name") or ""))
+    }
+    key = _repo_key(repo)
+    own = [name for name in jars if _jar_is_the_mod(key, name)]
+    if not own and len(jars) == 1:
+        only = next(iter(jars))
+        return [_link(jars, only)], [], True
+    if not own:
+        return [], [_link(jars, name) for name in jars], False
+    used = set(own)
+    return (
+        [_link(jars, name) for name in own],
+        [_link(jars, name) for name in jars if name not in used],
+        True,
+    )
+
+
+def _repo_key(repo: str) -> str:
+    name = repo.lower()
+    if name.endswith("mod"):
+        name = name[:-3].rstrip("-_")
+    name = re.sub(r"-for-(fabric|neoforge|forge|quilt)$", "", name)
+    name = re.sub(r"-port$", "", name)
+    return re.sub(r"[^a-z0-9]", "", name)
+
+
+def _jar_is_the_mod(key: str, filename: str) -> bool:
+    stem = _jar_stem(filename)
+    if len(key) < 4 or len(stem) < 4:
+        return False
+    if stem.startswith(key):
+        return True
+    # The published jar often drops a trailing word of the repository name.
+    return key.startswith(stem) and len(stem) >= max(8, (len(key) * 3) // 5)
+
+
+def _jar_stem(filename: str) -> str:
+    compact = _compact_jar(filename)
+    for word in ("neoforge", "fabric", "quilt", "forge"):
+        compact = compact.replace(word, "")
+    return re.sub(r"[0-9]+", "", compact)
+
+
+def _compact_jar(filename: str) -> str:
+    stem = filename.lower()
+    if stem.endswith(".jar"):
+        stem = stem[:-4]
+    return re.sub(r"[^a-z0-9]", "", stem)
+
+
+def _summarize_releases(
+    releases: list[ReleaseCut],
+) -> tuple[list[JarLink], list[JarLink], bool, str, list[str], str]:
+    mod_jars: list[JarLink] = []
+    dep_jars: list[JarLink] = []
+    seen: set[str] = set()
+    versions: list[str] = []
+    loaders: list[str] = []
+    for cut in releases:
+        if cut.minecraft and cut.minecraft not in versions:
+            versions.append(cut.minecraft)
+        if cut.loader and cut.loader not in loaders:
+            loaders.append(cut.loader)
+        for jar in cut.mod_jars:
+            if jar.name not in seen:
+                seen.add(jar.name)
+                mod_jars.append(jar)
+        for jar in cut.dependency_jars:
+            if jar.name not in seen:
+                seen.add(jar.name)
+                dep_jars.append(jar)
+    if not loaders:
+        for jar in (*mod_jars, *dep_jars):
+            for loader in jar.loaders:
+                if loader not in loaders:
+                    loaders.append(loader)
+    classified = all(cut.jars_classified for cut in releases)
+    version = ""
+    if len(releases) == 1 and parse_release_tag(releases[0].tag) is None:
+        version = releases[0].tag.lstrip("v")
+    return mod_jars, dep_jars, classified, ", ".join(versions), loaders, version
 
 
 def classify_modrinth(
@@ -368,18 +629,17 @@ def _build_mod(
     readme_ru = _raw_text(name, branch, "README.ru.md")
     title_en, description_en = parse_readme(readme or "")
     title_ru, description_ru = parse_readme(readme_ru or "")
-    release, release_limited = _latest_release(name)
-    body = ""
-    assets: list[dict[str, Any]] = []
+    documents, release_limited = _load_releases(name)
+    releases = [] if documents is None else cuts_from_releases(name, documents)
+    mod_jars: list[JarLink] = []
+    dep_jars: list[JarLink] = []
+    classified = False
+    minecraft = ""
+    loaders: list[str] = []
     version = ""
-    has_release = False
-    if isinstance(release, dict):
-        has_release = True
-        body = str(release.get("body") or "")
-        assets = list(release.get("assets") or [])
-        version = str(release.get("tag_name") or "").lstrip("v")
-    mod_jars, dep_jars, classified = classify_jars(assets, body)
-    minecraft, loaders = minecraft_and_loaders(body)
+    has_release = bool(releases)
+    if releases:
+        mod_jars, dep_jars, classified, minecraft, loaders, version = _summarize_releases(releases)
     del by_repo, authenticated, token
     website = modrinth_website(str(repo.get("homepage") or ""))
     if website:
@@ -412,6 +672,7 @@ def _build_mod(
         readme_en=(readme or "").strip(),
         readme_ru=(readme_ru or "").strip(),
         branch=branch,
+        releases=releases,
     )
 
 
@@ -457,7 +718,7 @@ _HOMEPAGE_URL = re.compile(r'"homepageUrl":"((?:\\.|[^"\\])*)"')
 _DEFAULT_BRANCH = re.compile(r'"defaultBranch":"([^"]+)"')
 _LICENSE_META = re.compile(r'"license":\{"spdxId":"([^"]+)","name":"([^"]*)"\}')
 _RELEASE_TAG = re.compile(r"/releases/(?:tag|download|expanded_assets)/([^\"'#?/]+)")
-_RELEASE_ASSET = re.compile(r"/releases/download/([^/\"']+)/([^\"'?]+\.jar)")
+_RELEASE_ASSET = re.compile(r"/releases/download/([^/\"']+)/([^\"'?]+\.(?:jar|zip))")
 _HTML_BROWSER = {"User-Agent": "Mozilla/5.0 (compatible; nargan-cutaway-mods)", "Accept": "text/html"}
 
 
@@ -781,24 +1042,119 @@ def _raw_text(repo: str, branch: str, path: str) -> str | None:
     return payload.decode("utf-8", "replace")
 
 
-def _latest_release(repo: str) -> tuple[Any, bool]:
-    status, payload, _headers = _api_get(_github_url(repo, "releases/latest"))
+def _load_releases(repo: str) -> tuple[list[dict[str, Any]] | None, bool]:
+    """Return release documents, and whether GitHub hid them behind a rate limit."""
+    status, payload, headers = _api_get(_github_url(repo, "releases?per_page=100"))
+    if status == 200:
+        found = _release_batch(payload)
+        if found is None:
+            raise CatalogError(f"GitHub releases for {repo} had an unexpected shape.")
+        pages = 1
+        while pages < 3:
+            nxt = _next_link(str(headers.get("Link") or headers.get("link") or ""))
+            if not nxt:
+                break
+            status, payload, headers = _api_get(nxt)
+            if status != 200:
+                break
+            batch = _release_batch(payload)
+            if not batch:
+                break
+            found.extend(batch)
+            pages += 1
+        return found, False
     if status == 404:
-        return None, False
+        return [], False
     if status in {401, 403, 429}:
-        logger.warning("GitHub releases/latest for %s returned %s: %s", repo, status, _snippet(payload))
+        logger.warning("GitHub releases for %s returned %s: %s", repo, status, _snippet(payload))
         try:
-            document = _release_from_html(repo)
+            html_docs = _releases_from_html(repo)
         except Exception:
-            logger.warning("public release page for %s could not be read", repo, exc_info=True)
-            document = None
-        if document is not None:
-            return document, False
+            logger.warning("public release pages for %s could not be read", repo, exc_info=True)
+            html_docs = None
+        if html_docs:
+            return html_docs, False
         return None, True
-    if status != 200:
-        raise CatalogError(f"GitHub releases/latest for {repo} returned {status}: {_snippet(payload)}")
+    raise CatalogError(f"GitHub releases for {repo} returned {status}: {_snippet(payload)}")
+
+
+def _release_batch(payload: bytes) -> list[dict[str, Any]] | None:
     document = json.loads(payload)
-    return (document if isinstance(document, dict) else None), False
+    if not isinstance(document, list):
+        return None
+    return [item for item in document if isinstance(item, dict)]
+
+
+def _releases_from_html(repo: str) -> list[dict[str, Any]] | None:
+    status, payload, _headers = _github_html(f"https://github.com/{GITHUB_USER}/{repo}/releases")
+    page = payload.decode("utf-8", "replace") if status == 200 and payload else ""
+    documents = _release_documents_from_index(repo, page) if page else []
+    if documents:
+        return documents
+    latest = _release_from_html(repo)
+    if latest:
+        return [latest]
+    return None
+
+
+def _release_documents_from_index(repo: str, page: str) -> list[dict[str, Any]]:
+    grouped = _assets_by_tag(page, repo)
+    tags = _release_tags(page) or list(grouped)
+    shared_notes = _html_release_notes(page) if len(tags) == 1 else ""
+    documents: list[dict[str, Any]] = []
+    for tag in tags[:30]:
+        assets = list(grouped.get(tag) or [])
+        body = shared_notes
+        if not assets:
+            asset_status, asset_payload, _headers = _github_html(
+                f"https://github.com/{GITHUB_USER}/{repo}/releases/expanded_assets/"
+                f"{urllib.parse.quote(tag, safe='')}"
+            )
+            if asset_status == 200 and asset_payload:
+                assets = _html_assets(asset_payload.decode("utf-8", "replace"), repo, tag)
+            note_status, note_payload, _headers = _github_html(
+                f"https://github.com/{GITHUB_USER}/{repo}/releases/tag/{urllib.parse.quote(tag, safe='')}"
+            )
+            if note_status == 200 and note_payload:
+                body = _html_release_notes(note_payload.decode("utf-8", "replace")) or body
+        if not assets and not body:
+            continue
+        documents.append(
+            {"tag_name": tag, "body": body, "assets": assets, "draft": False, "prerelease": False}
+        )
+    return documents
+
+
+def _release_tags(page: str) -> list[str]:
+    found: list[str] = []
+    seen: set[str] = set()
+    for raw in _RELEASE_TAG.findall(page):
+        tag = urllib.parse.unquote(raw)
+        if tag in seen:
+            continue
+        seen.add(tag)
+        found.append(tag)
+    return found
+
+
+def _assets_by_tag(page: str, repo: str) -> dict[str, list[dict[str, str]]]:
+    grouped: dict[str, list[dict[str, str]]] = {}
+    seen: set[tuple[str, str]] = set()
+    for asset_tag, filename in _RELEASE_ASSET.findall(page):
+        asset_tag = urllib.parse.unquote(asset_tag)
+        filename = urllib.parse.unquote(filename)
+        if (asset_tag, filename) in seen:
+            continue
+        seen.add((asset_tag, filename))
+        grouped.setdefault(asset_tag, []).append(
+            {
+                "name": filename,
+                "browser_download_url": (
+                    f"https://github.com/{GITHUB_USER}/{repo}/releases/download/{asset_tag}/{filename}"
+                ),
+            }
+        )
+    return grouped
 
 
 def _github_url(repo: str, suffix: str) -> str:
@@ -806,14 +1162,24 @@ def _github_url(repo: str, suffix: str) -> str:
     return f"{base}/{suffix}"
 
 
-def build_jar_archive(mod: ModEntry, loader: str | None = None) -> tuple[bytes, str]:
-    """Download the card's jars, or one loader's jars, and pack them into one zip."""
+def build_jar_archive(
+    mod: ModEntry,
+    loader: str | None = None,
+    minecraft: str | None = None,
+) -> tuple[bytes, str]:
+    """Download one release's jars and pack them. Used when that release has no prebuilt zip."""
     import io
     import zipfile
 
     jars = [*mod.mod_jars, *mod.dependency_jars]
     suffix = ""
-    if loader:
+    if mod.releases:
+        cut = choose_release(mod, loader, minecraft)
+        jars = [*cut.mod_jars, *cut.dependency_jars]
+        bits = [bit for bit in (cut.minecraft, cut.loader.lower()) if bit]
+        if bits:
+            suffix = "-" + "-".join(bits)
+    elif loader:
         canonical = _canonical_loader(loader)
         if canonical is None:
             raise CatalogError(f"Unknown loader {loader}.", status=404)
@@ -1096,4 +1462,18 @@ def _mod_from_dict(raw: dict[str, Any]) -> ModEntry:
         readme_en=str(raw.get("readme_en") or ""),
         readme_ru=str(raw.get("readme_ru") or ""),
         branch=str(raw.get("branch") or "main"),
+        releases=[_release_from_dict(item) for item in raw.get("releases") or []],
+    )
+
+
+def _release_from_dict(raw: dict[str, Any]) -> ReleaseCut:
+    return ReleaseCut(
+        tag=str(raw.get("tag") or ""),
+        minecraft=str(raw.get("minecraft") or ""),
+        loader=str(raw.get("loader") or ""),
+        mod_jars=[_jar_from_dict(item) for item in raw.get("mod_jars") or []],
+        dependency_jars=[_jar_from_dict(item) for item in raw.get("dependency_jars") or []],
+        jars_classified=bool(raw.get("jars_classified")),
+        archive_url=str(raw.get("archive_url") or ""),
+        archive_name=str(raw.get("archive_name") or ""),
     )
