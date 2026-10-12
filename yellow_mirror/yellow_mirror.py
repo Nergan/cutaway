@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from playwright.async_api import async_playwright
-from shared_network import NetworkPolicyError, validate_outbound_url_async
+from shared.network import NetworkPolicyError, validate_outbound_url_async
 
 router = APIRouter()
 

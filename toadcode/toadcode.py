@@ -23,8 +23,8 @@ templates = Jinja2Templates(directory=BASE_DIR)
 
 # В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
 sys.path.append(str(BASE_DIR.parent))
-from shared_limits import RateLimiter, body_size_limit
-from shared_network import NetworkPolicyError, safe_urlopen, validate_outbound_url
+from shared.limits import RateLimiter, body_size_limit
+from shared.network import NetworkPolicyError, safe_urlopen, validate_outbound_url
 
 _CODE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
@@ -68,7 +68,7 @@ def _open_collection():
     if os.environ.get("TOADCODE_STORE") == "memory":
         logging.warning("toadcode workspace store is in-memory for this process")
         return MemoryCollection()
-    from shared_mongo import get_client
+    from shared.mongo import get_client
     return get_client().toadcode.codes
 
 

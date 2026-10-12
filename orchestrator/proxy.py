@@ -14,7 +14,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed
 
 from .config import ProjectConfig
-from shared_limits import too_large_detail
+from shared.limits import too_large_detail
 
 from .governor import PolicyViolation, ProjectGovernor
 from .supervisor import ProjectSupervisor, WorkerUnavailable

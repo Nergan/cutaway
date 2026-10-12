@@ -1,6 +1,6 @@
 """Blow up a few character frames so individual pixels can be judged.
 
-    python scripts/probe_character.py [outdir]
+    python age/scripts/probe_character.py [outdir]
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from age.atelier import character, png  # noqa: E402
 from age.atelier.canvas import Canvas  # noqa: E402

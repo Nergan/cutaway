@@ -243,9 +243,9 @@ made the default spawn town impassable.
 To look at things without a browser:
 
 ```bash
-python scripts/probe_age.py         # boot the world headless, report loop health
-python scripts/probe_atelier.py     # bake every recipe to contact sheets
-python scripts/probe_character.py   # character frames at 10x
+python age/scripts/probe_age.py         # boot the world headless, report loop health
+python age/scripts/probe_atelier.py     # bake every recipe to contact sheets
+python age/scripts/probe_character.py   # character frames at 10x
 ```
 
 `probe_age.py` drives a real event loop at the real tick rate, so its numbers

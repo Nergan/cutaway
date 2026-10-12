@@ -3,7 +3,7 @@
 A scratch harness rather than a test: it drives a real event loop at the real tick
 rate so the numbers mean something. Tests use ManualClock and assert on state.
 
-    python scripts/probe_age.py
+    python age/scripts/probe_age.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from age.config import load_settings  # noqa: E402
 from age.presentation.container import Container  # noqa: E402

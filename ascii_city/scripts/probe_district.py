@@ -12,7 +12,7 @@ import sys
 from collections import Counter, deque
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ascii_city.config import load_settings
 from ascii_city.domain import constants

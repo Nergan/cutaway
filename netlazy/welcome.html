@@ -336,7 +336,42 @@
       transition: all 0.3s ease;
     }
 
-    .lang-toggle { font-weight: 700; font-size: 0.75rem; font-family: var(--font-heading); }
+    .lang-menu-anchor { position: relative; }
+
+    .lang-dropdown {
+      position: fixed;
+      z-index: 1100;
+      min-width: 148px;
+      margin: 0;
+      padding: 0.3rem 0;
+      background: rgba(30, 30, 30, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+    }
+    .lang-dropdown[hidden] { display: none; }
+    body.light-theme .lang-dropdown {
+      background: rgba(250, 246, 238, 0.85);
+      border-color: var(--border-subtle);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+    .lang-option {
+      display: block;
+      width: 100%;
+      padding: 0.4rem 0.8rem;
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      text-align: left;
+      text-transform: lowercase;
+      cursor: pointer;
+    }
+    .lang-option.is-selected,
+    .lang-option:hover { color: var(--accent-moss); }
 
     /* LAYOUT CONTAINERS */
     .layout-wrapper {
@@ -887,9 +922,11 @@
       <a href="./netlazy" class="btn btn-primary" title="Try Web Version">
         <i class="bi bi-globe"></i> <span data-t="web_version">web version</span>
       </a>
-      <button class="lang-toggle" onclick="cycleLanguage()" title="Cycle Language" aria-label="Cycle Language">
-        <span id="lang-indicator">en</span>
-      </button>
+      <div class="lang-menu-anchor">
+        <button class="lang-toggle" id="lang-toggle" type="button" onclick="openLangMenu(event)" title="language" aria-label="language" aria-haspopup="listbox" aria-expanded="false">
+          <i class="bi bi-translate"></i>
+        </button>
+      </div>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle Theme">
         <i class="bi bi-sun" id="theme-icon"></i>
       </button>
@@ -1111,7 +1148,7 @@
           <ul class="footer-links">
             <li><a href="https://t.me/netlazy_bot" target="_blank" rel="noopener">Telegram Bot</a></li>
             <li><a href="#" onclick="toggleTheme(); return false;">Switch Theme</a></li>
-            <li><a href="#" onclick="cycleLanguage(); return false;">Switch Language</a></li>
+            <li><a href="#" onclick="openLangMenu(event); return false;">Switch Language</a></li>
           </ul>
         </div>
       </div>
@@ -1121,6 +1158,8 @@
     </footer>
 
   </main>
+
+  <div id="lang-dropdown" class="lang-dropdown" role="listbox" hidden></div>
 
   <!-- Lenis Smooth Scroll Library -->
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
@@ -1359,12 +1398,18 @@
       return 'en';
     }
 
+    const langChoices = [
+      { code: 'en', name: 'english' },
+      { code: 'ru', name: 'russian' },
+      { code: 'pt', name: 'portuguese' },
+      { code: 'zh', name: 'chinese' },
+      { code: 'ja', name: 'japanese' },
+      { code: 'ko', name: 'korean' }
+    ];
+
     function setLanguage(lang) {
       if (!langs.includes(lang)) lang = 'en';
       currentLang = lang;
-      
-      const indicator = document.getElementById('lang-indicator');
-      if (indicator) indicator.textContent = currentLang;
 
       document.querySelectorAll('[data-t]').forEach(el => {
         const key = el.getAttribute('data-t');
@@ -1372,17 +1417,73 @@
           el.innerHTML = translations[currentLang][key];
         }
       });
+      renderLangMenu();
     }
 
-    function cycleLanguage() {
-      document.body.classList.add('is-translating');
-      setTimeout(() => {
-        const currentIdx = langs.indexOf(currentLang);
-        const nextLang = langs[(currentIdx + 1) % langs.length];
-        setLanguage(nextLang);
-        setTimeout(() => document.body.classList.remove('is-translating'), 50);
-      }, 150);
+    function renderLangMenu() {
+      const menu = document.getElementById('lang-dropdown');
+      if (!menu) return;
+      menu.innerHTML = langChoices.map(choice =>
+        `<button type="button" class="lang-option${choice.code === currentLang ? ' is-selected' : ''}" role="option" aria-selected="${choice.code === currentLang}" data-lang="${choice.code}">${choice.name}</button>`
+      ).join('');
     }
+
+    function closeLangMenu() {
+      const menu = document.getElementById('lang-dropdown');
+      const toggle = document.getElementById('lang-toggle');
+      if (menu) menu.hidden = true;
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function openLangMenu(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const menu = document.getElementById('lang-dropdown');
+      const toggle = document.getElementById('lang-toggle');
+      if (!menu) return;
+      if (!menu.hidden && menu._anchor === event.currentTarget) {
+        closeLangMenu();
+        return;
+      }
+      renderLangMenu();
+      menu.hidden = false;
+      menu._anchor = event.currentTarget;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const width = menu.offsetWidth;
+      const height = menu.offsetHeight;
+      let left = rect.left + rect.width / 2 - width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      let top = rect.bottom + 8;
+      if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 8);
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    document.addEventListener('click', (event) => {
+      const menu = document.getElementById('lang-dropdown');
+      if (!menu || menu.hidden) return;
+      if (event.target.closest('#lang-dropdown') || event.target.closest('#lang-toggle')) return;
+      closeLangMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeLangMenu();
+    });
+
+    document.getElementById('lang-dropdown').addEventListener('click', (event) => {
+      const option = event.target.closest('[data-lang]');
+      if (!option) return;
+      const code = option.getAttribute('data-lang');
+      if (code !== currentLang) {
+        document.body.classList.add('is-translating');
+        setTimeout(() => {
+          setLanguage(code);
+          setTimeout(() => document.body.classList.remove('is-translating'), 50);
+        }, 150);
+      }
+      closeLangMenu();
+    });
 
     function initializeTheme() {
       const body = document.body;

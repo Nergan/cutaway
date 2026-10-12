@@ -212,7 +212,7 @@
                     @click.stop="handleContactButtonClick(profile, 'share', $event)">
                     <i class="bi" :class="profile.isSendingReq === 'share' ? 'bi-hourglass-split spin' : 'bi-box-arrow-up'"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_share') }}</span>
+                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--accent-info); opacity: 0.8; margin-top: 0.1rem;">{{ store.t('uf_action_share') }}</span>
                 </span>
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
                   <button class="footer-action icon-btn" 
@@ -221,7 +221,7 @@
                     @click.stop="handleContactButtonClick(profile, 'exchange', $event)">
                     <i class="bi" :class="profile.isSendingReq === 'exchange' ? 'bi-hourglass-split spin' : 'bi-arrow-left-right'"></i>
                   </button>
-                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;">{{ store.t('uf_action_exchange') }}</span>
+                  <span v-if="store.state.isUserFriendlyInterface" style="font-size: 0.65rem; color: var(--accent-moss); opacity: 0.8; margin-top: 0.1rem;">{{ store.t('uf_action_exchange') }}</span>
                 </span>
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
                   <button class="footer-action icon-btn" :disabled="profile.isSendingReq" style="color: var(--accent-danger);" @click.stop="handleContactButtonClick(profile, 'demand', $event)">

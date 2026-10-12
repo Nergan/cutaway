@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 
-from shared_limits import RateLimiter, body_size_limit
+from shared.limits import RateLimiter, body_size_limit
 
 from .config import RuntimeConfig, load_runtime_config
 from .home import home_payload
@@ -35,7 +35,7 @@ if CONFIG.profile == "hf":
     os.environ.setdefault("MONGO_MAX_POOL_SIZE", "3")
     os.environ.setdefault("MONGO_TLS_ALLOW_INVALID_CERTS", "0")
 
-import shared_mongo  # noqa: E402  (profile defaults must be applied first)
+from shared import mongo as shared_mongo  # noqa: E402  (profile defaults must be applied first)
 
 
 logging.basicConfig(level=logging.INFO)

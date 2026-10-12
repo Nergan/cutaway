@@ -15,7 +15,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 
 from formular.core import speech
-from shared_limits import RateLimiter, body_size_limit, too_large_detail
+from shared.limits import RateLimiter, body_size_limit, too_large_detail
 
 router = APIRouter()
 

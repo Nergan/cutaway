@@ -20,7 +20,7 @@ from netlazy.database import connect_to_mongo, close_mongo_connection, db_instan
 from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
 from netlazy.presentation.dependencies import tag_service
-from shared_network import safe_urlopen
+from shared.network import safe_urlopen
 
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")

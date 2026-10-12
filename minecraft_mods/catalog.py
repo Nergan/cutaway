@@ -852,7 +852,7 @@ def _http_get(
     request = urllib.request.Request(url, headers=headers)
     governed = bool(os.getenv("CUTAWAY_PROJECT_NETWORK_HOSTS", "").strip())
     if governed:
-        from shared_network import SafeRedirectHandler, validate_outbound_url
+        from shared.network import SafeRedirectHandler, validate_outbound_url
 
         with _request_lock:
             validate_outbound_url(url)

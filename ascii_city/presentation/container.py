@@ -69,7 +69,7 @@ class Container:
     def _attach_mongo(self) -> None:
         """Fall back to in-process storage when the cluster is not reachable."""
         try:
-            import shared_mongo
+            from shared import mongo as shared_mongo
 
             from ..infrastructure.repositories.mongo import (
                 DATABASE_NAME,

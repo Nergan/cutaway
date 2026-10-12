@@ -220,9 +220,9 @@ cd age && npm test               # 126 тестов клиента
 Посмотреть на всё без браузера:
 
 ```bash
-python scripts/probe_age.py         # поднять мир без сети и снять здоровье цикла
-python scripts/probe_atelier.py     # напечатать все рецепты в контрольные листы
-python scripts/probe_character.py   # кадры персонажа в 10x
+python age/scripts/probe_age.py         # поднять мир без сети и снять здоровье цикла
+python age/scripts/probe_atelier.py     # напечатать все рецепты в контрольные листы
+python age/scripts/probe_character.py   # кадры персонажа в 10x
 ```
 
 `probe_age.py` крутит настоящий цикл событий на настоящей частоте тиков, поэтому

@@ -18,8 +18,8 @@ templates = Jinja2Templates(directory=BASE_DIR)
 
 # В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
 sys.path.append(str(BASE_DIR.parent))
-from shared_mongo import get_client
-from shared_limits import RateLimiter, body_size_limit
+from shared.mongo import get_client
+from shared.limits import RateLimiter, body_size_limit
 
 db = get_client().markbins
 codes_collection = db.docs

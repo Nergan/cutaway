@@ -10,13 +10,13 @@ import pytest
 from orchestrator.config import load_runtime_config
 from orchestrator.governor import PolicyViolation, ProjectGovernor
 from orchestrator.supervisor import ProjectSupervisor, WorkerUnavailable
-from shared_network import (
+from shared.network import (
     _REQUEST_TIMES,
     NetworkPolicyError,
     preferred_outbound_ip,
     validate_outbound_url,
 )
-from shared_runtime import SubprocessFailure, run_process
+from shared.runtime import SubprocessFailure, run_process
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import AsyncIterator
 
-from shared_limits import too_large_detail
+from shared.limits import too_large_detail
 
 from .config import ProjectConfig
 

@@ -63,8 +63,8 @@ try:
     load_dotenv(BASE_DIR.parent / ".env")
 except Exception:
     pass
-from shared_limits import RateLimiter, body_size_limit
-from shared_mongo import get_client
+from shared.limits import RateLimiter, body_size_limit
+from shared.mongo import get_client
 
 logger = logging.getLogger(__name__)
 
@@ -585,7 +585,7 @@ async def _gc_media(media_id: str) -> None:
 async def _fetch_cdn_bytes(url: str) -> bytes:
     def _read() -> bytes:
         if os.getenv("CUTAWAY_PROJECT_NETWORK_HOSTS"):
-            from shared_network import safe_urlopen
+            from shared.network import safe_urlopen
 
             return safe_urlopen(url, timeout=30, max_bytes=MAX_MEDIA_BYTES * 4)
         with urlopen(url, timeout=30) as response:

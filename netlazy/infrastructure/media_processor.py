@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from netlazy.domain.repository import MediaProcessorPort, UnsupportedMediaTypeError, MediaProcessingError
-from shared_runtime import SubprocessFailure, run_process
+from shared.runtime import SubprocessFailure, run_process
 
 SUPPORTED_TYPE_PREFIXES = {
     "image": "image",

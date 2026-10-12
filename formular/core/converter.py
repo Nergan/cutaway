@@ -13,7 +13,7 @@ import json
 import yaml
 import toml
 import shlex
-from shared_runtime import ProcessResult, SubprocessFailure, run_process
+from shared.runtime import ProcessResult, SubprocessFailure, run_process
 
 from formular.core.graph import find_shortest_path
 from formular.core import speech

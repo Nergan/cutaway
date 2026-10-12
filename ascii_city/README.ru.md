@@ -144,12 +144,12 @@ cd ascii_city && npx vite-node tools/preview-frame.ts -- --plain --auto
 от лица, и такой кадр ничего не говорит о рендере. `--avatar N` ставит перед
 камерой фигуру ровно так, как её кадрирует вид от третьего лица на `5`.
 
-`scripts/probe_district.py` считает, что генератор на самом деле построил, —
+`ascii_city/scripts/probe_district.py` считает, что генератор на самом деле построил, —
 комнаты, террасы, уличную мебель и какую их долю игрок может обойти ногами, —
 и печатает координаты, на которые стоит навести `preview-frame.ts`:
 
 ```bash
-python scripts/probe_district.py
+python ascii_city/scripts/probe_district.py
 ```
 
 `ascii_city/tools/preview.py` делает то же самое для генератора: печатает карту

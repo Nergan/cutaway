@@ -3,7 +3,7 @@
 The browser editor does this over HTTP; this is the same call without a server, so
 recipe tuning does not need a running world.
 
-    python scripts/probe_atelier.py [outdir]
+    python age/scripts/probe_atelier.py [outdir]
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from age.atelier import character, png, recipes, sheet  # noqa: E402
 from age.atelier.canvas import Canvas  # noqa: E402

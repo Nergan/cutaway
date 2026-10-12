@@ -425,7 +425,7 @@ def _sherpa():
 
 
 def _fetch(url: str, dest: Path, *, trim: bool = True) -> None:
-    from shared_network import NetworkPolicyError, SafeRedirectHandler, validate_outbound_url
+    from shared.network import NetworkPolicyError, SafeRedirectHandler, validate_outbound_url
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".part")
@@ -766,7 +766,7 @@ def _encode(wav: Path, dest: Path, target: str) -> None:
 def _run(args: list[str], timeout: float):
     import asyncio
 
-    from shared_runtime import SubprocessFailure, run_process
+    from shared.runtime import SubprocessFailure, run_process
 
     try:
         return asyncio.run(

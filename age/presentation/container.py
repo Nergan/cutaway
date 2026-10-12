@@ -82,7 +82,7 @@ class Container:
     def _attach_mongo(self) -> None:
         """Swap in the MongoDB adapters, or keep the in-memory ones."""
         try:
-            import shared_mongo
+            from shared import mongo as shared_mongo
 
             from ..infrastructure.mongo_repositories import (
                 DATABASE_NAME,
@@ -102,7 +102,7 @@ class Container:
     def _fall_back_to_memory(self, reason: str) -> None:
         """Drop the Mongo adapters. Used when the client constructed but cannot talk.
 
-        ``shared_mongo.get_client()`` succeeds against a URI; it does not mean a
+        ``shared.mongo.get_client()`` succeeds against a URI; it does not mean a
         server is listening. Without this check every join waits out a ten-second
         selection timeout and then refuses to create a character — a demo that
         cannot be entered because the free-tier cluster is asleep.

@@ -12,7 +12,7 @@ import time
 from collections import deque
 from urllib.parse import urlsplit
 
-from shared_network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
+from shared.network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
 
 
 class AllowlistProxy:

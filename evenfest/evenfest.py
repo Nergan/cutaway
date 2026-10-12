@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
 # В монолите корень уже в sys.path, при standalone-запуске из папки плагина — нет.
 sys.path.append(str(BASE_DIR.parent))
-from shared_mongo import get_client
+from shared.mongo import get_client
 
 db = get_client()['evenfest']
 config_collection = db['config']

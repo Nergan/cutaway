@@ -27,10 +27,10 @@
 
 ```bash
 # Печать всех рецептов в PNG на диск. Основной инструмент.
-python scripts/probe_atelier.py [outdir]
+python age/scripts/probe_atelier.py [outdir]
 
 # Кадры персонажа в 10x, чтобы судить отдельные пиксели.
-python scripts/probe_character.py [outdir]
+python age/scripts/probe_character.py [outdir]
 ```
 
 По умолчанию оба пишут в `.pytest-tmp/atelier`. `probe_atelier.py` кладёт туда:
@@ -175,7 +175,7 @@ cd age && npm test                            # клиент
 | `age/domain/tiles.py` | перезапуск; плюс зеркало в `tiles.ts` и пересборка клиента |
 | разброс тайлов по биомам (`BIOME_PROFILES`) | `python -m age.tools.make_fixtures`, иначе тест паритета упадёт |
 | что-либо в `age/frontend/src/**` | `npm run build`, либо `npm run dev` с HMR и проксированием на порт 8140 |
-| только смотрите арт, без игры | ничего: `python scripts/probe_atelier.py` |
+| только смотрите арт, без игры | ничего: `python age/scripts/probe_atelier.py` |
 
 ---
 
@@ -388,7 +388,7 @@ TILE_PROP: dict[int, str] = {
 python -m age.tools.make_fixtures
 python -m pytest tests -k age
 cd age && npm test
-python scripts/probe_atelier.py    # и посмотреть на props.png глазами
+python age/scripts/probe_atelier.py    # и посмотреть на props.png глазами
 ```
 
 `make_fixtures.py` пишет `age/frontend/src/__fixtures__/parity.json`: дайджесты

@@ -150,12 +150,12 @@ district this dense: dropped at random you are usually facing a wall a metre
 away, and a frame of that says nothing about the renderer. `--avatar N` stands
 a figure in front of the camera, framed the way pressing `5` frames you.
 
-`scripts/probe_district.py` counts what the generator actually produced —
+`ascii_city/scripts/probe_district.py` counts what the generator actually produced —
 rooms, terraces, street furniture, and how much of it a player can walk to —
 and prints coordinates worth pointing `preview-frame.ts` at:
 
 ```bash
-python scripts/probe_district.py
+python ascii_city/scripts/probe_district.py
 ```
 
 `ascii_city/tools/preview.py` does the same for the generator itself, printing

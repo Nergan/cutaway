@@ -250,8 +250,8 @@ what was produced rather than assert a byte count.
 ## Working on the art
 
 ```bash
-python scripts/probe_atelier.py [outdir]     # every recipe as scaled contact sheets
-python scripts/probe_character.py [outdir]   # character frames at 10x
+python age/scripts/probe_atelier.py [outdir]     # every recipe as scaled contact sheets
+python age/scripts/probe_character.py [outdir]   # character frames at 10x
 ```
 
 Both write PNGs to disk without needing a server, which is how the props were
