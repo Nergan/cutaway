@@ -108,22 +108,35 @@
     }
 
     .mods {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
-      align-items: start;
+      column-width: 300px;
+      column-gap: 16px;
+    }
+
+    .mods.is-masonry {
+      display: block;
+      columns: auto;
+      column-gap: 0;
+      position: relative;
     }
 
     .mod {
-      display: flex;
+      display: inline-flex;
       flex-direction: column;
       width: 100%;
       min-width: 0;
-      margin: 0;
+      margin: 0 0 16px;
       padding: 12px 14px 13px;
+      break-inside: avoid;
+      vertical-align: top;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
+    }
+
+    .mods.is-masonry .mod {
+      display: flex;
+      margin: 0;
+      break-inside: auto;
     }
 
     .mod h2 {
@@ -483,6 +496,50 @@
 <body>
   __APP__
   <script>
+    function placeMods(reassign) {
+      const root = document.querySelector(".mods");
+      if (!root) return;
+      const cards = [...root.children].filter((el) => el.classList.contains("mod"));
+      if (!cards.length) return;
+      const gap = 16;
+      const minCol = 300;
+      const width = root.clientWidth;
+      if (width < 1) return;
+      const count = Math.max(1, Math.floor((width + gap) / (minCol + gap)));
+      const colWidth = (width - gap * (count - 1)) / count;
+      const fresh = reassign || !root._cols || root._cols.length !== cards.length || root._colsCount !== count;
+      root.classList.add("is-masonry");
+      if (fresh) {
+        cards.forEach((card) => {
+          card.style.position = "relative";
+          card.style.left = "0px";
+          card.style.top = "0px";
+          card.style.width = colWidth + "px";
+        });
+        root.style.height = "auto";
+        const used = Array(count).fill(0);
+        root._cols = cards.map((card) => {
+          let col = 0;
+          for (let i = 1; i < count; i += 1) {
+            if (used[i] < used[col]) col = i;
+          }
+          used[col] += card.offsetHeight + gap;
+          return col;
+        });
+        root._colsCount = count;
+      }
+      const tops = Array(count).fill(0);
+      cards.forEach((card, index) => {
+        const col = root._cols[index];
+        card.style.position = "absolute";
+        card.style.width = colWidth + "px";
+        card.style.left = (col * (colWidth + gap)) + "px";
+        card.style.top = tops[col] + "px";
+        tops[col] += card.offsetHeight + gap;
+      });
+      const bottom = tops.reduce((max, value) => Math.max(max, value), 0);
+      root.style.height = (bottom > 0 ? bottom - gap : 0) + "px";
+    }
     document.querySelectorAll("[data-open]").forEach((button) => {
       button.addEventListener("click", () => {
         const dialog = document.getElementById(button.getAttribute("data-open"));
@@ -507,8 +564,20 @@
         card.querySelectorAll("[data-loader-panel]").forEach((panel) => {
           panel.hidden = panel.getAttribute("data-loader-panel") !== slug;
         });
+        placeMods(false);
       });
     });
+    placeMods(true);
+    const modsRoot = document.querySelector(".mods");
+    if (modsRoot && typeof ResizeObserver === "function") {
+      let lastWidth = modsRoot.clientWidth;
+      new ResizeObserver(() => {
+        const width = modsRoot.clientWidth;
+        if (width === lastWidth) return;
+        lastWidth = width;
+        placeMods(true);
+      }).observe(modsRoot);
+    }
     document.querySelectorAll("a.btn.zip").forEach((link) => {
       const idle = link.innerHTML;
       link.addEventListener("click", async (event) => {

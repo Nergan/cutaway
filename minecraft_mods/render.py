@@ -151,7 +151,7 @@ def _app(catalog: Catalog, lang: str, text: dict) -> str:
 def _card(mod: ModEntry, lang: str, text: dict) -> str:
     description = mod.description_ru if lang == "ru" else mod.description_en
     panels = loader_panels(mod)
-    cuts = mod.releases if len(mod.releases) >= 2 else []
+    cuts = _version_cuts(mod, panels)
     meta = []
     if not panels and not cuts:
         meta.extend(mod.loaders)
@@ -197,6 +197,13 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
   {readme_dialog}
 </article>
 """
+
+
+def _version_cuts(mod: ModEntry, panels: list) -> list[ReleaseCut]:
+    """One tab per published version and loader, including a mod that has only one."""
+    if panels and len(mod.releases) < 2:
+        return []
+    return [cut for cut in mod.releases if cut.minecraft or cut.loader]
 
 
 def _single_bundle(mod: ModEntry) -> str:

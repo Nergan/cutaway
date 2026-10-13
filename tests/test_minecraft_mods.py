@@ -216,7 +216,8 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "<dialog" in page
     assert "<details" not in page
     assert "donate-widget.js" in page
-    assert "grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))" in page
+    assert "column-width: 300px" in page
+    assert "function placeMods" in page
     assert "--radius: 6px" in page
     assert 'class="custom-select"' not in page
     assert "на главную" not in page
@@ -228,7 +229,9 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert 'href="https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-neoforge/all-jars.zip"' in page
     assert "/mods/?download=" not in page
     assert "Minecraft 1.21.1" not in page
-    assert 'class="loader-tab' not in page
+    assert page.count('role="tab"') == 1
+    assert "1.21.1 · NeoForge" in page
+    assert 'class="loader-tab is-active"' in page
     assert 'download="all-jars.zip"' in page
     assert 'data-external="true"' in page
     assert 'class="btn zip"' in page

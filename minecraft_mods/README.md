@@ -2,7 +2,7 @@
 
 A list of Minecraft mods published as separate GitHub repositories under [Nergan](https://github.com/Nergan). The page is served at `/mods`.
 
-A repository is included when its name ends with `mod`. For each one the page shows the readme summary, license, GitHub link, and Modrinth link. Releases are one Minecraft version and one loader, tagged `minecraft-<version>-<loader>`. The card has a tab for each of those releases. Each release ships its jars and a prebuilt `all-jars.zip`; download all is that file. A repository that still has only an older `v*` release keeps a single jar list, and a release that mixed several loaders in one note still splits them into loader tabs.
+A repository is included when its name ends with `mod`. For each one the page shows the readme summary, license, GitHub link, and Modrinth link. Releases are one Minecraft version and one loader, tagged `minecraft-<version>-<loader>`. The card has a tab for every such release, including a mod that publishes only one. Each release ships its jars and a prebuilt `all-jars.zip`; download all is that file. A repository that still has only an older `v*` release keeps a single jar list, and a release that mixed several loaders in one note still splits them into loader tabs.
 
 `MODRINTH_TOKEN` is optional. With it, projects that exist on Modrinth but are still in review are marked as such. Without it, a declared Modrinth project that has no public page is reported as not public yet.
 
