@@ -124,33 +124,45 @@ def test_mod_search_filters_loader_name_and_version(monkeypatch):
         assert card["name"] == "Apple"
         assert card["description_en"].startswith("Apple")
         assert card["mod_jars"][0]["name"] == "apple.jar"
-        assert card["download"] == "/mods/?download=apple-mod"
+        assert card["download"] == ""
         assert card["github_url"].endswith("/apple")
 
 
 def test_a_mod_archive_stays_on_the_mods_page(monkeypatch):
+    from minecraft_mods.catalog import ReleaseCut
     from minecraft_mods import minecraft_mods
 
     fabric = _mod("Apple", ["Fabric"])
-
-    def fake_archive(mod, loader=None):
-        assert mod.repo == "apple-mod"
-        assert loader == "fabric"
-        return b"PK", "apple-mod-fabric.zip"
-
-    monkeypatch.setattr(minecraft_mods, "get_catalog", lambda: Catalog(mods=[fabric]))
-    monkeypatch.setattr(minecraft_mods, "build_jar_archive", fake_archive)
+    fabric.releases = [
+        ReleaseCut(
+            tag="minecraft-1.21.1-fabric",
+            minecraft="1.21.1",
+            loader="Fabric",
+            mod_jars=list(fabric.mod_jars),
+            dependency_jars=[],
+            jars_classified=True,
+            archive_url="https://github.com/Nergan/apple-mod/releases/download/minecraft-1.21.1-fabric/all-jars.zip",
+            archive_name="all-jars.zip",
+        )
+    ]
+    bare = _mod("Berry", ["Forge"])
+    monkeypatch.setattr(minecraft_mods, "get_catalog", lambda: Catalog(mods=[fabric, bare]))
     app = FastAPI()
     app.include_router(minecraft_mods.router, prefix="/mods")
     with TestClient(app) as client:
         page = client.get("/mods/")
         assert page.status_code == 200
-        assert "jars.zip" not in page.text
-        assert "/mods/?download=apple-mod" in page.text
-        archive = client.get("/mods/", params={"download": "apple-mod", "loader": "fabric"})
-        assert archive.status_code == 200
-        assert archive.content == b"PK"
-        assert "apple-mod-fabric.zip" in archive.headers["content-disposition"]
+        assert "/jars.zip" not in page.text
+        assert fabric.releases[0].archive_url in page.text
+        assert "/mods/?download=" not in page.text
+        archive = client.get(
+            "/mods/",
+            params={"download": "apple-mod", "minecraft": "1.21.1", "loader": "fabric"},
+            follow_redirects=False,
+        )
+        assert archive.status_code == 302
+        assert archive.headers["location"] == fabric.releases[0].archive_url
+        assert client.get("/mods/", params={"download": "berry-mod"}, follow_redirects=False).status_code == 404
         assert client.get("/mods/apple-mod/").status_code == 404
         assert client.get("/mods/apple-mod/jars.zip").status_code == 404
 

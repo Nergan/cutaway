@@ -2,20 +2,9 @@
 
 from __future__ import annotations
 
-import urllib.parse
 from dataclasses import asdict
 
-from minecraft_mods.catalog import ModEntry, loader_panels
-
-
-def archive_url(repo: str, loader: str = "", minecraft: str = "") -> str:
-    """Zip address on the mods page. The page itself stays /mods/."""
-    pairs = [("download", repo)]
-    if minecraft:
-        pairs.append(("minecraft", minecraft))
-    if loader:
-        pairs.append(("loader", loader.casefold()))
-    return "/mods/?" + urllib.parse.urlencode(pairs)
+from minecraft_mods.catalog import ModEntry, loader_panels, release_zip
 
 
 def select_mods(
@@ -46,22 +35,19 @@ def select_mods(
 
 def mod_document(mod: ModEntry) -> dict:
     document = asdict(mod)
+    shared = release_zip(mod.repo, mod.releases[0].archive_url) if len(mod.releases) == 1 else ""
     document["loader_tabs"] = [
         {
             "loader": name,
             "mod_jars": [asdict(jar) for jar in own],
             "dependency_jars": [asdict(jar) for jar in deps],
-            "download": archive_url(mod.repo, name),
+            "download": shared,
         }
         for name, own, deps in loader_panels(mod)
     ]
-    for item in document["releases"]:
-        item["download"] = archive_url(mod.repo, item.get("loader") or "", item.get("minecraft") or "")
-    if mod.releases:
-        cut = mod.releases[0]
-        document["download"] = archive_url(mod.repo, cut.loader, cut.minecraft)
-    else:
-        document["download"] = archive_url(mod.repo)
+    for cut, item in zip(mod.releases, document["releases"]):
+        item["download"] = release_zip(mod.repo, cut.archive_url)
+    document["download"] = release_zip(mod.repo, mod.releases[0].archive_url) if mod.releases else ""
     return document
 
 

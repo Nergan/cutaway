@@ -2,6 +2,7 @@ from minecraft_mods.catalog import (
     JarLink,
     ModEntry,
     Catalog,
+    ReleaseCut,
     _build_mod,
     classify_jars,
     classify_modrinth,
@@ -188,6 +189,18 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
         modrinth_status="processing",
         license_text="Mozilla Public License Version 2.0\nThis is the license body.",
         readme_ru="# Приручение\n\nПодробности тут.",
+        releases=[
+            ReleaseCut(
+                tag="minecraft-1.21.1-neoforge",
+                minecraft="1.21.1",
+                loader="NeoForge",
+                mod_jars=[JarLink("tamedphantoms-1.0.0.jar", "https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-neoforge/tamedphantoms-1.0.0.jar", ["NeoForge"])],
+                dependency_jars=[JarLink("kotlinforforge-5.8.0-all.jar", "https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-neoforge/kotlinforforge-5.8.0-all.jar", ["NeoForge"])],
+                jars_classified=True,
+                archive_url="https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-neoforge/all-jars.zip",
+                archive_name="all-jars.zip",
+            )
+        ],
     )
     page = render_page(Catalog(mods=[mod], fetched_at=1_700_000_000), "ru", "name")
     assert "Приручение фантомов" in page
@@ -203,7 +216,7 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "<dialog" in page
     assert "<details" not in page
     assert "donate-widget.js" in page
-    assert "column-width: 300px" in page
+    assert "grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))" in page
     assert "--radius: 6px" in page
     assert 'class="custom-select"' not in page
     assert "на главную" not in page
@@ -212,10 +225,12 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert "::selection" in page
     assert "::-webkit-scrollbar" in page
     assert 'href="/mods?lang=en"' in page
-    assert 'href="/mods/?download=tamedphantoms-mod"' in page
-    assert "loader=" not in page
+    assert 'href="https://github.com/Nergan/tamedphantoms-mod/releases/download/minecraft-1.21.1-neoforge/all-jars.zip"' in page
+    assert "/mods/?download=" not in page
+    assert "Minecraft 1.21.1" not in page
     assert 'class="loader-tab' not in page
-    assert 'download="tamedphantoms-mod.zip"' in page
+    assert 'download="all-jars.zip"' in page
+    assert 'data-external="true"' in page
     assert 'class="btn zip"' in page
     assert 'class="file-list"' in page
     assert "скачать всё" in page
@@ -246,45 +261,6 @@ Minecraft **1.21.1** / NeoForge
     assert "geckolib-neoforge-1.21.1-4.7.6.jar" in [jar.name for jar in deps]
     assert mod_jars[0].loaders == ["NeoForge"]
     assert all(jar.loaders == ["NeoForge"] for jar in deps)
-
-
-def test_jar_archive_packs_the_card_files(monkeypatch):
-    import io
-    import zipfile
-
-    from minecraft_mods.catalog import build_jar_archive
-
-    def fake_get(url, headers, max_bytes=1_000_000):
-        return 200, f"bytes:{url}".encode(), {}
-
-    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
-    mod = ModEntry(
-        repo="reallyusefulribbits-mod",
-        name="Really Useful Ribbits",
-        description_en="",
-        description_ru="",
-        github_url="https://github.com/Nergan/reallyusefulribbits-mod",
-        license_id="MPL-2.0",
-        license_name="MPL",
-        license_url="",
-        version="v1.0.0!",
-        minecraft="1.21.1",
-        loaders=["NeoForge"],
-        mod_jars=[JarLink("reallyusefulribbits-1.0.0.jar", "https://example.test/mod.jar")],
-        dependency_jars=[JarLink("kotlinforforge-5.8.0-all.jar", "https://example.test/dep.jar")],
-        jars_classified=True,
-        has_release=True,
-        modrinth_state="published",
-        modrinth_url="https://modrinth.com/mod/really-useful-ribbits",
-        modrinth_status="",
-    )
-    payload, filename = build_jar_archive(mod)
-    assert filename == "reallyusefulribbits-mod.zip"
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        assert archive.namelist() == [
-            "reallyusefulribbits-1.0.0.jar",
-            "kotlinforforge-5.8.0-all.jar",
-        ]
 
 
 MULTI_BODY = """
@@ -336,12 +312,7 @@ def _panel(page: str, slug: str) -> str:
     return page[start:end]
 
 
-def test_each_loader_tab_lists_and_packs_only_its_jars(monkeypatch):
-    import io
-    import zipfile
-
-    from minecraft_mods.catalog import CatalogError, build_jar_archive
-
+def test_each_loader_tab_lists_only_its_jars():
     assets = [
         _asset("critters-forge-1.0.0.jar"),
         _asset("critters-fabric-1.0.0.jar"),
@@ -365,9 +336,9 @@ def test_each_loader_tab_lists_and_packs_only_its_jars(monkeypatch):
     assert page.count('role="tab"') == 3
     assert 'class="loader-tab is-active"' in page
     assert 'aria-selected="true"' in page
-    assert page.count("скачать всё") == 3
-    assert "Minecraft 1.21.1 · v1.0.0" in page
-    assert "Minecraft 1.21.1 · Fabric" not in page
+    assert "скачать всё" not in page
+    assert "v1.0.0" in page
+    assert "Minecraft 1.21.1" not in page
     fabric = _panel(page, "fabric")
     neoforge = _panel(page, "neoforge")
     forge = _panel(page, "forge")
@@ -377,42 +348,16 @@ def test_each_loader_tab_lists_and_packs_only_its_jars(monkeypatch):
     assert "kotlinforforge" not in fabric
     assert "geckolib-forge" not in fabric
     assert "critters-neoforge" not in fabric
-    assert 'href="/mods/?download=critters-mod&amp;loader=fabric"' in fabric
-    assert 'download="critters-mod-fabric.zip"' in fabric
+    assert "/mods/?download=" not in fabric
     assert "critters-neoforge-1.0.0.jar" in neoforge
     assert "kotlinforforge-5.8.0-all.jar" in neoforge
     assert "fabric-language-kotlin" not in neoforge
     assert "geckolib-forge" not in neoforge
-    assert 'href="/mods/?download=critters-mod&amp;loader=neoforge"' in neoforge
-    assert 'download="critters-mod-neoforge.zip"' in neoforge
     assert " hidden" in neoforge
     assert "critters-forge-1.0.0.jar" in forge
     assert "kotlinforforge-5.8.0-all.jar" in forge
     assert "geckolib-forge-1.21.1.jar" in forge
     assert "fabric-language-kotlin" not in forge
-    assert 'href="/mods/?download=critters-mod&amp;loader=forge"' in forge
-    assert 'download="critters-mod-forge.zip"' in forge
-
-    def fake_get(url, headers, max_bytes=1_000_000):
-        return 200, url.encode(), {}
-
-    monkeypatch.setattr("minecraft_mods.catalog._http_get", fake_get)
-    payload, filename = build_jar_archive(mod, "fabric")
-    assert filename == "critters-mod-fabric.zip"
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        assert archive.namelist() == [
-            "critters-fabric-1.0.0.jar",
-            "fabric-language-kotlin-1.13.2.jar",
-            "architectury-9.2.14.jar",
-        ]
-    _payload, forge_name = build_jar_archive(mod, "forge")
-    assert forge_name == "critters-mod-forge.zip"
-    try:
-        build_jar_archive(mod, "quilt")
-    except CatalogError as exc:
-        assert exc.status == 404
-    else:
-        raise AssertionError("quilt")
 
 
 def test_an_untagged_mod_jar_stays_with_the_other_loader_when_fabric_is_named():
@@ -496,8 +441,8 @@ Minecraft **1.21.1** / Fabric, NeoForge
     assert mod.mod_jars[0].loaders == []
     page = render_page(Catalog(mods=[mod]), "en", "name")
     assert 'class="loader-tab' not in page
-    assert 'href="/mods/?download=critters-mod"' in page
-    assert "loader=" not in page
+    assert 'class="btn zip"' not in page
+    assert "/mods/?download=" not in page
 
 
 def test_html_release_notes_keep_a_loader_column():
@@ -720,17 +665,17 @@ def test_github_rate_limit_keeps_the_mod_and_reads_the_readme_as_a_file(monkeypa
     assert "rate-limiting" in page
 
 
-def _release(tag: str, names: list[str], body: str = "") -> dict:
+def _release(tag: str, names: list[str], body: str = "", repo: str = "example") -> dict:
     assets = [
         {
             "name": "all-jars.zip",
-            "browser_download_url": f"https://github.com/Nergan/example/releases/download/{tag}/all-jars.zip",
+            "browser_download_url": f"https://github.com/Nergan/{repo}/releases/download/{tag}/all-jars.zip",
         }
     ]
     assets.extend(
         {
             "name": name,
-            "browser_download_url": f"https://github.com/Nergan/example/releases/download/{tag}/{name}",
+            "browser_download_url": f"https://github.com/Nergan/{repo}/releases/download/{tag}/{name}",
         }
         for name in names
     )
@@ -755,14 +700,17 @@ def test_each_version_and_loader_is_its_own_release_with_a_prebuilt_zip():
         _release(
             "minecraft-26.3-fabric",
             ["placedsticks-fabric-26.3-1.0.0.jar", "fabric-api-0.162.0+26.3.jar"],
+            repo="placed-sticks-mod",
         ),
         _release(
             "minecraft-26.3-neoforge",
             ["placedsticks-neoforge-26.3-1.0.0.jar", "kotlinforforge-6.4.0-all.jar"],
+            repo="placed-sticks-mod",
         ),
         _release(
             "minecraft-1.21.1-fabric",
             ["placedsticks-fabric-1.21.1-1.0.0.jar", "fabric-api-0.116.17+1.21.1.jar"],
+            repo="placed-sticks-mod",
         ),
     ]
     cuts = cuts_from_releases("placed-sticks-mod", documents[2:])
@@ -860,12 +808,13 @@ def test_each_version_and_loader_is_its_own_release_with_a_prebuilt_zip():
     assert "26.3 · NeoForge" in page
     assert "1.21.1 · Fabric" in page
     assert "1.21.1 · NeoForge" not in page
-    assert 'href="/mods/?download=placed-sticks-mod&amp;minecraft=26.3&amp;loader=fabric"' in page
+    assert 'href="https://github.com/Nergan/placed-sticks-mod/releases/download/minecraft-26.3-fabric/all-jars.zip"' in page
     assert 'data-external="true"' in page
-    assert "all-jars.zip" not in page
+    assert "all-jars.zip</a>" not in page
+    assert "Minecraft 26.3, 1.21.1" not in page
     document = mod_document(mod)
     assert document["releases"][0]["archive_url"].endswith("/all-jars.zip")
-    assert document["download"].endswith("minecraft=26.3&loader=fabric")
+    assert document["download"].endswith("/minecraft-26.3-fabric/all-jars.zip")
 
 
 def test_download_redirects_to_the_prebuilt_zip(monkeypatch):

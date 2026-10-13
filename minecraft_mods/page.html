@@ -108,19 +108,19 @@
     }
 
     .mods {
-      column-width: 300px;
-      column-gap: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      align-items: start;
     }
 
     .mod {
-      display: inline-flex;
+      display: flex;
       flex-direction: column;
       width: 100%;
       min-width: 0;
-      margin: 0 0 16px;
+      margin: 0;
       padding: 12px 14px 13px;
-      break-inside: avoid;
-      vertical-align: top;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);

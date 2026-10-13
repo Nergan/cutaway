@@ -27,8 +27,6 @@ SCHEMA = 7
 FRESH_SECONDS = 60 * 60
 STALE_SECONDS = 10 * 60
 MAX_BYTES = 1_000_000
-JAR_BYTES = 32 * 1024 * 1024
-ARCHIVE_BYTES = 64 * 1024 * 1024
 
 GITHUB_HEADERS = {
     "User-Agent": "nargan-cutaway-mods",
@@ -342,6 +340,22 @@ def trusted_bundle(repo: str, url: str) -> bool:
     prefix = f"/{GITHUB_USER}/{repo}/releases/download/"
     path = urllib.parse.unquote(parts.path)
     return path.startswith(prefix) and path.lower().endswith("/all-jars.zip")
+
+
+def release_zip(repo: str, url: str) -> str:
+    """The release's published ``all-jars.zip``, when the address is that asset."""
+    return url if trusted_bundle(repo, url) else ""
+
+
+def published_zip(mod: ModEntry, loader: str | None = None, minecraft: str | None = None) -> str:
+    """Zip a download query should follow. The site does not pack jars."""
+    if not mod.releases:
+        return ""
+    try:
+        cut = choose_release(mod, loader, minecraft)
+    except CatalogError:
+        return ""
+    return release_zip(mod.repo, cut.archive_url)
 
 
 def _release_sort_key(cut: ReleaseCut) -> tuple:
@@ -1160,54 +1174,6 @@ def _assets_by_tag(page: str, repo: str) -> dict[str, list[dict[str, str]]]:
 def _github_url(repo: str, suffix: str) -> str:
     base = f"https://api.github.com/repos/{GITHUB_USER}/{urllib.parse.quote(repo)}"
     return f"{base}/{suffix}"
-
-
-def build_jar_archive(
-    mod: ModEntry,
-    loader: str | None = None,
-    minecraft: str | None = None,
-) -> tuple[bytes, str]:
-    """Download one release's jars and pack them. Used when that release has no prebuilt zip."""
-    import io
-    import zipfile
-
-    jars = [*mod.mod_jars, *mod.dependency_jars]
-    suffix = ""
-    if mod.releases:
-        cut = choose_release(mod, loader, minecraft)
-        jars = [*cut.mod_jars, *cut.dependency_jars]
-        bits = [bit for bit in (cut.minecraft, cut.loader.lower()) if bit]
-        if bits:
-            suffix = "-" + "-".join(bits)
-    elif loader:
-        canonical = _canonical_loader(loader)
-        if canonical is None:
-            raise CatalogError(f"Unknown loader {loader}.", status=404)
-        jars = [jar for jar in jars if canonical in jar.loaders]
-        suffix = f"-{canonical.lower()}"
-    if not jars:
-        raise CatalogError(f"{mod.repo} has no jars to archive.", status=404)
-    buffer = io.BytesIO()
-    total = 0
-    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
-        seen: set[str] = set()
-        for jar in jars:
-            if jar.name in seen or not jar.url.startswith(("https://", "http://")):
-                continue
-            seen.add(jar.name)
-            status, payload, _headers = _http_get(
-                jar.url,
-                {"User-Agent": GITHUB_HEADERS["User-Agent"]},
-                max_bytes=JAR_BYTES,
-            )
-            if status != 200 or not payload:
-                raise CatalogError(f"Download of {jar.name} returned {status}.")
-            total += len(payload)
-            if total > ARCHIVE_BYTES:
-                raise CatalogError("The jar archive is too large.")
-            archive.writestr(jar.name, payload)
-    safe_repo = re.sub(r"[^A-Za-z0-9._-]+", "-", mod.repo).strip("-") or "mods"
-    return buffer.getvalue(), f"{safe_repo}{suffix}.zip"
 
 
 def _http_get(

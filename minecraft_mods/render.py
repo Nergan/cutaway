@@ -10,8 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from minecraft_mods.catalog import Catalog, ModEntry, ReleaseCut, loader_panels, loader_slug
-from minecraft_mods.search import archive_url
+from minecraft_mods.catalog import Catalog, ModEntry, ReleaseCut, loader_panels, loader_slug, release_zip
 
 _PAGE = Path(__file__).with_name("page.html")
 _INLINE = re.compile(
@@ -154,8 +153,6 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
     panels = loader_panels(mod)
     cuts = mod.releases if len(mod.releases) >= 2 else []
     meta = []
-    if mod.minecraft:
-        meta.append(f"Minecraft {mod.minecraft}")
     if not panels and not cuts:
         meta.extend(mod.loaders)
     if mod.version:
@@ -186,8 +183,7 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
         download = ""
     else:
         files = _files(mod, text)
-        loader, minecraft, external = _single_download(mod)
-        download = _download_all(mod, text, loader, minecraft, external)
+        download = _download_all(text, _single_bundle(mod))
     return f"""
 <article class="mod">
   <h2>{html.escape(mod.name)}</h2>
@@ -203,11 +199,10 @@ def _card(mod: ModEntry, lang: str, text: dict) -> str:
 """
 
 
-def _single_download(mod: ModEntry) -> tuple[str, str, bool]:
+def _single_bundle(mod: ModEntry) -> str:
     if len(mod.releases) != 1:
-        return "", "", False
-    cut = mod.releases[0]
-    return loader_slug(cut.loader), cut.minecraft, bool(cut.archive_url)
+        return ""
+    return release_zip(mod.repo, mod.releases[0].archive_url)
 
 
 def _release_tabs(mod: ModEntry, cuts: list[ReleaseCut], text: dict) -> str:
@@ -224,12 +219,13 @@ def _release_tabs(mod: ModEntry, cuts: list[ReleaseCut], text: dict) -> str:
             f'aria-selected="{selected}" data-loader="{html.escape(slug, quote=True)}">'
             f"{html.escape(label)}</button>"
         )
-        hidden = "" if active else " hidden"
         bodies.append(
-            f'<div class="loader-panel" role="tabpanel" data-loader-panel="{html.escape(slug, quote=True)}"{hidden}>'
-            f"{_files(mod, text, cut.mod_jars, cut.dependency_jars, cut.jars_classified)}"
-            f"{_download_all(mod, text, loader_slug(cut.loader), cut.minecraft, bool(cut.archive_url))}"
-            f"</div>"
+            _panel(
+                slug,
+                active,
+                _files(mod, text, cut.mod_jars, cut.dependency_jars, cut.jars_classified)
+                + _download_all(text, release_zip(mod.repo, cut.archive_url)),
+            )
         )
     return f'<div class="loader-tabs" role="tablist">{"".join(buttons)}</div>{"".join(bodies)}'
 
@@ -243,6 +239,7 @@ def _release_slug(cut: ReleaseCut) -> str:
 def _loader_tabs(mod: ModEntry, panels: list[tuple[str, list, list]], text: dict) -> str:
     buttons: list[str] = []
     bodies: list[str] = []
+    bundle = release_zip(mod.repo, mod.releases[0].archive_url) if len(mod.releases) == 1 else ""
     for index, (loader, mod_jars, dependency_jars) in enumerate(panels):
         slug = loader_slug(loader)
         active = index == 0
@@ -252,14 +249,22 @@ def _loader_tabs(mod: ModEntry, panels: list[tuple[str, list, list]], text: dict
             f'<button type="button" class="loader-tab{current}" role="tab" '
             f'aria-selected="{selected}" data-loader="{slug}">{html.escape(loader)}</button>'
         )
-        hidden = "" if active else " hidden"
         bodies.append(
-            f'<div class="loader-panel" role="tabpanel" data-loader-panel="{slug}"{hidden}>'
-            f"{_files(mod, text, mod_jars, dependency_jars)}"
-            f"{_download_all(mod, text, slug)}"
-            f"</div>"
+            _panel(
+                slug,
+                active,
+                _files(mod, text, mod_jars, dependency_jars) + _download_all(text, bundle),
+            )
         )
     return f'<div class="loader-tabs" role="tablist">{"".join(buttons)}</div>{"".join(bodies)}'
+
+
+def _panel(slug: str, active: bool, inner: str) -> str:
+    hidden = "" if active else " hidden"
+    return (
+        f'<div class="loader-panel" role="tabpanel" '
+        f'data-loader-panel="{html.escape(slug, quote=True)}"{hidden}>{inner}</div>'
+    )
 
 
 def _files(
@@ -293,26 +298,18 @@ def _files(
     return f'<div class="file-list">{body}</div>{note}'
 
 
-def _download_all(
-    mod: ModEntry,
-    text: dict,
-    loader: str = "",
-    minecraft: str = "",
-    external: bool = False,
-) -> str:
-    if not loader and not minecraft and not mod.mod_jars and not mod.dependency_jars:
+def _download_all(text: dict, bundle: str) -> str:
+    href = (bundle or "").strip()
+    if not href:
         return ""
-    href = archive_url(mod.repo, loader, minecraft)
-    parts = [part for part in (mod.repo, minecraft, loader) if part]
-    filename = "-".join(parts) + ".zip"
+    filename = urllib.parse.unquote(urlsplit(href).path.rsplit("/", 1)[-1]) or "all-jars.zip"
     label = html.escape(text["download_all"])
     busy = html.escape(text["zip_busy"], quote=True)
     fail = html.escape(text["zip_fail"], quote=True)
     file_attr = html.escape(filename, quote=True)
-    ready = ' data-external="true"' if external else ""
     return (
         f'<p class="card-foot"><a class="btn zip" href="{html.escape(href, quote=True)}" '
-        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}"{ready}>'
+        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}" data-external="true">'
         f'{label}<span class="zip-kind">.zip</span></a></p>'
     )
 

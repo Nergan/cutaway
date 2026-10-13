@@ -8,13 +8,7 @@ import re
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from minecraft_mods.catalog import (
-    CatalogError,
-    build_jar_archive,
-    choose_release,
-    get_catalog,
-    trusted_bundle,
-)
+from minecraft_mods.catalog import get_catalog, published_zip
 from minecraft_mods.render import render_page
 from minecraft_mods.search import mod_document, select_mods
 
@@ -82,24 +76,10 @@ async def _archive(repo: str, loader: str, minecraft: str) -> Response:
     mod = next((item for item in catalog.mods if item.repo == repo), None)
     if mod is None:
         raise HTTPException(status_code=404)
-    has_files = bool(mod.mod_jars or mod.dependency_jars or any(cut.archive_url for cut in mod.releases))
-    if not has_files:
+    url = published_zip(mod, loader or None, minecraft or None)
+    if not url:
         raise HTTPException(status_code=404)
-    try:
-        if mod.releases:
-            cut = choose_release(mod, loader or None, minecraft or None)
-            if trusted_bundle(mod.repo, cut.archive_url):
-                return RedirectResponse(cut.archive_url, status_code=302)
-        payload, filename = await asyncio.to_thread(
-            build_jar_archive, mod, loader or None, minecraft or None
-        )
-    except CatalogError as exc:
-        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
-    return Response(
-        content=payload,
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    return RedirectResponse(url, status_code=302)
 
 
 def _language(request: Request) -> str:
