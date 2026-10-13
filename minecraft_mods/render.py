@@ -26,8 +26,6 @@ _TEXT = {
         "empty": "No repositories ending in mod were found.",
         "jar": "mod",
         "download_all": "download all",
-        "zip_busy": "preparing zip…",
-        "zip_fail": "could not build the zip",
         "deps": "deps",
         "files": "jars",
         "no_release": "No GitHub release yet.",
@@ -57,8 +55,6 @@ _TEXT = {
         "empty": "Репозиториев с именем на mod не найдено.",
         "jar": "мод",
         "download_all": "скачать всё",
-        "zip_busy": "готовится zip…",
-        "zip_fail": "не удалось собрать zip",
         "deps": "зависимости",
         "files": "jar",
         "no_release": "Релиза на GitHub пока нет.",
@@ -309,14 +305,9 @@ def _download_all(text: dict, bundle: str) -> str:
     href = (bundle or "").strip()
     if not href:
         return ""
-    filename = urllib.parse.unquote(urlsplit(href).path.rsplit("/", 1)[-1]) or "all-jars.zip"
     label = html.escape(text["download_all"])
-    busy = html.escape(text["zip_busy"], quote=True)
-    fail = html.escape(text["zip_fail"], quote=True)
-    file_attr = html.escape(filename, quote=True)
     return (
-        f'<p class="card-foot"><a class="btn zip" href="{html.escape(href, quote=True)}" '
-        f'download="{file_attr}" data-file="{file_attr}" data-busy="{busy}" data-fail="{fail}" data-external="true">'
+        f'<p class="card-foot"><a class="btn zip" href="{html.escape(href, quote=True)}">'
         f'{label}<span class="zip-kind">.zip</span></a></p>'
     )
 

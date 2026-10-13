@@ -304,37 +304,6 @@
       font-weight: normal;
     }
 
-    .btn.zip.is-busy,
-    .btn.zip.is-busy:hover,
-    .btn.zip.is-busy:focus-visible {
-      opacity: 0.55;
-      cursor: not-allowed;
-      filter: none;
-    }
-
-    .btn.zip.is-busy::before {
-      content: "";
-      display: inline-block;
-      width: 0.75em;
-      height: 0.75em;
-      margin-right: 0.4em;
-      border: 2px solid currentColor;
-      border-right-color: transparent;
-      border-radius: 50%;
-      vertical-align: -0.1em;
-      animation: zip-spin 0.7s linear infinite;
-    }
-
-    @keyframes zip-spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .btn.zip.is-busy::before {
-        animation: none;
-      }
-    }
-
     .btn.is-disabled {
       position: relative;
       opacity: 0.5;
@@ -578,38 +547,6 @@
         placeMods(true);
       }).observe(modsRoot);
     }
-    document.querySelectorAll("a.btn.zip").forEach((link) => {
-      const idle = link.innerHTML;
-      link.addEventListener("click", async (event) => {
-        if (link.dataset.external === "true") return;
-        event.preventDefault();
-        if (link.classList.contains("is-busy") || link.getAttribute("aria-disabled") === "true") return;
-        link.classList.add("is-busy");
-        link.setAttribute("aria-busy", "true");
-        link.setAttribute("aria-disabled", "true");
-        link.textContent = link.dataset.busy || "";
-        try {
-          const response = await fetch(link.href);
-          if (!response.ok) throw new Error(String(response.status));
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const save = document.createElement("a");
-          save.href = url;
-          save.download = link.dataset.file || "mods.zip";
-          document.body.appendChild(save);
-          save.click();
-          save.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 1500);
-          link.innerHTML = idle;
-        } catch (error) {
-          link.textContent = link.dataset.fail || "";
-        } finally {
-          link.classList.remove("is-busy");
-          link.removeAttribute("aria-busy");
-          link.removeAttribute("aria-disabled");
-        }
-      });
-    });
   </script>
 </body>
 </html>

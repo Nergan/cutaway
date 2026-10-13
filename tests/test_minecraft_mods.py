@@ -232,9 +232,9 @@ def test_page_shows_a_mod_compactly_with_the_design_controls():
     assert page.count('role="tab"') == 1
     assert "1.21.1 · NeoForge" in page
     assert 'class="loader-tab is-active"' in page
-    assert 'download="all-jars.zip"' in page
-    assert 'data-external="true"' in page
     assert 'class="btn zip"' in page
+    assert 'download="' not in page
+    assert "data-external" not in page
     assert 'class="file-list"' in page
     assert "скачать всё" in page
     assert ">мод<" in page
@@ -812,7 +812,8 @@ def test_each_version_and_loader_is_its_own_release_with_a_prebuilt_zip():
     assert "1.21.1 · Fabric" in page
     assert "1.21.1 · NeoForge" not in page
     assert 'href="https://github.com/Nergan/placed-sticks-mod/releases/download/minecraft-26.3-fabric/all-jars.zip"' in page
-    assert 'data-external="true"' in page
+    assert "data-external" not in page
+    assert 'download="' not in page
     assert "all-jars.zip</a>" not in page
     assert "Minecraft 26.3, 1.21.1" not in page
     document = mod_document(mod)
