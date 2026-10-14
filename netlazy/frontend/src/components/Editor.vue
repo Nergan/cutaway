@@ -1,6 +1,35 @@
 <template>
-  <div class="editor-layout" :class="{ 'mobile-profile-collapsed': isMobile && isMobileProfileCollapsed }" ref="editorRoot">
-    <div class="tag-library-pane">
+  <div class="editor-layout" :class="{ 'editor-v2': isV2, 'mobile-profile-collapsed': !isV2 && isMobile && isMobileProfileCollapsed }" ref="editorRoot">
+    <div v-if="isV2" class="profile-tag-header">
+      <div class="feed-search-bar">
+        <div style="position: relative; display: flex; align-items: center; width: 100%;">
+          <input type="text" class="seamless-input search-header-input" v-model="profileTagQuery" @keydown.down.prevent="moveProfileTag(1)" @keydown.up.prevent="moveProfileTag(-1)" @keydown.enter.prevent="chooseHighlightedProfileTag" @keydown.escape="profileTagQuery = ''" :placeholder="store.t('select_profile_tags')" style="padding-right: 2.2rem !important;">
+          <transition name="fade">
+            <i v-if="profileTagQuery" class="bi bi-x-lg search-clear-btn" @click="profileTagQuery = ''"></i>
+          </transition>
+          <transition name="dropdown-fade">
+            <div class="glass-menu tag-search-dropdown" v-if="profileTagQuery.trim()" style="top: 100%; left: 0; right: 0; max-height: 250px; width: 100%;">
+              <div v-if="profileTagMatches.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
+              <template v-else>
+                <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" @click="selectProfileTag(tag.name)">
+                  <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
+                  <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)" style="color: var(--accent-moss);"></i>
+                </div>
+              </template>
+            </div>
+          </transition>
+        </div>
+      </div>
+      <div class="tag-scroll-area">
+        <span v-if="store.state.myProfile.tags.length === 0" class="profile-tag-empty">{{ store.t('no_tags') }}</span>
+        <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="'sel-'+tag" @click="toggleTag(tag)">
+          {{ store.getLocalizedTag(tag) }}
+          <i class="bi bi-x"></i>
+        </span>
+      </div>
+    </div>
+
+    <div class="tag-library-pane" v-if="!isV2">
       <div class="tag-library-header blurred-header" style="position: sticky; top: 0; z-index: 10;">
         <i class="bi bi-search" style="color:var(--text-muted); margin-right: 0.5rem;"></i>
         <div style="position: relative; display: flex; align-items: center; flex-grow: 1;">
@@ -33,20 +62,20 @@
       </div>
     </div>
 
-    <div class="profile-workspace-pane" :class="{collapsed: !isMobile && store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="workspacePaneStyle" tabindex="0" @paste="handlePaste" @click="handleWorkspaceClick">
-      <div class="resizer-v left" @mousedown="startResize" v-show="!isMobile && !store.state.isWorkspaceCollapsed"></div>
+    <div class="profile-workspace-pane" :class="{collapsed: !isV2 && !isMobile && store.state.isWorkspaceCollapsed, 'is-resizing': isResizingWorkspace}" :style="workspacePaneStyle" tabindex="0" @paste="handlePaste" @click="handleWorkspaceClick">
+      <div class="resizer-v left" @mousedown="startResize" v-show="!isV2 && !isMobile && !store.state.isWorkspaceCollapsed"></div>
       
-      <button class="workspace-toggle-btn" v-if="!isMobile && (store.state.isUserFriendlyInterface || store.state.isWorkspaceCollapsed)" @click.stop="store.state.isWorkspaceCollapsed = false" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
+      <button class="workspace-toggle-btn" v-if="!isV2 && !isMobile && (store.state.isUserFriendlyInterface || store.state.isWorkspaceCollapsed)" @click.stop="store.state.isWorkspaceCollapsed = false" :data-tooltip="store.state.isWorkspaceCollapsed ? store.t('my_profile') : store.t('cancel')">
         <i class="bi" :class="store.state.isWorkspaceCollapsed ? 'bi-chevron-left' : 'bi-chevron-right'"></i>
       </button>
 
-      <button type="button" class="mobile-profile-toggle" v-if="isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed" :aria-expanded="!isMobileProfileCollapsed">
+      <button type="button" class="mobile-profile-toggle" v-if="!isV2 && isMobile" @click.stop="isMobileProfileCollapsed = !isMobileProfileCollapsed" :aria-expanded="!isMobileProfileCollapsed">
         <span>{{ store.state.isUserFriendlyInterface ? store.t('uf_your_profile') : store.t('my_profile') }}</span>
         <i class="bi mobile-profile-chevron" :class="isMobileProfileCollapsed ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
       </button>
       
       <div class="workspace-scroll-area"
-           v-show="isMobile || !store.state.isWorkspaceCollapsed"
+           v-show="isV2 || isMobile || !store.state.isWorkspaceCollapsed"
            :class="{
              'mobile-profile-body': isMobile,
              'is-body-collapsed': isMobile && isMobileProfileCollapsed,
@@ -66,6 +95,7 @@
         </div>
         
         <template v-else>
+          <p v-if="isV2 && !hasOwnProfile" class="profile-feed-note">{{ store.t('not_in_feed') }}</p>
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
             <span style="font-size: 0.75rem;">media</span>
             <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
@@ -143,14 +173,14 @@
             </div>
           </transition>
 
-          <div style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
+          <div v-if="!isV2" style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
             <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
               <span style="font-size: 0.75rem;">active tags</span>
               <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
             </div>
           </div>
           <transition name="collapse">
-            <div v-show="showActiveTags" class="mobile-collapse-content">
+            <div v-if="!isV2 && showActiveTags" class="mobile-collapse-content">
               <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
@@ -196,8 +226,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onActivated, onMounted, onUnmounted } from 'vue'
-import { useStore } from '../store/state.js'
+import { ref, computed, watch, onActivated, onMounted, onUnmounted } from 'vue'
+import { useStore, profileHasContent } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
@@ -213,9 +243,41 @@ const showActiveTags = ref(true)
 const showContacts = ref(true)
 const isMobile = ref(window.innerWidth <= 768)
 const isMobileProfileCollapsed = ref(false)
+const isV2 = computed(() => store.state.interfaceVersion === '2')
+const hasOwnProfile = computed(() => profileHasContent(store.state.myProfile))
+const profileTagQuery = ref('')
+const profileTagHighlight = ref(0)
+
+const profileTagMatches = computed(() => {
+  const query = profileTagQuery.value.toLowerCase().trim()
+  if (!query) return []
+  return store.state.availableSearchTags.filter(tag =>
+    (tag.name && String(tag.name).toLowerCase().includes(query)) ||
+    (tag.aliases && tag.aliases.some(alias => alias && String(alias).toLowerCase().includes(query))) ||
+    (tag.i18n && Object.values(tag.i18n).some(value => value && typeof value === 'string' && value.toLowerCase().includes(query)))
+  ).filter(tag => !tag.hidden).slice(0, 15)
+})
+
+watch(profileTagQuery, () => { profileTagHighlight.value = 0 })
+
+function moveProfileTag(dir) {
+  const count = profileTagMatches.value.length
+  if (!count) return
+  profileTagHighlight.value = (profileTagHighlight.value + dir + count) % count
+}
+
+function selectProfileTag(name) {
+  toggleTag(name)
+  profileTagQuery.value = ''
+}
+
+function chooseHighlightedProfileTag() {
+  const tag = profileTagMatches.value[profileTagHighlight.value]
+  if (tag) selectProfileTag(tag.name)
+}
 
 const workspacePaneStyle = computed(() => {
-  if (isMobile.value) return undefined
+  if (isMobile.value || isV2.value) return undefined
   return { width: store.state.isWorkspaceCollapsed ? '0px' : store.state.workspaceWidth + 'px' }
 })
 
@@ -259,7 +321,7 @@ onActivated(() => {
 })
 
 function handleWorkspaceClick(e) {
-  if (isMobile.value) return
+  if (isMobile.value || isV2.value) return
   if (!store.state.isUserFriendlyInterface) {
     if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone') && !e.target.closest('.contact-row')) {
       store.state.isWorkspaceCollapsed = true;

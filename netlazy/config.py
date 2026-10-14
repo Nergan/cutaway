@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "staging", "production"] = "production"
 
+    # Site interface. "1" is the previous layout, "2" is the flat one.
+    # Set this to "1", or INTERFACE_VERSION=1, to switch back.
+    interface_version: Literal["1", "2"] = "2"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

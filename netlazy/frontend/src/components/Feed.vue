@@ -9,8 +9,9 @@
           </transition>
           
           <transition name="dropdown-fade">
-            <div class="glass-menu tag-search-dropdown" v-if="filterText && visibleSearchTags.length > 0" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
-              <transition-group name="tag-list" tag="div">
+            <div class="glass-menu tag-search-dropdown" v-if="filterText && (visibleSearchTags.length > 0 || isV2)" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
+              <div v-if="isV2 && visibleSearchTags.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
+              <transition-group name="tag-list" tag="div" v-else>
                 <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" @click="handleDropdownTagClick(tag)">
                   <span class="dropdown-tag-name"><span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span></span>
                   <div class="dropdown-tag-filters" @click.stop>
@@ -154,13 +155,13 @@
       </transition>
     </Teleport>
 
-    <div v-if="store.state.isFeedLoading && store.state.feed.length === 0">
+    <div v-if="store.state.isFeedLoading && store.state.feed.length === 0 && !selfCard">
       <div style="text-align: center; padding: 4rem 2rem;">
         <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
       </div>
     </div>
 
-    <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0">
+    <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0 && !selfCard">
       <button class="footer-action icon-btn" @click="reloadFeed" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted);">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
@@ -172,7 +173,7 @@
 
     <div class="masonry-grid" @click="closeAllMenus" v-else>
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
+        <div class="card" :class="{ 'card-self': profile.isSelf }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
           
           <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.media_id)">
             <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
@@ -202,7 +203,7 @@
             </template>
           </div>
           
-          <div style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
+          <div v-if="!profile.isSelf" style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
             <template v-if="!profile.sent">
               <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
@@ -283,10 +284,19 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
-import { useStore } from '../store/state.js'
+import { useStore, profileHasContent } from '../store/state.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
 const store = useStore()
+const isV2 = computed(() => store.state.interfaceVersion === '2')
+const selfCard = computed(() => {
+  if (!isV2.value || !profileHasContent(store.state.myProfile)) return null
+  return {
+    ...store.state.myProfile,
+    user_id: store.state.myProfile.user_id || store.state.userId || 'self',
+    isSelf: true
+  }
+})
 const feedRoot = ref(null)
 const filterText = ref('')
 const isLoading = ref(false)
@@ -317,7 +327,13 @@ const masonryColumns = computed(() => {
   const cols = Array.from({length: columnsCount.value}, () => []);
   const heights = Array.from({length: columnsCount.value}, () => 0);
   
+  const profiles = []
+  if (selfCard.value) profiles.push(selfCard.value)
   store.state.feed.forEach(profile => {
+    if (!selfCard.value || profile.user_id !== selfCard.value.user_id) profiles.push(profile)
+  })
+
+  profiles.forEach((profile, index) => {
     let h = 80;
     if (profile.audio) h += 40;
     if (profile.media && profile.media.length > 0) {
@@ -329,12 +345,14 @@ const masonryColumns = computed(() => {
     h += 50;
     
     let minIdx = 0;
-    let minH = heights[0];
-    for (let i = 1; i < heights.length; i++) {
-        if (heights[i] < minH) {
-            minH = heights[i];
-            minIdx = i;
-        }
+    if (!(index === 0 && profile.isSelf)) {
+      let minH = heights[0];
+      for (let i = 1; i < heights.length; i++) {
+          if (heights[i] < minH) {
+              minH = heights[i];
+              minIdx = i;
+          }
+      }
     }
     
     cols[minIdx].push(profile);

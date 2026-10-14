@@ -195,3 +195,47 @@ class TestSpaRoutes:
         response = app_client.get("/api/inbox", headers={"accept": "text/html"}, follow_redirects=False)
         assert response.status_code == 303
         assert response.headers["location"].endswith("/profile")
+
+
+class TestInterfaceVersions:
+    def test_config_defaults_to_the_flat_interface(self):
+        from netlazy.config import Settings
+
+        assert Settings.model_fields["interface_version"].default == "2"
+
+    def test_ui_endpoint_reports_the_configured_version(self, app_client, monkeypatch):
+        from netlazy.config import settings
+
+        monkeypatch.setattr(settings, "interface_version", "1")
+        response = app_client.get("/api/ui")
+        assert response.status_code == 200
+        assert response.json() == {"interface_version": "1"}
+
+    def test_served_html_uses_the_configured_version(self):
+        from netlazy.main import apply_interface_version
+
+        stamped = apply_interface_version("<html><head></head><body></body></html>", "2")
+        assert 'window.__NETLAZY_UI_VERSION__="2"' in stamped
+        switched = apply_interface_version(stamped, "1")
+        assert 'window.__NETLAZY_UI_VERSION__="1"' in switched
+        assert switched.count("window.__NETLAZY_UI_VERSION__") == 1
+
+    def test_version_two_keeps_version_one_markup(self):
+        editor = read_text("frontend/src/components/Editor.vue")
+        feed = read_text("frontend/src/components/Feed.vue")
+        styles = read_text("frontend/css/v2.css")
+        assert 'class="tag-library-pane" v-if="!isV2"' in editor
+        assert "select_profile_tags" in editor
+        assert "not_in_feed" in editor
+        assert "profile-tag-header" in editor
+        assert "card-self" in feed
+        assert "no_tags_found" in feed
+        assert "backdrop-filter: none" in styles
+        assert "body.ui-v2 .filter-icon" in styles
+
+    def test_new_copy_is_localized(self):
+        translations = read_text("frontend/src/store/translations.js")
+        for locale in LOCALES:
+            keys = extract_locale_keys(translations, locale)
+            assert "select_profile_tags" in keys
+            assert "not_in_feed" in keys

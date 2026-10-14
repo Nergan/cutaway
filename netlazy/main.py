@@ -210,10 +210,33 @@ def fetch_gh_version():
     return json.loads(payload)
 
 
+def normalize_interface_version(value) -> str:
+    return "2" if str(value) == "2" else "1"
+
+
+def apply_interface_version(html: str, version: str) -> str:
+    """Stamp the configured interface into the page so a restart picks it up."""
+    version = normalize_interface_version(version)
+    assignment = f'window.__NETLAZY_UI_VERSION__="{version}"'
+    updated, count = re.subn(
+        r'window\.__NETLAZY_UI_VERSION__\s*=\s*"[12]"',
+        assignment,
+        html,
+        count=1,
+    )
+    if count:
+        return updated
+    snippet = f"<script>{assignment};</script>"
+    if "</head>" in html:
+        return html.replace("</head>", snippet + "</head>", 1)
+    return snippet + html
+
+
 @router.get("/api")
 async def api_index():
     return {
         "health": "/netlazy/api/health",
+        "ui": "/netlazy/api/ui",
         "app_version": "/netlazy/api/app-version",
         "auth": "/netlazy/api/auth",
         "profile": "/netlazy/api/profile",
@@ -245,6 +268,11 @@ async def get_app_version():
                 except Exception:
                     pass
     return _cached_version or {"version": "0.0.1", "url": ""}
+
+
+@router.get("/api/ui")
+async def ui_config():
+    return {"interface_version": normalize_interface_version(settings.interface_version)}
 
 
 @router.get("/api/health")
@@ -287,7 +315,11 @@ async def serve_spa(request: Request, full_path: str = ""):
 
     index_file = BASE_DIR / "static" / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
+        html = apply_interface_version(
+            index_file.read_text(encoding="utf-8"),
+            settings.interface_version,
+        )
+        return HTMLResponse(content=html)
 
     return HTMLResponse(
         content="<html><body><h1>Frontend Not Built Yet</h1></body></html>",

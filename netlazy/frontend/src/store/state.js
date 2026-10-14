@@ -18,6 +18,7 @@ const defaultState = {
     lang: 'en',
     
     isUserFriendlyInterface: true,
+    interfaceVersion: '1',
     
     userId: null,
     currentAnchor: null,
@@ -71,6 +72,15 @@ const defaultState = {
 
 const VALID_VIEWS = ['feed', 'editor', 'inbox', 'vault'];
 
+export function profileHasContent(profile) {
+    if (!profile) return false;
+    if (String(profile.bio || '').trim()) return true;
+    if (Array.isArray(profile.tags) && profile.tags.length > 0) return true;
+    if (Array.isArray(profile.media) && profile.media.some(item => item && (item.url || item.blobUrl))) return true;
+    if (profile.audio) return true;
+    return (profile.contacts || []).some(contact => String(contact.value || '').trim() && contact.type !== 'unknown');
+}
+
 export function isInboxUnread(item) {
     if (!item) return false;
     if (item.status === 'pending' && !item.is_sender) return !item.is_read;
@@ -85,6 +95,31 @@ export function useStore() {
 
     const state = reactive({ ...defaultState });
     let pollInterval = null;
+
+    function applyInterfaceVersion(value) {
+        state.interfaceVersion = String(value) === '2' ? '2' : '1';
+        document.body.classList.toggle('ui-v2', state.interfaceVersion === '2');
+        document.body.classList.toggle('ui-v1', state.interfaceVersion !== '2');
+    }
+
+    async function loadInterfaceVersion() {
+        const baked = typeof window !== 'undefined' ? window.__NETLAZY_UI_VERSION__ : '';
+        if (baked) applyInterfaceVersion(baked);
+        try {
+            const root = Capacitor.isNativePlatform()
+                ? String(import.meta.env.VITE_API_URL || 'https://nargan-projects.hf.space/netlazy/api').replace(/\/api\/?$/, '')
+                : '/netlazy';
+            const response = await fetch(`${root}/api/ui`);
+            if (response.ok) {
+                const data = await response.json();
+                applyInterfaceVersion(data.interface_version);
+                return;
+            }
+        } catch (e) {
+            /* keep the version stamped into the page */
+        }
+        if (!baked) applyInterfaceVersion('1');
+    }
 
     const tagLocalesCache = computed(() => {
         const cache = new Map();
@@ -181,6 +216,7 @@ export function useStore() {
     }
 
     async function loadSavedState() {
+        await loadInterfaceVersion();
         try {
             const { value: raw } = await Preferences.get({ key: STORAGE_KEY });
             if (raw) {
