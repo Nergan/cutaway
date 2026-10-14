@@ -33,11 +33,45 @@
 .tree-actions { display: none; }
 .tree-item:hover .tree-actions,
 .tree-item.active .tree-actions,
-.tree-item.selected .tree-actions { 
+.tree-item.selected .tree-actions,
+.tree-item.is-converting .tree-actions {
     display: flex !important; /* Overrides none during interaction states */
 }
 .tree-actions i { opacity: 0.7; font-size: 0.9rem; transition: opacity 0.2s, transform 0.2s; }
 .tree-actions i:hover { opacity: 1; transform: scale(1.1); }
+.tree-actions .convert-btn.is-converting,
+.tree-actions .convert-btn.is-converting:hover {
+    opacity: 1;
+    pointer-events: none;
+    transition: none;
+    animation: convert-spin 0.8s linear infinite;
+}
+@keyframes convert-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .tree-actions .convert-btn.is-converting,
+    .tree-actions .convert-btn.is-converting:hover { animation: none; }
+}
+
+.convert-menu {
+    position: fixed;
+    z-index: 2000;
+    min-width: 7.5rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+}
+.convert-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: 'Comfortaa', sans-serif;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.35rem;
+}
+.convert-menu-item:hover { background: rgba(255, 255, 255, 0.2); color: white; }
 
 .action-btn {
     background: transparent; border: 1px solid rgba(255, 255, 255, 0.2);

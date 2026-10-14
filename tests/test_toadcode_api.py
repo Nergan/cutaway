@@ -1,4 +1,5 @@
 import hashlib
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -138,3 +139,15 @@ def test_a_wrong_token_and_a_bad_path_are_rejected(client: TestClient):
     index = client.get("/toadcode/api")
     assert index.status_code == 200
     assert index.json()["create"] == "POST /toadcode/api/repos"
+
+
+def test_sidebar_converts_json_yml_and_toml_through_formular():
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "toadcode" / "scripts" / "vfs.js").read_text(encoding="utf-8")
+    styles = (root / "toadcode" / "static" / "styles" / "tree.css").read_text(encoding="utf-8")
+    assert "bi-arrow-repeat" in script
+    assert "/formular/api/files" in script
+    assert "/conversions" in script
+    assert "formular: 'yaml'" in script
+    assert "ext: 'yml'" in script
+    assert "convert-spin" in styles

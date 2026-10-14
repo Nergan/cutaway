@@ -451,7 +451,152 @@
         return root;
     };
 
+    const CONVERT_SOURCE = { json: 'json', yml: 'yaml', yaml: 'yaml', toml: 'toml' };
+    const CONVERT_TARGETS = [
+        { formular: 'json', ext: 'json', label: 'JSON' },
+        { formular: 'yaml', ext: 'yml', label: 'YML' },
+        { formular: 'toml', ext: 'toml', label: 'TOML' },
+    ];
+    let convertingPath = null;
+    let convertMenu = null;
+    let convertMenuPath = null;
+
+    const closeConvertMenu = () => {
+        convertMenu?.remove();
+        convertMenu = null;
+        convertMenuPath = null;
+    };
+
+    const paintConverting = (path) => {
+        ui.fileTree?.querySelectorAll('.tree-item').forEach((row) => {
+            const on = Boolean(path) && row.dataset.path === path;
+            row.classList.toggle('is-converting', on);
+            row.querySelector('.convert-btn')?.classList.toggle('is-converting', on);
+        });
+    };
+
+    const readDetail = async (response) => {
+        try {
+            const body = await response.json();
+            if (typeof body.detail === 'string' && body.detail) return body.detail;
+        } catch (error) {
+            /* formular answered with an empty or non-JSON body */
+        }
+        return `Conversion failed (${response.status}).`;
+    };
+
+    const placeConvertMenu = (menu, button) => {
+        const rect = button.getBoundingClientRect();
+        let left = rect.left;
+        if (left + menu.offsetWidth > window.innerWidth - 8) left = window.innerWidth - menu.offsetWidth - 8;
+        let top = rect.bottom + 4;
+        if (top + menu.offsetHeight > window.innerHeight - 8) top = Math.max(8, rect.top - menu.offsetHeight - 4);
+        menu.style.left = `${Math.max(8, left)}px`;
+        menu.style.top = `${top}px`;
+    };
+
+    const openConvertMenu = (button, path) => {
+        if (convertingPath) return;
+        if (convertMenu && convertMenuPath === path) {
+            closeConvertMenu();
+            return;
+        }
+        closeConvertMenu();
+        const filename = path.split('/').pop();
+        const dot = filename.lastIndexOf('.');
+        const source = dot > 0 ? CONVERT_SOURCE[filename.slice(dot + 1).toLowerCase()] : '';
+        if (!source) return;
+        const menu = document.createElement('div');
+        menu.className = 'convert-menu dropdown-menu-transparent show border custom-font';
+        menu.setAttribute('role', 'menu');
+        CONVERT_TARGETS.filter((target) => target.formular !== source).forEach((target) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'convert-menu-item';
+            item.setAttribute('role', 'menuitem');
+            item.textContent = target.label;
+            item.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeConvertMenu();
+                convertFile(path, target);
+            });
+            menu.appendChild(item);
+        });
+        document.body.appendChild(menu);
+        placeConvertMenu(menu, button);
+        convertMenu = menu;
+        convertMenuPath = path;
+    };
+
+    const convertFile = async (path, target) => {
+        if (convertingPath || window.IS_READONLY) return;
+        const file = vfs.find((entry) => entry.path === path && !entry.is_dir);
+        if (!file) return;
+        const filename = path.split('/').pop();
+        const dot = filename.lastIndexOf('.');
+        if (dot <= 0) return;
+        const stem = filename.slice(0, dot);
+        const parent = path.slice(0, path.length - filename.length);
+        const newPath = `${parent}${stem}.${target.ext}`;
+        if (vfs.some((entry) => entry.path === newPath)) {
+            showNotification(`Name '${stem}.${target.ext}' already exists here!`, true);
+            return;
+        }
+        if (typingTimer) {
+            clearTimeout(typingTimer);
+            typingTimer = null;
+            saveStateToHistory();
+        }
+        if (activeFilePath === path && ui.codeInput) file.content = ui.codeInput.value;
+        const wasActive = activeFilePath === path;
+        convertingPath = path;
+        paintConverting(path);
+        beginLoad('Converting');
+        try {
+            await yieldToUi();
+            const body = new FormData();
+            body.append('files', new Blob([file.content ?? ''], { type: 'application/octet-stream' }), filename);
+            const uploaded = await fetch('/formular/api/files', { method: 'POST', body });
+            if (!uploaded.ok) throw new Error(await readDetail(uploaded));
+            const created = await uploaded.json();
+            const stored = created.files && created.files[0];
+            if (!stored || stored.error || !stored.id) throw new Error((stored && stored.error) || 'Conversion failed.');
+            const converted = await fetch(`/formular/api/files/${stored.id}/conversions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: target.formular }),
+            });
+            if (!converted.ok) throw new Error(await readDetail(converted));
+            const text = await converted.text();
+            file.path = newPath;
+            file.content = text;
+            if (selectedTreeNodes.has(path)) {
+                selectedTreeNodes.delete(path);
+                selectedTreeNodes.add(newPath);
+            }
+            if (wasActive) activeFilePath = newPath;
+            saveStateToHistory();
+            convertingPath = null;
+            renderTree();
+            if (wasActive) {
+                openFile(newPath);
+                clearTimeout(typingTimer);
+                typingTimer = null;
+            }
+            checkTotalSize();
+        } catch (error) {
+            const message = error && error.message ? error.message : 'Conversion failed.';
+            showNotification(message === 'Failed to fetch' ? 'Conversion failed.' : message, true);
+        } finally {
+            convertingPath = null;
+            endLoad();
+            paintConverting(null);
+        }
+    };
+
     const renderTree = () => {
+        closeConvertMenu();
         if (vfs.length === 0 && window.IS_READONLY) {
             ui.sidebar.classList.add('d-none');
             ui.resizer.classList.add('d-none');
@@ -499,6 +644,11 @@
             
             if (selectedTreeNodes.has(child.path)) div.classList.add('selected');
             if (focusedIndex === index) div.classList.add('focused-item');
+            const fileExt = !child.isDir && child.name.lastIndexOf('.') > 0
+                ? child.name.slice(child.name.lastIndexOf('.') + 1).toLowerCase()
+                : '';
+            const canConvert = Boolean(CONVERT_SOURCE[fileExt]);
+            if (child.path === convertingPath) div.classList.add('is-converting');
 
             const icon = child.isDir ? (expandedDirs.has(child.path) ? 'bi-folder2-open' : 'bi-folder-fill') : 'bi-file-earmark-code';
             const caret = child.isDir ? `<i class="bi ${expandedDirs.has(child.path) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'} me-1 flex-shrink-0" style="font-size:0.7rem;"></i>` : `<span class="me-3 flex-shrink-0"></span>`;
@@ -506,8 +656,12 @@
             let html = `${caret}<i class="bi ${icon} me-2 tree-icon flex-shrink-0"></i><span class="tree-name text-truncate flex-grow-1">${child.name}</span>`;
             
             if (!window.IS_READONLY) {
+                const convertBtn = canConvert
+                    ? `<i class="bi bi-arrow-repeat convert-btn action-icon-btn${child.path === convertingPath ? ' is-converting' : ''}" title="Convert"></i>`
+                    : '';
                 html += `<div class="tree-actions ms-2 flex-shrink-0 d-flex align-items-center">
-                            <i class="bi bi-pencil rename-btn action-icon-btn" title="Rename"></i>
+                            ${convertBtn}
+                            <i class="bi bi-pencil rename-btn action-icon-btn${canConvert ? ' ms-2' : ''}" title="Rename"></i>
                             <i class="bi bi-trash delete-btn ms-2 text-danger action-icon-btn" title="Delete"></i>
                          </div>`;
             }
@@ -529,7 +683,7 @@
                     return;
                 }
                 e.stopPropagation();
-                if (e.target.closest('.rename-btn, .delete-btn, .inline-edit-input')) return;
+                if (e.target.closest('.convert-btn, .rename-btn, .delete-btn, .inline-edit-input')) return;
                 
                 const path = item.dataset.path;
                 const isDir = item.dataset.isdir === 'true';
@@ -563,9 +717,15 @@
             });
 
             if (!window.IS_READONLY) {
+                const convertBtn = item.querySelector('.convert-btn');
                 const renameBtn = item.querySelector('.rename-btn');
                 const deleteBtn = item.querySelector('.delete-btn');
-                
+
+                if (convertBtn) convertBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openConvertMenu(convertBtn, item.dataset.path);
+                });
                 if (renameBtn) renameBtn.addEventListener('click', () => initiateRenameInline(item));
                 if (deleteBtn) deleteBtn.addEventListener('click', () => {
                     const pathToDelete = item.dataset.path;
@@ -952,7 +1112,14 @@
     };
 
     const bindGlobalEvents = () => {
+        document.addEventListener('pointerdown', (e) => {
+            if (!convertMenu) return;
+            if (e.target.closest('.convert-menu, .convert-btn')) return;
+            closeConvertMenu();
+        });
+        ui.fileTree?.addEventListener('scroll', () => closeConvertMenu());
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeConvertMenu();
             const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             const modifier = isMac ? e.metaKey : e.ctrlKey;
             
