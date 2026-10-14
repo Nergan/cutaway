@@ -29,6 +29,8 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   cursor: text;
 }
 .profile-workspace-pane.collapsed { border: none; }
+.profile-sheet { display: flex; flex-direction: column; }
+.profile-media-block, .profile-details { display: contents; }
 .workspace-scroll-area { height: 100%; width: 100%; min-width: 350px; overflow-y: auto; overflow-x: hidden; padding: 2.5rem; position: relative; transition: background 0.2s; }
 
 .workspace-scroll-area.drag-over-files {

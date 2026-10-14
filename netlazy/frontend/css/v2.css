@@ -96,6 +96,11 @@ body.ui-v2.light-theme .profile-tag-header .chip {
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
+body.ui-v2.light-theme .tag-scroll-area .chip:not(.require):not(.exclude):not(.bonus):not(.abonus) {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+}
+
 body.ui-v2 .tag-scroll-area .chip:hover,
 body.ui-v2 #lib-tags-zone .chip:hover,
 body.ui-v2 #active-tags-zone .chip:hover,
@@ -212,11 +217,50 @@ body.ui-v2 .profile-tag-header .feed-search-bar {
   position: relative;
 }
 
-body.ui-v2 .profile-tag-empty {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-style: italic;
-  align-self: center;
+body.ui-v2 .editor-v2 .profile-workspace-pane,
+body.ui-v2 .editor-v2 .profile-workspace-pane:hover {
+  background: var(--bg-base);
+}
+
+body.ui-v2 .editor-v2 .profile-workspace-pane,
+body.ui-v2 .editor-v2 .profile-workspace-pane * {
+  cursor: auto;
+}
+
+body.ui-v2 .editor-v2 .profile-workspace-pane input,
+body.ui-v2 .editor-v2 .profile-workspace-pane textarea {
+  cursor: text;
+}
+
+body.ui-v2 .editor-v2 .profile-workspace-pane .chip,
+body.ui-v2 .editor-v2 .profile-workspace-pane .contact-action,
+body.ui-v2 .editor-v2 .profile-workspace-pane .media-zone,
+body.ui-v2 .editor-v2 .profile-workspace-pane .mini-add-banner,
+body.ui-v2 .editor-v2 .profile-workspace-pane .feed-media-item,
+body.ui-v2 .editor-v2 .profile-workspace-pane .media-remove,
+body.ui-v2 .editor-v2 .profile-workspace-pane .media-blur-toggle,
+body.ui-v2 .editor-v2 .profile-workspace-pane .section-header,
+body.ui-v2 .editor-v2 .profile-workspace-pane button {
+  cursor: pointer;
+}
+
+body.ui-v2 .editor-v2 .profile-sheet {
+  display: flex;
+  flex-direction: column;
+}
+
+body.ui-v2 .editor-v2 .profile-details,
+body.ui-v2 .editor-v2 .profile-media-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+body.ui-v2 .editor-v2 .profile-details { order: 1; }
+body.ui-v2 .editor-v2 .profile-media-block { order: 2; }
+
+body.ui-v2 .editor-v2 .profile-bio-header {
+  margin-top: 0 !important;
 }
 
 body.ui-v2 .profile-feed-note {
@@ -246,6 +290,30 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
 }
 
 @media (min-width: 769px) {
+  body.ui-v2 .editor-v2 .profile-sheet {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(240px, 0.85fr);
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+  body.ui-v2 .editor-v2 .profile-details {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+  }
+  body.ui-v2 .editor-v2 .profile-media-block {
+    grid-column: 2;
+    grid-row: 1;
+    order: 0;
+  }
+  body.ui-v2 .editor-v2 .profile-sheet .mobile-collapse-header {
+    display: flex !important;
+    cursor: default;
+    pointer-events: none;
+  }
+  body.ui-v2 .editor-v2 .profile-sheet .mobile-collapse-icon {
+    display: none;
+  }
   body.ui-v2 .profile-tag-header {
     flex-direction: row;
     align-items: center;

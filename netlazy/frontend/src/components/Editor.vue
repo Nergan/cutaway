@@ -20,12 +20,14 @@
           </transition>
         </div>
       </div>
-      <div class="tag-scroll-area">
-        <span v-if="store.state.myProfile.tags.length === 0" class="profile-tag-empty">{{ store.t('no_tags') }}</span>
-        <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="'sel-'+tag" @click="toggleTag(tag)">
-          {{ store.getLocalizedTag(tag) }}
-          <i class="bi bi-x"></i>
-        </span>
+      <div class="tag-scroll-area" ref="profileTagScroller" @scroll="handleProfileTagScroll" @wheel="handleProfileTagWheel">
+        <div class="marquee-content">
+          <div class="marquee-group" v-for="copy in 3" :key="'profile-mq-'+copy" :aria-hidden="copy > 1 ? 'true' : null">
+            <span class="chip" v-for="tag in profileMarqueeTags" :key="copy + '-' + tag.name" @click.stop="selectMarqueeTag(tag.name)">
+              {{ store.getLocalizedTag(tag.name) }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -95,7 +97,8 @@
         </div>
         
         <template v-else>
-          <p v-if="isV2 && !hasOwnProfile" class="profile-feed-note">{{ store.t('not_in_feed') }}</p>
+          <div class="profile-sheet">
+          <div class="profile-media-block">
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
             <span style="font-size: 0.75rem;">media</span>
             <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
@@ -159,8 +162,11 @@
           </transition>
           
           <input type="file" ref="fileInput" hidden multiple accept="image/*,video/*,audio/*" @change="handleFileSelect">
+          </div>
 
-          <div class="section-header mobile-collapse-header" @click="showBio = !showBio" style="margin-top:2rem;">
+          <div class="profile-details">
+          <p v-if="isV2 && !hasOwnProfile" class="profile-feed-note">{{ store.t('not_in_feed') }}</p>
+          <div class="section-header mobile-collapse-header profile-bio-header" @click="showBio = !showBio" style="margin-top:2rem;">
             <span style="font-size: 0.75rem;">about me</span>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
@@ -173,14 +179,14 @@
             </div>
           </transition>
 
-          <div v-if="!isV2" style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
+          <div class="profile-tags-block" style="padding: 0.5rem 0; margin-bottom: 0; z-index: 9;">
             <div class="section-header mobile-collapse-header" @click="showActiveTags = !showActiveTags" style="margin: 0;">
               <span style="font-size: 0.75rem;">active tags</span>
               <i class="bi mobile-collapse-icon" :class="showActiveTags ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
             </div>
           </div>
           <transition name="collapse">
-            <div v-if="!isV2 && showActiveTags" class="mobile-collapse-content">
+            <div v-if="showActiveTags" class="mobile-collapse-content">
               <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
@@ -219,6 +225,8 @@
               </div>
             </div>
           </transition>
+          </div>
+          </div>
         </template>
       </div>
     </div>
@@ -226,8 +234,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onActivated, onMounted, onUnmounted } from 'vue'
-import { useStore, profileHasContent } from '../store/state.js'
+import { ref, computed, watch, onActivated, onMounted, onUnmounted, nextTick } from 'vue'
+import { useStore, profileHasContent, tagsMatchingQuery } from '../store/state.js'
 import api from '../utils/api.js'
 
 const store = useStore()
@@ -247,16 +255,15 @@ const isV2 = computed(() => store.state.interfaceVersion === '2')
 const hasOwnProfile = computed(() => profileHasContent(store.state.myProfile))
 const profileTagQuery = ref('')
 const profileTagHighlight = ref(0)
+const profileTagScroller = ref(null)
 
-const profileTagMatches = computed(() => {
-  const query = profileTagQuery.value.toLowerCase().trim()
-  if (!query) return []
-  return store.state.availableSearchTags.filter(tag =>
-    (tag.name && String(tag.name).toLowerCase().includes(query)) ||
-    (tag.aliases && tag.aliases.some(alias => alias && String(alias).toLowerCase().includes(query))) ||
-    (tag.i18n && Object.values(tag.i18n).some(value => value && typeof value === 'string' && value.toLowerCase().includes(query)))
-  ).filter(tag => !tag.hidden).slice(0, 15)
-})
+const profileTagMatches = computed(() =>
+  tagsMatchingQuery(store.state.availableSearchTags, profileTagQuery.value).slice(0, 15)
+)
+
+const profileMarqueeTags = computed(() =>
+  store.state.availableSearchTags.filter(tag => !tag.hidden)
+)
 
 watch(profileTagQuery, () => { profileTagHighlight.value = 0 })
 
@@ -269,6 +276,35 @@ function moveProfileTag(dir) {
 function selectProfileTag(name) {
   toggleTag(name)
   profileTagQuery.value = ''
+}
+
+function selectMarqueeTag(name) {
+  toggleTag(name)
+  profileTagQuery.value = ''
+}
+
+function closeProfileTagSuggestions(event) {
+  if (!profileTagQuery.value) return
+  if (event.target.closest && event.target.closest('.profile-tag-header .feed-search-bar')) return
+  profileTagQuery.value = ''
+}
+
+function handleProfileTagScroll(event) {
+  const el = event ? (event.currentTarget || event.target) : profileTagScroller.value
+  if (!el) return
+  const groupEl = el.querySelector('.marquee-group')
+  if (!groupEl) return
+  const groupWidth = groupEl.offsetWidth + 8
+  if (!groupWidth) return
+  if (el.scrollLeft >= groupWidth * 2) el.scrollLeft -= groupWidth
+  else if (el.scrollLeft <= 0) el.scrollLeft += groupWidth
+}
+
+function handleProfileTagWheel(event) {
+  if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+    event.preventDefault()
+    event.currentTarget.scrollBy({ left: event.deltaY > 0 ? 250 : -250, behavior: 'smooth' })
+  }
 }
 
 function chooseHighlightedProfileTag() {
@@ -287,9 +323,16 @@ function handleResize() {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  document.addEventListener('click', closeProfileTagSuggestions)
+  nextTick(() => handleProfileTagScroll())
 })
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  document.removeEventListener('click', closeProfileTagSuggestions)
+})
+
+watch(() => profileMarqueeTags.value.length, () => {
+  nextTick(() => handleProfileTagScroll())
 })
 
 let dragIndex = null

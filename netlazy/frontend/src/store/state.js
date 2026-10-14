@@ -75,10 +75,25 @@ const VALID_VIEWS = ['feed', 'editor', 'inbox', 'vault'];
 export function profileHasContent(profile) {
     if (!profile) return false;
     if (String(profile.bio || '').trim()) return true;
-    if (Array.isArray(profile.tags) && profile.tags.length > 0) return true;
-    if (Array.isArray(profile.media) && profile.media.some(item => item && (item.url || item.blobUrl))) return true;
-    if (profile.audio) return true;
-    return (profile.contacts || []).some(contact => String(contact.value || '').trim() && contact.type !== 'unknown');
+    if ((profile.tags || []).some(tag => String(tag || '').trim())) return true;
+    if ((profile.media || []).some(item => item && (item.url || item.blobUrl))) return true;
+    if (profile.audio && (profile.audio.url || profile.audio.blobUrl)) return true;
+    return (profile.contacts || []).some(contact =>
+        contact &&
+        !contact.is_private &&
+        contact.type !== 'unknown' &&
+        String(contact.value || '').trim()
+    );
+}
+
+export function tagsMatchingQuery(tags, query) {
+    const needle = String(query || '').toLowerCase().trim();
+    if (!needle) return [];
+    return (tags || []).filter(tag =>
+        (tag.name && String(tag.name).toLowerCase().includes(needle)) ||
+        (tag.aliases && tag.aliases.some(alias => alias && String(alias).toLowerCase().includes(needle))) ||
+        (tag.i18n && Object.values(tag.i18n).some(value => value && typeof value === 'string' && value.toLowerCase().includes(needle)))
+    );
 }
 
 export function isInboxUnread(item) {

@@ -121,7 +121,7 @@ button:disabled,
   font-size: 0.75rem; 
   padding: 0.25rem 0.7rem; 
   border-radius: var(--radius-pill); 
-  cursor: pointer; 
+  cursor: default; 
   user-select: none; 
   display: inline-flex; 
   align-items: center; 
@@ -134,7 +134,7 @@ button:disabled,
 .chip.exclude { background: rgba(189, 106, 94, 0.15) !important; color: var(--accent-danger) !important; border-color: var(--accent-danger) !important; }
 .chip.bonus { background: rgba(110, 157, 174, 0.15) !important; color: var(--accent-info) !important; border-color: var(--accent-info) !important; }
 .chip.abonus { background: rgba(199, 179, 138, 0.15) !important; color: var(--accent-earth) !important; border-color: var(--accent-earth) !important; }
-#active-tags-zone .chip, #lib-tags-zone .chip { cursor: pointer; }
+#active-tags-zone .chip, #lib-tags-zone .chip, .tag-scroll-area .chip { cursor: pointer; }
 
 /* Matte glass tags: darken on dark theme, lighten on light theme */
 .tag-scroll-area .chip,

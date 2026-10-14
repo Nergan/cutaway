@@ -53,8 +53,7 @@
                       :class="getTempTagState(tag)" 
                       @mouseenter="openTagMenu($event, tag)"
                       @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
-                      style="cursor: default;">
+                      @click.stop="openTagMenu($event, tag)">
                   {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
@@ -65,8 +64,7 @@
                       :class="getTempTagState(tag)" 
                       @mouseenter="openTagMenu($event, tag)"
                       @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
-                      style="cursor: default;">
+                      @click.stop="openTagMenu($event, tag)">
                   {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
@@ -77,8 +75,7 @@
                       :class="getTempTagState(tag)" 
                       @mouseenter="openTagMenu($event, tag)"
                       @mouseleave="closeTagMenu"
-                      @click.stop="openTagMenu($event, tag)"
-                      style="cursor: default;">
+                      @click.stop="openTagMenu($event, tag)">
                   {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
                 </span>
               </div>
@@ -91,8 +88,7 @@
                     :class="getTempTagState(tag)" 
                     @mouseenter="openTagMenu($event, tag)"
                     @mouseleave="closeTagMenu"
-                    @click.stop="openTagMenu($event, tag)"
-                    style="cursor: pointer;">
+                    @click.stop="openTagMenu($event, tag)">
                 {{ store.getLocalizedTag(tag.name) }} <i class="bi" :class="getTagStateIcon(getTempTagState(tag))"></i>
               </span>
             </template>
@@ -284,7 +280,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
-import { useStore, profileHasContent } from '../store/state.js'
+import { useStore, profileHasContent, tagsMatchingQuery } from '../store/state.js'
 import api, { apiWithPoW } from '../utils/api.js'
 
 const store = useStore()
@@ -465,16 +461,7 @@ const hasActiveFilters = computed(() => {
   return store.state.availableSearchTags.some(t => t.state !== 'neutral')
 })
 
-const visibleSearchTags = computed(() => {
-  const query = filterText.value.toLowerCase().trim()
-  if (!query) return [];
-  
-  return store.state.availableSearchTags.filter(t => {
-     return (t.name && String(t.name).toLowerCase().includes(query)) || 
-      (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
-      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)));
-  })
-})
+const visibleSearchTags = computed(() => tagsMatchingQuery(store.state.availableSearchTags, filterText.value))
 
 const sortedSearchTags = computed(() => {
   const order = { 'require': 1, 'exclude': 2, 'bonus': 3, 'abonus': 4, 'neutral': 5 };

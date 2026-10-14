@@ -232,6 +232,15 @@ class TestInterfaceVersions:
         assert "no_tags_found" in feed
         assert "backdrop-filter: none" in styles
         assert "body.ui-v2 .filter-icon" in styles
+        assert "profile-sheet" in editor
+        assert "tagsMatchingQuery" in editor
+        assert "tagsMatchingQuery" in feed
+        assert "marquee-group" in editor
+        assert 'v-if="!isV2"' not in editor.split("profile-tags-block")[-1][:400]
+        state = read_text("frontend/src/store/state.js")
+        assert "!contact.is_private" in state
+        assert "function tagsMatchingQuery" in state
+        assert "rgba(255, 255, 255, 0.78)" in styles
 
     def test_new_copy_is_localized(self):
         translations = read_text("frontend/src/store/translations.js")
