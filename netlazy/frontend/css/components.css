@@ -838,11 +838,15 @@ body.light-theme .floating-tooltip {
 .tag-list-enter-from, .tag-list-leave-to { opacity: 0; transform: scale(0.9); }
 .tag-list-leave-active { position: absolute; z-index: 0; }
 
-/* Profile chips fade in place. Absolute leave positioning jumps the chip onto the first tag. */
-.profile-tag-enter-active,
-.profile-tag-leave-active { transition: opacity 0.16s ease; }
-.profile-tag-enter-from,
-.profile-tag-leave-to { opacity: 0; }
+/* Leave is tagAppear played backwards. The chip stays in place, so it does not jump onto the first tag. */
+#active-tags-zone .chip.profile-tag-leave-active {
+  animation: tagDisappear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+@keyframes tagDisappear {
+  0% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 0; transform: scale(0.96) translateY(3px); }
+}
 .profile-tag-move { transition: none; }
 
 /* Smooth understatement transition for showing/hiding dropdowns without flashy rotation */
