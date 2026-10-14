@@ -134,7 +134,12 @@ button:disabled,
 .chip.exclude { background: rgba(189, 106, 94, 0.15) !important; color: var(--accent-danger) !important; border-color: var(--accent-danger) !important; }
 .chip.bonus { background: rgba(110, 157, 174, 0.15) !important; color: var(--accent-info) !important; border-color: var(--accent-info) !important; }
 .chip.abonus { background: rgba(199, 179, 138, 0.15) !important; color: var(--accent-earth) !important; border-color: var(--accent-earth) !important; }
-#active-tags-zone .chip, #lib-tags-zone .chip, .tag-scroll-area .chip { cursor: pointer; }
+#active-tags-zone .chip,
+#active-tags-zone .chip *,
+#lib-tags-zone .chip,
+#lib-tags-zone .chip *,
+.tag-scroll-area .chip,
+.tag-scroll-area .chip * { cursor: pointer; }
 
 /* Matte glass tags: darken on dark theme, lighten on light theme */
 .tag-scroll-area .chip,
@@ -832,6 +837,13 @@ body.light-theme .floating-tooltip {
 .tag-list-enter-active, .tag-list-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .tag-list-enter-from, .tag-list-leave-to { opacity: 0; transform: scale(0.9); }
 .tag-list-leave-active { position: absolute; z-index: 0; }
+
+/* Profile chips fade in place. Absolute leave positioning jumps the chip onto the first tag. */
+.profile-tag-enter-active,
+.profile-tag-leave-active { transition: opacity 0.16s ease; }
+.profile-tag-enter-from,
+.profile-tag-leave-to { opacity: 0; }
+.profile-tag-move { transition: none; }
 
 /* Smooth understatement transition for showing/hiding dropdowns without flashy rotation */
 .dropdown-fade-enter-active, .dropdown-fade-leave-active {

@@ -33,7 +33,8 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .profile-media-block, .profile-details { display: contents; }
 .workspace-scroll-area { height: 100%; width: 100%; min-width: 350px; overflow-y: auto; overflow-x: hidden; padding: 2.5rem; position: relative; transition: background 0.2s; }
 
-.workspace-scroll-area.drag-over-files {
+.workspace-scroll-area.drag-over-files,
+.profile-media-block.drag-over-files {
   outline: 2px dashed var(--accent-moss);
   outline-offset: -10px;
   background: rgba(141, 169, 112, 0.05);

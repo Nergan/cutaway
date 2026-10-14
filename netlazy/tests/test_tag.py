@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from netlazy.application.tag_service import TagService
 from netlazy.domain.models import Tag
+from netlazy.infrastructure.yaml_loader import YamlTagLoader
 
 
 @pytest.fixture
@@ -36,3 +39,28 @@ async def test_tag_service_sync_and_search(tag_service, tag_deps):
     assert len(results) == 1
     assert results[0].name == "python"
     tag_deps["tag_repo"].search.assert_called_once_with("py")
+
+
+def test_added_tags_are_localized_and_visible():
+    path = Path(__file__).resolve().parents[1] / "tags.yaml"
+    tags = {tag.name: tag for tag in YamlTagLoader().load_tags(str(path))}
+    expected = {
+        "photography": "фотография",
+        "hiking": "походы",
+        "cats": "кошки",
+        "dogs": "собаки",
+        "coffee": "кофе",
+        "cycling": "велосипед",
+        "swimming": "плавание",
+        "yoga": "йога",
+    }
+    for name, russian in expected.items():
+        tag = tags[name]
+        assert tag.hidden is False
+        assert tag.i18n["ru"] == russian
+        assert tag.i18n["en"] == name
+        assert tag.i18n["pt"]
+        assert tag.i18n["zh"]
+        assert tag.i18n["ja"]
+        assert tag.i18n["ko"]
+        assert len(tag.aliases) >= 3

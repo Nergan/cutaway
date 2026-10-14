@@ -81,7 +81,7 @@
            :class="{
              'mobile-profile-body': isMobile,
              'is-body-collapsed': isMobile && isMobileProfileCollapsed,
-             'drag-over-files': isDraggingFiles
+             'drag-over-files': !isV2 && isDraggingFiles
            }"
            @dragenter.prevent="workspaceDragEnter"
            @dragover.prevent="workspaceDragOver"
@@ -98,7 +98,7 @@
         
         <template v-else>
           <div class="profile-sheet">
-          <div class="profile-media-block">
+          <div class="profile-media-block" :class="{ 'drag-over-files': isV2 && isDraggingFiles }">
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
             <span style="font-size: 0.75rem;">media</span>
             <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
@@ -187,7 +187,7 @@
           </div>
           <transition name="collapse">
             <div v-if="showActiveTags" class="mobile-collapse-content">
-              <transition-group name="tag-list" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
+              <transition-group name="profile-tag" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
                 <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
                   <i class="bi bi-x" style="font-size: 0.85rem; margin-left: 0.15rem;"></i>

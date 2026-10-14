@@ -4951,3 +4951,67 @@ tags:
     ja: "建築"
     ko: "건축학"
     aliases: ["архитектура", "постройки", "строительство", "урбанистика", "architecture", "buildings", "construction", "urban studies", "arquitetura", "edifícios", "construção", "estudos urbanos", "建築學", "建築", "施工", "城市研究", "建築", "建物", "建設", "都市研究", "건축", "건물", "건설", "도시", "연구"]
+- name:
+    en: "photography"
+    ru: "фотография"
+    pt: "fotografia"
+    zh: "攝影"
+    ja: "写真"
+    ko: "사진"
+    aliases: ["photography", "фото", "фотография", "фотограф", "photo", "photos", "fotografia", "攝影", "写真", "사진", "카메라"]
+- name:
+    en: "hiking"
+    ru: "походы"
+    pt: "caminhadas"
+    zh: "徒步"
+    ja: "ハイキング"
+    ko: "하이킹"
+    aliases: ["hiking", "походы", "хайкинг", "треккинг", "trek", "hike", "caminhadas", "trilha", "徒步", "登山", "ハイキング", "トレッキング", "하이킹", "등산"]
+- name:
+    en: "cats"
+    ru: "кошки"
+    pt: "gatos"
+    zh: "貓"
+    ja: "猫"
+    ko: "고양이"
+    aliases: ["cats", "кошки", "коты", "кот", "кошка", "cat", "gatos", "gato", "貓", "猫", "고양이"]
+- name:
+    en: "dogs"
+    ru: "собаки"
+    pt: "cães"
+    zh: "狗"
+    ja: "犬"
+    ko: "개"
+    aliases: ["dogs", "собаки", "собака", "пёс", "dog", "cães", "cão", "cachorro", "狗", "犬", "개", "강아지"]
+- name:
+    en: "coffee"
+    ru: "кофе"
+    pt: "café"
+    zh: "咖啡"
+    ja: "コーヒー"
+    ko: "커피"
+    aliases: ["coffee", "кофе", "эспрессо", "espresso", "café", "咖啡", "コーヒー", "커피"]
+- name:
+    en: "cycling"
+    ru: "велосипед"
+    pt: "ciclismo"
+    zh: "騎行"
+    ja: "サイクリング"
+    ko: "자전거"
+    aliases: ["cycling", "велосипед", "bike", "bicycle", "вело", "ciclismo", "bicicleta", "騎行", "自行車", "サイクリング", "自転車", "자전거", "사이클"]
+- name:
+    en: "swimming"
+    ru: "плавание"
+    pt: "natação"
+    zh: "游泳"
+    ja: "水泳"
+    ko: "수영"
+    aliases: ["swimming", "плавание", "бассейн", "swim", "pool", "natação", "游泳", "水泳", "수영"]
+- name:
+    en: "yoga"
+    ru: "йога"
+    pt: "ioga"
+    zh: "瑜伽"
+    ja: "ヨガ"
+    ko: "요가"
+    aliases: ["yoga", "йога", "ioga", "瑜伽", "ヨガ", "요가"]

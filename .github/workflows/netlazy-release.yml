@@ -177,6 +177,21 @@ jobs:
             echo "No changes to commit"
           fi
 
+      - name: Remove previous netlazy releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="${{ github.repository }}"
+          while read -r tag; do
+            [ -z "$tag" ] && continue
+            gh release delete "$tag" --repo "$repo" --yes --cleanup-tag
+          done < <(gh release list --repo "$repo" --limit 200 --json tagName --jq '.[] | select(.tagName | startswith("netlazy-v")) | .tagName')
+          git fetch origin --tags
+          for tag in $(git tag -l 'netlazy-v*'); do
+            git push origin ":refs/tags/${tag}" || true
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

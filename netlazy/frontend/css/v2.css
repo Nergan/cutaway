@@ -211,6 +211,9 @@ body.ui-v2 .profile-tag-header {
   top: 0;
   z-index: 12;
   flex-shrink: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 body.ui-v2 .profile-tag-header .feed-search-bar {
@@ -233,6 +236,7 @@ body.ui-v2 .editor-v2 .profile-workspace-pane textarea {
 }
 
 body.ui-v2 .editor-v2 .profile-workspace-pane .chip,
+body.ui-v2 .editor-v2 .profile-workspace-pane .chip *,
 body.ui-v2 .editor-v2 .profile-workspace-pane .contact-action,
 body.ui-v2 .editor-v2 .profile-workspace-pane .media-zone,
 body.ui-v2 .editor-v2 .profile-workspace-pane .mini-add-banner,
