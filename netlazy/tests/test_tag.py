@@ -53,6 +53,12 @@ def test_added_tags_are_localized_and_visible():
         "cycling": "велосипед",
         "swimming": "плавание",
         "yoga": "йога",
+        "job": "работа",
+        "startapp": "стартап",
+        "hr": "эйчар",
+        "ai": "ии",
+        "employer": "работодатель",
+        "candidate": "кандидат",
     }
     for name, russian in expected.items():
         tag = tags[name]

@@ -5015,3 +5015,51 @@ tags:
     ja: "ヨガ"
     ko: "요가"
     aliases: ["yoga", "йога", "ioga", "瑜伽", "ヨガ", "요가"]
+- name:
+    en: "job"
+    ru: "работа"
+    pt: "trabalho"
+    zh: "工作"
+    ja: "仕事"
+    ko: "직업"
+    aliases: ["job", "работа", "вакансия", "трудоустройство", "employment", "career", "trabalho", "emprego", "vaga", "工作", "求職", "求人", "仕事", "就職", "직업", "일자리", "채용"]
+- name:
+    en: "startapp"
+    ru: "стартап"
+    pt: "startup"
+    zh: "新創"
+    ja: "スタートアップ"
+    ko: "스타트업"
+    aliases: ["startapp", "startup", "start-up", "стартап", "стартапы", "empreendimento", "新創", "創業", "スタートアップ", "起業", "스타트업", "창업"]
+- name:
+    en: "hr"
+    ru: "эйчар"
+    pt: "rh"
+    zh: "人資"
+    ja: "人事"
+    ko: "인사"
+    aliases: ["hr", "эйчар", "ейчар", "кадры", "рекрутер", "рекрутинг", "human resources", "rh", "recursos humanos", "人資", "人力資源", "人事", "採用", "인사", "채용", "에이치알"]
+- name:
+    en: "ai"
+    ru: "ии"
+    pt: "ia"
+    zh: "人工智慧"
+    ja: "人工知能"
+    ko: "인공지능"
+    aliases: ["ai", "ии", "искусственный интеллект", "нейросети", "artificial intelligence", "ia", "inteligência artificial", "人工智慧", "人工知能", "인공지능"]
+- name:
+    en: "employer"
+    ru: "работодатель"
+    pt: "empregador"
+    zh: "雇主"
+    ja: "雇用主"
+    ko: "고용주"
+    aliases: ["employer", "работодатель", "наниматель", "empregador", "contratante", "雇主", "雇用主", "雇い主", "고용주"]
+- name:
+    en: "candidate"
+    ru: "кандидат"
+    pt: "candidato"
+    zh: "求職者"
+    ja: "候補者"
+    ko: "지원자"
+    aliases: ["candidate", "кандидат", "соискатель", "applicant", "candidato", "求職者", "應徵者", "候補者", "応募者", "지원자", "구직자"]
