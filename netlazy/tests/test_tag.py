@@ -59,6 +59,8 @@ def test_added_tags_are_localized_and_visible():
         "ai": "ии",
         "employer": "работодатель",
         "candidate": "кандидат",
+        "unpaid": "без оплаты",
+        "free": "бесплатно",
     }
     for name, russian in expected.items():
         tag = tags[name]

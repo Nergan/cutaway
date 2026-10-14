@@ -5063,3 +5063,19 @@ tags:
     ja: "候補者"
     ko: "지원자"
     aliases: ["candidate", "кандидат", "соискатель", "applicant", "candidato", "求職者", "應徵者", "候補者", "応募者", "지원자", "구직자"]
+- name:
+    en: "unpaid"
+    ru: "без оплаты"
+    pt: "não remunerado"
+    zh: "無薪"
+    ja: "無給"
+    ko: "무급"
+    aliases: ["unpaid", "без оплаты", "неоплачиваемая", "неоплачиваемый", "не оплачивается", "não remunerado", "sem pagamento", "無薪", "无薪", "無給", "무급", "무보수"]
+- name:
+    en: "free"
+    ru: "бесплатно"
+    pt: "grátis"
+    zh: "免費"
+    ja: "無料"
+    ko: "무료"
+    aliases: ["free", "бесплатно", "бесплатный", "gratis", "grátis", "gratuito", "免費", "免费", "無料", "무료"]
