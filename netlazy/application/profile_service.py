@@ -2,7 +2,18 @@ import asyncio
 import hashlib
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
+from netlazy.domain.bio import normalize_bio
+from netlazy.domain.forms import (
+    MAX_FORM_LINKS,
+    FormLimitError,
+    FormNotFoundError,
+    FormSlugConflict,
+    FormTakenError,
+    generate_form,
+    is_public_form,
+    normalize_custom_form,
+)
 from netlazy.domain.models import Contact, MediaItem, Profile
 from netlazy.domain.repository import (
     MediaStorage, ProfileRepository, TagRepository, MediaProcessorPort,
@@ -78,13 +89,102 @@ class ProfileService:
 
         async with self._locks.acquire(user_id):
             profile = await self.get_or_create_profile(user_id)
-            profile.bio = bio[: self._max_bio_length]
+            profile.bio = normalize_bio(bio, self._max_bio_length)
             profile.tags = tags
             profile.contacts = contacts
             profile.updated_at = datetime.now(timezone.utc)
 
             await self._profile_repo.upsert(profile)
             return profile
+
+    async def get_public_by_form(self, slug: str) -> Optional[Profile]:
+        text = (slug or "").strip().lower()
+        if not is_public_form(text):
+            return None
+        return await self._profile_repo.get_by_form(text)
+
+    async def add_form(self, user_id: str, value: Optional[str]) -> Profile:
+        custom = None
+        if value is not None and str(value).strip():
+            custom = normalize_custom_form(str(value))
+        async with self._locks.acquire(user_id):
+            profile = await self.get_or_create_profile(user_id)
+            if len(profile.forms) >= MAX_FORM_LINKS:
+                raise FormLimitError()
+            if custom:
+                await self._ensure_form_available(profile, custom)
+                slug = custom
+            else:
+                slug = await self._fresh_generated_form()
+            previous_forms = list(profile.forms)
+            previous_primary = profile.primary_form
+            profile.forms.append(slug)
+            profile.primary_form = slug
+            await self._save_form_change(profile, previous_forms, previous_primary)
+            return profile
+
+    async def regenerate_form(self, user_id: str, current: str) -> Profile:
+        current = (current or "").strip().lower()
+        async with self._locks.acquire(user_id):
+            profile = await self.get_or_create_profile(user_id)
+            if current not in profile.forms:
+                raise FormNotFoundError()
+            slug = await self._fresh_generated_form()
+            previous_forms = list(profile.forms)
+            previous_primary = profile.primary_form
+            profile.forms[profile.forms.index(current)] = slug
+            profile.primary_form = slug
+            await self._save_form_change(profile, previous_forms, previous_primary)
+            return profile
+
+    async def delete_form(self, user_id: str, current: str) -> Profile:
+        current = (current or "").strip().lower()
+        async with self._locks.acquire(user_id):
+            profile = await self.get_or_create_profile(user_id)
+            if current not in profile.forms:
+                raise FormNotFoundError()
+            previous_forms = list(profile.forms)
+            previous_primary = profile.primary_form
+            profile.forms.remove(current)
+            if profile.primary_form not in profile.forms:
+                profile.primary_form = profile.forms[-1] if profile.forms else None
+            await self._save_form_change(profile, previous_forms, previous_primary)
+            return profile
+
+    async def set_primary_form(self, user_id: str, current: str) -> Profile:
+        current = (current or "").strip().lower()
+        async with self._locks.acquire(user_id):
+            profile = await self.get_or_create_profile(user_id)
+            if current not in profile.forms:
+                raise FormNotFoundError()
+            previous_forms = list(profile.forms)
+            previous_primary = profile.primary_form
+            profile.primary_form = current
+            await self._save_form_change(profile, previous_forms, previous_primary)
+            return profile
+
+    async def _ensure_form_available(self, profile: Profile, slug: str) -> None:
+        if slug in profile.forms:
+            raise FormTakenError()
+        owner = await self._profile_repo.get_by_form(slug)
+        if owner and owner.user_id != profile.user_id:
+            raise FormTakenError()
+
+    async def _fresh_generated_form(self) -> str:
+        for _ in range(5):
+            slug = generate_form()
+            if not await self._profile_repo.get_by_form(slug):
+                return slug
+        raise FormTakenError()
+
+    async def _save_form_change(self, profile: Profile, previous_forms: List[str], previous_primary: Optional[str]) -> None:
+        profile.updated_at = datetime.now(timezone.utc)
+        try:
+            await self._profile_repo.upsert(profile)
+        except FormSlugConflict:
+            profile.forms[:] = previous_forms
+            profile.primary_form = previous_primary
+            raise FormTakenError()
 
     async def upload_media(self, user_id: str, raw_bytes: bytes, blur: bool = False) -> Profile:
         if len(raw_bytes) > self._max_upload_bytes:

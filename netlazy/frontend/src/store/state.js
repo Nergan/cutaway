@@ -3,6 +3,7 @@ import api, { apiWithPoW } from '../utils/api.js';
 import { generateIdentity, clearIdentity, hasHybridKeys, generateUncommittedIdentity, commitIdentityVault } from '../utils/crypto.js';
 import { fetchAndDecryptMedia } from '../utils/media.js';
 import translations from './translations.js';
+import { normalizeBio } from '../utils/bio.js';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 
@@ -31,6 +32,7 @@ const defaultState = {
     tagSearchQuery: '',
     lastProfileEditTimestamp: 0,
     pendingUrlTags: null,
+    formSlug: null,
     
     confirmModal: {
         open: false,
@@ -184,6 +186,10 @@ export function useStore() {
                 state.pendingUrlTags = params.get('tags');
                 applyPendingUrlTags();
             }
+            const form = (params.get('form') || '').trim().toLowerCase();
+            state.formSlug = form || null;
+        } else {
+            state.formSlug = null;
         }
         syncViewToUrl(true);
     }
@@ -200,11 +206,14 @@ export function useStore() {
         
         let newUrl = segments.join('/') + '/' + (viewMap[state.currentView] || 'profile');
         if (state.currentView === 'feed') {
+            const parts = [];
+            if (state.formSlug) parts.push(`form=${encodeURIComponent(state.formSlug)}`);
             const activeTags = state.availableSearchTags
                 .filter(t => t.state !== 'neutral')
                 .map(t => `${encodeURIComponent(t.name)}:${t.state}`)
                 .join(',');
-            if (activeTags) newUrl += `?tags=${activeTags}`;
+            if (activeTags) parts.push(`tags=${activeTags}`);
+            if (parts.length) newUrl += `?${parts.join('&')}`;
         }
         
         if (window.location.pathname + window.location.search !== newUrl) {
@@ -261,9 +270,12 @@ export function useStore() {
                     fetchMyProfile();
                     fetchInbox();
                     startPolling();
+                } else if (!state.isBanned && state.currentView === 'feed') {
+                    fetchTags();
                 }
             } else {
                 syncUrlToView();
+                if (!state.isBanned && state.currentView === 'feed') fetchTags();
             }
         } catch (e) {
             console.warn("could not read preferences state:", e);
@@ -563,6 +575,12 @@ export function useStore() {
                 data.audio = state.myProfile.audio;
             }
 
+            data.forms = data.forms || [];
+            if (!data.form) {
+                data.form = data.primary_form && data.forms.includes(data.primary_form)
+                    ? data.primary_form
+                    : (data.forms[data.forms.length - 1] || null);
+            }
             state.myProfile = data;
             
         } catch (e) {
@@ -577,7 +595,7 @@ export function useStore() {
     async function saveProfile() {
         try {
             const payload = {
-                bio: state.myProfile.bio,
+                bio: normalizeBio(state.myProfile.bio),
                 tags: state.myProfile.tags,
                 contacts: state.myProfile.contacts.filter(c => c.value.trim() !== "" && c.type !== 'unknown')
             };
@@ -673,10 +691,34 @@ export function useStore() {
         }
     }
 
+    function profileFormUrl(slug) {
+        let root;
+        if (Capacitor.isNativePlatform()) {
+            root = String(import.meta.env.VITE_API_URL || 'https://nargan-projects.hf.space/netlazy/api').replace(/\/api\/?$/, '');
+        } else {
+            const segments = window.location.pathname.split('/');
+            if (segments[segments.length - 1] === '') segments.pop();
+            while (segments.length > 0 && ['feed', 'profile', 'inbox', 'privacy', 'config', 'welcome'].includes(segments[segments.length - 1])) {
+                segments.pop();
+            }
+            root = window.location.origin + segments.join('/');
+        }
+        return `${root}/feed?form=${encodeURIComponent(slug)}`;
+    }
+
+    function openFeed() {
+        state.formSlug = null;
+        if (state.currentView !== 'feed') {
+            state.currentView = 'feed';
+            return;
+        }
+        syncViewToUrl(true);
+    }
+
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
     };
     return instance;
 }

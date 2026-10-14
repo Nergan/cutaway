@@ -40,3 +40,24 @@ async def test_get_feed_excludes_interacted(feed_service, feed_deps):
     called_kwargs = feed_deps["profile_repo"].get_feed.call_args.kwargs
     assert set(called_kwargs["exclude_ids"]) == {"u2", "u3", "u5"}
     assert called_kwargs["requires"] == ["tech"]
+    assert called_kwargs["viewer_id"] == "u1"
+
+
+@pytest.mark.asyncio
+async def test_get_feed_anonymous_skips_handshake_history(feed_service, feed_deps):
+    feed_deps["profile_repo"].get_feed.return_value = []
+
+    await feed_service.get_feed(
+        viewer_id=None,
+        seen_ids=["u5"],
+        requires=[],
+        excludes=[],
+        bonus=[],
+        abonus=[],
+        limit=20,
+    )
+
+    feed_deps["handshake_repo"].get_interacted_user_ids.assert_not_called()
+    called_kwargs = feed_deps["profile_repo"].get_feed.call_args.kwargs
+    assert called_kwargs["viewer_id"] == ""
+    assert called_kwargs["exclude_ids"] == ["u5"]

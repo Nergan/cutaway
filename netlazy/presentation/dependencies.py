@@ -3,6 +3,7 @@ import binascii
 import hashlib
 import logging
 import time
+from typing import Optional
 from fastapi import Request, Header, HTTPException, BackgroundTasks
 from starlette.requests import ClientDisconnect
 
@@ -233,6 +234,40 @@ async def verify_request_signature(
     background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
 
     return user
+
+
+def _header_int(value: Optional[str]) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+async def optional_user(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> Optional[User]:
+    if not request.headers.get("x-user-id"):
+        ip, fingerprint = _get_client_footprint(request)
+        try:
+            await security_service.verify_not_banned(ip, fingerprint)
+        except BannedError:
+            raise create_banned_error()
+        return None
+    return await verify_request_signature(
+        request,
+        background_tasks,
+        x_user_id=request.headers.get("x-user-id"),
+        x_timestamp=_header_int(request.headers.get("x-timestamp")),
+        x_nonce=request.headers.get("x-nonce"),
+        x_body_hash=request.headers.get("x-body-hash"),
+        x_chain_anchor=request.headers.get("x-chain-anchor"),
+        x_signature_ed25519=request.headers.get("x-signature-ed25519"),
+        x_signature_mldsa=request.headers.get("x-signature-mldsa"),
+        x_signed_path=request.headers.get("x-signed-path"),
+    )
 
 
 async def verify_pow(

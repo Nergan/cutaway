@@ -251,3 +251,7 @@ class TestInterfaceVersions:
             keys = extract_locale_keys(translations, locale)
             assert "select_profile_tags" in keys
             assert "not_in_feed" in keys
+            assert "form_missing" in keys
+            assert "link_copied" in keys
+            assert "form_not_shared" in keys
+            assert "back_to_feed" in keys

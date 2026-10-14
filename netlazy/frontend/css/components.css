@@ -13,6 +13,7 @@
 .editor-bio { 
   font-size: 1rem; 
   line-height: 1.6; 
+  white-space: pre-wrap;
   border: none !important;
   border-bottom: 1px solid var(--border-subtle) !important; 
   padding-bottom: 0.5rem; 
@@ -387,6 +388,12 @@ body.light-theme .progress-bar-fill-horizontal { background: rgba(104, 133, 76, 
 body.uf-mode .mini-add-banner { padding: 0.45rem; }
 
 /* SMART CONTACTS */
+.form-links-block { margin-top: 0.85rem; }
+.form-link-row { display: flex; align-items: center; gap: 0.35rem; min-height: 1.45rem; min-width: 0; }
+.form-link-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.68rem; line-height: 1.2; color: var(--text-muted); }
+.form-link-row .seamless-input { font-size: 0.72rem; padding: 0.15rem 0; }
+.form-link-row .contact-action { font-size: 0.72rem; }
+.form-link-row .bi-star-fill { color: var(--accent-moss); }
 .contact-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--border-subtle); }
 .contact-row:last-child { border-bottom: none; }
 .contact-icon { color: var(--text-muted); font-size: 1rem; width: 20px; text-align: center; }

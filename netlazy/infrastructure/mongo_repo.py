@@ -5,6 +5,7 @@ from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne, ReadPreference
 from netlazy.database import db_instance
 from netlazy.config import settings
+from netlazy.domain.forms import FormSlugConflict
 from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, Tag, User, UserAlreadyExistsError
 from netlazy.domain.repository import (
     ChainRepository,
@@ -282,20 +283,42 @@ class MongoProfileRepository(ProfileRepository):
         cursor = db_instance.profiles_collection.find({"user_id": {"$in": user_ids}})
         return [self._to_domain(doc) async for doc in cursor]
 
-    async def upsert(self, profile: Profile, session: Any = None) -> None:
-        await db_instance.profiles_collection.update_one(
+    async def get_by_form(self, slug: str) -> Optional[Profile]:
+        if not slug:
+            return None
+        doc = await db_instance.profiles_collection.find_one({"forms": slug})
+        if not doc:
+            return None
+        profile = self._to_domain(doc)
+        user_doc = await db_instance.users_collection.find_one(
             {"user_id": profile.user_id},
-            {"$set": self._to_doc(profile)},
-            upsert=True,
-            session=session
+            {"is_banned": 1},
         )
+        if user_doc and user_doc.get("is_banned"):
+            return None
+        return profile
+
+    async def upsert(self, profile: Profile, session: Any = None) -> None:
+        try:
+            await db_instance.profiles_collection.update_one(
+                {"user_id": profile.user_id},
+                {"$set": self._to_doc(profile)},
+                upsert=True,
+                session=session
+            )
+        except DuplicateKeyError as exc:
+            if "forms" in str(exc):
+                raise FormSlugConflict() from exc
+            raise
 
     async def get_feed(
         self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str],
         bonus: List[str], abonus: List[str], limit: int
     ) -> List[Profile]:
-        ignored = exclude_ids + [viewer_id]
-        base_match = {"user_id": {"$nin": ignored}}
+        ignored = list(exclude_ids)
+        if viewer_id:
+            ignored.append(viewer_id)
+        base_match = {"user_id": {"$nin": ignored}} if ignored else {}
 
         if requires:
             base_match["tags"] = {"$all": requires}
@@ -310,74 +333,24 @@ class MongoProfileRepository(ProfileRepository):
             {"contacts": {"$elemMatch": {"is_private": False, "type": {"$ne": "unknown"}, "value": {"$nin": ["", None]}}}}
         ]
 
-        rand_val = random.random()
-        fetch_limit = limit * 10
-
-        async def fetch_profiles(direction_match):
-            pipeline = [
-                {"$match": {**base_match, **direction_match}},
-                {"$lookup": {
-                    "from": "users",
-                    "localField": "user_id",
-                    "foreignField": "user_id",
-                    "as": "user_info"
-                }},
-                {"$match": {"user_info.is_banned": {"$ne": True}}},
-                {"$sort": {"random_index": 1}},
-                {"$limit": fetch_limit}
-            ]
-            db_cursor = db_instance.profiles_collection.aggregate(pipeline)
-            docs = [self._to_domain(doc) async for doc in db_cursor]
-
-            for p in docs:
-                if bonus or abonus:
-                    bonus_score = len(set(p.tags) & set(bonus))
-                    abonus_score = len(set(p.tags) & set(abonus))
-                    p.score = bonus_score - abonus_score
-                else:
-                    p.score = 0
-
-            docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
-            return docs[:limit]
-
-        results = await fetch_profiles({"random_index": {"$gte": rand_val}})
-
-        if len(results) < limit:
-            needed = limit - len(results)
-            found_ids = [r.user_id for r in results]
-
-            wrap_match = {"random_index": {"$lt": rand_val}}
-            wrap_base_match = base_match.copy()
-            wrap_base_match["user_id"] = {"$nin": ignored + found_ids}
-
-            pipeline = [
-                {"$match": {**wrap_base_match, **wrap_match}},
-                {"$lookup": {
-                    "from": "users",
-                    "localField": "user_id",
-                    "foreignField": "user_id",
-                    "as": "user_info"
-                }},
-                {"$match": {"user_info.is_banned": {"$ne": True}}},
-                {"$sort": {"random_index": 1}},
-                {"$limit": needed * 10}
-            ]
-
-            wrap_cursor = db_instance.profiles_collection.aggregate(pipeline)
-            wrap_docs = [self._to_domain(doc) async for doc in wrap_cursor]
-
-            for p in wrap_docs:
-                if bonus or abonus:
-                    bonus_score = len(set(p.tags) & set(bonus))
-                    abonus_score = len(set(p.tags) & set(abonus))
-                    p.score = bonus_score - abonus_score
-                else:
-                    p.score = 0
-
-            wrap_docs.sort(key=lambda x: (x.score, -x.random_index), reverse=True)
-            results.extend(wrap_docs[:needed])
-
-        return results
+        pipeline = [
+            {"$match": base_match},
+            {"$lookup": {
+                "from": "users",
+                "localField": "user_id",
+                "foreignField": "user_id",
+                "as": "user_info"
+            }},
+            {"$match": {"user_info.is_banned": {"$ne": True}}},
+            {"$sort": {"created_at": -1, "user_id": 1}},
+            {"$limit": limit},
+        ]
+        db_cursor = db_instance.profiles_collection.aggregate(pipeline)
+        docs = [self._to_domain(doc) async for doc in db_cursor]
+        for profile in docs:
+            if bonus or abonus:
+                profile.score = len(set(profile.tags) & set(bonus)) - len(set(profile.tags) & set(abonus))
+        return docs
 
     async def delete(self, user_id: str, session: Any = None) -> None:
         await db_instance.profiles_collection.delete_one({"user_id": user_id}, session=session)
@@ -419,6 +392,8 @@ class MongoProfileRepository(ProfileRepository):
             "media": [self._media_to_doc(m) for m in profile.media],
             "audio": self._media_to_doc(profile.audio) if profile.audio else None,
             "contacts": [self._contact_to_doc(c) for c in profile.contacts],
+            "forms": list(profile.forms),
+            "primary_form": profile.primary_form,
             "created_at": profile.created_at,
             "updated_at": profile.updated_at,
             "random_index": profile.random_index
@@ -433,6 +408,8 @@ class MongoProfileRepository(ProfileRepository):
             media=[self._media_from_doc(m) for m in doc.get("media", [])],
             audio=self._media_from_doc(doc["audio"]) if doc.get("audio") else None,
             contacts=[self._contact_from_doc(c) for c in doc.get("contacts", [])],
+            forms=[str(item) for item in doc.get("forms", []) if item],
+            primary_form=doc.get("primary_form") or None,
             created_at=_force_utc(doc.get("created_at")) or datetime.now(timezone.utc),
             updated_at=_force_utc(doc.get("updated_at")),
             score=doc.get("score", 0),

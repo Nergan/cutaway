@@ -25,7 +25,7 @@
           <div class="chip-group" v-if="selectedChat.profile && selectedChat.profile.tags && selectedChat.profile.tags.length > 0">
             <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in selectedChat.profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
           </div>
-          <div style="font-size: 0.85rem;" v-if="selectedChat.profile && selectedChat.profile.bio">{{ selectedChat.profile.bio }}</div>
+          <div class="card-bio" v-if="selectedChat.profile && displayBio(selectedChat.profile.bio)">{{ displayBio(selectedChat.profile.bio) }}</div>
 
           <!-- Public Contacts -->
           <div v-if="selectedChat.profile && selectedChat.profile.contacts && selectedChat.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
@@ -206,6 +206,7 @@
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
 import { useStore, isInboxUnread } from '../store/state.js'
 import api from '../utils/api.js'
+import { displayBio } from '../utils/bio.js'
 
 const store = useStore()
 const inboxRoot = ref(null)

@@ -155,6 +155,21 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   transition: transform 0.2s ease, box-shadow 0.2s ease; 
   box-shadow: var(--shadow-sm); 
 }
+.card-bio {
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.card-guest {
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+}
+.card-guest .guest-join {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
 
@@ -328,6 +343,18 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   color: var(--text-main);
   margin-bottom: 0.5rem;
   font-size: 1.25rem;
+}
+.form-missing-code {
+  font-size: 2.4rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.form-missing p {
+  max-width: 22rem;
+  margin: 0;
+  color: var(--text-main);
+  font-size: 0.95rem;
 }
 
 /* Guarantee channel-restore filter specificity even when blurred */

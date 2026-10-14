@@ -11,7 +11,15 @@ from netlazy.application.profile_service import (
     MediaLimitExceededError,
     MediaNotFoundError,
 )
+from netlazy.domain.forms import (
+    FormInvalidError,
+    FormLimitError,
+    FormNotFoundError,
+    FormTakenError,
+    primary_form_of,
+)
 from netlazy.domain.models import Contact, Profile, User
+from netlazy.config import settings
 from netlazy.presentation.route_handler import NetlazyRoute
 from netlazy.presentation.dependencies import profile_service, verify_request_signature
 
@@ -23,7 +31,7 @@ class ContactRequest(BaseModel):
     is_private: bool = True
 
 class ProfileUpdateRequest(BaseModel):
-    bio: str = Field("", max_length=200)
+    bio: str = Field("", max_length=settings.max_bio_length)
     tags: List[str] = Field(default_factory=list, max_length=50)
     contacts: List[ContactRequest] = Field(default_factory=list, max_length=20)
 
@@ -40,6 +48,9 @@ class ContactResponse(BaseModel):
     value: str
     is_private: bool
 
+class FormCreateRequest(BaseModel):
+    value: Optional[str] = None
+
 class ProfileResponse(BaseModel):
     user_id: str
     media_id: str
@@ -50,8 +61,15 @@ class ProfileResponse(BaseModel):
     contacts: List[ContactResponse]
     created_at: str
     score: int = 0
+    form: Optional[str] = None
+    forms: List[str] = Field(default_factory=list)
+    primary_form: Optional[str] = None
 
-def _to_response(profile: Profile) -> ProfileResponse:
+def _to_response(profile: Profile, *, include_forms: bool = False, hide_private: bool = False) -> ProfileResponse:
+    primary = primary_form_of(profile)
+    contacts = profile.contacts
+    if hide_private:
+        contacts = [c for c in contacts if not c.is_private]
     return ProfileResponse(
         user_id=profile.user_id,
         media_id=profile.media_id,
@@ -62,10 +80,24 @@ def _to_response(profile: Profile) -> ProfileResponse:
             MediaItemResponse(url=profile.audio.url, media_type=profile.audio.media_type, blur=profile.audio.blur)
             if profile.audio else None
         ),
-        contacts=[ContactResponse(type=c.type, value=c.value, is_private=c.is_private) for c in profile.contacts],
+        contacts=[ContactResponse(type=c.type, value=c.value, is_private=c.is_private) for c in contacts],
         created_at=profile.created_at.isoformat(),
-        score=profile.score
+        score=profile.score,
+        form=primary,
+        forms=list(profile.forms) if include_forms else [],
+        primary_form=primary if include_forms else None,
     )
+
+def _raise_form_error(exc: Exception) -> None:
+    if isinstance(exc, FormInvalidError):
+        raise HTTPException(status_code=400, detail="form_invalid")
+    if isinstance(exc, FormTakenError):
+        raise HTTPException(status_code=409, detail="form_taken")
+    if isinstance(exc, FormLimitError):
+        raise HTTPException(status_code=400, detail="form_limit")
+    if isinstance(exc, FormNotFoundError):
+        raise HTTPException(status_code=404, detail="form_not_found")
+    raise exc
 
 @router.get("")
 async def profile_index():
@@ -75,7 +107,7 @@ async def profile_index():
 @router.get("/me", response_model=ProfileResponse)
 async def get_my_profile(user: User = Depends(verify_request_signature)):
     profile = await profile_service.get_or_create_profile(user.user_id)
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.put("/me", response_model=ProfileResponse)
 async def update_my_profile(
@@ -91,7 +123,7 @@ async def update_my_profile(
         )
     except InvalidTagError as e:
         raise HTTPException(status_code=400, detail=f"Unknown tags: {', '.join(e.unknown_tags)}")
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.put("/me/media/order", response_model=ProfileResponse)
 async def reorder_media(body: MediaOrderRequest, user: User = Depends(verify_request_signature)):
@@ -99,7 +131,7 @@ async def reorder_media(body: MediaOrderRequest, user: User = Depends(verify_req
         profile = await profile_service.reorder_media(user.user_id, body.urls)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.post("/me/media", response_model=ProfileResponse)
 async def upload_media(
@@ -119,7 +151,7 @@ async def upload_media(
         raise HTTPException(status_code=400, detail=str(e))
     except MediaProcessingError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.delete("/me/media", response_model=ProfileResponse)
 async def remove_media(
@@ -131,12 +163,12 @@ async def remove_media(
         profile = await profile_service.remove_media(user.user_id, url, index)
     except MediaNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.delete("/me/audio", response_model=ProfileResponse)
 async def clear_audio(user: User = Depends(verify_request_signature)):
     profile = await profile_service.clear_audio(user.user_id)
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
 
 @router.patch("/me/media/blur", response_model=ProfileResponse)
 async def set_media_blur(
@@ -149,4 +181,39 @@ async def set_media_blur(
         profile = await profile_service.set_media_blur(user.user_id, url, blur, index)
     except MediaNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return _to_response(profile)
+    return _to_response(profile, include_forms=True)
+
+@router.post("/me/forms", response_model=ProfileResponse)
+async def add_profile_form(
+    body: FormCreateRequest,
+    user: User = Depends(verify_request_signature),
+):
+    try:
+        profile = await profile_service.add_form(user.user_id, body.value)
+    except (FormInvalidError, FormTakenError, FormLimitError) as exc:
+        _raise_form_error(exc)
+    return _to_response(profile, include_forms=True)
+
+@router.post("/me/forms/{slug}/regenerate", response_model=ProfileResponse)
+async def regenerate_profile_form(slug: str, user: User = Depends(verify_request_signature)):
+    try:
+        profile = await profile_service.regenerate_form(user.user_id, slug)
+    except (FormNotFoundError, FormTakenError) as exc:
+        _raise_form_error(exc)
+    return _to_response(profile, include_forms=True)
+
+@router.delete("/me/forms/{slug}", response_model=ProfileResponse)
+async def delete_profile_form(slug: str, user: User = Depends(verify_request_signature)):
+    try:
+        profile = await profile_service.delete_form(user.user_id, slug)
+    except FormNotFoundError as exc:
+        _raise_form_error(exc)
+    return _to_response(profile, include_forms=True)
+
+@router.put("/me/forms/{slug}/primary", response_model=ProfileResponse)
+async def set_primary_profile_form(slug: str, user: User = Depends(verify_request_signature)):
+    try:
+        profile = await profile_service.set_primary_form(user.user_id, slug)
+    except FormNotFoundError as exc:
+        _raise_form_error(exc)
+    return _to_response(profile, include_forms=True)

@@ -48,6 +48,8 @@ class Profile:
     media: List[MediaItem] = field(default_factory=list)
     audio: Optional[MediaItem] = None
     contacts: List[Contact] = field(default_factory=list)
+    forms: List[str] = field(default_factory=list)
+    primary_form: Optional[str] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     score: int = 0

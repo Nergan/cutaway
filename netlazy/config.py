@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     cloudinary_api_secret: str = ""
 
     max_media_items: int = 10
-    max_bio_length: int = 200
+    max_bio_length: int = 500
     max_upload_bytes: int = 25 * 1024 * 1024
     image_max_dimension: int = 1600
     audio_bitrate: str = "96k"

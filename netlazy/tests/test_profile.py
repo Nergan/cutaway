@@ -6,6 +6,16 @@ from netlazy.application.profile_service import (
     MediaLimitExceededError,
     MediaNotFoundError
 )
+from netlazy.config import Settings
+from netlazy.domain.bio import normalize_bio
+from netlazy.domain.forms import (
+    GENERATED_FORM_RE,
+    FormInvalidError,
+    FormLimitError,
+    FormNotFoundError,
+    FormTakenError,
+    MAX_FORM_LINKS,
+)
 from netlazy.domain.models import Profile, Contact, MediaItem
 from netlazy.domain.repository import MediaProcessingError
 
@@ -124,3 +134,94 @@ async def test_reorder_media_success(profile_service, profile_deps):
 
     assert [m.url for m in reordered.media] == ["url_3", "url_1", "url_2"]
     profile_deps["profile_repo"].upsert.assert_called_once()
+
+
+def test_bio_limit_default_is_500():
+    assert Settings.model_fields["max_bio_length"].default == 500
+
+
+def test_normalize_bio_keeps_single_blank_lines():
+    text = "\n\nhello\n\n\n\nworld\n \n \n\nnext\n\n"
+    assert normalize_bio(text, 500) == "hello\n\nworld\n\nnext"
+    assert len(normalize_bio("a" * 600, 500)) == 500
+
+
+@pytest.mark.asyncio
+async def test_update_profile_collapses_bio_and_keeps_forms(profile_service, profile_deps):
+    profile_deps["tag_repo"].get_all_names.return_value = []
+    profile_deps["profile_repo"].get_by_user_id.return_value = Profile(
+        user_id="u1", media_id="u1", forms=["keep-me"], primary_form="keep-me"
+    )
+
+    profile = await profile_service.update_profile(
+        user_id="u1",
+        bio="one\n\n\n\ntwo",
+        tags=[],
+        contacts=[],
+    )
+
+    assert profile.bio == "one\n\ntwo"
+    assert profile.forms == ["keep-me"]
+    assert profile.primary_form == "keep-me"
+
+
+@pytest.mark.asyncio
+async def test_form_links_follow_primary_and_charset(profile_service, profile_deps):
+    profile = Profile(user_id="u1", media_id="u1")
+    profile_deps["profile_repo"].get_by_user_id.return_value = profile
+    profile_deps["profile_repo"].get_by_form.return_value = None
+
+    added = await profile_service.add_form("u1", "Mik-Chan")
+    assert added.forms == ["mik-chan"]
+    assert added.primary_form == "mik-chan"
+
+    generated = await profile_service.add_form("u1", None)
+    generated_slug = generated.forms[1]
+    assert generated.forms[0] == "mik-chan"
+    assert GENERATED_FORM_RE.fullmatch(generated_slug)
+    assert generated.primary_form == generated_slug
+
+    chosen = await profile_service.set_primary_form("u1", "mik-chan")
+    assert chosen.primary_form == "mik-chan"
+    assert chosen.forms[1] == generated_slug
+
+    removed = await profile_service.delete_form("u1", generated_slug)
+    assert removed.forms == ["mik-chan"]
+    assert removed.primary_form == "mik-chan"
+
+    with pytest.raises(FormInvalidError):
+        await profile_service.add_form("u1", "job-2")
+    with pytest.raises(FormTakenError):
+        await profile_service.add_form("u1", "mik-chan")
+
+    profile_deps["profile_repo"].get_by_form.return_value = Profile(user_id="other", forms=["taken-name"])
+    with pytest.raises(FormTakenError):
+        await profile_service.add_form("u1", "taken-name")
+
+    profile.forms = ["link-one"] * MAX_FORM_LINKS
+    profile.primary_form = "link-one"
+    with pytest.raises(FormLimitError):
+        await profile_service.add_form("u1", "another-name")
+
+    with pytest.raises(FormNotFoundError):
+        await profile_service.delete_form("u1", "missing-link")
+
+
+@pytest.mark.asyncio
+async def test_regenerate_form_replaces_the_old_slug(profile_service, profile_deps):
+    profile = Profile(user_id="u1", media_id="u1", forms=["old-link"], primary_form="old-link")
+    profile_deps["profile_repo"].get_by_user_id.return_value = profile
+    profile_deps["profile_repo"].get_by_form.return_value = None
+
+    updated = await profile_service.regenerate_form("u1", "old-link")
+
+    assert "old-link" not in updated.forms
+    assert len(updated.forms) == 1
+    assert updated.primary_form == updated.forms[0]
+    assert GENERATED_FORM_RE.fullmatch(updated.forms[0])
+
+
+@pytest.mark.asyncio
+async def test_public_form_lookup_ignores_unknown_text(profile_service, profile_deps):
+    assert await profile_service.get_public_by_form("nope!") is None
+    profile_deps["profile_repo"].get_by_form.assert_not_called()

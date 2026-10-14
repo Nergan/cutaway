@@ -169,13 +169,13 @@
           <div class="section-header mobile-collapse-header profile-bio-header" @click="showBio = !showBio" style="margin-top:2rem;">
             <span style="font-size: 0.75rem;">about me</span>
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span :style="{color: store.state.myProfile.bio.length > 200 ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/200</span>
+              <span :style="{color: store.state.myProfile.bio.length > bioLimit ? 'var(--accent-danger)' : 'inherit'}">{{ store.state.myProfile.bio.length }}/{{ bioLimit }}</span>
               <i class="bi mobile-collapse-icon" :class="showBio ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
             </div>
           </div>
           <transition name="collapse">
             <div v-show="showBio" class="mobile-collapse-content">
-              <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" :placeholder="store.t('about_me_placeholder')" rows="3" @input="triggerAutosave"></textarea>
+              <textarea class="seamless-input editor-bio" v-model="store.state.myProfile.bio" :placeholder="store.t('about_me_placeholder')" rows="8" :maxlength="bioLimit" @input="triggerAutosave"></textarea>
             </div>
           </transition>
 
@@ -225,6 +225,22 @@
               </div>
             </div>
           </transition>
+
+          <div class="form-links-block">
+            <div class="section-header" style="margin: 0.4rem 0 0.2rem;">
+              <span style="font-size: 0.75rem;">{{ store.t('form_links') }}</span>
+            </div>
+            <div class="form-link-row" v-for="slug in profileForms" :key="slug">
+              <span class="form-link-value">{{ slug }}</span>
+              <i class="bi contact-action form-link-star" :class="slug === primaryForm ? 'bi-star-fill is-primary' : 'bi-star'" @click="setPrimaryForm(slug)" :data-tooltip="store.t('form_primary')"></i>
+              <i class="bi bi-arrow-repeat contact-action" @click="regenerateForm(slug)"></i>
+              <i class="bi bi-x-lg contact-action danger" @click="deleteForm(slug)"></i>
+            </div>
+            <div class="form-link-row" v-if="profileForms.length < 8">
+              <input type="text" class="seamless-input" v-model="formDraft" :placeholder="store.t('form_placeholder')" maxlength="48" autocapitalize="off" autocomplete="off" spellcheck="false" @keyup.enter="addFormLink">
+              <i class="bi bi-plus-lg contact-action" @click="addFormLink"></i>
+            </div>
+          </div>
           </div>
           </div>
         </template>
@@ -237,8 +253,15 @@
 import { ref, computed, watch, onActivated, onMounted, onUnmounted, nextTick } from 'vue'
 import { useStore, profileHasContent, tagsMatchingQuery } from '../store/state.js'
 import api from '../utils/api.js'
+import { limitBioDraft, BIO_LIMIT } from '../utils/bio.js'
 
 const store = useStore()
+const bioLimit = BIO_LIMIT
+const formDraft = ref('')
+const formBusy = ref(false)
+const profileForms = computed(() => store.state.myProfile.forms || [])
+const primaryForm = computed(() => store.state.myProfile.primary_form || store.state.myProfile.form || null)
+const customFormPattern = /^[a-z]+(?:-[a-z]+)*$/
 const editorRoot = ref(null)
 const fileInput = ref(null)
 const dragOverIdx = ref(null)
@@ -366,7 +389,7 @@ onActivated(() => {
 function handleWorkspaceClick(e) {
   if (isMobile.value || isV2.value) return
   if (!store.state.isUserFriendlyInterface) {
-    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone') && !e.target.closest('.contact-row')) {
+    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.chip') && !e.target.closest('.btn') && !e.target.closest('button') && !e.target.closest('.feed-media-item') && !e.target.closest('.section-header') && !e.target.closest('.mini-add-banner') && !e.target.closest('.media-zone') && !e.target.closest('.contact-row') && !e.target.closest('.form-links-block')) {
       store.state.isWorkspaceCollapsed = true;
     }
   }
@@ -374,9 +397,8 @@ function handleWorkspaceClick(e) {
 
 function triggerAutosave() {
   store.state.lastProfileEditTimestamp = Date.now();
-  if (store.state.myProfile.bio.length > 200) {
-    store.state.myProfile.bio = store.state.myProfile.bio.substring(0, 200)
-  }
+  const limited = limitBioDraft(store.state.myProfile.bio)
+  if (limited !== store.state.myProfile.bio) store.state.myProfile.bio = limited
   clearTimeout(saveTimeout)
   saveTimeout = setTimeout(() => {
     store.saveProfile()
@@ -439,6 +461,60 @@ function commitNewContact() {
 function removeContact(idx) {
   store.state.myProfile.contacts.splice(idx, 1)
   triggerAutosave()
+}
+
+function applyFormResponse(data) {
+  store.state.myProfile.forms = data.forms || []
+  store.state.myProfile.primary_form = data.primary_form || null
+  store.state.myProfile.form = data.form || data.primary_form || null
+}
+
+function toastFormError(error) {
+  const detail = error?.response?.data?.detail
+  const key = detail === 'form_taken' || detail === 'form_invalid' || detail === 'form_limit' ? detail : 'form_invalid'
+  store.addToast(store.t(key), 'bi-x-lg')
+}
+
+async function withForm(task) {
+  if (formBusy.value) return false
+  formBusy.value = true
+  try {
+    const res = await task()
+    applyFormResponse(res.data)
+    return true
+  } catch (error) {
+    toastFormError(error)
+    return false
+  } finally {
+    formBusy.value = false
+  }
+}
+
+async function addFormLink() {
+  const raw = formDraft.value.trim().toLowerCase()
+  if (raw && (raw.length < 2 || raw.length > 48 || !customFormPattern.test(raw))) {
+    store.addToast(store.t('form_invalid'), 'bi-x-lg')
+    return
+  }
+  if (profileForms.value.length >= 8) {
+    store.addToast(store.t('form_limit'), 'bi-x-lg')
+    return
+  }
+  const saved = await withForm(() => api.post('/profile/me/forms', raw ? { value: raw } : {}))
+  if (saved) formDraft.value = ''
+}
+
+function regenerateForm(slug) {
+  withForm(() => api.post(`/profile/me/forms/${encodeURIComponent(slug)}/regenerate`, {}))
+}
+
+function deleteForm(slug) {
+  withForm(() => api.delete(`/profile/me/forms/${encodeURIComponent(slug)}`))
+}
+
+function setPrimaryForm(slug) {
+  if (slug === primaryForm.value) return
+  withForm(() => api.put(`/profile/me/forms/${encodeURIComponent(slug)}/primary`))
 }
 
 async function copyText(txt) {

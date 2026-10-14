@@ -143,6 +143,10 @@ class ProfileRepository(ABC):
         ...
 
     @abstractmethod
+    async def get_by_form(self, slug: str) -> Optional[Profile]:
+        ...
+
+    @abstractmethod
     async def upsert(self, profile: Profile, session: Any = None) -> None:
         ...
         

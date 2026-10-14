@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <div v-else-if="!store.state.isRegistered" class="welcome-container">
+    <div v-else-if="!store.state.isRegistered && store.state.currentView !== 'feed'" class="welcome-container">
       <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
         <button class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">
@@ -82,7 +82,7 @@
           </div>
           
           <div class="nav-section">
-            <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'" :title="store.t('search_profiles')">
+            <a class="nav-item" :class="{active: store.state.currentView === 'feed' && !store.state.formSlug}" @click="store.openFeed()" :title="store.t('search_profiles')">
               <i class="bi bi-compass"></i> 
               <span v-if="!store.state.isSidebarCollapsed" class="animated-underline">{{ store.t('search_profiles') }}</span>
             </a>
@@ -118,8 +118,8 @@
         </div>
       </nav>
       
-      <nav class="mobile-bottom-nav" v-if="store.state.isRegistered && !store.state.isBanned">
-        <a class="nav-item" :class="{active: store.state.currentView === 'feed'}" @click="store.state.currentView = 'feed'">
+      <nav class="mobile-bottom-nav">
+        <a class="nav-item" :class="{active: store.state.currentView === 'feed' && !store.state.formSlug}" @click="store.openFeed()">
           <i class="bi bi-compass"></i>
         </a>
         <a class="nav-item" :class="{active: store.state.currentView === 'editor'}" @click="store.state.currentView = 'editor'">
@@ -789,6 +789,9 @@ function rotateIdentityKey() {
 }
 
 watch(() => store.state.currentView, (newVal, oldVal) => {
+  if (oldVal === 'feed' && newVal !== 'feed') {
+      store.state.formSlug = null;
+  }
   if (newVal !== oldVal) {
       store.syncViewToUrl();
   }

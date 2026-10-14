@@ -1,6 +1,6 @@
 <template>
   <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
-    <div class="feed-header">
+    <div class="feed-header" v-if="!store.state.formSlug">
       <div class="feed-search-bar">
         <div style="position: relative; display: flex; align-items: center; width: 100%;">
           <input type="text" ref="searchInput" class="seamless-input search-header-input" :value="filterText" @input="filterText = $event.target.value" @keydown.down.prevent="navigateTags(1)" @keydown.up.prevent="navigateTags(-1)" @keydown.enter.prevent="selectHighlightedTag" :placeholder="store.t('filter_tags_placeholder')" style="padding-right: 2.2rem !important;">
@@ -151,13 +151,36 @@
       </transition>
     </Teleport>
 
-    <div v-if="store.state.isFeedLoading && store.state.feed.length === 0 && !selfCard">
+    <div v-if="store.state.formSlug && formStatus === 'loading'">
       <div style="text-align: center; padding: 4rem 2rem;">
         <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
       </div>
     </div>
 
-    <div class="empty-state" v-else-if="!isLoading && store.state.feed.length === 0 && !selfCard">
+    <div class="empty-state form-missing" v-else-if="store.state.formSlug && formStatus === 'missing'">
+      <div class="form-missing-code">404</div>
+      <p>{{ store.t('form_missing') }}</p>
+      <button class="footer-action" style="margin-top: 1rem;" @click="store.openFeed()">
+        {{ store.t('back_to_feed') }}
+      </button>
+    </div>
+
+    <div class="empty-state" v-else-if="store.state.formSlug && formStatus === 'error'">
+      <button class="footer-action icon-btn" @click="loadLinkedForm(store.state.formSlug)" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button class="footer-action" style="margin-top: 1rem;" @click="store.openFeed()">
+        {{ store.t('back_to_feed') }}
+      </button>
+    </div>
+
+    <div v-else-if="!store.state.formSlug && store.state.isFeedLoading && store.state.feed.length === 0 && !selfCard && !guestJoinCard">
+      <div style="text-align: center; padding: 4rem 2rem;">
+        <i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: var(--text-muted);"></i>
+      </div>
+    </div>
+
+    <div class="empty-state" v-else-if="!store.state.formSlug && !isLoading && store.state.feed.length === 0 && !selfCard && !guestJoinCard">
       <button class="footer-action icon-btn" @click="reloadFeed" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-muted);">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
@@ -169,8 +192,13 @@
 
     <div class="masonry-grid" @click="closeAllMenus" v-else>
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" :class="{ 'card-self': profile.isSelf }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }">
-          
+        <div class="card" :class="{ 'card-self': profile.isSelf || (profile.isGuestJoin && isV2), 'card-guest': profile.isGuestJoin }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+          <div v-if="profile.isGuestJoin" class="guest-join">
+            <button class="create-btn" @click.stop="store.createAccount">
+              <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
+            </button>
+          </div>
+          <template v-else>
           <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.media_id)">
             <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
             <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
@@ -187,7 +215,7 @@
           <div class="chip-group" v-if="profile.tags && profile.tags.length > 0">
             <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
           </div>
-          <div style="font-size: 0.85rem;" v-if="profile.bio">{{ profile.bio }}</div>
+          <div class="card-bio" v-if="displayBio(profile.bio)">{{ displayBio(profile.bio) }}</div>
 
           <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
             <template v-for="c in profile.contacts" :key="c.value">
@@ -266,12 +294,13 @@
               </div>
             </transition>
           </div>
+          </template>
 
         </div>
       </div>
     </div>
     
-    <div id="feed-bottom" v-show="store.state.feed.length > 0 || isLoading" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
+    <div id="feed-bottom" v-show="!store.state.formSlug && (store.state.feed.length > 0 || isLoading)" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
       <span v-if="isLoading"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
       <span v-else-if="!hasMore">{{ store.t('end_of_feed') }}</span>
     </div>
@@ -282,16 +311,24 @@
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, nextTick } from 'vue'
 import { useStore, profileHasContent, tagsMatchingQuery } from '../store/state.js'
 import api, { apiWithPoW } from '../utils/api.js'
+import { displayBio } from '../utils/bio.js'
 
 const store = useStore()
 const isV2 = computed(() => store.state.interfaceVersion === '2')
+const linkedProfile = ref(null)
+const formStatus = ref('idle')
+let formRequest = 0
 const selfCard = computed(() => {
-  if (!isV2.value || !profileHasContent(store.state.myProfile)) return null
+  if (!store.state.isRegistered || !isV2.value || !profileHasContent(store.state.myProfile)) return null
   return {
     ...store.state.myProfile,
     user_id: store.state.myProfile.user_id || store.state.userId || 'self',
     isSelf: true
   }
+})
+const guestJoinCard = computed(() => {
+  if (store.state.isRegistered) return null
+  return { user_id: 'guest-join', isGuestJoin: true }
 })
 const feedRoot = ref(null)
 const filterText = ref('')
@@ -324,10 +361,16 @@ const masonryColumns = computed(() => {
   const heights = Array.from({length: columnsCount.value}, () => 0);
   
   const profiles = []
-  if (selfCard.value) profiles.push(selfCard.value)
-  store.state.feed.forEach(profile => {
-    if (!selfCard.value || profile.user_id !== selfCard.value.user_id) profiles.push(profile)
-  })
+  if (store.state.formSlug) {
+    if (guestJoinCard.value) profiles.push(guestJoinCard.value)
+    if (linkedProfile.value) profiles.push(linkedProfile.value)
+  } else {
+    if (guestJoinCard.value) profiles.push(guestJoinCard.value)
+    else if (selfCard.value) profiles.push(selfCard.value)
+    store.state.feed.forEach(profile => {
+      if (!selfCard.value || profile.user_id !== selfCard.value.user_id) profiles.push(profile)
+    })
+  }
 
   profiles.forEach((profile, index) => {
     let h = 80;
@@ -336,12 +379,15 @@ const masonryColumns = computed(() => {
       h += profile.media.length === 1 ? 340 : 250;
     }
     if (profile.tags && profile.tags.length > 0) h += 30;
-    if (profile.bio) h += Math.min(profile.bio.length * 0.4, 80);
+    if (profile.bio) {
+      const lines = String(profile.bio).split('\n').length
+      h += Math.min(lines * 22 + profile.bio.length * 0.12, 360)
+    }
     if (profile.contacts && profile.contacts.length > 0) h += profile.contacts.filter(c => !c.is_private && c.type !== 'unknown').length * 28;
     h += 50;
     
     let minIdx = 0;
-    if (!(index === 0 && profile.isSelf)) {
+    if (!(index === 0 && (profile.isSelf || profile.isGuestJoin))) {
       let minH = heights[0];
       for (let i = 1; i < heights.length; i++) {
           if (heights[i] < minH) {
@@ -545,7 +591,53 @@ async function handleMediaError(profile, m) {
     m.blobUrl = null;
 }
 
+async function loadLinkedForm(slug) {
+  const requestId = ++formRequest
+  if (!slug) {
+    formStatus.value = 'idle'
+    linkedProfile.value = null
+    return
+  }
+  formStatus.value = 'loading'
+  linkedProfile.value = null
+  try {
+    const res = await api.get(`/feed/form/${encodeURIComponent(slug)}`)
+    if (requestId !== formRequest) return
+    const profile = res.data
+    const selfId = store.state.userId || store.state.myProfile.user_id
+    profile.isSelf = Boolean(selfId) && profile.user_id === selfId
+    if (profile.media) profile.media.forEach(m => { m.isLoaded = false })
+    profile.selectedContacts = []
+    profile.showContactSelect = false
+    profile.pendingMessage = ''
+    profile.popoverPosition = 'bottom'
+    linkedProfile.value = profile
+    formStatus.value = 'ready'
+  } catch (e) {
+    if (requestId !== formRequest) return
+    linkedProfile.value = null
+    formStatus.value = e.response && e.response.status === 404 ? 'missing' : 'error'
+  }
+}
+
+watch(() => store.state.formSlug, (slug) => {
+  loadLinkedForm(slug)
+}, { immediate: true })
+
+async function copyProfileLink(event, profile) {
+  if (profile.isGuestJoin) return
+  if (event.target !== event.currentTarget) return
+  const slug = profile.form || null
+  if (!slug) {
+    store.addToast(store.t('form_not_shared'), 'bi-link-45deg')
+    return
+  }
+  await navigator.clipboard.writeText(store.profileFormUrl(slug))
+  store.addToast(store.t('link_copied'), 'bi-check2')
+}
+
 async function fetchFeed(reset = false) {
+  if (store.state.formSlug) return
   if (reset) {
     if (feedAbortController) feedAbortController.abort();
     feedAbortController = new AbortController();
@@ -646,12 +738,13 @@ watch(hasActiveFilters, () => {
 });
 
 function handlePtrRefresh() {
-  fetchFeed(true)
+  if (store.state.formSlug) loadLinkedForm(store.state.formSlug)
+  else fetchFeed(true)
 }
 
 onMounted(() => {
   lastFilterString = activeFiltersString.value;
-  if (store.state.feed.length === 0) {
+  if (!store.state.formSlug && store.state.feed.length === 0) {
     fetchFeed(true)
   }
   setTimeout(setupObserver, 500)
@@ -706,6 +799,10 @@ function handleMediaClick(mediaObj, mediaList) {
 }
 
 function handleContactButtonClick(profile, type, event) {
+  if (!store.state.isRegistered) {
+    store.createAccount()
+    return
+  }
   if (isMobile.value) {
     openContactSelect(profile, type)
   } else {
