@@ -1,5 +1,5 @@
 <template>
-  <div id="app-container">
+  <div id="app-container" :class="{ 'guest-shell': !store.state.isRegistered }">
     
     <div class="ptr-indicator" :style="{ transform: `translateY(${ptrOffset}px)`, opacity: ptrOffset > -60 ? 1 : 0 }">
       <div class="ptr-icon">
@@ -72,7 +72,7 @@
     </div>
 
     <template v-else>
-      <nav class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" @click="handleSidebarClick">
+      <nav v-if="store.state.isRegistered" class="sidebar" :class="{ 'sidebar-collapsed': store.state.isSidebarCollapsed, 'non-uf': !store.state.isUserFriendlyInterface }" @click="handleSidebarClick">
         <div class="sidebar-content">
           <div class="brand-row" v-if="store.state.isUserFriendlyInterface">
             <div class="brand" v-if="!store.state.isSidebarCollapsed" @click.stop="reloadPage">netlazy</div>
@@ -118,7 +118,7 @@
         </div>
       </nav>
       
-      <nav class="mobile-bottom-nav">
+      <nav v-if="store.state.isRegistered" class="mobile-bottom-nav">
         <a class="nav-item" :class="{active: store.state.currentView === 'feed' && !store.state.formSlug}" @click="store.openFeed()">
           <i class="bi bi-compass"></i>
         </a>

@@ -255,3 +255,32 @@ class TestInterfaceVersions:
             assert "link_copied" in keys
             assert "form_not_shared" in keys
             assert "back_to_feed" in keys
+
+
+class TestFeedCardAffordance:
+    def test_profile_card_background_uses_pointer_cursor(self):
+        css = read_text("frontend/css/views.css")
+        block = css_rule_block(css, ".masonry-grid .card:not(.card-guest)")
+        assert "cursor: pointer" in block
+        child = css_rule_block(css, ".masonry-grid .card:not(.card-guest) > *")
+        assert "cursor: auto" in child
+
+    def test_guest_feed_hides_navigation(self):
+        app = read_text("frontend/src/App.vue")
+        assert 'v-if="store.state.isRegistered" class="sidebar"' in app
+        assert 'v-if="store.state.isRegistered" class="mobile-bottom-nav"' in app
+        assert "guest-shell" in app
+        mobile = read_text("frontend/css/mobile.css")
+        header = css_rule_block(mobile, "#app-container.guest-shell .feed-header")
+        assert "env(safe-area-inset-bottom)" in header
+
+    def test_public_contacts_open_as_links(self):
+        helper = read_text("frontend/src/utils/contact.js")
+        assert "export function contactHref" in helper
+        assert "mailto:" in helper
+        assert "tel:" in helper
+        for rel in ("frontend/src/components/Feed.vue", "frontend/src/components/Inbox.vue"):
+            content = read_text(rel)
+            assert "contactHref(c)" in content
+            assert 'rel="noopener noreferrer"' in content
+            assert "contact-link" in content

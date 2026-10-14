@@ -398,6 +398,20 @@ body.uf-mode .mini-add-banner { padding: 0.45rem; }
 .contact-row:last-child { border-bottom: none; }
 .contact-icon { color: var(--text-muted); font-size: 1rem; width: 20px; text-align: center; }
 .contact-val { flex-grow: 1; font-size: 0.9rem; transition: color 0.2s; }
+.card .contact-val {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0;
+  color: inherit;
+}
+a.contact-link {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
 .contact-action { cursor: pointer; font-size: 0.9rem; color: var(--text-muted); padding: 0.2rem; transition: color 0.2s; }
 
 /* COLLAPSIBLES */

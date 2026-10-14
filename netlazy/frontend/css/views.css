@@ -155,6 +155,12 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   transition: transform 0.2s ease, box-shadow 0.2s ease; 
   box-shadow: var(--shadow-sm); 
 }
+.masonry-grid .card:not(.card-guest) {
+  cursor: pointer;
+}
+.masonry-grid .card:not(.card-guest) > * {
+  cursor: auto;
+}
 .card-bio {
   font-size: 0.85rem;
   white-space: pre-wrap;

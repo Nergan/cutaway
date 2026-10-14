@@ -32,7 +32,8 @@
             <template v-for="c in selectedChat.profile.contacts" :key="c.value">
               <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                  <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                 <span class="contact-val" style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; flex-grow: 1; min-width: 0;" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                 <a v-if="contactHref(c)" class="contact-val contact-link" :href="contactHref(c)" target="_blank" rel="noopener noreferrer" @click.stop>{{ c.value }}</a>
+                 <span v-else class="contact-val" @click.stop="copyText(c.value)">{{ c.value }}</span>
                  <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
               </div>
             </template>
@@ -207,6 +208,7 @@ import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch, ne
 import { useStore, isInboxUnread } from '../store/state.js'
 import api from '../utils/api.js'
 import { displayBio } from '../utils/bio.js'
+import { contactHref } from '../utils/contact.js'
 
 const store = useStore()
 const inboxRoot = ref(null)

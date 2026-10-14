@@ -254,6 +254,13 @@
     color: var(--text-muted) !important;
   }
 
+  #app-container.guest-shell .feed-header {
+    bottom: env(safe-area-inset-bottom);
+  }
+  #app-container.guest-shell .scrollable-content {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
   .code-block { font-size: 0.8rem; }
   .welcome-box { padding: 1rem; gap: 1.5rem; }
   .welcome-brand { font-size: 2rem; }
