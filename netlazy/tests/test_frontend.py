@@ -260,10 +260,23 @@ class TestInterfaceVersions:
 class TestFeedCardAffordance:
     def test_profile_card_background_uses_pointer_cursor(self):
         css = read_text("frontend/css/views.css")
-        block = css_rule_block(css, ".masonry-grid .card:not(.card-guest)")
+        block = css_rule_block(css, ".masonry-grid .card.card-linkable")
         assert "cursor: pointer" in block
-        child = css_rule_block(css, ".masonry-grid .card:not(.card-guest) > *")
+        child = css_rule_block(css, ".masonry-grid .card.card-linkable > *")
         assert "cursor: auto" in child
+        feed = read_text("frontend/src/components/Feed.vue")
+        assert "card-linkable" in feed
+        assert "feed-results-single" in feed
+
+    def test_shared_form_survives_saved_feed_view(self):
+        state = read_text("frontend/src/store/state.js")
+        capture = state.split("async function loadSavedState", 1)[1].split("const { value: raw }", 1)[0]
+        assert "formFromLocation" in capture
+        view_assign = state.split("function syncUrlToView", 1)[1].split("function syncViewToUrl", 1)[0]
+        assert view_assign.index("state.formSlug = formFromLocation()") < view_assign.index("state.currentView = view")
+        app = read_text("frontend/src/App.vue")
+        watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
+        assert "store.state.isInitialized" in watch
 
     def test_guest_feed_hides_navigation(self):
         app = read_text("frontend/src/App.vue")

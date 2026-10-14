@@ -156,21 +156,40 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   transition: transform 0.2s ease, box-shadow 0.2s ease; 
   box-shadow: var(--shadow-sm); 
 }
-.masonry-grid .card:not(.card-guest) {
+.masonry-grid .card.card-linkable {
   cursor: pointer;
 }
-.masonry-grid .card:not(.card-guest) > * {
+.masonry-grid .card.card-linkable > * {
   cursor: auto;
 }
-.masonry-grid .card.card-self .card-bio,
-.masonry-grid .card.card-self .chip-group,
-.masonry-grid .card.card-self .chip {
+.masonry-grid .card.card-self.card-linkable .card-bio,
+.masonry-grid .card.card-self.card-linkable .chip-group,
+.masonry-grid .card.card-self.card-linkable .chip {
   cursor: pointer;
+}
+.scrollable-content.feed-single-page {
+  display: flex;
+  flex-direction: column;
+}
+.feed-results-single {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1.5rem 0 2rem;
+}
+.feed-results-single .masonry-grid {
+  width: min(420px, 100%);
+  padding-top: 0;
 }
 .guest-form-join {
   display: flex;
   justify-content: center;
-  margin: 1rem 0 1.25rem;
+  width: min(420px, 100%);
+  margin: 1.25rem 0 0;
 }
 .guest-form-join .create-btn {
   font-size: 0.9rem;

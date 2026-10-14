@@ -1,5 +1,5 @@
 <template>
-  <div class="scrollable-content" style="padding-top:0;" ref="feedRoot">
+  <div class="scrollable-content" :class="{ 'feed-single-page': store.state.formSlug }" style="padding-top:0;" ref="feedRoot">
     <div class="feed-header" v-if="!store.state.formSlug">
       <div class="feed-search-bar">
         <div style="position: relative; display: flex; align-items: center; width: 100%;">
@@ -190,15 +190,10 @@
       </button>
     </div>
 
-    <div v-else>
-      <div v-if="store.state.formSlug && guestJoinCard" class="guest-form-join">
-        <button class="create-btn" @click="store.createAccount">
-          <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
-        </button>
-      </div>
+    <div v-else class="feed-results" :class="{ 'feed-results-single': store.state.formSlug }">
     <div class="masonry-grid" @click="closeAllMenus">
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
           <div v-if="profile.isGuestJoin" class="guest-join">
             <button class="create-btn" @click.stop="store.createAccount">
               <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
@@ -306,6 +301,11 @@
         </div>
       </div>
     </div>
+      <div v-if="store.state.formSlug && guestJoinCard" class="guest-form-join">
+        <button class="create-btn" @click="store.createAccount">
+          <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
+        </button>
+      </div>
     </div>
     
     <div id="feed-bottom" v-show="!store.state.formSlug && (store.state.feed.length > 0 || isLoading)" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
@@ -366,8 +366,9 @@ function updateColumnsCount() {
 }
 
 const masonryColumns = computed(() => {
-  const cols = Array.from({length: columnsCount.value}, () => []);
-  const heights = Array.from({length: columnsCount.value}, () => 0);
+  const columnTotal = store.state.formSlug ? 1 : columnsCount.value
+  const cols = Array.from({length: columnTotal}, () => []);
+  const heights = Array.from({length: columnTotal}, () => 0);
   
   const profiles = []
   if (store.state.formSlug) {

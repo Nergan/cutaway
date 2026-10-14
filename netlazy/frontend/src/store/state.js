@@ -165,6 +165,13 @@ export function useStore() {
         return normalized === '/' || normalized === '/netlazy';
     }
 
+    function formFromLocation() {
+        const path = window.location.pathname || '';
+        if (!/\/feed(\/.*)?$/.test(path)) return null;
+        const form = (new URLSearchParams(window.location.search).get('form') || '').trim().toLowerCase();
+        return form || null;
+    }
+
     function syncUrlToView() {
         if (Capacitor.isNativePlatform()) return;
         const path = window.location.pathname;
@@ -178,19 +185,18 @@ export function useStore() {
         else if (path.match(/\/inbox(\/.*)?$/)) view = 'inbox';
         else if (path.match(/\/privacy(\/.*)?$/)) view = 'vault';
         else if (path.match(/\/profile(\/.*)?$/)) view = 'editor';
-        
-        state.currentView = view;
-        if (state.currentView === 'feed') {
+
+        if (view === 'feed') {
             const params = new URLSearchParams(window.location.search);
             if (params.has('tags')) {
                 state.pendingUrlTags = params.get('tags');
                 applyPendingUrlTags();
             }
-            const form = (params.get('form') || '').trim().toLowerCase();
-            state.formSlug = form || null;
+            state.formSlug = formFromLocation();
         } else {
             state.formSlug = null;
         }
+        state.currentView = view;
         syncViewToUrl(true);
     }
 
@@ -241,6 +247,10 @@ export function useStore() {
 
     async function loadSavedState() {
         await loadInterfaceVersion();
+        if (!Capacitor.isNativePlatform()) {
+            const form = formFromLocation();
+            if (form) state.formSlug = form;
+        }
         try {
             const { value: raw } = await Preferences.get({ key: STORAGE_KEY });
             if (raw) {

@@ -789,11 +789,13 @@ function rotateIdentityKey() {
 }
 
 watch(() => store.state.currentView, (newVal, oldVal) => {
-  if (oldVal === 'feed' && newVal !== 'feed') {
-      store.state.formSlug = null;
-  }
-  if (newVal !== oldVal) {
-      store.syncViewToUrl();
+  if (store.state.isInitialized) {
+    if (oldVal === 'feed' && newVal !== 'feed') {
+        store.state.formSlug = null;
+    }
+    if (newVal !== oldVal) {
+        store.syncViewToUrl();
+    }
   }
   if (window.innerWidth <= 768) {
     store.state.isSidebarCollapsed = true;
