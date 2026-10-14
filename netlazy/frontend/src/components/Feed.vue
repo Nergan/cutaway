@@ -232,7 +232,7 @@
             </template>
           </div>
           
-          <div v-if="!profile.isSelf" style="margin-top: auto; display: flex; width: 100%; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; position: relative;">
+          <div v-if="showProfileActions(profile)" class="card-actions">
             <template v-if="!profile.sent">
               <div style="display: flex; justify-content: space-around; width: 100%; align-items: center;">
                 <span style="display: inline-flex; flex-direction: column; align-items: center;">
@@ -640,6 +640,12 @@ watch(() => store.state.formSlug, (slug) => {
   loadLinkedForm(slug)
 }, { immediate: true })
 
+function showProfileActions(profile) {
+  if (!profile || profile.isGuestJoin || profile.isFeedLoadingMark) return false
+  if (store.state.formSlug) return store.state.isRegistered
+  return !profile.isSelf
+}
+
 function profileSlug(profile) {
   if (profile.form) return profile.form
   if (profile.primary_form) return profile.primary_form
@@ -923,6 +929,7 @@ async function sendRequest(profile, type, contactValue = null) {
 function closeAllMenus() {
   filterText.value = '';
   store.state.feed.forEach(p => p.showContactSelect = false)
+  if (linkedProfile.value) linkedProfile.value.showContactSelect = false
 }
 
 const iconMap = { 'email': 'bi-envelope', 'link': 'bi-link-45deg', 'phone': 'bi-telephone', 'unknown': 'bi-question' }

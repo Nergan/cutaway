@@ -278,6 +278,15 @@ class TestFeedCardAffordance:
         watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
         assert "store.state.isInitialized" in watch
 
+    def test_shared_form_keeps_exchange_actions_for_registered_viewers(self):
+        feed = read_text("frontend/src/components/Feed.vue")
+        actions = feed.split("function showProfileActions", 1)[1].split("function profileSlug", 1)[0]
+        assert "store.state.formSlug" in actions
+        assert "store.state.isRegistered" in actions
+        assert "handleContactButtonClick(profile, 'share'" in feed
+        assert "handleContactButtonClick(profile, 'exchange'" in feed
+        assert "handleContactButtonClick(profile, 'demand'" in feed
+
     def test_feed_loading_stays_visible_beside_the_own_card(self):
         feed = read_text("frontend/src/components/Feed.vue")
         assert "isFeedLoadingMark" in feed
