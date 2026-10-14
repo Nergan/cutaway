@@ -341,12 +341,25 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
     flex-direction: column;
   }
   body.ui-v2 .profile-tag-header {
-    padding: 0.8rem 1rem 0.4rem;
+    position: fixed;
+    bottom: calc(65px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    top: auto;
+    z-index: 100;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0;
+    pointer-events: none;
+    flex-direction: column-reverse !important;
+  }
+  body.ui-v2 .profile-tag-header > * {
+    pointer-events: auto;
   }
   body.ui-v2 .profile-tag-header .feed-search-bar {
-    width: 100%;
-    flex: none !important;
-    margin: 0 !important;
+    width: auto;
+    flex: unset !important;
+    margin: 0 1rem 0.5rem 1rem !important;
   }
   body.ui-v2 .editor-v2 .profile-workspace-pane {
     height: auto !important;
@@ -362,6 +375,6 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
     transform: none !important;
     pointer-events: auto !important;
     min-width: 0 !important;
-    padding: 0.9rem 1.2rem calc(1.4rem + 65px + env(safe-area-inset-bottom));
+    padding: 0.9rem 1.2rem calc(8rem + 65px + env(safe-area-inset-bottom));
   }
 }

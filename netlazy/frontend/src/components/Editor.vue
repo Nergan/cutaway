@@ -8,7 +8,7 @@
             <i v-if="profileTagQuery" class="bi bi-x-lg search-clear-btn" @click="profileTagQuery = ''"></i>
           </transition>
           <transition name="dropdown-fade">
-            <div class="glass-menu tag-search-dropdown" v-if="profileTagQuery.trim()" style="top: 100%; left: 0; right: 0; max-height: 250px; width: 100%;">
+            <div class="glass-menu tag-search-dropdown" v-if="profileTagQuery.trim()" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <div v-if="profileTagMatches.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
               <template v-else>
                 <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" @click="selectProfileTag(tag.name)">
