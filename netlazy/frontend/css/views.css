@@ -34,7 +34,8 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .workspace-scroll-area { height: 100%; width: 100%; min-width: 350px; overflow-y: auto; overflow-x: hidden; padding: 2.5rem; position: relative; transition: background 0.2s; }
 
 .workspace-scroll-area.drag-over-files,
-.profile-media-block.drag-over-files {
+.profile-media-block.drag-over-files,
+.profile-media-drop.drag-over-files {
   outline: 2px dashed var(--accent-moss);
   outline-offset: -10px;
   background: rgba(141, 169, 112, 0.05);
@@ -160,6 +161,20 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 }
 .masonry-grid .card:not(.card-guest) > * {
   cursor: auto;
+}
+.masonry-grid .card.card-self .card-bio,
+.masonry-grid .card.card-self .chip-group,
+.masonry-grid .card.card-self .chip {
+  cursor: pointer;
+}
+.guest-form-join {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0 1.25rem;
+}
+.guest-form-join .create-btn {
+  font-size: 0.9rem;
+  padding: 0.7rem 1.3rem;
 }
 .card-bio {
   font-size: 0.85rem;

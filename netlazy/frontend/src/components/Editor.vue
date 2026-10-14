@@ -98,7 +98,8 @@
         
         <template v-else>
           <div class="profile-sheet">
-          <div class="profile-media-block" :class="{ 'drag-over-files': isV2 && isDraggingFiles }">
+          <div class="profile-media-block">
+          <div class="profile-media-drop" :class="{ 'drag-over-files': isV2 && isDraggingFiles }">
           <div class="section-header mobile-collapse-header" @click="showMedia = !showMedia">
             <span style="font-size: 0.75rem;">media</span>
             <i class="bi mobile-collapse-icon" :class="showMedia ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
@@ -163,6 +164,22 @@
           
           <input type="file" ref="fileInput" hidden multiple accept="image/*,video/*,audio/*" @change="handleFileSelect">
           </div>
+          <div class="form-links-block">
+            <div class="section-header" style="margin: 0.4rem 0 0.2rem;">
+              <span style="font-size: 0.75rem;">{{ store.t('form_links') }}</span>
+            </div>
+            <div class="form-link-row" v-for="slug in profileForms" :key="slug">
+              <span class="form-link-value">{{ slug }}</span>
+              <i class="bi contact-action form-link-star" :class="slug === primaryForm ? 'bi-star-fill is-primary' : 'bi-star'" @click="setPrimaryForm(slug)" :data-tooltip="store.t('form_primary')"></i>
+              <i class="bi bi-arrow-repeat contact-action" @click="regenerateForm(slug)"></i>
+              <i class="bi bi-x-lg contact-action danger" @click="deleteForm(slug)"></i>
+            </div>
+            <div class="form-link-row" v-if="profileForms.length < 8">
+              <input type="text" class="seamless-input" v-model="formDraft" :placeholder="store.t('form_placeholder')" maxlength="48" autocapitalize="off" autocomplete="off" spellcheck="false" @keyup.enter="addFormLink">
+              <i class="bi bi-plus-lg contact-action" @click="addFormLink"></i>
+            </div>
+          </div>
+          </div>
 
           <div class="profile-details">
           <p v-if="isV2 && !hasOwnProfile" class="profile-feed-note">{{ store.t('not_in_feed') }}</p>
@@ -225,22 +242,6 @@
               </div>
             </div>
           </transition>
-
-          <div class="form-links-block">
-            <div class="section-header" style="margin: 0.4rem 0 0.2rem;">
-              <span style="font-size: 0.75rem;">{{ store.t('form_links') }}</span>
-            </div>
-            <div class="form-link-row" v-for="slug in profileForms" :key="slug">
-              <span class="form-link-value">{{ slug }}</span>
-              <i class="bi contact-action form-link-star" :class="slug === primaryForm ? 'bi-star-fill is-primary' : 'bi-star'" @click="setPrimaryForm(slug)" :data-tooltip="store.t('form_primary')"></i>
-              <i class="bi bi-arrow-repeat contact-action" @click="regenerateForm(slug)"></i>
-              <i class="bi bi-x-lg contact-action danger" @click="deleteForm(slug)"></i>
-            </div>
-            <div class="form-link-row" v-if="profileForms.length < 8">
-              <input type="text" class="seamless-input" v-model="formDraft" :placeholder="store.t('form_placeholder')" maxlength="48" autocapitalize="off" autocomplete="off" spellcheck="false" @keyup.enter="addFormLink">
-              <i class="bi bi-plus-lg contact-action" @click="addFormLink"></i>
-            </div>
-          </div>
           </div>
           </div>
         </template>

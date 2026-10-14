@@ -274,6 +274,23 @@ class TestFeedCardAffordance:
         header = css_rule_block(mobile, "#app-container.guest-shell .feed-header")
         assert "env(safe-area-inset-bottom)" in header
 
+    def test_own_card_can_copy_its_form_link(self):
+        feed = read_text("frontend/src/components/Feed.vue")
+        assert "function profileSlug" in feed
+        assert "profile.primary_form" in feed
+        assert "function blocksProfileCopy" in feed
+        assert "profile.isSelf" in feed
+        assert "isGuestJoin && isV2" not in feed
+        assert "guest-form-join" in feed
+        editor = read_text("frontend/src/components/Editor.vue")
+        media = editor.split('class="profile-media-block"', 1)[1].split('class="profile-details"', 1)[0]
+        assert "form-links-block" in media
+        details = editor.split('class="profile-details"', 1)[1]
+        assert "form-links-block" not in details.split("</template>", 1)[0]
+        styles = read_text("frontend/css/v2.css")
+        assert "profile-media-block .form-links-block" in styles
+        assert "margin-top: auto" in styles
+
     def test_public_contacts_open_as_links(self):
         helper = read_text("frontend/src/utils/contact.js")
         assert "export function contactHref" in helper

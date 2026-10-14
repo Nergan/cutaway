@@ -298,7 +298,7 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(240px, 0.85fr);
     column-gap: 2.5rem;
-    align-items: start;
+    align-items: stretch;
   }
   body.ui-v2 .editor-v2 .profile-details {
     grid-column: 1;
@@ -309,6 +309,28 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
     grid-column: 2;
     grid-row: 1;
     order: 0;
+  }
+  body.ui-v2 .editor-v2 .profile-media-drop {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  body.ui-v2 .editor-v2 .profile-media-drop > .mobile-collapse-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  body.ui-v2 .editor-v2 .profile-media-drop .media-zone {
+    flex: 1 1 auto;
+    min-height: 12rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  body.ui-v2 .editor-v2 .profile-media-block .form-links-block {
+    margin-top: auto;
+    padding-top: 1.5rem;
   }
   body.ui-v2 .editor-v2 .profile-sheet .mobile-collapse-header {
     display: flex !important;

@@ -190,9 +190,15 @@
       </button>
     </div>
 
-    <div class="masonry-grid" @click="closeAllMenus" v-else>
+    <div v-else>
+      <div v-if="store.state.formSlug && guestJoinCard" class="guest-form-join">
+        <button class="create-btn" @click="store.createAccount">
+          <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
+        </button>
+      </div>
+    <div class="masonry-grid" @click="closeAllMenus">
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" :class="{ 'card-self': profile.isSelf || (profile.isGuestJoin && isV2), 'card-guest': profile.isGuestJoin }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
           <div v-if="profile.isGuestJoin" class="guest-join">
             <button class="create-btn" @click.stop="store.createAccount">
               <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
@@ -300,6 +306,7 @@
         </div>
       </div>
     </div>
+    </div>
     
     <div id="feed-bottom" v-show="!store.state.formSlug && (store.state.feed.length > 0 || isLoading)" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
       <span v-if="isLoading"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
@@ -364,7 +371,6 @@ const masonryColumns = computed(() => {
   
   const profiles = []
   if (store.state.formSlug) {
-    if (guestJoinCard.value) profiles.push(guestJoinCard.value)
     if (linkedProfile.value) profiles.push(linkedProfile.value)
   } else {
     if (guestJoinCard.value) profiles.push(guestJoinCard.value)
@@ -626,10 +632,25 @@ watch(() => store.state.formSlug, (slug) => {
   loadLinkedForm(slug)
 }, { immediate: true })
 
+function profileSlug(profile) {
+  if (profile.form) return profile.form
+  if (profile.primary_form) return profile.primary_form
+  const forms = profile.forms || []
+  return forms.length ? forms[forms.length - 1] : null
+}
+
+function blocksProfileCopy(target) {
+  return Boolean(target.closest('button, a, input, textarea, audio, video, .feed-media-item, .contact-row, .glass-menu'))
+}
+
 async function copyProfileLink(event, profile) {
   if (profile.isGuestJoin) return
-  if (event.target !== event.currentTarget) return
-  const slug = profile.form || null
+  if (profile.isSelf) {
+    if (blocksProfileCopy(event.target)) return
+  } else if (event.target !== event.currentTarget) {
+    return
+  }
+  const slug = profileSlug(profile)
   if (!slug) {
     store.addToast(store.t('form_not_shared'), 'bi-link-45deg')
     return
