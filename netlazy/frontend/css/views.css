@@ -200,10 +200,22 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.card-guest {
+.card-guest,
+.card-loading {
   align-items: center;
   justify-content: center;
   min-height: 8rem;
+}
+.card-loading {
+  pointer-events: none;
+}
+.feed-loading-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 1.5rem;
 }
 .card-guest .guest-join {
   display: flex;
@@ -211,6 +223,7 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
   justify-content: center;
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.card.card-loading:hover { transform: none; box-shadow: var(--shadow-sm); }
 
 
 /* INBOX */

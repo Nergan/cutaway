@@ -193,8 +193,11 @@
     <div v-else class="feed-results" :class="{ 'feed-results-single': store.state.formSlug }">
     <div class="masonry-grid" @click="closeAllMenus">
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
-          <div v-if="profile.isGuestJoin" class="guest-join">
+        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-loading': profile.isFeedLoadingMark, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+          <div v-if="profile.isFeedLoadingMark" class="feed-loading-card">
+            <i class="bi bi-arrow-repeat spin"></i>
+          </div>
+          <div v-else-if="profile.isGuestJoin" class="guest-join">
             <button class="create-btn" @click.stop="store.createAccount">
               <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
             </button>
@@ -309,7 +312,7 @@
     </div>
     
     <div id="feed-bottom" v-show="!store.state.formSlug && (store.state.feed.length > 0 || isLoading)" :style="{'padding-top': '2rem', height: '100px', display:'flex', justifyContent:'center', color:'var(--text-muted)'}">
-      <span v-if="isLoading"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
+      <span v-if="isLoading && store.state.feed.length > 0"><i class="bi bi-arrow-repeat spin" style="font-size: 1.5rem;"></i></span>
       <span v-else-if="!hasMore">{{ store.t('end_of_feed') }}</span>
     </div>
   </div>
@@ -345,6 +348,7 @@ const isLoading = ref(false)
 const hasMore = ref(true)
 let observer = null
 let feedAbortController = null
+let feedRequest = 0
 
 const isMobile = ref(window.innerWidth <= 768)
 const highlightIndex = ref(-1)
@@ -376,6 +380,9 @@ const masonryColumns = computed(() => {
   } else {
     if (guestJoinCard.value) profiles.push(guestJoinCard.value)
     else if (selfCard.value) profiles.push(selfCard.value)
+    if (isLoading.value && store.state.feed.length === 0 && (selfCard.value || guestJoinCard.value)) {
+      profiles.push({ user_id: 'feed-loading', isFeedLoadingMark: true })
+    }
     store.state.feed.forEach(profile => {
       if (!selfCard.value || profile.user_id !== selfCard.value.user_id) profiles.push(profile)
     })
@@ -645,7 +652,7 @@ function blocksProfileCopy(target) {
 }
 
 async function copyProfileLink(event, profile) {
-  if (profile.isGuestJoin) return
+  if (profile.isGuestJoin || profile.isFeedLoadingMark) return
   if (profile.isSelf) {
     if (blocksProfileCopy(event.target)) return
   } else if (event.target !== event.currentTarget) {
@@ -670,7 +677,8 @@ async function fetchFeed(reset = false) {
   } else if (isLoading.value || !hasMore.value) {
     return;
   }
-  
+
+  const requestId = ++feedRequest
   if (store.state.feed.length === 0) store.state.isFeedLoading = true;
   isLoading.value = true;
   try {
@@ -690,6 +698,7 @@ async function fetchFeed(reset = false) {
     };
 
     const res = await api.post(`/feed/search`, payload, { signal: feedAbortController.signal })
+    if (requestId !== feedRequest) return
     const batch = res.data
     
     if (batch.length < 20) hasMore.value = false
@@ -704,12 +713,15 @@ async function fetchFeed(reset = false) {
       store.state.feed.push(...batch)
     }
   } catch (e) {
+    if (requestId !== feedRequest) return
     if (e.name !== 'CanceledError') {
       store.addToast("Failed to fetch feed", "bi-x-circle")
     }
   } finally {
-    isLoading.value = false
-    store.state.isFeedLoading = false
+    if (requestId === feedRequest) {
+      isLoading.value = false
+      store.state.isFeedLoading = false
+    }
   }
 }
 

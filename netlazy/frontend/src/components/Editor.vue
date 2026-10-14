@@ -170,13 +170,13 @@
             </div>
             <div class="form-link-row" v-for="slug in profileForms" :key="slug">
               <span class="form-link-value">{{ slug }}</span>
-              <i class="bi contact-action form-link-star" :class="slug === primaryForm ? 'bi-star-fill is-primary' : 'bi-star'" @click="setPrimaryForm(slug)" :data-tooltip="store.t('form_primary')"></i>
-              <i class="bi bi-arrow-repeat contact-action" @click="regenerateForm(slug)"></i>
-              <i class="bi bi-x-lg contact-action danger" @click="deleteForm(slug)"></i>
+              <i class="bi contact-action form-link-star" :class="formActionClass(slug, 'primary', slug === primaryForm ? 'bi-star-fill is-primary' : 'bi-star')" @click="setPrimaryForm(slug)" :data-tooltip="store.t('form_primary')"></i>
+              <i class="bi contact-action" :class="formActionClass(slug, 'regenerate', 'bi-arrow-repeat')" @click="regenerateForm(slug)"></i>
+              <i class="bi contact-action danger" :class="formActionClass(slug, 'delete', 'bi-x-lg')" @click="deleteForm(slug)"></i>
             </div>
             <div class="form-link-row" v-if="profileForms.length < 8">
               <input type="text" class="seamless-input" v-model="formDraft" :placeholder="store.t('form_placeholder')" maxlength="48" autocapitalize="off" autocomplete="off" spellcheck="false" @keyup.enter="addFormLink">
-              <i class="bi bi-plus-lg contact-action" @click="addFormLink"></i>
+              <i class="bi contact-action" :class="formActionClass('', 'add', 'bi-plus-lg')" @click="addFormLink"></i>
             </div>
           </div>
           </div>
@@ -259,7 +259,7 @@ import { limitBioDraft, BIO_LIMIT } from '../utils/bio.js'
 const store = useStore()
 const bioLimit = BIO_LIMIT
 const formDraft = ref('')
-const formBusy = ref(false)
+const formPending = ref(null)
 const profileForms = computed(() => store.state.myProfile.forms || [])
 const primaryForm = computed(() => store.state.myProfile.primary_form || store.state.myProfile.form || null)
 const customFormPattern = /^[a-z]+(?:-[a-z]+)*$/
@@ -476,9 +476,15 @@ function toastFormError(error) {
   store.addToast(store.t(key), 'bi-x-lg')
 }
 
-async function withForm(task) {
-  if (formBusy.value) return false
-  formBusy.value = true
+function formActionClass(slug, action, idle) {
+  const pending = formPending.value
+  if (pending && pending.slug === slug && pending.action === action) return 'bi-hourglass-split spin'
+  return idle
+}
+
+async function withForm(slug, action, task) {
+  if (formPending.value) return false
+  formPending.value = { slug, action }
   try {
     const res = await task()
     applyFormResponse(res.data)
@@ -487,7 +493,7 @@ async function withForm(task) {
     toastFormError(error)
     return false
   } finally {
-    formBusy.value = false
+    formPending.value = null
   }
 }
 
@@ -501,21 +507,21 @@ async function addFormLink() {
     store.addToast(store.t('form_limit'), 'bi-x-lg')
     return
   }
-  const saved = await withForm(() => api.post('/profile/me/forms', raw ? { value: raw } : {}))
+  const saved = await withForm('', 'add', () => api.post('/profile/me/forms', raw ? { value: raw } : {}))
   if (saved) formDraft.value = ''
 }
 
 function regenerateForm(slug) {
-  withForm(() => api.post(`/profile/me/forms/${encodeURIComponent(slug)}/regenerate`, {}))
+  withForm(slug, 'regenerate', () => api.post(`/profile/me/forms/${encodeURIComponent(slug)}/regenerate`, {}))
 }
 
 function deleteForm(slug) {
-  withForm(() => api.delete(`/profile/me/forms/${encodeURIComponent(slug)}`))
+  withForm(slug, 'delete', () => api.delete(`/profile/me/forms/${encodeURIComponent(slug)}`))
 }
 
 function setPrimaryForm(slug) {
   if (slug === primaryForm.value) return
-  withForm(() => api.put(`/profile/me/forms/${encodeURIComponent(slug)}/primary`))
+  withForm(slug, 'primary', () => api.put(`/profile/me/forms/${encodeURIComponent(slug)}/primary`))
 }
 
 async function copyText(txt) {

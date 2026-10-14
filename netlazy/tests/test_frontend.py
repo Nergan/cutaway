@@ -278,6 +278,18 @@ class TestFeedCardAffordance:
         watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
         assert "store.state.isInitialized" in watch
 
+    def test_feed_loading_stays_visible_beside_the_own_card(self):
+        feed = read_text("frontend/src/components/Feed.vue")
+        assert "isFeedLoadingMark" in feed
+        fetch = feed.split("async function fetchFeed", 1)[1].split("let lastFilterString", 1)[0]
+        assert "const requestId = ++feedRequest" in fetch
+        assert "requestId !== feedRequest" in fetch
+        assert "requestId === feedRequest" in fetch.split("finally", 1)[1]
+        editor = read_text("frontend/src/components/Editor.vue")
+        links = editor.split('class="form-links-block"', 1)[1].split('class="profile-details"', 1)[0]
+        assert "formActionClass" in links
+        assert "bi-hourglass-split spin" in editor
+
     def test_guest_feed_hides_navigation(self):
         app = read_text("frontend/src/App.vue")
         assert 'v-if="store.state.isRegistered" class="sidebar"' in app
