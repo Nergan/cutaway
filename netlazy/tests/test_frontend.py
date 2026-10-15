@@ -281,6 +281,13 @@ class TestFeedCardAffordance:
         watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
         assert "store.state.isInitialized" in watch
 
+    def test_leaving_a_shared_form_loads_the_feed(self):
+        feed = read_text("frontend/src/components/Feed.vue")
+        watch = feed.split("watch(() => store.state.formSlug", 1)[1].split("function showProfileActions", 1)[0]
+        assert "previous" in watch
+        assert "store.state.feed.length === 0" in watch
+        assert "fetchFeed(true)" in watch
+
     def test_shared_form_keeps_exchange_actions_for_registered_viewers(self):
         feed = read_text("frontend/src/components/Feed.vue")
         actions = feed.split("function showProfileActions", 1)[1].split("function profileSlug", 1)[0]

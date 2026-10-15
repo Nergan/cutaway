@@ -644,8 +644,9 @@ watch(() => store.state.myProfile.id, (id) => {
   if (profile && id) profile.isSelf = profile.id === id
 })
 
-watch(() => store.state.formSlug, (slug) => {
+watch(() => store.state.formSlug, (slug, previous) => {
   loadLinkedForm(slug)
+  if (!slug && previous && store.state.feed.length === 0) fetchFeed(true)
 }, { immediate: true })
 
 function showProfileActions(profile) {
