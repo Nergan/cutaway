@@ -133,11 +133,11 @@
       </div>
 
       <div class="inbox-filters" @click.stop>
-        <i class="bi bi-heart filter-icon filter-match" :class="{active: filters.state.matched}" @click="filters.state.matched = !filters.state.matched"></i>
-        <i class="bi bi-heartbreak filter-icon filter-nomatch" :class="{active: filters.state.declined}" @click="filters.state.declined = !filters.state.declined"></i>
-        <i class="bi bi-box-arrow-up filter-icon type-share" :class="{active: filters.type.share}" @click="filters.type.share = !filters.type.share"></i>
-        <i class="bi bi-arrow-left-right filter-icon type-exchange" :class="{active: filters.type.exchange}" @click="filters.type.exchange = !filters.type.exchange"></i>
-        <i class="bi bi-box-arrow-in-down filter-icon type-demand" :class="{active: filters.type.demand}" @click="filters.type.demand = !filters.type.demand"></i>
+        <i class="bi bi-heart filter-icon filter-match" :class="{active: store.state.inboxFilters.matched}" @click="toggleInboxFilter('matched')" @mouseenter="showFilterTip($event, 'matched')" @mouseleave="hideFilterTip"></i>
+        <i class="bi bi-heartbreak filter-icon filter-nomatch" :class="{active: store.state.inboxFilters.declined}" @click="toggleInboxFilter('declined')" @mouseenter="showFilterTip($event, 'declined')" @mouseleave="hideFilterTip"></i>
+        <i class="bi bi-box-arrow-up filter-icon type-share" :class="{active: store.state.inboxFilters.share}" @click="toggleInboxFilter('share')" @mouseenter="showFilterTip($event, 'share')" @mouseleave="hideFilterTip"></i>
+        <i class="bi bi-arrow-left-right filter-icon type-exchange" :class="{active: store.state.inboxFilters.exchange}" @click="toggleInboxFilter('exchange')" @mouseenter="showFilterTip($event, 'exchange')" @mouseleave="hideFilterTip"></i>
+        <i class="bi bi-box-arrow-in-down filter-icon type-demand" :class="{active: store.state.inboxFilters.demand}" @click="toggleInboxFilter('demand')" @mouseenter="showFilterTip($event, 'demand')" @mouseleave="hideFilterTip"></i>
       </div>
 
       <div class="inbox-chat-list scrollable-content">
@@ -201,11 +201,14 @@
         </div>
       </div>
     </transition>
+    <Teleport to="body">
+      <div v-if="filterTip" class="floating-tooltip inbox-filter-tip" :class="{ 'is-above': filterTip.above }" :style="{ top: filterTip.top + 'px', left: filterTip.left + 'px' }">{{ filterTip.text }}</div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
 import { Capacitor } from '@capacitor/core'
 import { useStore, isInboxUnread } from '../store/state.js'
 import api from '../utils/api.js'
@@ -219,15 +222,50 @@ const isMobile = ref(window.innerWidth <= 768)
 const selectedChatId = ref(null)
 const resolveReq = ref(null)
 const pendingAction = ref(null)
+const filterTip = ref(null)
 
-const filters = reactive({
-  state: { matched: true, declined: true },
-  type: { share: true, exchange: true, demand: true }
-});
+function toggleInboxFilter(key) {
+  store.state.inboxFilters[key] = !store.state.inboxFilters[key]
+}
+
+function chatFilterType(chat) {
+  return chat.type === 'mutual' ? 'exchange' : chat.type
+}
 
 function isChatVisible(chat) {
-  const pending = chat.chatState === 'received' || chat.chatState === 'sent';
-  return pending || filters.state[chat.chatState] || filters.type[chat.type];
+  if (!store.state.inboxFilters[chatFilterType(chat)]) return false
+  if (chat.chatState === 'received' || chat.chatState === 'sent') return true
+  if (chat.chatState === 'matched') return !!store.state.inboxFilters.matched
+  if (chat.chatState === 'declined') return !!store.state.inboxFilters.declined
+  return false
+}
+
+function showFilterTip(event, key) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  filterTip.value = {
+    text: store.t(`inbox_filter_${key}`),
+    top: rect.bottom + 8,
+    left: rect.left + rect.width / 2,
+    above: false
+  }
+  nextTick(() => {
+    const tip = document.querySelector('.inbox-filter-tip')
+    if (!tip || !filterTip.value) return
+    const box = tip.getBoundingClientRect()
+    const half = box.width / 2
+    const left = Math.min(Math.max(rect.left + rect.width / 2, half + 8), window.innerWidth - half - 8)
+    let top = rect.bottom + 8
+    let above = false
+    if (top + box.height > window.innerHeight - 8) {
+      top = rect.top - 8
+      above = true
+    }
+    filterTip.value = { text: filterTip.value.text, top, left, above }
+  })
+}
+
+function hideFilterTip() {
+  filterTip.value = null
 }
 
 const chats = computed(() => {
@@ -252,6 +290,12 @@ const chats = computed(() => {
 const filteredChats = computed(() => {
   return chats.value.filter(isChatVisible);
 });
+
+watch(filteredChats, (list) => {
+  if (selectedChatId.value && !list.some(chat => chat.id === selectedChatId.value)) {
+    selectedChatId.value = null
+  }
+})
 
 function handleInboxBgClick(e) {
   if (store.state.isUserFriendlyInterface || isMobile.value) return;

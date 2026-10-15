@@ -91,11 +91,25 @@ class TestInboxUiContracts:
         assert "type-exchange.active { color: var(--accent-moss)" in css
         assert "type-demand.active { color: var(--accent-danger)" in css
 
-    def test_inbox_or_filter_logic(self):
+    def test_inbox_type_filter_hides_sent_and_received(self):
         inbox = read_text("frontend/src/components/Inbox.vue")
-        assert "function isChatVisible" in inbox
-        assert "filters.state[chat.chatState] || filters.type[chat.type]" in inbox
-        assert "chat.chatState === 'received' || chat.chatState === 'sent'" in inbox
+        visible = inbox.split("function isChatVisible", 1)[1].split("const chats", 1)[0]
+        assert "chatFilterType(chat)" in visible
+        assert visible.index("chatFilterType(chat)") < visible.index("chat.chatState === 'received'")
+        assert "chat.chatState === 'received' || chat.chatState === 'sent'" in visible
+        assert "filters.state[chat.chatState] || filters.type[chat.type]" not in inbox
+        assert "inboxFilters" in inbox
+        assert "floating-tooltip inbox-filter-tip" in inbox
+        assert "showFilterTip" in inbox
+        state = read_text("frontend/src/store/state.js")
+        assert "inboxFilters:" in state
+        saved = state.split("async function loadSavedState", 1)[1].split("watch(() => state.isUserFriendlyInterface", 1)[0]
+        assert "parsed.inboxFilters" in saved
+        save = state.split("const saveObj = {", 1)[1].split("await Preferences.set", 1)[0]
+        assert "inboxFilters: state.inboxFilters" in save
+        css = read_text("frontend/css/components.css")
+        tip = css_rule_block(css, ".floating-tooltip")
+        assert "rgba(20, 20, 20, 0.72)" in tip
 
     def test_active_chat_shape_highlight(self):
         css = extract_vue_scoped_css("frontend/src/components/Inbox.vue")

@@ -21,6 +21,11 @@ INBOX_UI_KEYS = (
     "send",
     "no_valid_private",
     "failed_delete_chat",
+    "inbox_filter_matched",
+    "inbox_filter_declined",
+    "inbox_filter_share",
+    "inbox_filter_exchange",
+    "inbox_filter_demand",
 )
 
 MOTION_CSS_TOKENS = (

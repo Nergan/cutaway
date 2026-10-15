@@ -33,6 +33,13 @@ const defaultState = {
     workspaceWidth: 500,
     isWorkspaceCollapsed: false,
     isInboxSidebarCollapsed: window.innerWidth <= 768,
+    inboxFilters: {
+        matched: true,
+        declined: true,
+        share: true,
+        exchange: true,
+        demand: true
+    },
     toasts: [],
     tagSearchQuery: '',
     lastProfileEditTimestamp: 0,
@@ -287,6 +294,11 @@ export function useStore() {
                 ['theme', 'lang', 'isUserFriendlyInterface', 'pushEnabled', 'pushShare', 'pushExchange', 'pushDemand', 'workspaceWidth', 'isWorkspaceCollapsed', 'isInboxSidebarCollapsed'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
+                if (parsed.inboxFilters && typeof parsed.inboxFilters === 'object') {
+                    ['matched', 'declined', 'share', 'exchange', 'demand'].forEach(k => {
+                        if (typeof parsed.inboxFilters[k] === 'boolean') state.inboxFilters[k] = parsed.inboxFilters[k];
+                    });
+                }
                 
                 ['isRegistered', 'isBanned', 'userId', 'currentAnchor'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
@@ -345,7 +357,7 @@ export function useStore() {
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
         state.pushEnabled, state.pushShare, state.pushExchange, state.pushDemand,
-        state.workspaceWidth, state.isWorkspaceCollapsed, state.isInboxSidebarCollapsed,
+        state.workspaceWidth, state.isWorkspaceCollapsed, state.isInboxSidebarCollapsed, state.inboxFilters,
         state.userId, state.currentAnchor
     ], async () => {
         if (!state.isInitialized) return;
@@ -357,6 +369,7 @@ export function useStore() {
                 pushExchange: state.pushExchange, pushDemand: state.pushDemand,
                 workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, isInboxSidebarCollapsed: state.isInboxSidebarCollapsed,
+                inboxFilters: state.inboxFilters,
                 userId: state.userId, currentAnchor: state.currentAnchor
             };
             await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(saveObj) });

@@ -696,6 +696,13 @@ body.light-theme .floating-tooltip {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
+.inbox-filter-tip {
+  transform: translate(-50%, 0);
+}
+.inbox-filter-tip.is-above {
+  transform: translate(-50%, -100%);
+}
+
 /* Smooth animated underline for Tags, Contacts & Navigation */
 .animated-underline { 
   position: relative; 
