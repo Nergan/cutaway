@@ -159,6 +159,16 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .masonry-grid .card.card-linkable {
   cursor: pointer;
 }
+.inbox-chat-detail .card.card-linkable {
+  cursor: pointer;
+}
+.inbox-chat-detail .card {
+  position: relative;
+}
+.inbox-chat-detail .card > :not(.card-ripple-layer) {
+  position: relative;
+  z-index: 1;
+}
 .masonry-grid .card > :not(.card-ripple-layer, .card-actions) {
   position: relative;
   z-index: 1;
@@ -210,6 +220,9 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .masonry-grid .card.card-linkable > * {
   cursor: auto;
 }
+.inbox-chat-detail .card.card-linkable > * {
+  cursor: auto;
+}
 .masonry-grid .card.card-self.card-linkable .card-bio,
 .masonry-grid .card.card-self.card-linkable .chip-group,
 .masonry-grid .card.card-self.card-linkable .chip {
@@ -218,6 +231,11 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .masonry-grid .card.card-linkable .card-bio,
 .masonry-grid .card.card-linkable .card-contacts,
 .masonry-grid .card.card-linkable .contact-row {
+  cursor: pointer;
+}
+.inbox-chat-detail .card.card-linkable .card-bio,
+.inbox-chat-detail .card.card-linkable .card-contacts,
+.inbox-chat-detail .card.card-linkable .contact-row {
   cursor: pointer;
 }
 .masonry-grid .card .contact-val {
@@ -316,6 +334,9 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .card.card-loading:hover { transform: none; box-shadow: var(--shadow-sm); }
 @media (hover: hover) {
   .masonry-grid .card.card-linkable:hover {
+    background: color-mix(in srgb, var(--accent-moss) 18%, var(--bg-surface)) !important;
+  }
+  .inbox-chat-detail .card.card-linkable:hover {
     background: color-mix(in srgb, var(--accent-moss) 18%, var(--bg-surface)) !important;
   }
 }

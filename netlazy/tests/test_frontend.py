@@ -120,6 +120,24 @@ class TestInboxUiContracts:
         assert "chat.chatState === 'sent' && chat.type === 'share'" in inbox
         assert "canDeleteChat(selectedChat)" in inbox
 
+    def test_inbox_profile_copies_its_form_link(self):
+        inbox = read_text("frontend/src/components/Inbox.vue")
+        assert "card-linkable" in inbox
+        assert "card-ripple-layer" in inbox
+        assert "function profileSlug" in inbox
+        assert "profile.form" in inbox
+        assert "copyProfileLink" in inbox
+        assert "store.profileFormUrl(slug)" in inbox
+        assert "form_not_shared" in inbox
+        assert "link_copied" in inbox
+        assert 'class="inbox-chat-panel"' in inbox
+        copy = inbox.split("async function copyProfileLink", 1)[1]
+        assert "acceptsProfileCopyClick(event)" in copy
+        assert "playCardRipple(event)" in copy
+        css = read_text("frontend/css/views.css")
+        block = css_rule_block(css, ".inbox-chat-detail .card.card-linkable")
+        assert "cursor: pointer" in block
+
 
 class TestGlobalUiContracts:
     def test_motion_tokens_defined(self):

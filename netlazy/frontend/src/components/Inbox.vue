@@ -5,7 +5,8 @@
         <button class="footer-action inbox-back-btn" @click="leaveChat"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
       </div>
       <div v-if="selectedChat" class="inbox-chat-detail">
-        <div class="card">
+        <div class="card" :class="{ 'card-linkable': !!profileSlug(selectedChat.profile) }" @click="copyProfileLink($event, selectedChat.profile)">
+          <div v-if="profileSlug(selectedChat.profile)" class="card-ripple-layer" aria-hidden="true"></div>
           <!-- Audio -->
           <div v-if="selectedChat.profile && selectedChat.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadProfileMedia(selectedChat.profile.audio, selectedChat.profile)">
             <audio v-if="selectedChat.profile.audio.blobUrl" class="audio-minimal" :src="selectedChat.profile.audio.blobUrl" @error="handleMediaError(selectedChat.profile, selectedChat.profile.audio)" controls style="flex-grow:1;"></audio>
@@ -28,7 +29,7 @@
           <div class="card-bio" v-if="selectedChat.profile && displayBio(selectedChat.profile.bio)">{{ displayBio(selectedChat.profile.bio) }}</div>
 
           <!-- Public Contacts -->
-          <div v-if="selectedChat.profile && selectedChat.profile.contacts && selectedChat.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
+          <div class="card-contacts" v-if="selectedChat.profile && selectedChat.profile.contacts && selectedChat.profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
             <template v-for="c in selectedChat.profile.contacts" :key="c.value">
               <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                  <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
@@ -40,7 +41,7 @@
           </div>
 
           <!-- Chat Info -->
-          <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: 1rem;">
+          <div class="inbox-chat-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-top: 1rem;" @click.stop>
             <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
                <i class="bi" :class="getStateIcon(selectedChat)"></i>
                <span>{{ getChatStateLabel(selectedChat.chatState) }}</span>
@@ -495,6 +496,86 @@ function getContactIcon(type) { return iconMap[type] || 'bi-link-45deg' }
 async function copyText(txt) {
   await navigator.clipboard.writeText(txt)
   store.addToast(store.t('copied'), "bi-check2")
+}
+
+function profileSlug(profile) {
+  if (!profile) return null
+  if (profile.form) return profile.form
+  if (profile.primary_form) return profile.primary_form
+  const forms = profile.forms || []
+  return forms.length ? forms[forms.length - 1] : null
+}
+
+function playCardRipple(event) {
+  const layer = event.currentTarget.querySelector(':scope > .card-ripple-layer')
+  if (!layer) return
+  const rect = layer.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  const reach = Math.hypot(Math.max(x, rect.width - x), Math.max(y, rect.height - y))
+  const scale = String(Math.max(reach / 8, 4))
+  ;[[0, '1'], [240, '0.68'], [500, '0.4']].forEach(([delay, strength]) => {
+    const ripple = document.createElement('span')
+    ripple.className = 'card-ripple'
+    ripple.style.left = `${x}px`
+    ripple.style.top = `${y}px`
+    ripple.style.setProperty('--ripple-scale', scale)
+    ripple.style.setProperty('--ripple-strength', strength)
+    if (delay) ripple.style.animationDelay = `${delay}ms`
+    layer.appendChild(ripple)
+    ripple.addEventListener('animationend', () => ripple.remove())
+  })
+}
+
+function pointHitsText(x, y, element) {
+  if (!element) return false
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  const slackX = 2
+  const slackY = 5
+  let node
+  while ((node = walker.nextNode())) {
+    if (!String(node.textContent || '').trim()) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    for (const rect of range.getClientRects()) {
+      if (rect.width <= 0 || rect.height <= 0) continue
+      if (x >= rect.left - slackX && x <= rect.right + slackX && y >= rect.top - slackY && y <= rect.bottom + slackY) return true
+    }
+  }
+  return false
+}
+
+function isEmptyTextFieldClick(event) {
+  const card = event.currentTarget
+  const target = event.target
+  if (!target || !target.closest) return false
+  if (target.closest('button, input, textarea, audio, video, .feed-media-item, .glass-menu, .contact-action, .contact-icon, .inbox-chat-panel')) return false
+  const bio = target.closest('.card-bio')
+  if (bio && card.contains(bio)) return !pointHitsText(event.clientX, event.clientY, bio)
+  const contacts = target.closest('.card-contacts')
+  if (contacts && card.contains(contacts)) {
+    const value = target.closest('.contact-val')
+    if (value && pointHitsText(event.clientX, event.clientY, value)) return false
+    return true
+  }
+  return false
+}
+
+function acceptsProfileCopyClick(event) {
+  if (event.target === event.currentTarget) return true
+  return isEmptyTextFieldClick(event)
+}
+
+async function copyProfileLink(event, profile) {
+  if (!profile || !acceptsProfileCopyClick(event)) return
+  const slug = profileSlug(profile)
+  if (!slug) {
+    store.addToast(store.t('form_not_shared'), 'bi-link-45deg')
+    return
+  }
+  playCardRipple(event)
+  await navigator.clipboard.writeText(store.profileFormUrl(slug))
+  store.addToast(store.t('link_copied'), 'bi-check2')
 }
 </script>
 
