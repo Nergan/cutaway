@@ -1,8 +1,9 @@
 import random
 from datetime import datetime, timezone
 from typing import List, Optional, Any, Tuple
+from uuid import uuid4
 from pymongo.errors import DuplicateKeyError
-from pymongo import UpdateOne, ReadPreference
+from pymongo import ReturnDocument, UpdateOne, ReadPreference
 from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.forms import FormSlugConflict
@@ -283,6 +284,65 @@ class MongoProfileRepository(ProfileRepository):
         cursor = db_instance.profiles_collection.find({"user_id": {"$in": user_ids}})
         return [self._to_domain(doc) async for doc in cursor]
 
+    async def get_by_public_id(self, public_id: str) -> Optional[Profile]:
+        if not public_id:
+            return None
+        doc = await db_instance.profiles_collection.find_one({"public_id": public_id})
+        if not doc:
+            return None
+        return self._to_domain(doc)
+
+    async def user_ids_for_public_ids(self, public_ids: List[str]) -> List[str]:
+        if not public_ids:
+            return []
+        cursor = db_instance.profiles_collection.find(
+            {"public_id": {"$in": list(public_ids)}},
+            {"user_id": 1},
+        )
+        return [doc["user_id"] async for doc in cursor if doc.get("user_id")]
+
+    async def ensure_public_id(self, profile: Profile) -> str:
+        if profile.public_id:
+            return profile.public_id
+        new_id = uuid4().hex
+        collection = db_instance.profiles_collection
+        missing = {
+            "user_id": profile.user_id,
+            "$or": [
+                {"public_id": {"$exists": False}},
+                {"public_id": None},
+                {"public_id": ""},
+            ],
+        }
+        doc = await collection.find_one_and_update(
+            missing,
+            {"$set": {"public_id": new_id}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if doc and doc.get("public_id"):
+            profile.public_id = doc["public_id"]
+            return profile.public_id
+        existing = await collection.find_one({"user_id": profile.user_id}, {"public_id": 1})
+        if existing and existing.get("public_id"):
+            profile.public_id = existing["public_id"]
+            return profile.public_id
+        profile.public_id = new_id
+        if existing is None:
+            try:
+                await collection.update_one(
+                    {"user_id": profile.user_id},
+                    {"$setOnInsert": self._to_doc(profile)},
+                    upsert=True,
+                )
+            except DuplicateKeyError:
+                pass
+            stored = await collection.find_one({"user_id": profile.user_id}, {"public_id": 1})
+            if stored and stored.get("public_id"):
+                profile.public_id = stored["public_id"]
+            return profile.public_id
+        await collection.update_one({"user_id": profile.user_id}, {"$set": {"public_id": new_id}})
+        return profile.public_id
+
     async def get_by_form(self, slug: str) -> Optional[Profile]:
         if not slug:
             return None
@@ -384,7 +444,7 @@ class MongoProfileRepository(ProfileRepository):
         return None
 
     def _to_doc(self, profile: Profile) -> dict:
-        return {
+        doc = {
             "user_id": profile.user_id,
             "media_id": profile.media_id,
             "bio": profile.bio,
@@ -398,11 +458,15 @@ class MongoProfileRepository(ProfileRepository):
             "updated_at": profile.updated_at,
             "random_index": profile.random_index
         }
+        if profile.public_id:
+            doc["public_id"] = profile.public_id
+        return doc
 
     def _to_domain(self, doc: dict) -> Profile:
         return Profile(
             user_id=doc["user_id"],
             media_id=doc.get("media_id", doc["user_id"]),
+            public_id=doc.get("public_id") or "",
             bio=doc.get("bio", ""),
             tags=doc.get("tags", []),
             media=[self._media_from_doc(m) for m in doc.get("media", [])],

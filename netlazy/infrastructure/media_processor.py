@@ -5,8 +5,7 @@ from contextlib import asynccontextmanager
 
 import magic
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import hashes
+from netlazy.domain.media_key import derive_media_key
 from netlazy.domain.repository import MediaProcessorPort, UnsupportedMediaTypeError, MediaProcessingError
 from shared.runtime import SubprocessFailure, run_process
 
@@ -54,8 +53,7 @@ class FFmpegMediaProcessor(MediaProcessorPort):
             raise MediaProcessingError("Media processing failed")
 
     def _derive_key(self, user_id: str) -> bytes:
-        hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=b'\x00'*32, info=b"netlazy_media_key")
-        return hkdf.derive(user_id.encode('utf-8'))
+        return derive_media_key(user_id)
 
     def _encrypt_payload(self, payload: bytes, user_id: str) -> bytes:
         key = self._derive_key(user_id)

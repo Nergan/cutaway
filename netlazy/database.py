@@ -146,6 +146,7 @@ async def connect_to_mongo():
         ],
         db_instance.profiles_collection: [
             ("user_id", {"unique": True}),
+            ("public_id", {"unique": True, "partialFilterExpression": {"public_id": {"$gt": ""}}}),
             ("forms", {"unique": True, "partialFilterExpression": {"forms.0": {"$exists": True}}}),
             ("created_at", {}),
             ("random_index", {}),

@@ -3,6 +3,7 @@ import hashlib
 _CHAIN_TAG = b"PQDA-CHAIN-v1"
 _REQUEST_TAG = "PQDA-v1"
 _IDENTITY_TAG = "PQDA-ANCHOR-v1"
+_READER_TAG = "PQDA-READ-v1"
 
 
 def compute_genesis_anchor(user_id: str) -> str:
@@ -28,6 +29,19 @@ def build_request_payload(
     """Canonical bytes signed for every anchor-checked (mutating/stateful) request."""
     return "\n".join(
         [_REQUEST_TAG, method, path, query, str(timestamp), nonce, body_hash, prev_anchor]
+    ).encode("utf-8")
+
+
+def build_reader_payload(
+    method: str, path: str, query: str, timestamp: int, nonce: str, body_hash: str
+) -> bytes:
+    """Signed read that does not carry or advance an anchor.
+
+    A different tag from the chain and anchor payloads, so a signature over one
+    cannot be presented as another. Each read still has its own nonce.
+    """
+    return "\n".join(
+        [_READER_TAG, method, path, query, str(timestamp), nonce, body_hash]
     ).encode("utf-8")
 
 

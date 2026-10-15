@@ -2,7 +2,32 @@ export const mediaBlobCache = new Map();
 const blobKeys = [];
 const MAX_BLOBS = 60;
 
-export async function fetchAndDecryptMedia(url, userId, mediaType) {
+function decodeBase64(value) {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+async function importMediaKey(keyMaterial, rawKey) {
+    if (rawKey) {
+        return window.crypto.subtle.importKey(
+            "raw", decodeBase64(keyMaterial),
+            { name: "AES-GCM" }, false, ["decrypt"]
+        );
+    }
+    const keyMaterialKey = await window.crypto.subtle.importKey(
+        "raw", new TextEncoder().encode(keyMaterial),
+        { name: "HKDF" }, false, ["deriveKey"]
+    );
+    return window.crypto.subtle.deriveKey(
+        { name: "HKDF", salt: new Uint8Array(32), info: new TextEncoder().encode("netlazy_media_key"), hash: "SHA-256" },
+        keyMaterialKey,
+        { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+    );
+}
+
+export async function fetchAndDecryptMedia(url, keyMaterial, mediaType, rawKey = false) {
     if (mediaBlobCache.has(url)) return mediaBlobCache.get(url);
     try {
         const res = await fetch(url);
@@ -32,15 +57,7 @@ export async function fetchAndDecryptMedia(url, userId, mediaType) {
             const iv = bytes.slice(payloadStart, payloadStart + 12);
             const ciphertext = bytes.slice(payloadStart + 12);
             
-            const keyMaterial = await window.crypto.subtle.importKey(
-                "raw", new TextEncoder().encode(userId),
-                { name: "HKDF" }, false, ["deriveKey"]
-            );
-            const key = await window.crypto.subtle.deriveKey(
-                { name: "HKDF", salt: new Uint8Array(32), info: new TextEncoder().encode("netlazy_media_key"), hash: "SHA-256" },
-                keyMaterial,
-                { name: "AES-GCM", length: 256 }, false, ["decrypt"]
-            );
+            const key = await importMediaKey(keyMaterial, rawKey);
             
             const decryptedBuffer = await window.crypto.subtle.decrypt(
                 { name: "AES-GCM", iv: iv }, key, ciphertext

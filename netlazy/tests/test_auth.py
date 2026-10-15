@@ -162,3 +162,37 @@ async def test_rotate_key_transaction(auth_service, auth_deps):
     assert anchor is not None
     auth_deps["user_repo"].create.assert_called_once()
     auth_deps["user_repo"].delete.assert_called_once_with("old_user_id", session=None)
+
+
+@pytest.mark.asyncio
+async def test_reader_auth_does_not_move_the_chain(auth_service, auth_deps):
+    mock_user = User("id1", "ed", "pq", datetime.now(timezone.utc))
+    auth_deps["user_repo"].get_by_id.return_value = mock_user
+    auth_deps["nonce_repo"].insert_if_not_exists.return_value = True
+
+    user = await auth_service.authenticate_reader(
+        user_id="id1",
+        timestamp=int(time.time()),
+        nonce="nonce_read",
+        canonical_payload=b"PQDA-READ-v1",
+        ed25519_signature=b"",
+        mldsa_signature=b"",
+    )
+
+    assert user is mock_user
+    auth_deps["chain_repo"].get_recent_anchors.assert_not_called()
+    auth_deps["chain_repo"].push_anchor.assert_not_called()
+    auth_deps["nonce_repo"].insert_if_not_exists.assert_awaited_once()
+
+
+def test_reader_payload_cannot_be_reused_as_a_chain_request():
+    from netlazy.domain.chain import build_identity_payload, build_reader_payload, build_request_payload
+
+    reader = build_reader_payload("POST", "/netlazy/api/feed/search", "", 10, "n", "h")
+    chain = build_request_payload("POST", "/netlazy/api/feed/search", "", 10, "n", "h", "anchor")
+    identity = build_identity_payload("GET", "/netlazy/api/auth/anchor", 10, "n", "h")
+
+    assert reader.startswith(b"PQDA-READ-v1\n")
+    assert b"anchor" not in reader
+    assert reader != chain
+    assert reader != identity

@@ -549,13 +549,19 @@ export function useStore() {
         );
     }
 
-    async function loadDecryptedMedia(mediaItem, mediaId) {
-        if (!mediaItem || mediaItem.blobUrl || mediaItem.isUploading) return;
-        const res = await fetchAndDecryptMedia(mediaItem.url, mediaId, mediaItem.media_type);
+    async function loadDecryptedMedia(mediaItem, keyMaterial, rawKey = false) {
+        if (!mediaItem || mediaItem.blobUrl || mediaItem.isUploading || !keyMaterial) return;
+        const res = await fetchAndDecryptMedia(mediaItem.url, keyMaterial, mediaItem.media_type, rawKey);
         if (res) {
             mediaItem.blobUrl = res.blobUrl;
             mediaItem.isLegacy = res.isLegacy;
         }
+    }
+
+    async function loadProfileMedia(mediaItem, profile) {
+        if (!profile) return;
+        if (profile.media_key) return loadDecryptedMedia(mediaItem, profile.media_key, true);
+        if (profile.media_id) return loadDecryptedMedia(mediaItem, profile.media_id, false);
     }
 
     async function fetchMyProfile(isSilent = false) {
@@ -728,7 +734,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
     };
     return instance;
 }

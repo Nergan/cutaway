@@ -118,6 +118,29 @@ class AuthService:
             raise AuthenticationError("Chain broken")
         return anchors[-1]
 
+    async def authenticate_reader(
+        self,
+        user_id: str,
+        timestamp: int,
+        nonce: str,
+        canonical_payload: bytes,
+        ed25519_signature: bytes,
+        mldsa_signature: bytes,
+    ) -> User:
+        """Signed read. Consumes a nonce and does not move the hash chain."""
+        user = await self._validate_basics(user_id, timestamp)
+        try:
+            self._crypto_port.verify_hybrid_signature(
+                user.ed25519_public_pem, user.mldsa_public_hex, canonical_payload, ed25519_signature, mldsa_signature
+            )
+        except SignatureVerificationError:
+            raise AuthenticationError("Hybrid signature verification failed")
+
+        is_fresh = await self._nonce_repo.insert_if_not_exists(user_id, nonce)
+        if not is_fresh:
+            raise AuthenticationError("Nonce already used")
+        return user
+
     async def authenticate_request(
         self,
         user_id: str,

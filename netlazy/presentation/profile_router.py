@@ -18,10 +18,11 @@ from netlazy.domain.forms import (
     FormTakenError,
     primary_form_of,
 )
+from netlazy.domain.media_key import encode_media_key
 from netlazy.domain.models import Contact, Profile, User
 from netlazy.config import settings
 from netlazy.presentation.route_handler import NetlazyRoute
-from netlazy.presentation.dependencies import profile_service, verify_request_signature
+from netlazy.presentation.dependencies import profile_service, verify_reader, verify_request_signature
 
 router = APIRouter(prefix="/profile", tags=["Profile"], route_class=NetlazyRoute)
 
@@ -52,8 +53,10 @@ class FormCreateRequest(BaseModel):
     value: Optional[str] = None
 
 class ProfileResponse(BaseModel):
+    id: str = ""
     user_id: str
     media_id: str
+    media_key: str = ""
     bio: str
     tags: List[str]
     media: List[MediaItemResponse]
@@ -65,27 +68,61 @@ class ProfileResponse(BaseModel):
     forms: List[str] = Field(default_factory=list)
     primary_form: Optional[str] = None
 
+class PublicContactResponse(BaseModel):
+    type: str
+    value: str
+
+class PublicProfileResponse(BaseModel):
+    id: str
+    bio: str
+    tags: List[str]
+    media: List[MediaItemResponse]
+    audio: Optional[MediaItemResponse] = None
+    contacts: List[PublicContactResponse]
+    form: Optional[str] = None
+    media_key: str = ""
+
+def _media_response(item) -> MediaItemResponse:
+    return MediaItemResponse(url=item.url, media_type=item.media_type, blur=item.blur)
+
 def _to_response(profile: Profile, *, include_forms: bool = False, hide_private: bool = False) -> ProfileResponse:
     primary = primary_form_of(profile)
     contacts = profile.contacts
     if hide_private:
         contacts = [c for c in contacts if not c.is_private]
     return ProfileResponse(
+        id=profile.public_id,
         user_id=profile.user_id,
         media_id=profile.media_id,
+        media_key=encode_media_key(profile.media_id or profile.user_id),
         bio=profile.bio,
         tags=profile.tags,
-        media=[MediaItemResponse(url=m.url, media_type=m.media_type, blur=m.blur) for m in profile.media],
-        audio=(
-            MediaItemResponse(url=profile.audio.url, media_type=profile.audio.media_type, blur=profile.audio.blur)
-            if profile.audio else None
-        ),
+        media=[_media_response(m) for m in profile.media],
+        audio=_media_response(profile.audio) if profile.audio else None,
         contacts=[ContactResponse(type=c.type, value=c.value, is_private=c.is_private) for c in contacts],
         created_at=profile.created_at.isoformat(),
         score=profile.score,
         form=primary,
         forms=list(profile.forms) if include_forms else [],
         primary_form=primary if include_forms else None,
+    )
+
+def public_profile_response(profile: Profile) -> PublicProfileResponse:
+    """Fields another client is allowed to learn about this profile."""
+    contacts = [
+        PublicContactResponse(type=c.type, value=c.value)
+        for c in profile.contacts
+        if not c.is_private and c.type != "unknown" and str(c.value or "").strip()
+    ]
+    return PublicProfileResponse(
+        id=profile.public_id,
+        bio=profile.bio,
+        tags=list(profile.tags),
+        media=[_media_response(m) for m in profile.media],
+        audio=_media_response(profile.audio) if profile.audio else None,
+        contacts=contacts,
+        form=primary_form_of(profile),
+        media_key=encode_media_key(profile.media_id or profile.user_id),
     )
 
 def _raise_form_error(exc: Exception) -> None:
@@ -105,8 +142,9 @@ async def profile_index():
 
 
 @router.get("/me", response_model=ProfileResponse)
-async def get_my_profile(user: User = Depends(verify_request_signature)):
+async def get_my_profile(user: User = Depends(verify_reader)):
     profile = await profile_service.get_or_create_profile(user.user_id)
+    await profile_service.ensure_public_id(profile)
     return _to_response(profile, include_forms=True)
 
 @router.put("/me", response_model=ProfileResponse)

@@ -7,14 +7,14 @@
       <div v-if="selectedChat" class="inbox-chat-detail">
         <div class="card">
           <!-- Audio -->
-          <div v-if="selectedChat.profile && selectedChat.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(selectedChat.profile.audio, selectedChat.profile.media_id)">
+          <div v-if="selectedChat.profile && selectedChat.profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadProfileMedia(selectedChat.profile.audio, selectedChat.profile)">
             <audio v-if="selectedChat.profile.audio.blobUrl" class="audio-minimal" :src="selectedChat.profile.audio.blobUrl" @error="handleMediaError(selectedChat.profile, selectedChat.profile.audio)" controls style="flex-grow:1;"></audio>
             <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
           </div>
 
           <!-- Media Stack -->
           <div class="feed-media-stack" :data-count="selectedChat.profile.media.length" v-if="selectedChat.profile && selectedChat.profile.media && selectedChat.profile.media.length > 0">
-            <div class="feed-media-item" v-for="m in selectedChat.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, selectedChat.profile.media)" v-intersect="() => store.loadDecryptedMedia(m, selectedChat.profile.media_id)">
+            <div class="feed-media-item" v-for="m in selectedChat.profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, selectedChat.profile.media)" v-intersect="() => store.loadProfileMedia(m, selectedChat.profile)">
                <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
                <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(selectedChat.profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(selectedChat.profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -278,8 +278,8 @@ function actionIcon(chat, type, idleIcon) {
 
 function loadChatAvatar(chat) {
   const media = chat.profile?.media?.[0]
-  if (media && chat.profile?.media_id) {
-    store.loadDecryptedMedia(media, chat.profile.media_id)
+  if (media && (chat.profile?.media_key || chat.profile?.media_id)) {
+    store.loadProfileMedia(media, chat.profile)
   }
 }
 

@@ -259,6 +259,11 @@ export async function signIdentityPayload(method, path, timestamp, nonce, bodyHa
     return await signHybridPayload(canonical);
 }
 
+export async function signReaderPayload(method, path, query, timestamp, nonce, bodyHash) {
+    const canonical = `PQDA-READ-v1\n${method}\n${path}\n${query}\n${timestamp}\n${nonce}\n${bodyHash}`;
+    return await signHybridPayload(canonical);
+}
+
 export function solvePoW(challengeId, difficulty) {
     return new Promise((resolve, reject) => {
         const workerCode = `

@@ -225,3 +225,49 @@ async def test_regenerate_form_replaces_the_old_slug(profile_service, profile_de
 async def test_public_form_lookup_ignores_unknown_text(profile_service, profile_deps):
     assert await profile_service.get_public_by_form("nope!") is None
     profile_deps["profile_repo"].get_by_form.assert_not_called()
+
+
+def test_public_profile_omits_identity_and_private_contacts():
+    import base64
+    from datetime import datetime, timezone
+
+    from netlazy.domain.media_key import derive_media_key, encode_media_key
+    from netlazy.presentation.profile_router import _to_response, public_profile_response
+
+    secret = "secret-contact@example.com"
+    account_id = "ab" * 32
+    profile = Profile(
+        user_id=account_id,
+        media_id=account_id,
+        public_id="c" * 32,
+        bio="hello",
+        tags=["music"],
+        contacts=[
+            Contact(type="email", value=secret, is_private=True),
+            Contact(type="link", value="https://example.com/public", is_private=False),
+            Contact(type="unknown", value="skip-me", is_private=False),
+        ],
+        created_at=datetime(2020, 1, 2, tzinfo=timezone.utc),
+        score=4,
+        forms=["my-link", "other-link"],
+        primary_form="my-link",
+    )
+
+    payload = public_profile_response(profile).model_dump()
+    assert set(payload) == {"id", "bio", "tags", "media", "audio", "contacts", "form", "media_key"}
+    assert payload["id"] == profile.public_id
+    assert payload["form"] == "my-link"
+    assert payload["contacts"] == [{"type": "link", "value": "https://example.com/public"}]
+    rendered = str(payload)
+    assert secret not in rendered
+    assert account_id not in rendered
+    assert "2020-01-02" not in rendered
+    assert len(base64.b64decode(payload["media_key"])) == 32
+    assert payload["media_key"] == encode_media_key(account_id)
+    assert derive_media_key(account_id) != account_id.encode("utf-8")
+
+    owner = _to_response(profile, include_forms=True).model_dump()
+    assert owner["id"] == profile.public_id
+    assert owner["user_id"] == account_id
+    assert any(item["value"] == secret and item["is_private"] for item in owner["contacts"])
+    assert owner["forms"] == ["my-link", "other-link"]

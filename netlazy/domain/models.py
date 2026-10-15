@@ -43,6 +43,7 @@ class Contact:
 class Profile:
     user_id: str
     media_id: str = ""
+    public_id: str = ""
     bio: str = ""
     tags: List[str] = field(default_factory=list)
     media: List[MediaItem] = field(default_factory=list)

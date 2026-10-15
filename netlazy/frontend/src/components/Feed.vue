@@ -193,7 +193,7 @@
     <div v-else class="feed-results" :class="{ 'feed-results-single': store.state.formSlug }">
     <div class="masonry-grid" @click="closeAllMenus">
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
-        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-loading': profile.isFeedLoadingMark, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+        <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-loading': profile.isFeedLoadingMark, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.id || profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
           <div v-if="profile.isFeedLoadingMark" class="feed-loading-card">
             <i class="bi bi-arrow-repeat spin"></i>
           </div>
@@ -203,13 +203,13 @@
             </button>
           </div>
           <template v-else>
-          <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadDecryptedMedia(profile.audio, profile.media_id)">
+          <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadProfileMedia(profile.audio, profile)">
             <audio v-if="profile.audio.blobUrl" class="audio-minimal" :src="profile.audio.blobUrl" @error="handleMediaError(profile, profile.audio)" controls style="flex-grow:1;"></audio>
             <div v-else class="media-loader skeleton" style="height: 32px; flex-grow: 1; border-radius: var(--radius-sm);"></div>
           </div>
 
           <div class="feed-media-stack" :data-count="profile.media.length" v-if="profile.media && profile.media.length > 0">
-            <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadDecryptedMedia(m, profile.media_id)">
+            <div class="feed-media-item" v-for="m in profile.media" :key="m.blobUrl || m.url" @click="handleMediaClick(m, profile.media)" v-intersect="() => store.loadProfileMedia(m, profile)">
                <div v-if="!m.isLoaded" class="media-loader skeleton" style="border-radius: 0;"></div>
                <img v-if="m.media_type === 'image' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @load="m.isLoaded = true" :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}">
                <video v-else-if="m.media_type === 'video' && m.blobUrl" v-show="m.isLoaded" :src="m.blobUrl" @error="handleMediaError(profile, m)" @loadeddata="m.isLoaded = true" muted autoplay loop playsinline :class="{'is-blurred': m.blur, 'cdn-obfuscated': m.isLegacy}"></video>
@@ -384,7 +384,7 @@ const masonryColumns = computed(() => {
       profiles.push({ user_id: 'feed-loading', isFeedLoadingMark: true })
     }
     store.state.feed.forEach(profile => {
-      if (!selfCard.value || profile.user_id !== selfCard.value.user_id) profiles.push(profile)
+      if (!selfCard.value || !profile.id || profile.id !== selfCard.value.id) profiles.push(profile)
     })
   }
 
@@ -516,7 +516,11 @@ const validPrivateContacts = computed(() =>
 )
 
 const activeFiltersString = computed(() => {
-    return store.state.availableSearchTags.map(t => t.name + ':' + t.state).join(',');
+    return store.state.availableSearchTags
+        .filter(t => t.state !== 'neutral')
+        .map(t => t.name + ':' + t.state)
+        .sort()
+        .join(',')
 })
 
 const hasActiveFilters = computed(() => {
@@ -620,8 +624,7 @@ async function loadLinkedForm(slug) {
     const res = await api.get(`/feed/form/${encodeURIComponent(slug)}`)
     if (requestId !== formRequest) return
     const profile = res.data
-    const selfId = store.state.userId || store.state.myProfile.user_id
-    profile.isSelf = Boolean(selfId) && profile.user_id === selfId
+    profile.isSelf = Boolean(profile.id && store.state.myProfile.id && profile.id === store.state.myProfile.id)
     if (profile.media) profile.media.forEach(m => { m.isLoaded = false })
     profile.selectedContacts = []
     profile.showContactSelect = false
@@ -635,6 +638,11 @@ async function loadLinkedForm(slug) {
     formStatus.value = e.response && e.response.status === 404 ? 'missing' : 'error'
   }
 }
+
+watch(() => store.state.myProfile.id, (id) => {
+  const profile = linkedProfile.value
+  if (profile && id) profile.isSelf = profile.id === id
+})
 
 watch(() => store.state.formSlug, (slug) => {
   loadLinkedForm(slug)
@@ -678,14 +686,13 @@ async function fetchFeed(reset = false) {
   if (reset) {
     if (feedAbortController) feedAbortController.abort();
     feedAbortController = new AbortController();
-    store.state.feed = [];
     hasMore.value = true;
   } else if (isLoading.value || !hasMore.value) {
     return;
   }
 
   const requestId = ++feedRequest
-  if (store.state.feed.length === 0) store.state.isFeedLoading = true;
+  if (reset || store.state.feed.length === 0) store.state.isFeedLoading = true;
   isLoading.value = true;
   try {
     const requires = store.state.availableSearchTags.filter(t => t.state === 'require').map(t => t.name)
@@ -693,7 +700,8 @@ async function fetchFeed(reset = false) {
     const bonus = store.state.availableSearchTags.filter(t => t.state === 'bonus').map(t => t.name)
     const abonus = store.state.availableSearchTags.filter(t => t.state === 'abonus').map(t => t.name)
     
-    const seen_ids = store.state.feed.map(p => p.user_id);
+    const seen_ids = reset ? [] : store.state.feed.map(p => p.id).filter(Boolean);
+    if (!feedAbortController) feedAbortController = new AbortController();
     
     const payload = {
       seen_ids,
@@ -708,16 +716,15 @@ async function fetchFeed(reset = false) {
     const batch = res.data
     
     if (batch.length < 20) hasMore.value = false
-    if (batch.length > 0) {
-      batch.forEach(p => {
-          if (p.media) p.media.forEach(m => m.isLoaded = false)
-          p.selectedContacts = []
-          p.showContactSelect = false
-          p.pendingMessage = ""
-          p.popoverPosition = 'bottom'
-      })
-      store.state.feed.push(...batch)
-    }
+    batch.forEach(p => {
+        if (p.media) p.media.forEach(m => m.isLoaded = false)
+        p.selectedContacts = []
+        p.showContactSelect = false
+        p.pendingMessage = ""
+        p.popoverPosition = 'bottom'
+    })
+    if (reset) store.state.feed = batch
+    else if (batch.length > 0) store.state.feed.push(...batch)
   } catch (e) {
     if (requestId !== feedRequest) return
     if (e.name !== 'CanceledError') {
@@ -900,7 +907,7 @@ async function sendRequest(profile, type, contactValue = null) {
   try {
     profile.isSendingReq = type
     const payload = {
-      receiver_id: profile.user_id,
+      receiver_id: profile.id,
       type: type,
       offered_contact: type === 'demand' ? null : contactValue,
       message: profile.pendingMessage ? profile.pendingMessage.trim() : null

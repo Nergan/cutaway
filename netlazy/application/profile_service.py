@@ -3,6 +3,7 @@ import hashlib
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List, Optional
+from uuid import uuid4
 from netlazy.domain.bio import normalize_bio
 from netlazy.domain.forms import (
     MAX_FORM_LINKS,
@@ -77,9 +78,26 @@ class ProfileService:
 
     async def get_or_create_profile(self, user_id: str) -> Profile:
         profile = await self._profile_repo.get_by_user_id(user_id)
-        if profile:
-            return profile
-        return Profile(user_id=user_id, media_id=user_id)
+        if profile is None:
+            profile = Profile(user_id=user_id, media_id=user_id)
+        if not profile.public_id:
+            await self._profile_repo.ensure_public_id(profile)
+        return profile
+
+    async def ensure_public_id(self, profile: Profile) -> Profile:
+        if profile is not None and not profile.public_id:
+            await self._profile_repo.ensure_public_id(profile)
+        return profile
+
+    async def get_by_public_id(self, public_id: str) -> Optional[Profile]:
+        if not public_id:
+            return None
+        return await self._profile_repo.get_by_public_id(public_id)
+
+    async def user_ids_for_public_ids(self, public_ids: List[str]) -> List[str]:
+        if not public_ids:
+            return []
+        return await self._profile_repo.user_ids_for_public_ids(public_ids)
 
     async def update_profile(self, user_id: str, bio: str, tags: List[str], contacts: List[Contact]) -> Profile:
         valid_names = set(await self._tag_repo.get_all_names())
@@ -237,7 +255,8 @@ class ProfileService:
 
             ext_map = {"image": "webp", "video": "mp4", "audio": "mp3"}
             ext = ext_map.get(media_type, "bin")
-            public_id_hint = f"{profile.media_id}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
+            folder = profile.public_id or uuid4().hex
+            public_id_hint = f"{folder}/{media_type}_{int(datetime.now(timezone.utc).timestamp() * 1000)}.{ext}"
 
             upload_res = None
             try:

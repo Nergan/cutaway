@@ -705,13 +705,13 @@ async function submitGlobalHandshake() {
   try {
     const contactValue = cs.selectedContacts.join(', ');
     const payload = {
-      receiver_id: cs.profile.user_id,
+      receiver_id: cs.profile.id,
       type: cs.type,
       offered_contact: cs.type === 'demand' ? null : contactValue,
       message: cs.message ? cs.message.trim() : null
     };
     
-    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
+    const feedProfile = store.state.feed.find(p => p.id && p.id === cs.profile.id);
     if (feedProfile) {
       feedProfile.isSendingReq = cs.type;
     }
@@ -735,7 +735,7 @@ async function submitGlobalHandshake() {
     }
   } finally {
     cs.isSending = false;
-    const feedProfile = store.state.feed.find(p => p.user_id === cs.profile.user_id);
+    const feedProfile = store.state.feed.find(p => p.id && p.id === cs.profile.id);
     if (feedProfile) {
       feedProfile.isSendingReq = null;
     }

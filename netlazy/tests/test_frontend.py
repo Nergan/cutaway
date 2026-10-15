@@ -335,3 +335,24 @@ class TestFeedCardAffordance:
             assert "contactHref(c)" in content
             assert 'rel="noopener noreferrer"' in content
             assert "contact-link" in content
+
+    def test_feed_uses_public_ids_and_does_not_refetch_on_tag_catalog(self):
+        feed = read_text("frontend/src/components/Feed.vue")
+        assert ".filter(t => t.state !== 'neutral')" in feed
+        assert "receiver_id: profile.id" in feed
+        assert "p.id).filter(Boolean)" in feed
+        assert "store.state.feed = batch" in feed
+        api = read_text("frontend/src/utils/api.js")
+        crypto = read_text("frontend/src/utils/crypto.js")
+        assert "signReaderPayload" in api
+        assert "typeof data === 'string'" in api
+        assert "PQDA-READ-v1" in crypto
+        state = read_text("frontend/src/store/state.js")
+        assert "10000" in state
+        feed_router = read_text("presentation/feed_router.py")
+        inbox = read_text("presentation/inbox_router.py")
+        assert "PublicProfileResponse" in feed_router
+        assert "user_ids_for_public_ids" in feed_router
+        assert "hide_private" not in feed_router
+        assert "get_by_public_id" in inbox
+        assert "verify_reader" in inbox

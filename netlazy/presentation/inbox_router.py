@@ -3,14 +3,14 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from netlazy.domain.models import User
 from netlazy.presentation.route_handler import NetlazyRoute
-from netlazy.presentation.dependencies import inbox_service, profile_service, verify_request_signature, verify_pow
-from netlazy.presentation.profile_router import ProfileResponse, _to_response as profile_to_response
+from netlazy.presentation.dependencies import inbox_service, profile_service, verify_reader, verify_request_signature, verify_pow
+from netlazy.presentation.profile_router import PublicProfileResponse, public_profile_response
 from netlazy.application.inbox_service import HandshakeNotFoundError, UnauthorizedHandshakeActionError, InvalidHandshakeStateError, OtherUserNotFoundError, OtherUserBannedError
 
 router = APIRouter(prefix="/inbox", tags=["Inbox"], route_class=NetlazyRoute)
 
 class HandshakeCreateRequest(BaseModel):
-    receiver_id: str
+    receiver_id: str = Field(..., description="Public id of the profile to contact")
     type: str = Field(..., pattern="^(mutual|demand|share|exchange)$")
     offered_contact: Optional[str] = None
     message: Optional[str] = Field(None, max_length=100)
@@ -30,7 +30,7 @@ class InboxItemResponse(BaseModel):
     message: Optional[str]
     created_at: str
     updated_at: str
-    profile: ProfileResponse
+    profile: PublicProfileResponse
 
 
 def _to_inbox_item(h, profile, is_sender: bool) -> InboxItemResponse:
@@ -46,15 +46,22 @@ def _to_inbox_item(h, profile, is_sender: bool) -> InboxItemResponse:
         message=h.message,
         created_at=h.created_at.isoformat(),
         updated_at=updated_at.isoformat(),
-        profile=profile_to_response(profile),
+        profile=public_profile_response(profile),
     )
+
+async def _public_inbox_item(h, profile, is_sender: bool) -> InboxItemResponse:
+    await profile_service.ensure_public_id(profile)
+    return _to_inbox_item(h, profile, is_sender)
 
 @router.post("/handshakes", response_model=InboxItemResponse, dependencies=[Depends(verify_pow)])
 async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(verify_request_signature)):
+    receiver = await profile_service.get_by_public_id(body.receiver_id)
+    if receiver is None:
+        raise HTTPException(status_code=404, detail="profile_not_found")
     try:
         h = await inbox_service.send_handshake(
             sender_id=user.user_id,
-            receiver_id=body.receiver_id,
+            receiver_id=receiver.user_id,
             handshake_type=body.type,
             offered_contact=body.offered_contact,
             message=body.message
@@ -70,8 +77,7 @@ async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(veri
     except OtherUserBannedError as e:
         raise HTTPException(status_code=404, detail=str(e))
         
-    receiver_profile = await profile_service.get_or_create_profile(body.receiver_id)
-    return _to_inbox_item(h, receiver_profile, is_sender=True)
+    return await _public_inbox_item(h, receiver, is_sender=True)
 
 @router.post("/handshakes/{handshake_id}/resolve", response_model=InboxItemResponse)
 async def resolve_handshake(handshake_id: str, body: HandshakeResolveRequest, user: User = Depends(verify_request_signature)):
@@ -96,7 +102,7 @@ async def resolve_handshake(handshake_id: str, body: HandshakeResolveRequest, us
         raise HTTPException(status_code=400, detail=str(e))
 
     sender_profile = await profile_service.get_or_create_profile(h.sender_id)
-    return _to_inbox_item(h, sender_profile, is_sender=False)
+    return await _public_inbox_item(h, sender_profile, is_sender=False)
 
 @router.post("/handshakes/{handshake_id}/read", response_model=InboxItemResponse)
 async def mark_handshake_read(handshake_id: str, user: User = Depends(verify_request_signature)):
@@ -109,7 +115,7 @@ async def mark_handshake_read(handshake_id: str, user: User = Depends(verify_req
 
     other_id = h.receiver_id if h.sender_id == user.user_id else h.sender_id
     other_profile = await profile_service.get_or_create_profile(other_id)
-    return _to_inbox_item(h, other_profile, is_sender=(h.sender_id == user.user_id))
+    return await _public_inbox_item(h, other_profile, is_sender=(h.sender_id == user.user_id))
 
 @router.delete("/handshakes/{handshake_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_handshake(handshake_id: str, user: User = Depends(verify_request_signature)):
@@ -123,9 +129,9 @@ async def delete_handshake(handshake_id: str, user: User = Depends(verify_reques
         raise HTTPException(status_code=403, detail=str(e))
 
 @router.get("", response_model=List[InboxItemResponse])
-async def get_inbox(user: User = Depends(verify_request_signature)):
+async def get_inbox(user: User = Depends(verify_reader)):
     items = await inbox_service.get_inbox(user.user_id)
-    return [
-        _to_inbox_item(h, p, is_sender=(h.sender_id == user.user_id))
-        for h, p in items
-    ]
+    published = []
+    for handshake, profile in items:
+        published.append(await _public_inbox_item(handshake, profile, handshake.sender_id == user.user_id))
+    return published

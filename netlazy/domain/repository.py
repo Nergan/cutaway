@@ -147,6 +147,18 @@ class ProfileRepository(ABC):
         ...
 
     @abstractmethod
+    async def get_by_public_id(self, public_id: str) -> Optional[Profile]:
+        ...
+
+    @abstractmethod
+    async def user_ids_for_public_ids(self, public_ids: List[str]) -> List[str]:
+        ...
+
+    @abstractmethod
+    async def ensure_public_id(self, profile: Profile) -> str:
+        ...
+
+    @abstractmethod
     async def upsert(self, profile: Profile, session: Any = None) -> None:
         ...
         

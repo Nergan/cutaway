@@ -16,7 +16,7 @@ from netlazy.application.security_service import SecurityService, BannedError, P
 from netlazy.config import settings
 from netlazy.database import DatabaseUnavailableError
 from netlazy.domain.models import User
-from netlazy.domain.chain import build_request_payload
+from netlazy.domain.chain import build_reader_payload, build_request_payload
 from netlazy.domain.risk import RiskThresholds
 from netlazy.domain.repository import RiskEventDispatcherPort, HashChainDesyncError
 from netlazy.infrastructure.cloudinary_adapter import CloudinaryMediaStorage
@@ -136,22 +136,26 @@ def _normalize_path(path: str) -> str:
     return cleaned
 
 
-async def verify_request_signature(
+async def _presented_user(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_user_id: str = Header(None),
-    x_timestamp: int = Header(None),
-    x_nonce: str = Header(None),
-    x_body_hash: str = Header(None),
-    x_chain_anchor: str = Header(None),
-    x_signature_ed25519: str = Header(None),
-    x_signature_mldsa: str = Header(None),
-    x_signed_path: str = Header(None),
+    *,
+    x_user_id: Optional[str],
+    x_timestamp: Optional[int],
+    x_nonce: Optional[str],
+    x_body_hash: Optional[str],
+    x_chain_anchor: Optional[str],
+    x_signature_ed25519: Optional[str],
+    x_signature_mldsa: Optional[str],
+    x_signed_path: Optional[str],
+    advance_chain: bool,
 ) -> User:
     required_headers = [
         x_user_id, x_timestamp, x_nonce, x_body_hash,
-        x_chain_anchor, x_signature_ed25519, x_signature_mldsa, x_signed_path
+        x_signature_ed25519, x_signature_mldsa, x_signed_path,
     ]
+    if advance_chain:
+        required_headers.append(x_chain_anchor)
     if any(h is None for h in required_headers):
         raise create_auth_error()
 
@@ -161,7 +165,7 @@ async def verify_request_signature(
         raise create_auth_error()
 
     ip, fingerprint = _get_client_footprint(request)
-    
+
     try:
         await security_service.verify_not_banned(ip, fingerprint, x_user_id)
     except DatabaseUnavailableError:
@@ -183,15 +187,25 @@ async def verify_request_signature(
         raise create_auth_error()
 
     query_string = request.url.query
-    canonical_payload = build_request_payload(
-        method=request.method,
-        path=x_signed_path,
-        query=query_string,
-        timestamp=x_timestamp,
-        nonce=x_nonce,
-        body_hash=x_body_hash,
-        prev_anchor=x_chain_anchor
-    )
+    if advance_chain:
+        canonical_payload = build_request_payload(
+            method=request.method,
+            path=x_signed_path,
+            query=query_string,
+            timestamp=x_timestamp,
+            nonce=x_nonce,
+            body_hash=x_body_hash,
+            prev_anchor=x_chain_anchor,
+        )
+    else:
+        canonical_payload = build_reader_payload(
+            method=request.method,
+            path=x_signed_path,
+            query=query_string,
+            timestamp=x_timestamp,
+            nonce=x_nonce,
+            body_hash=x_body_hash,
+        )
 
     try:
         ed_sig_bytes = base64.b64decode(x_signature_ed25519)
@@ -200,18 +214,29 @@ async def verify_request_signature(
         raise create_auth_error()
 
     try:
-        user, next_anchor = await auth_service.authenticate_request(
-            user_id=x_user_id,
-            method=request.method,
-            path=x_signed_path,
-            timestamp=x_timestamp,
-            nonce=x_nonce,
-            body_hash=x_body_hash,
-            prev_anchor=x_chain_anchor,
-            canonical_payload=canonical_payload,
-            ed25519_signature=ed_sig_bytes,
-            mldsa_signature=mldsa_sig_bytes,
-        )
+        if advance_chain:
+            user, next_anchor = await auth_service.authenticate_request(
+                user_id=x_user_id,
+                method=request.method,
+                path=x_signed_path,
+                timestamp=x_timestamp,
+                nonce=x_nonce,
+                body_hash=x_body_hash,
+                prev_anchor=x_chain_anchor,
+                canonical_payload=canonical_payload,
+                ed25519_signature=ed_sig_bytes,
+                mldsa_signature=mldsa_sig_bytes,
+            )
+        else:
+            user = await auth_service.authenticate_reader(
+                user_id=x_user_id,
+                timestamp=x_timestamp,
+                nonce=x_nonce,
+                canonical_payload=canonical_payload,
+                ed25519_signature=ed_sig_bytes,
+                mldsa_signature=mldsa_sig_bytes,
+            )
+            next_anchor = None
     except DatabaseUnavailableError:
         raise
     except HashChainDesyncError as e:
@@ -227,13 +252,66 @@ async def verify_request_signature(
     if user.is_banned:
         raise create_banned_error()
 
-    request.state.next_anchor = next_anchor
-
-    dispatcher = FastAPIBackgroundRiskDispatcher(background_tasks, security_service)
-    dispatcher.dispatch_risk_evaluation(x_user_id, ip, body_bytes, int(time.time()))
-    background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
+    if next_anchor:
+        request.state.next_anchor = next_anchor
+        dispatcher = FastAPIBackgroundRiskDispatcher(background_tasks, security_service)
+        dispatcher.dispatch_risk_evaluation(x_user_id, ip, body_bytes, int(time.time()))
+        background_tasks.add_task(user_repo.log_footprint, x_user_id, ip, fingerprint)
 
     return user
+
+
+async def verify_request_signature(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_user_id: str = Header(None),
+    x_timestamp: int = Header(None),
+    x_nonce: str = Header(None),
+    x_body_hash: str = Header(None),
+    x_chain_anchor: str = Header(None),
+    x_signature_ed25519: str = Header(None),
+    x_signature_mldsa: str = Header(None),
+    x_signed_path: str = Header(None),
+) -> User:
+    return await _presented_user(
+        request,
+        background_tasks,
+        x_user_id=x_user_id,
+        x_timestamp=x_timestamp,
+        x_nonce=x_nonce,
+        x_body_hash=x_body_hash,
+        x_chain_anchor=x_chain_anchor,
+        x_signature_ed25519=x_signature_ed25519,
+        x_signature_mldsa=x_signature_mldsa,
+        x_signed_path=x_signed_path,
+        advance_chain=True,
+    )
+
+
+async def verify_reader(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_user_id: str = Header(None),
+    x_timestamp: int = Header(None),
+    x_nonce: str = Header(None),
+    x_body_hash: str = Header(None),
+    x_signature_ed25519: str = Header(None),
+    x_signature_mldsa: str = Header(None),
+    x_signed_path: str = Header(None),
+) -> User:
+    return await _presented_user(
+        request,
+        background_tasks,
+        x_user_id=x_user_id,
+        x_timestamp=x_timestamp,
+        x_nonce=x_nonce,
+        x_body_hash=x_body_hash,
+        x_chain_anchor=None,
+        x_signature_ed25519=x_signature_ed25519,
+        x_signature_mldsa=x_signature_mldsa,
+        x_signed_path=x_signed_path,
+        advance_chain=False,
+    )
 
 
 def _header_int(value: Optional[str]) -> Optional[int]:
@@ -256,17 +334,18 @@ async def optional_user(
         except BannedError:
             raise create_banned_error()
         return None
-    return await verify_request_signature(
+    return await _presented_user(
         request,
         background_tasks,
         x_user_id=request.headers.get("x-user-id"),
         x_timestamp=_header_int(request.headers.get("x-timestamp")),
         x_nonce=request.headers.get("x-nonce"),
         x_body_hash=request.headers.get("x-body-hash"),
-        x_chain_anchor=request.headers.get("x-chain-anchor"),
+        x_chain_anchor=None,
         x_signature_ed25519=request.headers.get("x-signature-ed25519"),
         x_signature_mldsa=request.headers.get("x-signature-mldsa"),
         x_signed_path=request.headers.get("x-signed-path"),
+        advance_chain=False,
     )
 
 
