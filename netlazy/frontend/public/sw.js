@@ -19,13 +19,22 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || '',
     icon,
-    badge: icon,
     tag: data.tag || 'netlazy-request',
     renotify: true,
     data: { open_path: data.open_path || '/netlazy/inbox' },
   };
   if (data.platform === 'android') options.vibrate = [80, 40, 80];
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    try {
+      await self.registration.showNotification(title, options);
+    } catch (e) {
+      await self.registration.showNotification(title, {
+        body: options.body,
+        tag: options.tag,
+        data: options.data,
+      });
+    }
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {

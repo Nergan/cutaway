@@ -348,6 +348,13 @@ import { contactHref } from '../utils/contact.js'
 const store = useStore()
 const isV2 = computed(() => store.state.interfaceVersion === '2')
 const linkedProfile = ref(null)
+watch(() => store.state.clearedHandshakeTick, () => {
+  const id = store.state.clearedHandshakeId
+  if (linkedProfile.value && linkedProfile.value.id === id) {
+    linkedProfile.value.sent = false
+    linkedProfile.value.sentType = null
+  }
+})
 const formStatus = ref('idle')
 let formRequest = 0
 const selfCard = computed(() => {

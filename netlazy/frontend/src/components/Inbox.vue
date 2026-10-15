@@ -2,7 +2,7 @@
   <div style="display: flex; height: 100%; width: 100%; overflow: hidden;" ref="inboxRoot">
     <div class="inbox-main-pane" :class="{ 'mobile-chat-open': isMobile && selectedChat }" v-show="!isMobile || selectedChat">
       <div v-if="isMobile && selectedChat" class="inbox-back-bar">
-        <button class="footer-action inbox-back-btn" @click="selectedChatId = null"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
+        <button class="footer-action inbox-back-btn" @click="leaveChat"><i class="bi bi-chevron-left"></i> {{ store.t('back') }}</button>
       </div>
       <div v-if="selectedChat" class="inbox-chat-detail">
         <div class="card">
@@ -205,6 +205,7 @@
 
 <script setup>
 import { computed, ref, reactive, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { useStore, isInboxUnread } from '../store/state.js'
 import api from '../utils/api.js'
 import { displayBio } from '../utils/bio.js'
@@ -333,13 +334,41 @@ async function markAsRead(req) {
 }
 
 function selectChat(chat) {
+  const wasOpen = !!selectedChatId.value
   selectedChatId.value = chat.id
   markAsRead(chat)
+  if (!wasOpen && isMobile.value && !Capacitor.isNativePlatform()) {
+    const base = history.state && typeof history.state === 'object' ? history.state : {}
+    history.pushState({ ...base, netlazyInboxChat: chat.id }, '', window.location.href)
+  }
   nextTick(() => {
     const pane = inboxRoot.value && inboxRoot.value.querySelector('.inbox-main-pane')
     if (pane) pane.scrollTop = 0
   })
 }
+
+function leaveChat() {
+  if (!Capacitor.isNativePlatform() && isMobile.value && history.state && history.state.netlazyInboxChat) {
+    history.back()
+    return
+  }
+  selectedChatId.value = null
+}
+
+function syncChatFromHistory() {
+  if (Capacitor.isNativePlatform() || !isMobile.value) return
+  const chatId = history.state && history.state.netlazyInboxChat
+  selectedChatId.value = chatId || null
+}
+
+watch(selectedChatId, (id) => {
+  if (!id) resolveReq.value = null
+  if (store.state.inboxChatId !== id) store.state.inboxChatId = id
+})
+
+watch(() => store.state.inboxChatId, (id) => {
+  if (selectedChatId.value !== id) selectedChatId.value = id
+})
 
 function handleResize() {
   isMobile.value = window.innerWidth <= 768;
@@ -354,10 +383,12 @@ watch(filteredChats, (list) => {
 onMounted(() => {
   store.fetchInbox(store.state.inbox.length > 0)
   window.addEventListener('resize', handleResize)
+  window.addEventListener('popstate', syncChatFromHistory)
   document.addEventListener('click', handleResolveOutsideClick)
 })
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('popstate', syncChatFromHistory)
   document.removeEventListener('click', handleResolveOutsideClick)
 })
 
@@ -448,6 +479,7 @@ async function deleteMatch(req) {
   try {
     await api.delete(`/inbox/handshakes/${req.id}`)
     store.state.inbox = store.state.inbox.filter(r => r.id !== req.id)
+    if (req.profile) store.clearOutgoingMark(req.profile.id)
     if (selectedChatId.value === req.id) selectedChatId.value = null
     store.addToast(store.t('match_deleted'), "bi-trash")
   } catch (e) {

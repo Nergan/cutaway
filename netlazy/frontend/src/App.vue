@@ -682,6 +682,8 @@ onMounted(() => {
         store.state.confirmModal.open = false;
       } else if (langMenu.value.open) {
         langMenu.value.open = false;
+      } else if (store.state.currentView === 'inbox' && store.state.inboxChatId) {
+        store.state.inboxChatId = null;
       } else if (store.state.currentView !== 'feed') {
         store.state.currentView = 'feed';
       } else {

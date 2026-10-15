@@ -89,6 +89,27 @@ async function postSubscription(body) {
   await api.post('/push/subscriptions', body);
 }
 
+function iosWithoutHomeScreen() {
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!ios) return false;
+  const standalone = window.navigator.standalone === true
+    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  return !standalone;
+}
+
+let iosPushNoted = false;
+
+export function noteIosPushLimit() {
+  if (!iosWithoutHomeScreen()) return false;
+  if (!iosPushNoted) {
+    iosPushNoted = true;
+    const store = useStore();
+    store.addToast(store.t('push_unavailable'), 'bi-bell-slash');
+  }
+  return true;
+}
+
 export async function syncDevicePush() {
   const store = useStore();
   if (!store.state.pushEnabled || !store.state.isRegistered) return;
@@ -96,6 +117,7 @@ export async function syncDevicePush() {
     if (import.meta.env.VITE_FCM_ENABLED === 'true') await syncAndroidPush(store);
     return;
   }
+  if (noteIosPushLimit()) return;
   if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
     store.addToast(store.t('push_unavailable'), 'bi-bell-slash');
     return;

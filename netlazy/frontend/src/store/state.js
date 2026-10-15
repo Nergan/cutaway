@@ -6,7 +6,7 @@ import translations from './translations.js';
 import { normalizeBio } from '../utils/bio.js';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
-import { syncDevicePush, removeDevicePush } from '../utils/push.js';
+import { syncDevicePush, removeDevicePush, noteIosPushLimit } from '../utils/push.js';
 
 const STORAGE_KEY = 'netlazy_state';
 
@@ -74,6 +74,9 @@ const defaultState = {
     feedTagSearch: "",
     feed: [],
     inbox: [],
+    inboxChatId: null,
+    clearedHandshakeId: null,
+    clearedHandshakeTick: 0,
     lightbox: { open: false, mediaList: [], index: 0, isEditable: false }
 };
 
@@ -800,6 +803,7 @@ export function useStore() {
             if (import.meta.env.VITE_FCM_ENABLED === 'true') syncDevicePush().catch(() => {});
             return;
         }
+        if (noteIosPushLimit()) return;
         if (typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
         const reportPush = () => addToast(t('push_unavailable'), 'bi-bell-slash');
         if (Notification.permission === 'granted') {
@@ -809,11 +813,11 @@ export function useStore() {
         if (Notification.permission !== 'default' || pushPromptArmed) return;
         pushPromptArmed = true;
         const once = () => {
-            document.removeEventListener('pointerdown', once, true);
+            document.removeEventListener('click', once, true);
             pushPromptArmed = false;
             if (state.pushEnabled && state.isRegistered) syncDevicePush().catch(reportPush);
         };
-        document.addEventListener('pointerdown', once, true);
+        document.addEventListener('click', once, true);
     }
 
     async function togglePushEnabled() {
@@ -848,6 +852,20 @@ export function useStore() {
         }
     }
 
+    function clearOutgoingMark(profileId) {
+        if (!profileId) return;
+        const stillOutgoing = state.inbox.some(item => item.is_sender && item.profile && item.profile.id === profileId);
+        if (stillOutgoing) return;
+        state.feed.forEach(card => {
+            if (card && card.id === profileId) {
+                card.sent = false;
+                card.sentType = null;
+            }
+        });
+        state.clearedHandshakeId = profileId;
+        state.clearedHandshakeTick += 1;
+    }
+
     function openFeed() {
         state.formSlug = null;
         if (state.currentView !== 'feed') {
@@ -860,7 +878,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed, togglePushEnabled, togglePushKind
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed, togglePushEnabled, togglePushKind, clearOutgoingMark
     };
     return instance;
 }

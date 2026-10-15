@@ -438,6 +438,9 @@ class TestPushNotifications:
         assert "pushDemand: true" in state
         assert "if (!key || !state.pushEnabled) return" in state
         assert "VITE_FCM_ENABLED === 'true'" in state
+        assert "document.addEventListener('click', once, true)" in state
+        assert "noteIosPushLimit()" in state
+        assert "function clearOutgoingMark(profileId)" in state
         push = read_text("frontend/src/utils/push.js")
         assert "function serviceWorkerTarget()" in push
         assert "navigator.serviceWorker.ready" not in push
@@ -449,6 +452,13 @@ class TestPushNotifications:
         assert "showNotification" in worker
         assert "data.platform === 'android'" in worker
         assert "addEventListener('fetch'" not in worker
+        assert "badge:" not in worker
+        app_vue = read_text("frontend/src/App.vue")
+        assert "store.state.inboxChatId" in app_vue
+        inbox = read_text("frontend/src/components/Inbox.vue")
+        assert "netlazyInboxChat" in inbox
+        assert "store.clearOutgoingMark(req.profile.id)" in inbox
+        assert "function leaveChat()" in inbox
         translations = read_text("frontend/src/store/translations.js")
         for locale in LOCALES:
             assert "push_notifications" in extract_locale_keys(translations, locale)
