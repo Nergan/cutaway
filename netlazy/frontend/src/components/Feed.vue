@@ -671,12 +671,13 @@ function playCardRipple(event) {
   const y = event.clientY - rect.top
   const reach = Math.hypot(Math.max(x, rect.width - x), Math.max(y, rect.height - y))
   const scale = String(Math.max(reach / 8, 4))
-  ;[0, 110].forEach((delay) => {
+  ;[[0, '1'], [240, '0.68'], [500, '0.4']].forEach(([delay, strength]) => {
     const ripple = document.createElement('span')
     ripple.className = 'card-ripple'
     ripple.style.left = `${x}px`
     ripple.style.top = `${y}px`
     ripple.style.setProperty('--ripple-scale', scale)
+    ripple.style.setProperty('--ripple-strength', strength)
     if (delay) ripple.style.animationDelay = `${delay}ms`
     layer.appendChild(ripple)
     ripple.addEventListener('animationend', () => ripple.remove())

@@ -176,19 +176,34 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 }
 .card-ripple {
   position: absolute;
-  width: 0;
-  height: 0;
+  width: calc(var(--ripple-scale, 36) * 1rem);
+  height: calc(var(--ripple-scale, 36) * 1rem);
   border-radius: 50%;
-  border: 1.5px solid var(--accent-moss);
-  transform: translate(-50%, -50%);
-  opacity: 0.85;
+  transform: translate(-50%, -50%) scale(0.04);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent-moss) 20%, transparent) 0%,
+    color-mix(in srgb, var(--accent-moss) 7%, transparent) 20%,
+    transparent 44%,
+    transparent 60%,
+    color-mix(in srgb, var(--accent-moss) 30%, transparent) 70%,
+    color-mix(in srgb, var(--accent-moss) 8%, transparent) 80%,
+    transparent 90%
+  );
+  opacity: 0;
   pointer-events: none;
-  animation: card-copy-ripple 0.7s var(--motion-ease) forwards;
+  animation: card-copy-ripple 1.25s cubic-bezier(0.22, 0.45, 0.28, 1) forwards;
 }
 @keyframes card-copy-ripple {
-  to {
-    width: calc(var(--ripple-scale, 36) * 1rem);
-    height: calc(var(--ripple-scale, 36) * 1rem);
+  0% {
+    transform: translate(-50%, -50%) scale(0.04);
+    opacity: 0.12;
+  }
+  22% {
+    opacity: calc(0.62 * var(--ripple-strength, 1));
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
     opacity: 0;
   }
 }
