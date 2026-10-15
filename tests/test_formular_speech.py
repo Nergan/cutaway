@@ -131,7 +131,8 @@ def test_speech_path_prefers_a_direct_conversion_and_still_reaches_text():
     assert find_shortest_path("gif", "png") == ["gif", "png"]
     assert find_shortest_path("gif", "md") == ["gif", "mp4", "txt", "md"]
     assert find_shortest_path("webm", "pdf") == ["webm", "txt", "pdf"]
-    assert find_shortest_path("jpg", "mp3") == ["jpg", "pdf", "txt", "mp3"]
+    assert find_shortest_path("jpg", "mp3") is None
+    assert find_shortest_path("jpg", "pdf") == ["jpg", "pdf"]
     assert find_shortest_path("webm", "json") == ["webm", "txt", "json"]
     assert find_shortest_path("csv", "ogg") == ["csv", "pdf", "txt", "ogg"]
     assert find_shortest_path("zip", "txt") is None
@@ -141,7 +142,11 @@ def test_speech_path_prefers_a_direct_conversion_and_still_reaches_text():
     assert "mp3" not in ai_targets_for("mp4")
     assert ai_targets_for("docx")["mp3"] == "speak"
     assert "pdf" not in ai_targets_for("docx")
-    assert ai_targets_for("jpg")["wav"] == "speak"
+    for picture in ("jpg", "png", "webp", "svg"):
+        assert "mp3" not in targets_for(picture)
+        assert "wav" not in targets_for(picture)
+        assert "ogg" not in targets_for(picture)
+        assert "pdf" in targets_for(picture)
     assert "txt" not in targets_for("jpg")
     assert "pdf" in targets_for("mp3")
     assert ai_targets_for("mp3")["pdf"] == "transcribe"

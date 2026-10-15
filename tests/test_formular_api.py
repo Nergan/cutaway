@@ -57,6 +57,26 @@ def test_a_text_file_can_be_created_and_read_back(client: TestClient):
     assert legacy.json()["files"][0]["id"]
 
 
+def test_a_picture_is_not_offered_as_speech(client: TestClient):
+    pytest.importorskip("magic")
+    png = bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+        "890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082"
+    )
+    created = client.post(
+        "/formular/api/files",
+        files=[("files", ("ava.png", png, "image/png"))],
+    )
+    assert created.status_code == 201
+    stored = created.json()["files"][0]
+    assert stored["format"] == "png"
+    assert "pdf" in stored["allowed_targets"]
+    assert "jpg" in stored["allowed_targets"]
+    for audio in ("mp3", "wav", "ogg"):
+        assert audio not in stored["allowed_targets"]
+        assert audio not in stored["ai_targets"]
+
+
 def test_an_oversized_request_names_both_sizes(client: TestClient, monkeypatch):
     monkeypatch.setattr(api, "MAX_UPLOAD_BYTES", 32)
     response = client.post(

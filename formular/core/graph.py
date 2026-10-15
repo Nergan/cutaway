@@ -13,6 +13,9 @@ import heapq
 TRANSCRIBE_SOURCES = frozenset({"mp3", "wav", "ogg", "mp4", "webm"})
 SPEAK_TARGETS = ("mp3", "wav", "ogg")
 MEDIA = frozenset({"mp3", "wav", "ogg", "mp4", "webm", "gif"})
+# A picture can be placed on a pdf page, and that page can be read as txt.
+# The extracted text is not the picture, so it is not something to read aloud.
+PICTURES = frozenset({"jpg", "png", "webp", "svg"})
 
 DIRECT_EDGES = {
     "docx": ["pdf", "html", "txt", "md"],
@@ -181,6 +184,8 @@ def _via_transcript(start: str, end: str):
 def find_shortest_path(start: str, end: str, *, speak: bool = True, transcribe: bool = True):
     if start == end:
         return [start]
+    if start in PICTURES:
+        speak = False
     # Media can also reach a document by turning a frame into a picture.
     # A text target from that media is a transcript, so recognition wins.
     if (
@@ -232,9 +237,10 @@ def _reaches_media(fmt: str) -> bool:
 def targets_for(fmt: str) -> list[str]:
     """Formats offered for a file.
 
-    A format that can become text can also be spoken. A format that can become
-    audio or video can be transcribed and then turned into anything text can
-    become. Targets already offered stay in their previous order.
+    A text format that can become txt can also be spoken. A picture that only
+    reaches txt by being placed on a pdf page is not spoken. A format that can
+    become audio or video can be transcribed and then turned into anything text
+    can become. Targets already offered stay in their previous order.
     """
     chosen = list(BASE_TARGETS.get(fmt, []))
     seen = set(chosen)
@@ -245,7 +251,7 @@ def targets_for(fmt: str) -> list[str]:
         seen.add(target)
         chosen.append(target)
 
-    if _reaches(fmt, "txt", speak=False, transcribe=False):
+    if fmt not in PICTURES and _reaches(fmt, "txt", speak=False, transcribe=False):
         for audio in SPEAK_TARGETS:
             add(audio)
     if fmt == "txt" or _reaches_media(fmt):
