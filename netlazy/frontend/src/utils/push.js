@@ -42,6 +42,40 @@ function sameApplicationKey(subscription, keyBytes) {
   return true;
 }
 
+function serviceWorkerTarget() {
+  const path = window.location.pathname || '/';
+  if (path.includes('/static/')) {
+    const base = import.meta.env.BASE_URL || '/';
+    const scope = base.endsWith('/') ? base : `${base}/`;
+    return { script: `${scope}sw.js`, scope };
+  }
+  const segments = path.split('/');
+  if (segments[segments.length - 1] === '') segments.pop();
+  while (segments.length && ['feed', 'profile', 'inbox', 'privacy', 'config', 'welcome'].includes(segments[segments.length - 1])) {
+    segments.pop();
+  }
+  const root = segments.join('/') || '';
+  return { script: `${root}/sw.js`, scope: `${root}/` };
+}
+
+function waitUntilActive(registration) {
+  if (registration.active) return Promise.resolve();
+  const worker = registration.installing || registration.waiting;
+  if (!worker || worker.state === 'activated') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('push worker timeout')), 8000);
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'activated') {
+        clearTimeout(timer);
+        resolve();
+      } else if (worker.state === 'redundant') {
+        clearTimeout(timer);
+        reject(new Error('push worker stopped'));
+      }
+    });
+  });
+}
+
 function decodeKey(value) {
   const pad = '='.repeat((4 - (value.length % 4)) % 4);
   const b64 = value.replace(/-/g, '+').replace(/_/g, '/') + pad;
@@ -59,7 +93,7 @@ export async function syncDevicePush() {
   const store = useStore();
   if (!store.state.pushEnabled || !store.state.isRegistered) return;
   if (Capacitor.getPlatform() === 'android') {
-    await syncAndroidPush(store);
+    if (import.meta.env.VITE_FCM_ENABLED === 'true') await syncAndroidPush(store);
     return;
   }
   if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -73,10 +107,10 @@ export async function syncDevicePush() {
     store.addToast(store.t('push_permission_denied'), 'bi-bell-slash');
     return;
   }
-  const swUrl = `${import.meta.env.BASE_URL}sw.js`;
-  const registration = await navigator.serviceWorker.register(swUrl);
-  const ready = await navigator.serviceWorker.ready;
-  const active = ready || registration;
+  const target = serviceWorkerTarget();
+  const registration = await navigator.serviceWorker.register(target.script, { scope: target.scope });
+  await waitUntilActive(registration);
+  const active = registration;
   const keyRes = await api.get('/push/key');
   const applicationServerKey = decodeKey(keyRes.data.public_key);
   let existing = await active.pushManager.getSubscription();
@@ -178,7 +212,7 @@ export async function removeDevicePush() {
       }
     }
   } catch (e) {}
-  if (Capacitor.getPlatform() !== 'android') return;
+  if (Capacitor.getPlatform() !== 'android' || import.meta.env.VITE_FCM_ENABLED !== 'true') return;
   try {
     const { PushNotifications } = await import('@capacitor/push-notifications');
     await PushNotifications.unregister();

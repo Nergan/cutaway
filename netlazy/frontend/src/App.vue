@@ -202,20 +202,20 @@
                      <span class="animated-underline">{{ store.t('push_notifications') }}</span>
                      <i class="bi" :class="store.state.pushEnabled ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
-                   <div class="glass-option" @click="store.togglePushKind('share')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
+                   <div class="glass-option" :class="{ 'push-kind-paused': !store.state.pushEnabled }" @click="store.togglePushKind('share')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
                      <i class="bi bi-box-arrow-up" style="color: var(--accent-info); margin-right: 0.5rem;"></i>
                      <span class="animated-underline">{{ store.t('uf_action_share') }}</span>
-                     <i class="bi" :class="store.state.pushShare ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
+                     <i class="bi" :class="store.state.pushEnabled && store.state.pushShare ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
-                   <div class="glass-option" @click="store.togglePushKind('exchange')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
+                   <div class="glass-option" :class="{ 'push-kind-paused': !store.state.pushEnabled }" @click="store.togglePushKind('exchange')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
                      <i class="bi bi-arrow-left-right" style="color: var(--accent-moss); margin-right: 0.5rem;"></i>
                      <span class="animated-underline">{{ store.t('uf_action_exchange') }}</span>
-                     <i class="bi" :class="store.state.pushExchange ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
+                     <i class="bi" :class="store.state.pushEnabled && store.state.pushExchange ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
-                   <div class="glass-option" @click="store.togglePushKind('demand')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
+                   <div class="glass-option" :class="{ 'push-kind-paused': !store.state.pushEnabled }" @click="store.togglePushKind('demand')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">
                      <i class="bi bi-box-arrow-in-down" style="color: var(--accent-danger); margin-right: 0.5rem;"></i>
                      <span class="animated-underline">{{ store.t('uf_action_demand') }}</span>
-                     <i class="bi" :class="store.state.pushDemand ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
+                     <i class="bi" :class="store.state.pushEnabled && store.state.pushDemand ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
                  </div>
 

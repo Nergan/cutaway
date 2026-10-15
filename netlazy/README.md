@@ -215,7 +215,7 @@ An inbox item looks like this. `created_at` and `updated_at` are the handshake t
 
 **Push.** Notifications go out when a `share`, `exchange`, or `demand` request is created or updated for the account. `mutual` follows the exchange switch. The text is the request type in the device language. Contacts and the optional message are not included. A closed site tab still receives the notification.
 
-Windows and other browsers use Web Push. The Android app uses Android push. An Android browser still uses Web Push, and the system shows it as an Android notification. Each device is stored on its own.
+Windows and other browsers use Web Push. The worker is served at `/sw.js` under the app prefix, so it covers the site pages. An Android browser uses the same Web Push, and the system shows it as an Android notification. The Android app uses Firebase only when that build was made with `VITE_FCM_ENABLED=true` and `google-services.json`. Without that configuration the app leaves Firebase alone and still opens the inbox. Each device is stored on its own.
 
 `GET /push/preferences` is a read. Changing preferences or a device subscription is a chain request. `GET /push/key` is unsigned. Missing preferences mean every switch is on.
 

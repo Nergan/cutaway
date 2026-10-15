@@ -797,12 +797,13 @@ export function useStore() {
     function armPushDelivery() {
         if (!state.pushEnabled || !state.isRegistered) return;
         if (Capacitor.getPlatform() === 'android') {
-            syncDevicePush().catch(() => {});
+            if (import.meta.env.VITE_FCM_ENABLED === 'true') syncDevicePush().catch(() => {});
             return;
         }
         if (typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const reportPush = () => addToast(t('push_unavailable'), 'bi-bell-slash');
         if (Notification.permission === 'granted') {
-            syncDevicePush().catch(() => {});
+            syncDevicePush().catch(reportPush);
             return;
         }
         if (Notification.permission !== 'default' || pushPromptArmed) return;
@@ -810,7 +811,7 @@ export function useStore() {
         const once = () => {
             document.removeEventListener('pointerdown', once, true);
             pushPromptArmed = false;
-            if (state.pushEnabled && state.isRegistered) syncDevicePush().catch(() => {});
+            if (state.pushEnabled && state.isRegistered) syncDevicePush().catch(reportPush);
         };
         document.addEventListener('pointerdown', once, true);
     }
@@ -836,7 +837,7 @@ export function useStore() {
 
     async function togglePushKind(kind) {
         const key = kind === 'share' ? 'pushShare' : kind === 'exchange' ? 'pushExchange' : kind === 'demand' ? 'pushDemand' : '';
-        if (!key) return;
+        if (!key || !state.pushEnabled) return;
         const previous = state[key];
         state[key] = !state[key];
         try {

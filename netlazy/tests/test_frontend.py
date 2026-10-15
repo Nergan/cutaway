@@ -426,14 +426,29 @@ class TestPushNotifications:
         assert "bi-box-arrow-up" in app
         assert "bi-arrow-left-right" in app
         assert "bi-box-arrow-in-down" in app
+        assert "pushEnabled && store.state.pushShare" in app
+        assert "pushEnabled && store.state.pushExchange" in app
+        assert "pushEnabled && store.state.pushDemand" in app
+        assert "push-kind-paused" in app
+        assert ".push-kind-paused" in read_text("frontend/css/components.css")
         state = read_text("frontend/src/store/state.js")
         assert "pushEnabled: true" in state
         assert "pushShare: true" in state
         assert "pushExchange: true" in state
         assert "pushDemand: true" in state
+        assert "if (!key || !state.pushEnabled) return" in state
+        assert "VITE_FCM_ENABLED === 'true'" in state
+        push = read_text("frontend/src/utils/push.js")
+        assert "function serviceWorkerTarget()" in push
+        assert "navigator.serviceWorker.ready" not in push
+        assert "VITE_FCM_ENABLED === 'true'" in push
+        assert "VITE_FCM_ENABLED !== 'true'" in push
+        layout = read_text("frontend/css/layout.css")
+        assert ".icon-btn { font-size: 1.2rem; padding: 0.2rem; transition: transform 0.2s; width: 32px; height: 32px; cursor: pointer; }" in layout
         worker = read_text("frontend/public/sw.js")
         assert "showNotification" in worker
         assert "data.platform === 'android'" in worker
+        assert "addEventListener('fetch'" not in worker
         translations = read_text("frontend/src/store/translations.js")
         for locale in LOCALES:
             assert "push_notifications" in extract_locale_keys(translations, locale)
@@ -444,3 +459,12 @@ class TestPushNotifications:
         response = app_client.get("/api")
         assert response.status_code == 200
         assert response.json()["push"].endswith("/api/push")
+
+    def test_service_worker_is_served_for_the_site_scope(self, app_client):
+        response = app_client.get("/sw.js")
+        assert response.status_code == 200
+        assert "javascript" in response.headers["content-type"]
+        assert "showNotification" in response.text
+        assert "no-cache" in response.headers["cache-control"]
+        redirected = app_client.get("/sw.js", follow_redirects=False)
+        assert redirected.status_code == 200

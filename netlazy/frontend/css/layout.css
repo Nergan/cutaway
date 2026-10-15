@@ -130,7 +130,8 @@ body:not(.uf-mode) .sidebar.non-uf:hover {
   transition: color 0.2s; 
 }
 
-.icon-btn { font-size: 1.2rem; padding: 0.2rem; transition: transform 0.2s; width: 32px; height: 32px; }
+.icon-btn { font-size: 1.2rem; padding: 0.2rem; transition: transform 0.2s; width: 32px; height: 32px; cursor: pointer; }
+.icon-btn .bi { cursor: pointer; }
 
 .lang-btn {
   font-weight: bold;

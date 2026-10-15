@@ -191,8 +191,8 @@ class PushService:
                     status = await self._deliver(sub, payload)
                 else:
                     status = await asyncio.to_thread(self._send, sub, payload, key)
-            except Exception:
-                logging.warning("push delivery failed for one device")
+            except Exception as exc:
+                logging.warning("push delivery failed for one device: %s", type(exc).__name__)
                 continue
             if status in (403, 404, 410):
                 await self._repo.delete_subscription(user_id, endpoint=sub.endpoint, token=sub.token)

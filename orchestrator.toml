@@ -286,6 +286,9 @@ env_allowlist = [
   "ENVIRONMENT",
   "CORS_ORIGINS",
   "TAGS_YAML_PATH",
+  "VAPID_PRIVATE_PEM",
+  "VAPID_SUBJECT",
+  "FCM_SERVICE_ACCOUNT",
 ]
 
 [projects.netlazy.limits]
@@ -307,7 +310,7 @@ nofile = 256
 fsize_mb = 512
 
 [projects.netlazy.network]
-allowed_hosts = ["api.cloudinary.com", "res.cloudinary.com", "*.cloudinary.com", "api.github.com", "cdn.jsdelivr.net"]
+allowed_hosts = ["api.cloudinary.com", "res.cloudinary.com", "*.cloudinary.com", "api.github.com", "cdn.jsdelivr.net", "fcm.googleapis.com", "android.googleapis.com", "oauth2.googleapis.com", "updates.push.services.mozilla.com", "*.push.services.mozilla.com", "web.push.apple.com", "*.push.apple.com", "*.notify.windows.com"]
 allow_private = false
 requests_per_minute = 60
 

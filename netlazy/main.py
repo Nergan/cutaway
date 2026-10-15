@@ -293,6 +293,25 @@ async def root_redirect(request: Request):
     return RedirectResponse(url=f"{base}/profile", status_code=303)
 
 
+def _service_worker_file() -> Path | None:
+    for candidate in (BASE_DIR / "frontend" / "public" / "sw.js", BASE_DIR / "static" / "sw.js"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+@router.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    worker = _service_worker_file()
+    if worker is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(
+        worker,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @router.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(request: Request, full_path: str = ""):
     if full_path.startswith("api/") or full_path == "api":

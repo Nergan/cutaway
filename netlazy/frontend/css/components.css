@@ -986,6 +986,11 @@ body.light-theme .floating-tooltip {
   padding: 0 1rem;
 }
 
+.push-kind-paused {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* Slide Up and Fade Sheet Transitions */
 .sheet-fade-enter-active, .sheet-fade-leave-active {
   transition: opacity 0.25s ease;
