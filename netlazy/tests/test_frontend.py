@@ -262,6 +262,9 @@ class TestFeedCardAffordance:
         css = read_text("frontend/css/views.css")
         block = css_rule_block(css, ".masonry-grid .card.card-linkable")
         assert "cursor: pointer" in block
+        hover = css_rule_block(css, ".masonry-grid .card.card-linkable:hover")
+        assert "var(--accent-moss)" in hover
+        assert "var(--bg-surface)" in hover
         child = css_rule_block(css, ".masonry-grid .card.card-linkable > *")
         assert "cursor: auto" in child
         feed = read_text("frontend/src/components/Feed.vue")
