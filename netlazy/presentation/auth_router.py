@@ -16,6 +16,7 @@ from netlazy.presentation.dependencies import (
     verify_request_signature,
     profile_repo,
     handshake_repo,
+    push_service,
     _normalize_path
 )
 
@@ -152,6 +153,7 @@ async def rotate_key_endpoint(
         if request and hasattr(request, "state"):
             request.state.next_anchor = new_anchor
         response.headers["X-Next-Anchor"] = new_anchor
+        await push_service.delete_user(user.user_id)
         return UserRotateResponse(new_user_id=new_id, new_anchor=new_anchor, message="Rotation successful")
     except InvalidPublicKeyError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -166,3 +168,4 @@ async def delete_account(user: User = Depends(verify_request_signature)):
     await profile_service.delete_profile(user.user_id)
     await auth_service.delete_user(user.user_id)
     await inbox_service.delete_user_handshakes(user.user_id)
+    await push_service.delete_user(user.user_id)

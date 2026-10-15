@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from netlazy.config import settings
 from netlazy.database import connect_to_mongo, close_mongo_connection, db_instance, DatabaseUnavailableError
 from netlazy.presentation.route_handler import NetlazyRoute
-from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, security_router
+from netlazy.presentation import auth_router, profile_router, tag_router, feed_router, inbox_router, push_router, security_router
 from netlazy.presentation.dependencies import tag_service
 from shared.network import safe_urlopen
 
@@ -189,6 +189,7 @@ router.include_router(tag_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(profile_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(feed_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(inbox_router.router, prefix="/api", dependencies=api_deps)
+router.include_router(push_router.router, prefix="/api", dependencies=api_deps)
 router.include_router(security_router.router, prefix="/api", dependencies=api_deps)
 
 _cached_version = None
@@ -242,6 +243,7 @@ async def api_index():
         "profile": "/netlazy/api/profile",
         "feed": "/netlazy/api/feed",
         "inbox": "/netlazy/api/inbox",
+        "push": "/netlazy/api/push",
         "tags": "/netlazy/api/tags",
         "security": "/netlazy/api/security",
     }

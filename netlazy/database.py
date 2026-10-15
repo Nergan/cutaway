@@ -25,6 +25,9 @@ class Database:
     bans_collection = None
     logs_collection = None
     chains_collection = None
+    push_subscriptions_collection = None
+    push_preferences_collection = None
+    push_keys_collection = None
 
     def __getattribute__(self, name):
         val = super().__getattribute__(name)
@@ -132,6 +135,9 @@ async def connect_to_mongo():
     db_instance.bans_collection = db_instance.db.bans
     db_instance.logs_collection = db_instance.db.logs
     db_instance.chains_collection = db_instance.db.chains
+    db_instance.push_subscriptions_collection = db_instance.db.push_subscriptions
+    db_instance.push_preferences_collection = db_instance.db.push_preferences
+    db_instance.push_keys_collection = db_instance.db.push_keys
 
     definitions = {
         db_instance.users_collection: [
@@ -168,7 +174,14 @@ async def connect_to_mongo():
         ],
         db_instance.chains_collection: [
             ("user_id", {"unique": True})
-        ]
+        ],
+        db_instance.push_subscriptions_collection: [
+            ("user_id", {}),
+            ("endpoint", {"unique": True, "partialFilterExpression": {"endpoint": {"$gt": ""}}}),
+            ("token", {"unique": True, "partialFilterExpression": {"token": {"$gt": ""}}}),
+        ],
+        db_instance.push_preferences_collection: [],
+        db_instance.push_keys_collection: [],
     }
 
     for collection, indexes in definitions.items():

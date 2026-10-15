@@ -414,3 +414,33 @@ class TestFeedCardAffordance:
         assert "hide_private" not in feed_router
         assert "get_by_public_id" in inbox
         assert "verify_reader" in inbox
+
+
+class TestPushNotifications:
+    def test_request_notifications_are_on_and_split_by_type(self):
+        app = read_text("frontend/src/App.vue")
+        assert "store.togglePushEnabled()" in app
+        assert "store.togglePushKind('share')" in app
+        assert "store.togglePushKind('exchange')" in app
+        assert "store.togglePushKind('demand')" in app
+        assert "bi-box-arrow-up" in app
+        assert "bi-arrow-left-right" in app
+        assert "bi-box-arrow-in-down" in app
+        state = read_text("frontend/src/store/state.js")
+        assert "pushEnabled: true" in state
+        assert "pushShare: true" in state
+        assert "pushExchange: true" in state
+        assert "pushDemand: true" in state
+        worker = read_text("frontend/public/sw.js")
+        assert "showNotification" in worker
+        assert "data.platform === 'android'" in worker
+        translations = read_text("frontend/src/store/translations.js")
+        for locale in LOCALES:
+            assert "push_notifications" in extract_locale_keys(translations, locale)
+        assert "push_service.notify_request" in read_text("presentation/inbox_router.py")
+        assert '"push": "/netlazy/api/push"' in read_text("main.py")
+
+    def test_api_index_lists_push(self, app_client):
+        response = app_client.get("/api")
+        assert response.status_code == 200
+        assert response.json()["push"].endswith("/api/push")

@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "staging", "production"] = "production"
 
+    vapid_private_pem: str = ""
+    vapid_subject: str = "mailto:push@netlazy.app"
+    fcm_service_account: str = ""
+
     # Site interface. "1" is the previous layout, "2" is the flat one.
     # Set this to "1", or INTERFACE_VERSION=1, to switch back.
     interface_version: Literal["1", "2"] = "2"

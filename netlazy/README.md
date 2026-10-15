@@ -53,7 +53,7 @@ Every signed request sends:
 
 Both signatures cover the same UTF-8 canonical text. The three kinds of text are not interchangeable.
 
-**Read** (`PQDA-READ-v1`). Used by `GET /profile/me`, `GET /inbox`, `POST /feed/search`, and `GET /feed/form/{slug}` when `X-User-Id` is present. The chain does not move, and the response has no `X-Next-Anchor`.
+**Read** (`PQDA-READ-v1`). Used by `GET /profile/me`, `GET /inbox`, `GET /push/preferences`, `POST /feed/search`, and `GET /feed/form/{slug}` when `X-User-Id` is present. The chain does not move, and the response has no `X-Next-Anchor`.
 
 ```text
 PQDA-READ-v1
@@ -212,6 +212,37 @@ An inbox item looks like this. `created_at` and `updated_at` are the handshake t
 ```
 
 `profile` is a public profile.
+
+**Push.** Notifications go out when a `share`, `exchange`, or `demand` request is created or updated for the account. `mutual` follows the exchange switch. The text is the request type in the device language. Contacts and the optional message are not included. A closed site tab still receives the notification.
+
+Windows and other browsers use Web Push. The Android app uses Android push. An Android browser still uses Web Push, and the system shows it as an Android notification. Each device is stored on its own.
+
+`GET /push/preferences` is a read. Changing preferences or a device subscription is a chain request. `GET /push/key` is unsigned. Missing preferences mean every switch is on.
+
+| Method and path | Body and result |
+| --- | --- |
+| `GET /push/key` | `{"public_key"}`. Base64url uncompressed P-256 key for `PushManager.subscribe`. |
+| `GET /push/preferences` | `{"enabled", "share", "exchange", "demand", "lang"}`. |
+| `PUT /push/preferences` | The same object. `lang` is `en`, `ru`, `pt`, `zh`, `ja`, or `ko`. |
+| `POST /push/subscriptions` | `204`. Registers one device. |
+| `DELETE /push/subscriptions` | `204`. Removes one device. Body is `{"endpoint"}` or `{"token"}`. |
+
+```json
+{
+  "platform": "windows",
+  "transport": "webpush",
+  "endpoint": "https://push.example/subscription",
+  "p256dh": "base64url",
+  "auth": "base64url",
+  "open_path": "/netlazy/inbox",
+  "origin": "https://example.com",
+  "lang": "en"
+}
+```
+
+`platform` is `windows`, `android`, or `web`. `transport` is `webpush` or `fcm`. Web Push needs `endpoint`, `p256dh`, and `auth`, and the endpoint host must be a known push service. Android app registration sends `transport: "fcm"` and `token` instead of those three fields. `open_path` is a same-site path opened from the notification.
+
+Android app delivery reads `FCM_SERVICE_ACCOUNT` (a file path or the account JSON). Without it, Android tokens are stored and Web Push still works. `VAPID_PRIVATE_PEM` overrides the key the server would otherwise keep for Web Push. `VAPID_SUBJECT` is the `mailto:` contact in the Web Push token.
 
 **Tags, status, and the web client**
 

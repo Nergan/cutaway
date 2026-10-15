@@ -122,7 +122,11 @@ export default {
     back: "back",
     matched_label: "matched",
     failed_delete_chat: "failed to delete request",
-    update_app: "update app"
+    update_app: "update app",
+    push_notifications: "notifications",
+    push_permission_denied: "notifications are blocked in this browser",
+    push_unavailable: "this browser cannot show notifications",
+    push_sync_failed: "could not save notification settings"
   },
   ru: {
     welcome_desc: "Просто дэйтинг. Без манипулятивных механик и агрессивной монетизации. Будьте хорошими :^",
@@ -247,7 +251,11 @@ export default {
     back: "назад",
     matched_label: "совпадение",
     failed_delete_chat: "не удалось удалить запрос",
-    update_app: "обновить приложение"
+    update_app: "обновить приложение",
+    push_notifications: "уведомления",
+    push_permission_denied: "уведомления запрещены в браузере",
+    push_unavailable: "этот браузер не показывает уведомления",
+    push_sync_failed: "не удалось сохранить настройки уведомлений"
   },
   pt: {
     welcome_desc: "Apenas namoro. Sem mecânicas manipulativas, sem monetização agressiva. Seja responsável :^",
@@ -372,7 +380,11 @@ export default {
     back: "voltar",
     matched_label: "combinado",
     failed_delete_chat: "falha ao excluir solicitação",
-    update_app: "atualizar aplicativo"
+    update_app: "atualizar aplicativo",
+    push_notifications: "notificações",
+    push_permission_denied: "as notificações estão bloqueadas neste navegador",
+    push_unavailable: "este navegador não mostra notificações",
+    push_sync_failed: "não foi possível salvar as configurações de notificação"
   },
   zh: {
     welcome_desc: "純粹交友。沒有操縱機制，沒有激進變現。請負責任地使用 :^",
@@ -491,6 +503,10 @@ export default {
     matched_label: "已配對",
     failed_delete_chat: "刪除請求失敗",
     update_app: "更新應用程式",
+    push_notifications: "通知",
+    push_permission_denied: "瀏覽器已封鎖通知",
+    push_unavailable: "此瀏覽器無法顯示通知",
+    push_sync_failed: "無法儲存通知設定",
     backup_phrase_confirm_btn: "我已經儲存，繼續"
   },
   ja: {
@@ -610,7 +626,11 @@ export default {
     back: "戻る",
     matched_label: "マッチ",
     failed_delete_chat: "リクエストの削除に失敗しました",
-    update_app: "アプリを更新"
+    update_app: "アプリを更新",
+    push_notifications: "通知",
+    push_permission_denied: "このブラウザでは通知がブロックされています",
+    push_unavailable: "このブラウザは通知を表示できません",
+    push_sync_failed: "通知設定を保存できませんでした"
   },
   ko: {
     welcome_desc: "그냥 데이팅입니다. 조작적인 메커니즘도, 공격적인 수익 창출도 없습니다. 책임감 있게 행동하세요 :^",
@@ -732,6 +752,10 @@ export default {
     handshake_updated: "요청이 {status}",
     failed_resolve_handshake: "요청 처리 실패",
     failed_delete_chat: "요청 삭제 실패",
-    update_app: "앱 업데이트"
+    update_app: "앱 업데이트",
+    push_notifications: "알림",
+    push_permission_denied: "이 브라우저에서 알림이 차단되어 있습니다",
+    push_unavailable: "이 브라우저는 알림을 표시할 수 없습니다",
+    push_sync_failed: "알림 설정을 저장하지 못했습니다"
   }
 };

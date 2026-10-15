@@ -7,7 +7,7 @@ from pymongo import ReturnDocument, UpdateOne, ReadPreference
 from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.forms import FormSlugConflict
-from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, Tag, User, UserAlreadyExistsError
+from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, PushPreferences, PushSubscription, Tag, User, UserAlreadyExistsError
 from netlazy.domain.repository import (
     ChainRepository,
     HandshakeRepository,
@@ -601,3 +601,105 @@ class MongoChainRepository(ChainRepository):
 
     async def delete_for_user(self, user_id: str, session: Any = None) -> None:
         await db_instance.chains_collection.delete_one({"user_id": user_id}, session=session)
+
+
+class MongoPushRepository:
+    async def get_preferences(self, user_id: str) -> PushPreferences:
+        doc = await db_instance.push_preferences_collection.find_one({"_id": user_id})
+        if not doc:
+            return PushPreferences()
+        return PushPreferences(
+            enabled=bool(doc.get("enabled", True)),
+            share=bool(doc.get("share", True)),
+            exchange=bool(doc.get("exchange", True)),
+            demand=bool(doc.get("demand", True)),
+            lang=doc.get("lang") or "en",
+        )
+
+    async def save_preferences(self, user_id: str, prefs: PushPreferences) -> None:
+        await db_instance.push_preferences_collection.replace_one(
+            {"_id": user_id},
+            {
+                "_id": user_id,
+                "enabled": prefs.enabled,
+                "share": prefs.share,
+                "exchange": prefs.exchange,
+                "demand": prefs.demand,
+                "lang": prefs.lang,
+            },
+            upsert=True,
+        )
+
+    async def upsert_subscription(self, sub: PushSubscription) -> None:
+        now = datetime.now(timezone.utc)
+        doc = {
+            "user_id": sub.user_id,
+            "platform": sub.platform,
+            "transport": sub.transport,
+            "endpoint": sub.endpoint,
+            "p256dh": sub.p256dh,
+            "auth": sub.auth,
+            "token": sub.token,
+            "open_path": sub.open_path,
+            "origin": sub.origin,
+            "lang": sub.lang,
+            "updated_at": now,
+        }
+        filt = {"endpoint": sub.endpoint} if sub.transport == "webpush" else {"token": sub.token}
+        try:
+            await db_instance.push_subscriptions_collection.replace_one(filt, doc, upsert=True)
+        except DuplicateKeyError:
+            await db_instance.push_subscriptions_collection.replace_one(filt, doc, upsert=False)
+        count = await db_instance.push_subscriptions_collection.count_documents({"user_id": sub.user_id})
+        extra = count - 10
+        if extra > 0:
+            cursor = db_instance.push_subscriptions_collection.find({"user_id": sub.user_id}).sort("updated_at", 1).limit(extra)
+            async for old in cursor:
+                await db_instance.push_subscriptions_collection.delete_one({"_id": old["_id"]})
+
+    async def delete_subscription(self, user_id: str, *, endpoint: str = "", token: str = "") -> None:
+        query = {"user_id": user_id}
+        if endpoint:
+            query["endpoint"] = endpoint
+        elif token:
+            query["token"] = token
+        else:
+            return
+        await db_instance.push_subscriptions_collection.delete_one(query)
+
+    async def list_subscriptions(self, user_id: str) -> List[PushSubscription]:
+        cursor = db_instance.push_subscriptions_collection.find({"user_id": user_id})
+        found = []
+        async for doc in cursor:
+            found.append(PushSubscription(
+                user_id=doc["user_id"],
+                platform=doc.get("platform") or "web",
+                transport=doc.get("transport") or "webpush",
+                endpoint=doc.get("endpoint") or "",
+                p256dh=doc.get("p256dh") or "",
+                auth=doc.get("auth") or "",
+                token=doc.get("token") or "",
+                open_path=doc.get("open_path") or "/netlazy/inbox",
+                origin=doc.get("origin") or "",
+                lang=doc.get("lang") or "en",
+            ))
+        return found
+
+    async def delete_user(self, user_id: str) -> None:
+        await db_instance.push_subscriptions_collection.delete_many({"user_id": user_id})
+        await db_instance.push_preferences_collection.delete_one({"_id": user_id})
+
+    async def get_vapid_pem(self) -> Optional[str]:
+        doc = await db_instance.push_keys_collection.find_one({"_id": "vapid"})
+        if not doc:
+            return None
+        return doc.get("private_pem") or None
+
+    async def save_vapid_pem(self, pem: str) -> str:
+        doc = await db_instance.push_keys_collection.find_one_and_update(
+            {"_id": "vapid"},
+            {"$setOnInsert": {"private_pem": pem}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        return doc["private_pem"]

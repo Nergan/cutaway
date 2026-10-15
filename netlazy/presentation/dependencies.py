@@ -12,6 +12,7 @@ from netlazy.application.profile_service import ProfileService
 from netlazy.application.tag_service import TagService
 from netlazy.application.feed_service import FeedService
 from netlazy.application.inbox_service import InboxService
+from netlazy.application.push_service import PushService
 from netlazy.application.security_service import SecurityService, BannedError, ProofOfWorkError
 from netlazy.config import settings
 from netlazy.database import DatabaseUnavailableError
@@ -31,6 +32,7 @@ from netlazy.infrastructure.mongo_repo import (
     MongoSecurityRepository,
     MongoTagRepository,
     MongoUserRepository,
+    MongoPushRepository,
     MongoTransactionManager,
 )
 
@@ -49,6 +51,7 @@ nonce_repo = MongoNonceRepository()
 tag_repo = MongoTagRepository()
 profile_repo = MongoProfileRepository()
 handshake_repo = MongoHandshakeRepository()
+push_repo = MongoPushRepository()
 security_repo = MongoSecurityRepository()
 media_storage = CloudinaryMediaStorage()
 
@@ -89,6 +92,8 @@ inbox_service = InboxService(
     profile_repo=profile_repo,
     user_repo=user_repo
 )
+
+push_service = PushService(repo=push_repo)
 
 security_service = SecurityService(
     security_repo=security_repo,

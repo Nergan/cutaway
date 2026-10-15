@@ -53,7 +53,7 @@
 
 Обе подписи покрывают один и тот же текст в UTF-8. Три вида текста нельзя подменять друг другом.
 
-**Чтение** (`PQDA-READ-v1`). Так подписываются `GET /profile/me`, `GET /inbox`, `POST /feed/search` и `GET /feed/form/{slug}`, если передан `X-User-Id`. Цепочка не двигается, в ответе нет `X-Next-Anchor`.
+**Чтение** (`PQDA-READ-v1`). Так подписываются `GET /profile/me`, `GET /inbox`, `GET /push/preferences`, `POST /feed/search` и `GET /feed/form/{slug}`, если передан `X-User-Id`. Цепочка не двигается, в ответе нет `X-Next-Anchor`.
 
 ```text
 PQDA-READ-v1
@@ -212,6 +212,37 @@ body-hash
 ```
 
 `profile` — публичная анкета.
+
+**Уведомления.** Они уходят, когда для аккаунта создают или обновляют запрос `share`, `exchange` или `demand`. `mutual` подчиняется переключателю exchange. Текст — тип запроса на языке устройства. Контакты и необязательное сообщение в уведомление не попадают. Закрытая вкладка сайта уведомление всё равно получает.
+
+Windows и остальные браузеры используют Web Push. Приложение Android использует push Android. Браузер на Android тоже использует Web Push, а система показывает его как уведомление Android. Каждое устройство хранится отдельно.
+
+`GET /push/preferences` — чтение. Изменение настроек или подписки устройства — запрос по цепочке. `GET /push/key` без подписи. Если настроек ещё нет, все переключатели включены.
+
+| Метод и путь | Тело и результат |
+| --- | --- |
+| `GET /push/key` | `{"public_key"}`. Несжатый ключ P-256 в base64url для `PushManager.subscribe`. |
+| `GET /push/preferences` | `{"enabled", "share", "exchange", "demand", "lang"}`. |
+| `PUT /push/preferences` | Тот же объект. `lang` — `en`, `ru`, `pt`, `zh`, `ja` или `ko`. |
+| `POST /push/subscriptions` | `204`. Регистрирует одно устройство. |
+| `DELETE /push/subscriptions` | `204`. Удаляет одно устройство. Тело — `{"endpoint"}` или `{"token"}`. |
+
+```json
+{
+  "platform": "windows",
+  "transport": "webpush",
+  "endpoint": "https://push.example/subscription",
+  "p256dh": "base64url",
+  "auth": "base64url",
+  "open_path": "/netlazy/inbox",
+  "origin": "https://example.com",
+  "lang": "ru"
+}
+```
+
+`platform` — `windows`, `android` или `web`. `transport` — `webpush` или `fcm`. Для Web Push нужны `endpoint`, `p256dh` и `auth`, а хост endpoint должен быть известным сервисом push. Регистрация приложения Android отправляет `transport: "fcm"` и `token` вместо этих трёх полей. `open_path` — путь того же сайта, который открывается из уведомления.
+
+Доставка в приложение Android читает `FCM_SERVICE_ACCOUNT` (путь к файлу или JSON аккаунта). Без него токены Android сохраняются, а Web Push продолжает работать. `VAPID_PRIVATE_PEM` заменяет ключ, который сервер иначе хранит для Web Push. `VAPID_SUBJECT` — контакт `mailto:` в токене Web Push.
 
 **Теги, состояние и веб-клиент**
 

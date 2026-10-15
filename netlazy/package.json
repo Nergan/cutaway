@@ -16,6 +16,7 @@
     "@capacitor/ios": "^6.0.0",
     "@capacitor/keyboard": "^6.0.0",
     "@capacitor/preferences": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.5",
     "@noble/curves": "^1.9.0",
     "@noble/post-quantum": "^0.2.0",
     "axios": "^1.6.8",

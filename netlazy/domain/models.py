@@ -77,6 +77,29 @@ class Handshake:
     updated_at: Optional[datetime] = None
 
 @dataclass
+class PushPreferences:
+    enabled: bool = True
+    share: bool = True
+    exchange: bool = True
+    demand: bool = True
+    lang: str = "en"
+
+
+@dataclass
+class PushSubscription:
+    user_id: str
+    platform: str
+    transport: str
+    endpoint: str = ""
+    p256dh: str = ""
+    auth: str = ""
+    token: str = ""
+    open_path: str = "/netlazy/inbox"
+    origin: str = ""
+    lang: str = "en"
+
+
+@dataclass
 class PoWChallenge:
     id: str
     difficulty: int

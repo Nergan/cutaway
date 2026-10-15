@@ -6,6 +6,7 @@ import translations from './translations.js';
 import { normalizeBio } from '../utils/bio.js';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+import { syncDevicePush, removeDevicePush } from '../utils/push.js';
 
 const STORAGE_KEY = 'netlazy_state';
 
@@ -19,6 +20,10 @@ const defaultState = {
     lang: 'en',
     
     isUserFriendlyInterface: true,
+    pushEnabled: true,
+    pushShare: true,
+    pushExchange: true,
+    pushDemand: true,
     interfaceVersion: '1',
     
     userId: null,
@@ -106,6 +111,8 @@ export function isInboxUnread(item) {
 }
 
 let instance = null;
+let loggingOut = false;
+let pushPromptArmed = false;
 
 export function useStore() {
     if (instance) return instance;
@@ -274,7 +281,7 @@ export function useStore() {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 
-                ['theme', 'lang', 'isUserFriendlyInterface', 'workspaceWidth', 'isWorkspaceCollapsed', 'isInboxSidebarCollapsed'].forEach(k => {
+                ['theme', 'lang', 'isUserFriendlyInterface', 'pushEnabled', 'pushShare', 'pushExchange', 'pushDemand', 'workspaceWidth', 'isWorkspaceCollapsed', 'isInboxSidebarCollapsed'].forEach(k => {
                     if (parsed[k] !== undefined) state[k] = parsed[k];
                 });
                 
@@ -315,6 +322,7 @@ export function useStore() {
             else document.body.classList.remove('uf-mode');
             
             state.isInitialized = true;
+            if (state.isRegistered && !state.isBanned) loadPushPreferences();
         }
     }
 
@@ -323,8 +331,17 @@ export function useStore() {
         else document.body.classList.remove('uf-mode');
     }, { immediate: true });
 
+    watch(() => state.lang, () => {
+        if (!state.isInitialized || !state.isRegistered || !state.pushEnabled) return;
+        persistPushPreferences().catch(() => {});
+        const native = Capacitor.getPlatform() === 'android';
+        const granted = native || (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+        if (granted) syncDevicePush().catch(() => {});
+    });
+
     watch(() => [
         state.isRegistered, state.isBanned, state.currentView, state.theme, state.lang, state.isUserFriendlyInterface,
+        state.pushEnabled, state.pushShare, state.pushExchange, state.pushDemand,
         state.workspaceWidth, state.isWorkspaceCollapsed, state.isInboxSidebarCollapsed,
         state.userId, state.currentAnchor
     ], async () => {
@@ -333,6 +350,8 @@ export function useStore() {
             const saveObj = {
                 isRegistered: state.isRegistered, isBanned: state.isBanned, currentView: state.currentView,
                 theme: state.theme, lang: state.lang, isUserFriendlyInterface: state.isUserFriendlyInterface,
+                pushEnabled: state.pushEnabled, pushShare: state.pushShare,
+                pushExchange: state.pushExchange, pushDemand: state.pushDemand,
                 workspaceWidth: state.workspaceWidth,
                 isWorkspaceCollapsed: state.isWorkspaceCollapsed, isInboxSidebarCollapsed: state.isInboxSidebarCollapsed,
                 userId: state.userId, currentAnchor: state.currentAnchor
@@ -446,6 +465,7 @@ export function useStore() {
             fetchMyProfile();
             fetchInbox();
             startPolling();
+            loadPushPreferences();
             
             addToast(t('new_identity_loaded'), "bi-person-plus");
         } catch (e) {
@@ -477,6 +497,7 @@ export function useStore() {
             fetchMyProfile();
             fetchInbox();
             startPolling();
+            loadPushPreferences();
             
             addToast(t('key_imported'), "bi-person-plus");
         } catch (e) {
@@ -526,6 +547,8 @@ export function useStore() {
             startPolling();
             fetchMyProfile();
             fetchInbox();
+            persistPushPreferences().catch(() => {});
+            syncDevicePush().catch(() => {});
             
             addToast(t('identity_rotated'), "bi-check2-circle");
         } catch (e) {
@@ -536,16 +559,23 @@ export function useStore() {
     }
 
     async function logout() {
-        state.isRegistered = false;
-        state.isBanned = false;
-        state.authErrorNotified = false;
-        state.userId = null;
-        state.currentAnchor = null;
-        state.myProfile = { ...defaultState.myProfile };
-        state.inbox = [];
-        state.feed = [];
-        await clearIdentity();
-        if (pollInterval) clearInterval(pollInterval);
+        if (loggingOut) return;
+        loggingOut = true;
+        try {
+            await removeDevicePush();
+            state.isRegistered = false;
+            state.isBanned = false;
+            state.authErrorNotified = false;
+            state.userId = null;
+            state.currentAnchor = null;
+            state.myProfile = { ...defaultState.myProfile };
+            state.inbox = [];
+            state.feed = [];
+            await clearIdentity();
+            if (pollInterval) clearInterval(pollInterval);
+        } finally {
+            loggingOut = false;
+        }
     }
 
     function deleteAccount() {
@@ -740,6 +770,83 @@ export function useStore() {
         return `${root}/feed?form=${encodeURIComponent(slug)}`;
     }
 
+    async function persistPushPreferences() {
+        if (!state.isRegistered) return;
+        await api.put('/push/preferences', {
+            enabled: state.pushEnabled,
+            share: state.pushShare,
+            exchange: state.pushExchange,
+            demand: state.pushDemand,
+            lang: state.lang,
+        });
+    }
+
+    async function loadPushPreferences() {
+        if (!state.isRegistered || state.isBanned) return;
+        try {
+            const res = await api.get('/push/preferences');
+            const data = res.data || {};
+            if (typeof data.enabled === 'boolean') state.pushEnabled = data.enabled;
+            if (typeof data.share === 'boolean') state.pushShare = data.share;
+            if (typeof data.exchange === 'boolean') state.pushExchange = data.exchange;
+            if (typeof data.demand === 'boolean') state.pushDemand = data.demand;
+        } catch (e) {}
+        if (state.pushEnabled) armPushDelivery();
+    }
+
+    function armPushDelivery() {
+        if (!state.pushEnabled || !state.isRegistered) return;
+        if (Capacitor.getPlatform() === 'android') {
+            syncDevicePush().catch(() => {});
+            return;
+        }
+        if (typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (Notification.permission === 'granted') {
+            syncDevicePush().catch(() => {});
+            return;
+        }
+        if (Notification.permission !== 'default' || pushPromptArmed) return;
+        pushPromptArmed = true;
+        const once = () => {
+            document.removeEventListener('pointerdown', once, true);
+            pushPromptArmed = false;
+            if (state.pushEnabled && state.isRegistered) syncDevicePush().catch(() => {});
+        };
+        document.addEventListener('pointerdown', once, true);
+    }
+
+    async function togglePushEnabled() {
+        const previous = state.pushEnabled;
+        state.pushEnabled = !state.pushEnabled;
+        try {
+            await persistPushPreferences();
+        } catch (e) {
+            state.pushEnabled = previous;
+            addToast(t('push_sync_failed'), 'bi-exclamation-triangle');
+            return;
+        }
+        if (state.pushEnabled) {
+            try {
+                await syncDevicePush();
+            } catch (e) {
+                addToast(t('push_sync_failed'), 'bi-exclamation-triangle');
+            }
+        }
+    }
+
+    async function togglePushKind(kind) {
+        const key = kind === 'share' ? 'pushShare' : kind === 'exchange' ? 'pushExchange' : kind === 'demand' ? 'pushDemand' : '';
+        if (!key) return;
+        const previous = state[key];
+        state[key] = !state[key];
+        try {
+            await persistPushPreferences();
+        } catch (e) {
+            state[key] = previous;
+            addToast(t('push_sync_failed'), 'bi-exclamation-triangle');
+        }
+    }
+
     function openFeed() {
         state.formSlug = null;
         if (state.currentView !== 'feed') {
@@ -752,7 +859,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed, togglePushEnabled, togglePushKind
     };
     return instance;
 }

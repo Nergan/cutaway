@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from netlazy.domain.models import User
 from netlazy.presentation.route_handler import NetlazyRoute
-from netlazy.presentation.dependencies import inbox_service, profile_service, verify_reader, verify_request_signature, verify_pow
+from netlazy.presentation.dependencies import inbox_service, profile_service, push_service, verify_reader, verify_request_signature, verify_pow
 from netlazy.presentation.profile_router import PublicProfileResponse, public_profile_response
 from netlazy.application.inbox_service import HandshakeNotFoundError, UnauthorizedHandshakeActionError, InvalidHandshakeStateError, OtherUserNotFoundError, OtherUserBannedError
 
@@ -54,7 +54,11 @@ async def _public_inbox_item(h, profile, is_sender: bool) -> InboxItemResponse:
     return _to_inbox_item(h, profile, is_sender)
 
 @router.post("/handshakes", response_model=InboxItemResponse, dependencies=[Depends(verify_pow)])
-async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(verify_request_signature)):
+async def send_handshake(
+    body: HandshakeCreateRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(verify_request_signature),
+):
     receiver = await profile_service.get_by_public_id(body.receiver_id)
     if receiver is None:
         raise HTTPException(status_code=404, detail="profile_not_found")
@@ -76,7 +80,9 @@ async def send_handshake(body: HandshakeCreateRequest, user: User = Depends(veri
         raise HTTPException(status_code=404, detail=str(e))
     except OtherUserBannedError as e:
         raise HTTPException(status_code=404, detail=str(e))
-        
+
+    if h.handshake_type in ("share", "exchange", "demand", "mutual") and h.status == "pending":
+        background_tasks.add_task(push_service.notify_request, h.receiver_id, h.handshake_type, h.id)
     return await _public_inbox_item(h, receiver, is_sender=True)
 
 @router.post("/handshakes/{handshake_id}/resolve", response_model=InboxItemResponse)
