@@ -1,37 +1,45 @@
 import os
 from pathlib import Path
 
-import fitz
 import pytest
-from PIL import Image
 
 from formular.core.graph import find_shortest_path
 from formular.core.image_host import direct_image_url
-from formular.core.pdf_markdown import render_pdf_markdown
 
 
-def _noise(path: Path) -> None:
-    image = Image.frombytes("RGB", (96, 96), os.urandom(96 * 96 * 3))
+def _pdf_tools():
+    """PyMuPDF is a formular dependency. The hub test env installs it for these checks."""
+    fitz = pytest.importorskip("fitz")
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from formular.core.pdf_markdown import render_pdf_markdown
+
+    return fitz, Image, render_pdf_markdown
+
+
+def _noise(image_module, path: Path) -> None:
+    image = image_module.frombytes("RGB", (96, 96), os.urandom(96 * 96 * 3))
     image.save(path, format="PNG")
 
 
-def _flat(path: Path) -> None:
-    Image.new("RGB", (400, 400), (232, 220, 190)).save(path, format="PNG")
+def _flat(image_module, path: Path) -> None:
+    image_module.new("RGB", (400, 400), (232, 220, 190)).save(path, format="PNG")
 
 
-def _frame(path: Path) -> None:
-    image = Image.new("RGB", (220, 140), (48, 36, 18))
-    image.paste(Image.new("RGB", (196, 116), (245, 236, 196)), (12, 12))
+def _frame(image_module, path: Path) -> None:
+    image = image_module.new("RGB", (220, 140), (48, 36, 18))
+    image.paste(image_module.new("RGB", (196, 116), (245, 236, 196)), (12, 12))
     image.save(path, format="PNG")
 
 
-def _sample_pdf(folder: Path) -> Path:
+def _sample_pdf(folder: Path, fitz, image_module) -> Path:
     noise = folder / "noise.png"
     flat = folder / "flat.png"
     frame = folder / "frame.png"
-    _noise(noise)
-    _flat(flat)
-    _frame(frame)
+    _noise(image_module, noise)
+    _flat(image_module, flat)
+    _frame(image_module, frame)
     document = fitz.open()
     page = document.new_page(width=595, height=842)
     page.insert_image(page.rect, filename=str(flat))
@@ -51,13 +59,14 @@ def _sample_pdf(folder: Path) -> Path:
 
 
 def test_a_designed_page_becomes_linear_markdown(tmp_path: Path):
+    fitz, image_module, render_pdf_markdown = _pdf_tools()
     uploaded: list[str] = []
 
     def upload(data: bytes, suffix: str) -> str:
         uploaded.append(suffix)
         return "https://tmpfiles.org/dl/1.abc/sample/picture.jpg"
 
-    markdown = render_pdf_markdown(str(_sample_pdf(tmp_path)), upload)
+    markdown = render_pdf_markdown(str(_sample_pdf(tmp_path, fitz, image_module)), upload)
     assert markdown.index("LEFTWORD") < markdown.index("RIGHTWORD")
     assert "...." not in markdown
     assert "- Introduction — 4" in markdown
@@ -78,8 +87,9 @@ def test_the_picture_address_is_taken_from_the_host_page():
 
 
 def test_words_on_top_of_a_frame_stay_text(tmp_path: Path):
+    fitz, image_module, render_pdf_markdown = _pdf_tools()
     noise = tmp_path / "card.png"
-    _noise(noise)
+    _noise(image_module, noise)
     document = fitz.open()
     page = document.new_page(width=595, height=842)
     page.insert_image(fitz.Rect(40, 80, 280, 360), filename=str(noise))
@@ -98,8 +108,9 @@ def test_words_on_top_of_a_frame_stay_text(tmp_path: Path):
 
 
 def test_a_scanned_page_keeps_its_picture(tmp_path: Path):
+    fitz, image_module, render_pdf_markdown = _pdf_tools()
     noise = tmp_path / "scan.png"
-    Image.frombytes("RGB", (200, 280), os.urandom(200 * 280 * 3)).save(noise, format="PNG")
+    image_module.frombytes("RGB", (200, 280), os.urandom(200 * 280 * 3)).save(noise, format="PNG")
     document = fitz.open()
     page = document.new_page(width=595, height=842)
     page.insert_image(page.rect, filename=str(noise))
@@ -118,6 +129,7 @@ def test_a_scanned_page_keeps_its_picture(tmp_path: Path):
 
 
 def test_convert_document_writes_the_markdown(tmp_path: Path, monkeypatch):
+    fitz, image_module, _render = _pdf_tools()
     pytest.importorskip("pypandoc")
     from formular.core import converter
 
@@ -125,7 +137,7 @@ def test_convert_document_writes_the_markdown(tmp_path: Path, monkeypatch):
         "formular.core.pdf_markdown.upload_image",
         lambda data, suffix: "https://tmpfiles.org/dl/2.ghi/out/picture.jpg",
     )
-    source = _sample_pdf(tmp_path)
+    source = _sample_pdf(tmp_path, fitz, image_module)
     output = tmp_path / "out.md"
     import asyncio
 
