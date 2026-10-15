@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from formular.core.graph import find_shortest_path
-from formular.core.image_host import direct_image_url
 
 
 def _pdf_tools():
@@ -78,12 +77,6 @@ def test_a_designed_page_becomes_linear_markdown(tmp_path: Path):
 def test_pdf_markdown_is_a_direct_step():
     assert find_shortest_path("pdf", "md") == ["pdf", "md"]
     assert find_shortest_path("pdf", "html") == ["pdf", "html"]
-
-
-def test_the_picture_address_is_taken_from_the_host_page():
-    page = '<img id="img_preview" src="https://tmpfiles.org/dl/1.abc/xyz/picture.jpg"/>'
-    assert direct_image_url(page) == "https://tmpfiles.org/dl/1.abc/xyz/picture.jpg"
-    assert direct_image_url('<img src="https://example.test/pic.jpg"/>') is None
 
 
 def test_words_on_top_of_a_frame_stay_text(tmp_path: Path):

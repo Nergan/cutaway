@@ -36,6 +36,7 @@ env_allowlist = [
   "FORMULAR_MAX_CONCURRENT_JOBS",
   "FORMULAR_MAX_ARCHIVE_FILES",
   "FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES",
+  "SHAREX_IMGUR_CLIENT_ID",
 ]
 
 [projects.formular.limits]
@@ -61,7 +62,7 @@ nofile = 256
 fsize_mb = 1024
 
 [projects.formular.network]
-allowed_hosts = ["tmpfiles.org"]
+allowed_hosts = ["api.imgur.com"]
 allow_private = false
 requests_per_minute = 0
 
@@ -490,7 +491,7 @@ fsize_mb = 4096
 cpu_exempt_nice = 19
 
 [profiles.hf.projects.formular.network]
-allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co", "tmpfiles.org"]
+allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co", "api.imgur.com"]
 allow_private = false
 requests_per_minute = 2400
 enforce_allowlist = true
