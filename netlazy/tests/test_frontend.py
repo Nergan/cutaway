@@ -301,6 +301,23 @@ class TestFeedCardAffordance:
         watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
         assert "store.state.isInitialized" in watch
 
+    def test_shared_form_stays_in_browser_history(self):
+        state = read_text("frontend/src/store/state.js")
+        opened = state.split("function openFeed", 1)[1].split("loadSavedState", 1)[0]
+        assert "syncViewToUrl()" in opened
+        assert "syncViewToUrl(true)" not in opened
+        sync = state.split("function syncUrlToView", 1)[1].split("function consumeViewHistorySuppression", 1)[0]
+        assert "clearFeedFilters()" in sync
+        assert "suppressNextViewHistory = true" in sync
+        app = read_text("frontend/src/App.vue")
+        watch = app.split("watch(() => store.state.currentView", 1)[1].split("if (window.innerWidth", 1)[0]
+        assert "consumeViewHistorySuppression" in watch
+        assert "!fromBrowser" in watch
+        feed = read_text("frontend/src/components/Feed.vue")
+        filters = feed.split("watch(activeFiltersString", 1)[1].split("function setupObserver", 1)[0]
+        assert "syncViewToUrl()" in filters
+        assert "syncViewToUrl(true)" not in filters
+
     def test_leaving_a_shared_form_loads_the_feed(self):
         feed = read_text("frontend/src/components/Feed.vue")
         watch = feed.split("watch(() => store.state.formSlug", 1)[1].split("function showProfileActions", 1)[0]

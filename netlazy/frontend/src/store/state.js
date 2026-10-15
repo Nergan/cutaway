@@ -172,6 +172,8 @@ export function useStore() {
         return form || null;
     }
 
+    let suppressNextViewHistory = false;
+
     function syncUrlToView() {
         if (Capacitor.isNativePlatform()) return;
         const path = window.location.pathname;
@@ -191,13 +193,22 @@ export function useStore() {
             if (params.has('tags')) {
                 state.pendingUrlTags = params.get('tags');
                 applyPendingUrlTags();
+            } else if (!formFromLocation()) {
+                clearFeedFilters();
             }
             state.formSlug = formFromLocation();
         } else {
             state.formSlug = null;
         }
+        if (state.currentView !== view) suppressNextViewHistory = true;
         state.currentView = view;
         syncViewToUrl(true);
+    }
+
+    function consumeViewHistorySuppression() {
+        const suppressed = suppressNextViewHistory;
+        suppressNextViewHistory = false;
+        return suppressed;
     }
 
     function syncViewToUrl(replace = false) {
@@ -226,6 +237,13 @@ export function useStore() {
             if (replace) window.history.replaceState({ view: state.currentView }, '', newUrl);
             else window.history.pushState({ view: state.currentView }, '', newUrl);
         }
+    }
+
+    function clearFeedFilters() {
+        state.pendingUrlTags = null;
+        state.availableSearchTags.forEach(tag => {
+            if (tag.state !== 'neutral') tag.state = 'neutral';
+        });
     }
 
     function applyPendingUrlTags() {
@@ -728,13 +746,13 @@ export function useStore() {
             state.currentView = 'feed';
             return;
         }
-        syncViewToUrl(true);
+        syncViewToUrl();
     }
 
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed
     };
     return instance;
 }

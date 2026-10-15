@@ -842,7 +842,7 @@ async function fetchFeed(reset = false) {
 let lastFilterString = null;
 watch(activeFiltersString, (newVal) => {
   if (lastFilterString !== null && newVal !== lastFilterString) {
-    store.syncViewToUrl(true);
+    store.syncViewToUrl();
     fetchFeed(true);
   }
   lastFilterString = newVal;

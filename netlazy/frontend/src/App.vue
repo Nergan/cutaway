@@ -797,7 +797,8 @@ function rotateIdentityKey() {
 }
 
 watch(() => store.state.currentView, (newVal, oldVal) => {
-  if (store.state.isInitialized) {
+  const fromBrowser = store.consumeViewHistorySuppression();
+  if (store.state.isInitialized && !fromBrowser) {
     if (oldVal === 'feed' && newVal !== 'feed') {
         store.state.formSlug = null;
     }
