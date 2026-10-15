@@ -412,6 +412,9 @@ a.contact-link {
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
+.masonry-grid .card a.contact-link {
+  text-decoration: none;
+}
 .contact-action { cursor: pointer; font-size: 0.9rem; color: var(--text-muted); padding: 0.2rem; transition: color 0.2s; }
 
 /* COLLAPSIBLES */
@@ -717,7 +720,8 @@ body.light-theme .floating-tooltip {
 .glass-option:not(.dropdown-tag-row):active > .animated-underline::after,
 .footer-action:active > .animated-underline::after,
 .nav-item:active > .animated-underline::after,
-.dropdown-tag-row.mobile-active .animated-underline::after {
+.dropdown-tag-row.mobile-active .animated-underline::after,
+.masonry-grid .card a.contact-link:active::after {
   width: 100%;
 }
 
@@ -769,7 +773,8 @@ body.light-theme .floating-tooltip {
   .glass-option:not(.dropdown-tag-row):hover > .animated-underline::after,
   .glass-option.highlighted-option > .animated-underline::after,
   .footer-action:hover > .animated-underline::after,
-  .nav-item:hover > .animated-underline::after {
+  .nav-item:hover > .animated-underline::after,
+  .masonry-grid .card a.contact-link:hover::after {
     width: 100%;
   }
 

@@ -194,6 +194,7 @@
     <div class="masonry-grid" @click="closeAllMenus">
       <div class="masonry-col" v-for="(col, colIdx) in masonryColumns" :key="colIdx">
         <div class="card" :class="{ 'card-self': profile.isSelf, 'card-guest': profile.isGuestJoin, 'card-loading': profile.isFeedLoadingMark, 'card-linkable': !!profileSlug(profile) }" v-for="profile in col" :key="profile.id || profile.user_id" :style="{ zIndex: (!isMobile && profile.showContactSelect) ? 100 : 1, position: 'relative' }" @click="copyProfileLink($event, profile)">
+          <div v-if="profileSlug(profile)" class="card-ripple-layer" aria-hidden="true"></div>
           <div v-if="profile.isFeedLoadingMark" class="feed-loading-card">
             <i class="bi bi-arrow-repeat spin"></i>
           </div>
@@ -225,7 +226,7 @@
             <template v-for="c in profile.contacts" :key="c.value">
               <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                  <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                 <a v-if="contactHref(c)" class="contact-val contact-link" :href="contactHref(c)" target="_blank" rel="noopener noreferrer" @click.stop>{{ c.value }}</a>
+                 <a v-if="contactHref(c)" class="contact-val contact-link animated-underline" :href="contactHref(c)" target="_blank" rel="noopener noreferrer" @click.stop>{{ c.value }}</a>
                  <span v-else class="contact-val" @click.stop="copyText(c.value)">{{ c.value }}</span>
                  <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
               </div>
@@ -662,6 +663,26 @@ function profileSlug(profile) {
   return forms.length ? forms[forms.length - 1] : null
 }
 
+function playCardRipple(event) {
+  const layer = event.currentTarget.querySelector(':scope > .card-ripple-layer')
+  if (!layer) return
+  const rect = layer.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  const reach = Math.hypot(Math.max(x, rect.width - x), Math.max(y, rect.height - y))
+  const scale = String(Math.max(reach / 8, 4))
+  ;[0, 110].forEach((delay) => {
+    const ripple = document.createElement('span')
+    ripple.className = 'card-ripple'
+    ripple.style.left = `${x}px`
+    ripple.style.top = `${y}px`
+    ripple.style.setProperty('--ripple-scale', scale)
+    if (delay) ripple.style.animationDelay = `${delay}ms`
+    layer.appendChild(ripple)
+    ripple.addEventListener('animationend', () => ripple.remove())
+  })
+}
+
 function blocksProfileCopy(target) {
   return Boolean(target.closest('button, a, input, textarea, audio, video, .feed-media-item, .contact-row, .glass-menu'))
 }
@@ -678,6 +699,7 @@ async function copyProfileLink(event, profile) {
     store.addToast(store.t('form_not_shared'), 'bi-link-45deg')
     return
   }
+  playCardRipple(event)
   await navigator.clipboard.writeText(store.profileFormUrl(slug))
   store.addToast(store.t('link_copied'), 'bi-check2')
 }

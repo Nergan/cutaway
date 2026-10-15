@@ -159,6 +159,39 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .masonry-grid .card.card-linkable {
   cursor: pointer;
 }
+.masonry-grid .card > :not(.card-ripple-layer, .card-actions) {
+  position: relative;
+  z-index: 1;
+}
+.masonry-grid .card > .card-actions {
+  z-index: 3;
+}
+.card-ripple-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+}
+.card-ripple {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-moss);
+  transform: translate(-50%, -50%);
+  opacity: 0.85;
+  pointer-events: none;
+  animation: card-copy-ripple 0.7s var(--motion-ease) forwards;
+}
+@keyframes card-copy-ripple {
+  to {
+    width: calc(var(--ripple-scale, 36) * 1rem);
+    height: calc(var(--ripple-scale, 36) * 1rem);
+    opacity: 0;
+  }
+}
 .masonry-grid .card.card-linkable > * {
   cursor: auto;
 }

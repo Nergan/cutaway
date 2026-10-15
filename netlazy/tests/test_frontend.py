@@ -270,6 +270,17 @@ class TestFeedCardAffordance:
         feed = read_text("frontend/src/components/Feed.vue")
         assert "card-linkable" in feed
         assert "feed-results-single" in feed
+        components = read_text("frontend/css/components.css")
+        plain = css_rule_block(components, ".masonry-grid .card a.contact-link")
+        assert "text-decoration: none" in plain
+        assert ".masonry-grid .card a.contact-link:hover::after" in components
+        assert "contact-link animated-underline" in feed
+        assert "card-ripple-layer" in feed
+        copy = feed.split("async function copyProfileLink", 1)[1].split("async function fetchFeed", 1)[0]
+        assert "playCardRipple(event)" in copy
+        ripple = css_rule_block(css, ".card-ripple")
+        assert "var(--accent-moss)" in ripple
+        assert "card-copy-ripple" in css
 
     def test_shared_form_survives_saved_feed_view(self):
         state = read_text("frontend/src/store/state.js")
