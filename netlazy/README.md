@@ -175,7 +175,7 @@ Form errors use details `form_invalid` (`400`), `form_taken` (`409`), `form_limi
 }
 ```
 
-The response is up to 20 public profiles, newest first. `seen_ids` are public ids already shown; unknown ids are ignored. The caller's own profile and anyone already in a handshake with the caller are left out. A profile appears when it has a bio, a tag, media, audio, or a public contact.
+The response is up to 20 public profiles, most recently changed first. A profile with no later edit keeps its creation time. `seen_ids` are public ids already shown; unknown ids are ignored. The caller's own profile and anyone already in a handshake with the caller are left out. A profile appears when it has a bio, a tag, media, audio, or a public contact.
 
 `GET /feed/form/{slug}` returns one public profile. `404` detail `form_not_found` when the link is missing, invalid, or belongs to a banned account. The same anonymous-or-read rule applies.
 

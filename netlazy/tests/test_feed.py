@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock
 from netlazy.application.feed_service import FeedService
@@ -61,3 +63,11 @@ async def test_get_feed_anonymous_skips_handshake_history(feed_service, feed_dep
     called_kwargs = feed_deps["profile_repo"].get_feed.call_args.kwargs
     assert called_kwargs["viewer_id"] == ""
     assert called_kwargs["exclude_ids"] == ["u5"]
+
+
+def test_feed_orders_by_last_change():
+    source = (Path(__file__).resolve().parents[1] / "infrastructure" / "mongo_repo.py").read_text(encoding="utf-8")
+    body = source.split("async def get_feed", 1)[1].split("async def delete", 1)[0]
+    assert '"$ifNull": ["$updated_at", "$created_at"]' in body
+    assert '{"$sort": {"created_at": -1' not in body
+    assert '"_sort_at": -1' in body

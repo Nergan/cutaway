@@ -402,7 +402,8 @@ class MongoProfileRepository(ProfileRepository):
                 "as": "user_info"
             }},
             {"$match": {"user_info.is_banned": {"$ne": True}}},
-            {"$sort": {"created_at": -1, "user_id": 1}},
+            {"$addFields": {"_sort_at": {"$ifNull": ["$updated_at", "$created_at"]}}},
+            {"$sort": {"_sort_at": -1, "user_id": 1}},
             {"$limit": limit},
         ]
         db_cursor = db_instance.profiles_collection.aggregate(pipeline)
