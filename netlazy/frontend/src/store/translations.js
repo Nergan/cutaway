@@ -124,6 +124,7 @@ export default {
     failed_delete_chat: "failed to delete request",
     update_app: "update app",
     push_notifications: "notifications",
+    push_desktop_notifications: "desktop notifications",
     push_permission_denied: "notifications are blocked in this browser",
     push_unavailable: "this browser cannot show notifications",
     push_sync_failed: "could not save notification settings"
@@ -253,6 +254,7 @@ export default {
     failed_delete_chat: "не удалось удалить запрос",
     update_app: "обновить приложение",
     push_notifications: "уведомления",
+    push_desktop_notifications: "уведомления рабочего стола",
     push_permission_denied: "уведомления запрещены в браузере",
     push_unavailable: "этот браузер не показывает уведомления",
     push_sync_failed: "не удалось сохранить настройки уведомлений"
@@ -382,6 +384,7 @@ export default {
     failed_delete_chat: "falha ao excluir solicitação",
     update_app: "atualizar aplicativo",
     push_notifications: "notificações",
+    push_desktop_notifications: "notificações na área de trabalho",
     push_permission_denied: "as notificações estão bloqueadas neste navegador",
     push_unavailable: "este navegador não mostra notificações",
     push_sync_failed: "não foi possível salvar as configurações de notificação"
@@ -504,6 +507,7 @@ export default {
     failed_delete_chat: "刪除請求失敗",
     update_app: "更新應用程式",
     push_notifications: "通知",
+    push_desktop_notifications: "桌面通知",
     push_permission_denied: "瀏覽器已封鎖通知",
     push_unavailable: "此瀏覽器無法顯示通知",
     push_sync_failed: "無法儲存通知設定",
@@ -628,6 +632,7 @@ export default {
     failed_delete_chat: "リクエストの削除に失敗しました",
     update_app: "アプリを更新",
     push_notifications: "通知",
+    push_desktop_notifications: "デスクトップ通知",
     push_permission_denied: "このブラウザでは通知がブロックされています",
     push_unavailable: "このブラウザは通知を表示できません",
     push_sync_failed: "通知設定を保存できませんでした"
@@ -754,6 +759,7 @@ export default {
     failed_delete_chat: "요청 삭제 실패",
     update_app: "앱 업데이트",
     push_notifications: "알림",
+    push_desktop_notifications: "데스크톱 알림",
     push_permission_denied: "이 브라우저에서 알림이 차단되어 있습니다",
     push_unavailable: "이 브라우저는 알림을 표시할 수 없습니다",
     push_sync_failed: "알림 설정을 저장하지 못했습니다"

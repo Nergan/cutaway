@@ -199,7 +199,7 @@
                    </div>
                    <div class="glass-option" @click="store.togglePushEnabled()" style="padding: 0.5rem 0; width: max-content;">
                      <i class="bi bi-bell uf-icon" style="margin-right: 0.5rem;"></i>
-                     <span class="animated-underline">{{ store.t('push_notifications') }}</span>
+                     <span class="animated-underline">{{ store.t('push_desktop_notifications') }}</span>
                      <i class="bi" :class="store.state.pushEnabled ? 'bi-check2' : ''" style="color: var(--accent-moss); width: 16px; display: inline-block; margin-left: 0.5rem;"></i>
                    </div>
                    <div class="glass-option" :class="{ 'push-kind-paused': !store.state.pushEnabled }" @click="store.togglePushKind('share')" style="padding: 0.35rem 0 0.35rem 1.6rem; width: max-content;">

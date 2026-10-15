@@ -461,7 +461,10 @@ class TestPushNotifications:
         assert "function leaveChat()" in inbox
         translations = read_text("frontend/src/store/translations.js")
         for locale in LOCALES:
-            assert "push_notifications" in extract_locale_keys(translations, locale)
+            keys = extract_locale_keys(translations, locale)
+            assert "push_notifications" in keys
+            assert "push_desktop_notifications" in keys
+        assert "store.t('push_desktop_notifications')" in app
         assert "push_service.notify_request" in read_text("presentation/inbox_router.py")
         assert '"push": "/netlazy/api/push"' in read_text("main.py")
 
