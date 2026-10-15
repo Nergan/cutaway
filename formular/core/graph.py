@@ -27,7 +27,7 @@ DIRECT_EDGES = {
     "html": ["pdf", "md", "txt", "docx"],
     "md": ["html", "txt", "docx"],
     "epub": ["html", "txt", "md"],
-    "pdf": ["html", "txt"],
+    "pdf": ["html", "txt", "md"],
     "djvu": ["pdf"],
     "csv": ["pdf"],
     "xlsx": ["csv", "pdf"],

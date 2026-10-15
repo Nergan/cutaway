@@ -19,7 +19,8 @@ env_allowlist = [
 [projects.formular.network]
 # Модели и поиск моделей — хосты Hugging Face (скачивание идёт через поддомены hf.co).
 # Cloudinary не добавлять: зеркала нет (решение D13).
-allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co"]
+# tmpfiles.org — временные ссылки на картинки из PDF (решение D21).
+allowed_hosts = ["huggingface.co", "*.huggingface.co", "*.hf.co", "tmpfiles.org"]
 allow_private = false
 requests_per_minute = 2400
 

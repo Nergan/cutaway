@@ -347,6 +347,12 @@ async def convert_document(input_path: str, output_path: str, from_fmt: str, to_
 # The helpers below wrap CPU-bound library work that would otherwise stall the
 # event loop for the whole worker; _direct_convert runs them via asyncio.to_thread.
 
+def _pdf_to_markdown(input_path: str, output_path: str):
+    from formular.core.pdf_markdown import write_pdf_markdown
+
+    write_pdf_markdown(input_path, output_path)
+
+
 def _pdf_to_text(input_path: str, output_path: str, to_fmt: str):
     doc = fitz.open(input_path)
     try:
@@ -465,6 +471,10 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
             await render_html_to_pdf(input_path, output_path)
             return
         await _html_to_pdf_office(input_path, output_path)
+        return
+
+    if from_fmt == 'pdf' and to_fmt == 'md':
+        await asyncio.to_thread(_pdf_to_markdown, input_path, output_path)
         return
 
     if from_fmt == 'pdf' and to_fmt in ['html', 'txt']:
