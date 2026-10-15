@@ -278,6 +278,15 @@ class TestFeedCardAffordance:
         assert "card-ripple-layer" in feed
         copy = feed.split("async function copyProfileLink", 1)[1].split("async function fetchFeed", 1)[0]
         assert "playCardRipple(event)" in copy
+        assert "function pointHitsText" in feed
+        assert "function isEmptyTextFieldClick" in feed
+        assert "card-contacts" in feed
+        linkClick = feed.split("function onContactLinkClick", 1)[1].split("function onContactValueClick", 1)[0]
+        assert "stopPropagation" in linkClick
+        assert "preventDefault" in linkClick
+        assert "acceptsProfileCopyClick(event, profile)" in feed
+        value = css_rule_block(css, ".masonry-grid .card .contact-val")
+        assert "flex: 0 1 auto" in value
         ripple = css_rule_block(css, ".card-ripple")
         assert "var(--accent-moss)" in ripple
         assert "card-copy-ripple" in css

@@ -222,12 +222,12 @@
           </div>
           <div class="card-bio" v-if="displayBio(profile.bio)">{{ displayBio(profile.bio) }}</div>
 
-          <div v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
+          <div class="card-contacts" v-if="profile.contacts && profile.contacts.some(c => !c.is_private && c.type !== 'unknown')" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; width: 100%; min-width: 0;">
             <template v-for="c in profile.contacts" :key="c.value">
               <div v-if="!c.is_private && c.type !== 'unknown'" class="contact-row" style="border-bottom: none; padding: 0; display: flex; align-items: center; gap: 0.5rem; width: 100%; min-width: 0;">
                  <i class="bi contact-icon" :class="getContactIcon(c.type)" style="font-size: 0.85rem; width: 16px; flex-shrink: 0;"></i>
-                 <a v-if="contactHref(c)" class="contact-val contact-link animated-underline" :href="contactHref(c)" target="_blank" rel="noopener noreferrer" @click.stop>{{ c.value }}</a>
-                 <span v-else class="contact-val" @click.stop="copyText(c.value)">{{ c.value }}</span>
+                 <a v-if="contactHref(c)" class="contact-val contact-link animated-underline" :href="contactHref(c)" target="_blank" rel="noopener noreferrer" @click="onContactLinkClick">{{ c.value }}</a>
+                 <span v-else class="contact-val" @click="onContactValueClick($event, c.value)">{{ c.value }}</span>
                  <i class="bi bi-copy contact-action" style="flex-shrink: 0;" @click.stop="copyText(c.value)"></i>
               </div>
             </template>
@@ -683,17 +683,71 @@ function playCardRipple(event) {
   })
 }
 
+function pointHitsText(x, y, element) {
+  if (!element) return false
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  const slackX = 2
+  const slackY = 5
+  let node
+  while ((node = walker.nextNode())) {
+    if (!String(node.textContent || '').trim()) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    for (const rect of range.getClientRects()) {
+      if (rect.width <= 0 || rect.height <= 0) continue
+      if (x >= rect.left - slackX && x <= rect.right + slackX && y >= rect.top - slackY && y <= rect.bottom + slackY) return true
+    }
+  }
+  return false
+}
+
+function onContactLinkClick(event) {
+  if (pointHitsText(event.clientX, event.clientY, event.currentTarget)) {
+    event.stopPropagation()
+    return
+  }
+  event.preventDefault()
+}
+
+function onContactValueClick(event, value) {
+  if (!pointHitsText(event.clientX, event.clientY, event.currentTarget)) return
+  event.stopPropagation()
+  copyText(value)
+}
+
+function isEmptyTextFieldClick(event) {
+  const card = event.currentTarget
+  const target = event.target
+  if (!target || !target.closest) return false
+  if (target.closest('button, input, textarea, audio, video, .feed-media-item, .glass-menu, .contact-action, .contact-icon')) return false
+  const bio = target.closest('.card-bio')
+  if (bio && card.contains(bio)) return !pointHitsText(event.clientX, event.clientY, bio)
+  const contacts = target.closest('.card-contacts')
+  if (contacts && card.contains(contacts)) {
+    const value = target.closest('.contact-val')
+    if (value && pointHitsText(event.clientX, event.clientY, value)) return false
+    return true
+  }
+  return false
+}
+
 function blocksProfileCopy(target) {
   return Boolean(target.closest('button, a, input, textarea, audio, video, .feed-media-item, .contact-row, .glass-menu'))
 }
 
+function acceptsProfileCopyClick(event, profile) {
+  if (event.target === event.currentTarget) return true
+  if (isEmptyTextFieldClick(event)) return true
+  if (!profile.isSelf) return false
+  if (blocksProfileCopy(event.target)) return false
+  const bio = event.target.closest && event.target.closest('.card-bio')
+  if (bio && pointHitsText(event.clientX, event.clientY, bio)) return false
+  return true
+}
+
 async function copyProfileLink(event, profile) {
   if (profile.isGuestJoin || profile.isFeedLoadingMark) return
-  if (profile.isSelf) {
-    if (blocksProfileCopy(event.target)) return
-  } else if (event.target !== event.currentTarget) {
-    return
-  }
+  if (!acceptsProfileCopyClick(event, profile)) return
   const slug = profileSlug(profile)
   if (!slug) {
     store.addToast(store.t('form_not_shared'), 'bi-link-45deg')

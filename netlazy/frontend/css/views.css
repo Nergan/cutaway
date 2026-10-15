@@ -200,6 +200,19 @@ body:not(.uf-mode) .profile-workspace-pane textarea {
 .masonry-grid .card.card-self.card-linkable .chip {
   cursor: pointer;
 }
+.masonry-grid .card.card-linkable .card-bio,
+.masonry-grid .card.card-linkable .card-contacts,
+.masonry-grid .card.card-linkable .contact-row {
+  cursor: pointer;
+}
+.masonry-grid .card .contact-val {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+}
+.masonry-grid .card .contact-row .contact-action {
+  margin-left: auto;
+}
 .scrollable-content.feed-single-page {
   display: flex;
   flex-direction: column;
