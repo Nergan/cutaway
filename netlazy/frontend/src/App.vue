@@ -379,6 +379,12 @@ const availableLangs = [
     { code: 'ko', name: 'korean' }
 ];
 
+function openGuestLangMenu(event) {
+    const currentTarget = event.detail
+    if (!currentTarget || !currentTarget.getBoundingClientRect) return
+    toggleLangMenu({ currentTarget })
+}
+
 function toggleLangMenu(e) {
     if (langMenu.value.open) {
         langMenu.value.open = false;
@@ -387,7 +393,7 @@ function toggleLangMenu(e) {
         const isBelow = rect.top < window.innerHeight / 2; 
         
         let x = rect.left + rect.width / 2;
-        if (!store.state.isSidebarCollapsed && !isMobile.value) {
+        if (store.state.isRegistered && !store.state.isSidebarCollapsed && !isMobile.value) {
             x = Math.max(x, 240);
         } else {
             if (x < 100) x = 100;
@@ -637,6 +643,7 @@ onMounted(() => {
   document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
   document.addEventListener('touchcancel', handleGlobalTouchCancel, { passive: true });
   document.addEventListener('click', handleGlobalClick);
+  window.addEventListener('netlazy:lang-menu', openGuestLangMenu);
 
   setTimeout(checkForUpdates, 3000);
 
@@ -674,6 +681,7 @@ onUnmounted(() => {
   document.removeEventListener('touchend', handleGlobalTouchEnd);
   document.removeEventListener('touchcancel', handleGlobalTouchCancel);
   document.removeEventListener('click', handleGlobalClick);
+  window.removeEventListener('netlazy:lang-menu', openGuestLangMenu);
 });
 
 function reloadPage() {

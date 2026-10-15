@@ -202,6 +202,14 @@
             <button class="create-btn" @click.stop="store.createAccount">
               <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
             </button>
+            <div class="guest-mini-actions" @click.stop>
+              <button type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+                <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
+              </button>
+              <button type="button" class="footer-action lang-btn icon-btn" @click.stop="openGuestLangMenu" :title="store.t('lang')">
+                <i class="bi bi-translate"></i>
+              </button>
+            </div>
           </div>
           <template v-else>
           <div v-if="profile.audio" style="display:flex; align-items:center; margin-bottom: 0.5rem; width: 100%;" v-intersect="() => store.loadProfileMedia(profile.audio, profile)">
@@ -309,6 +317,17 @@
         <button class="create-btn" @click="store.createAccount">
           <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
         </button>
+        <div class="guest-mini-actions">
+          <button type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
+          </button>
+          <button type="button" class="footer-action lang-btn icon-btn" @click.stop="openGuestLangMenu" :title="store.t('lang')">
+            <i class="bi bi-translate"></i>
+          </button>
+          <button type="button" class="footer-action icon-btn" @click="store.openFeed()" :title="store.t('search_profiles')">
+            <i class="bi bi-compass"></i>
+          </button>
+        </div>
       </div>
     </div>
     
@@ -661,6 +680,10 @@ function profileSlug(profile) {
   if (profile.primary_form) return profile.primary_form
   const forms = profile.forms || []
   return forms.length ? forms[forms.length - 1] : null
+}
+
+function openGuestLangMenu(event) {
+  window.dispatchEvent(new CustomEvent('netlazy:lang-menu', { detail: event.currentTarget }))
 }
 
 function playCardRipple(event) {

@@ -346,6 +346,17 @@ class TestFeedCardAffordance:
         assert "profile.isSelf" in feed
         assert "isGuestJoin && isV2" not in feed
         assert "guest-form-join" in feed
+        form_join = feed.split('class="guest-form-join"', 1)[1].split('id="feed-bottom"', 1)[0]
+        assert "bi-compass" in form_join
+        assert "bi-translate" in form_join
+        assert "store.toggleTheme" in form_join
+        assert "openGuestLangMenu" in form_join
+        guest_card = feed.split('class="guest-join"', 1)[1].split("v-else>", 1)[0]
+        assert "bi-translate" in guest_card
+        assert "store.toggleTheme" in guest_card
+        assert "bi-compass" not in guest_card
+        app = read_text("frontend/src/App.vue")
+        assert "netlazy:lang-menu" in app
         editor = read_text("frontend/src/components/Editor.vue")
         media = editor.split('class="profile-media-block"', 1)[1].split('class="profile-details"', 1)[0]
         assert "form-links-block" in media
