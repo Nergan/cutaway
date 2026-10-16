@@ -9,6 +9,7 @@ is not.
 
 from __future__ import annotations
 
+import base64
 import io
 import re
 from dataclasses import dataclass
@@ -66,6 +67,8 @@ def render_pdf_markdown(path: str, upload=None) -> str:
 def _page_markdown(document, page, upload, seen: dict[int, str | None], remaining: int):
     width = float(page.rect.width)
     height = float(page.rect.height)
+    tables = _word_tables(page, height)
+    table_rects = [rect for rect, _markdown in tables]
     raw_blocks = [
         block
         for block in page.get_text("dict").get("blocks", [])
@@ -74,10 +77,15 @@ def _page_markdown(document, page, upload, seen: dict[int, str | None], remainin
     blocks = _attach_page_numbers(raw_blocks, width)
     text_items = []
     for block in blocks:
-        rendered = _render_block(block)
+        if table_rects and _mostly_inside(block["bbox"], table_rects):
+            rendered = _outside_block(block, table_rects)
+        else:
+            rendered = _render_block(block)
         if rendered:
             x0, y0, x1, y1 = block["bbox"]
             text_items.append(_Item(x0, y0, x1, y1, text=rendered))
+    for rect, markdown in tables:
+        text_items.append(_Item(rect.x0, rect.y0, rect.x1, rect.y1, text=markdown))
 
     pictures, promoted = _content_pictures(document, page, blocks)
     if not text_items and not pictures and promoted is not None:
@@ -92,7 +100,7 @@ def _page_markdown(document, page, upload, seen: dict[int, str | None], remainin
         if xref and xref in seen and url is None:
             continue
         if url is None:
-            url = upload(payload, suffix)
+            url = upload(payload, suffix) or _data_url(payload, suffix)
             remaining -= 1
             if xref:
                 seen[xref] = url
@@ -425,6 +433,206 @@ def _columns(items: list[_Item]) -> list[list[_Item]]:
             columns.append([item])
     columns.sort(key=lambda column: min(item.x0 for item in column))
     return columns
+
+
+def _data_url(data: bytes, suffix: str) -> str | None:
+    if not data:
+        return None
+    mime = "image/png" if suffix == "png" else "image/jpeg"
+    return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _word_tables(page, height: float) -> list[tuple[fitz.Rect, str]]:
+    """A drawn grid becomes a markdown table.
+
+    The words of a table also arrive glued across several cells. The cell
+    rectangles say where each column and row actually is, including a row that
+    sits in the gap between two drawn rows.
+    """
+    words = []
+    for word in page.get_text("words"):
+        x0, y0, x1, y1, text = word[:5]
+        if y1 < height * 0.045 or y0 > height * 0.9 or not str(text).strip():
+            continue
+        words.append((float(x0), float(y0), float(x1), float(y1), str(text)))
+    tables = []
+    for cells in _cell_groups(_outer_cells(page)):
+        markdown, rect = _markdown_grid(words, cells)
+        if markdown and rect is not None:
+            tables.append((rect, markdown))
+    return tables
+
+
+def _outer_cells(page) -> list[fitz.Rect]:
+    rects = []
+    for drawing in page.get_drawings():
+        if len(drawing.get("items") or []) != 1:
+            continue
+        rect = fitz.Rect(drawing["rect"])
+        if rect.width < 40 or rect.height < 22 or rect.width > 220 or rect.height > 180:
+            continue
+        rects.append(rect)
+    outer = []
+    for rect in rects:
+        contained = any(
+            other.x0 <= rect.x0 + 1
+            and other.y0 <= rect.y0 + 1
+            and other.x1 >= rect.x1 - 1
+            and other.y1 >= rect.y1 - 1
+            and other.get_area() > rect.get_area() * 1.15
+            for other in rects
+        )
+        if not contained:
+            outer.append(rect)
+    return outer
+
+
+def _cell_groups(cells: list[fitz.Rect]) -> list[list[fitz.Rect]]:
+    groups: list[list[fitz.Rect]] = []
+    for cell in cells:
+        matches = [
+            group
+            for group in groups
+            if any(_same_grid(cell, other) for other in group)
+        ]
+        if not matches:
+            groups.append([cell])
+            continue
+        merged = [cell]
+        for group in matches:
+            merged.extend(group)
+            groups.remove(group)
+        groups.append(merged)
+    return groups
+
+
+def _same_grid(a: fitz.Rect, b: fitz.Rect) -> bool:
+    shares_edge = (
+        abs(a.x0 - b.x0) < 3
+        or abs(a.x1 - b.x1) < 3
+        or abs(a.x1 - b.x0) < 14
+        or abs(a.x0 - b.x1) < 14
+    )
+    if not shares_edge:
+        return False
+    return a.y0 <= b.y1 + 160 and b.y0 <= a.y1 + 160
+
+
+def _markdown_grid(words: list[tuple], cells: list[fitz.Rect]) -> tuple[str, fitz.Rect | None]:
+    columns = _edges(sorted(cell.x0 for cell in cells), 4)
+    if len(columns) < 3:
+        return "", None
+    right = max(cell.x1 for cell in cells)
+    edges = columns + [right]
+    bands = _row_bands(cells)
+    if len(bands) < 2:
+        return "", None
+    covered = []
+    for top, bottom in bands:
+        covered.append((top, bottom))
+    for (top, bottom), (next_top, _next_bottom) in zip(bands, bands[1:]):
+        if next_top - bottom > 6 and _gap_has_columns(words, edges, bottom, next_top):
+            covered.append((bottom, next_top))
+    covered.sort()
+    rows = [_row_cells(words, edges, top, bottom) for top, bottom in covered]
+    rows = [row for row in rows if any(cell for cell in row)]
+    if len(rows) < 2 or len(rows[0]) < 3:
+        return "", None
+
+    def cell(text: str) -> str:
+        return _escape(text).replace("|", "\\|") or " "
+
+    rendered = [
+        "| " + " | ".join(cell(item) for item in rows[0]) + " |",
+        "| " + " | ".join("---" for _ in rows[0]) + " |",
+    ]
+    rendered.extend("| " + " | ".join(cell(item) for item in row) + " |" for row in rows[1:])
+    rect = fitz.Rect(
+        min(cell.x0 for cell in cells),
+        min(top for top, _bottom in covered),
+        right,
+        max(bottom for _top, bottom in covered),
+    )
+    return "\n".join(rendered), rect
+
+
+def _edges(values: list[float], tolerance: float) -> list[float]:
+    edges: list[float] = []
+    for value in values:
+        if edges and value - edges[-1] <= tolerance:
+            continue
+        edges.append(value)
+    return edges
+
+
+def _row_bands(cells: list[fitz.Rect]) -> list[tuple[float, float]]:
+    ordered = sorted(cells, key=lambda cell: (cell.y0, cell.x0))
+    bands: list[list[fitz.Rect]] = []
+    for cell in ordered:
+        if bands and abs(cell.y0 - bands[-1][0].y0) <= 4:
+            bands[-1].append(cell)
+        else:
+            bands.append([cell])
+    return [(min(cell.y0 for cell in band), max(cell.y1 for cell in band)) for band in bands]
+
+
+def _gap_has_columns(words: list[tuple], edges: list[float], top: float, bottom: float) -> bool:
+    hits = set()
+    for word in words:
+        center_x = (word[0] + word[2]) / 2
+        center_y = (word[1] + word[3]) / 2
+        if not (top < center_y < bottom and edges[0] - 4 <= center_x <= edges[-1] + 4):
+            continue
+        for index in range(len(edges) - 1):
+            if edges[index] - 4 <= center_x < edges[index + 1]:
+                hits.add(index)
+    return len(hits) >= 3
+
+
+def _row_cells(words: list[tuple], edges: list[float], top: float, bottom: float) -> list[str]:
+    buckets: list[list[tuple]] = [[] for _ in range(len(edges) - 1)]
+    for word in words:
+        center_x = (word[0] + word[2]) / 2
+        center_y = (word[1] + word[3]) / 2
+        if not (top - 1 <= center_y <= bottom + 1 and edges[0] - 4 <= center_x <= edges[-1] + 4):
+            continue
+        for index in range(len(edges) - 1):
+            if edges[index] - 4 <= center_x < edges[index + 1]:
+                buckets[index].append(word)
+                break
+    return [" ".join(word[4] for word in sorted(bucket, key=lambda item: (item[1], item[0]))).strip() for bucket in buckets]
+
+
+def _mostly_inside(bbox, rects: list[fitz.Rect]) -> bool:
+    box = fitz.Rect(bbox)
+    if box.is_empty or box.get_area() <= 0:
+        return False
+    covered = 0.0
+    for rect in rects:
+        shared = box & rect
+        if not shared.is_empty:
+            covered += shared.get_area()
+    return covered >= 0.45 * box.get_area()
+
+
+def _outside_block(block: dict, rects: list[fitz.Rect]) -> str:
+    kept = []
+    for line in block.get("lines", []):
+        spans = []
+        for span in line.get("spans", []):
+            bbox = span.get("bbox")
+            if not bbox:
+                continue
+            center_x = (bbox[0] + bbox[2]) / 2
+            center_y = (bbox[1] + bbox[3]) / 2
+            if any(rect.x0 <= center_x <= rect.x1 and rect.y0 <= center_y <= rect.y1 for rect in rects):
+                continue
+            spans.append(span)
+        if spans:
+            kept.append({**line, "spans": spans})
+    if not kept:
+        return ""
+    return _render_block({**block, "lines": kept})
 
 
 def _same_column(item: _Item, column: list[_Item]) -> bool:

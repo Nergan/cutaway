@@ -74,6 +74,49 @@ def test_a_designed_page_becomes_linear_markdown(tmp_path: Path):
     assert uploaded == ["jpg"]
 
 
+def test_aligned_cells_become_a_markdown_table(tmp_path: Path):
+    fitz, _image_module, render_pdf_markdown = _pdf_tools()
+    document = fitz.open()
+    page = document.new_page(width=595, height=842)
+    page.insert_text((40, 80), "Balance notes stay above the grid.", fontsize=12, fontname="helv")
+    rows = (
+        ("1", "2", "3", "4"),
+        ("alpha", "beta", "gamma", "delta"),
+        ("one", "two", "three", "four"),
+        ("red", "green", "blue", "gold"),
+        ("cat", "dog", "fox", "owl"),
+        ("oak", "elm", "ash", "yew"),
+    )
+    for row_index, row in enumerate(rows):
+        for column_index, word in enumerate(row):
+            x = 40 + column_index * 120
+            y = 140 + row_index * 40
+            page.draw_rect(fitz.Rect(x - 2, y - 18, x + 108, y + 6), width=0.4)
+            page.insert_text((x, y), word, fontsize=12, fontname="helv")
+    target = tmp_path / "grid.pdf"
+    document.save(target)
+    document.close()
+    markdown = render_pdf_markdown(str(target), lambda data, suffix: None)
+    assert "Balance notes stay above the grid." in markdown
+    assert "| 1 | 2 | 3 | 4 |" in markdown
+    assert "| alpha | beta | gamma | delta |" in markdown
+    assert "alpha beta gamma" not in markdown
+
+
+def test_a_refused_upload_keeps_the_picture_in_the_file(tmp_path: Path):
+    fitz, image_module, render_pdf_markdown = _pdf_tools()
+    noise = tmp_path / "scan.png"
+    image_module.frombytes("RGB", (200, 280), os.urandom(200 * 280 * 3)).save(noise, format="PNG")
+    document = fitz.open()
+    page = document.new_page(width=595, height=842)
+    page.insert_image(page.rect, filename=str(noise))
+    target = tmp_path / "scan.pdf"
+    document.save(target)
+    document.close()
+    markdown = render_pdf_markdown(str(target), lambda data, suffix: None)
+    assert "data:image/jpeg;base64," in markdown
+
+
 def test_pdf_markdown_is_a_direct_step():
     assert find_shortest_path("pdf", "md") == ["pdf", "md"]
     assert find_shortest_path("pdf", "html") == ["pdf", "html"]
