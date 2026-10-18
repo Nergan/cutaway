@@ -473,7 +473,7 @@ max_concurrency = 0
 memory_mb = 0
 
 [profiles.hf.projects.formular.env_defaults]
-FORMULAR_MAX_UPLOAD_BYTES = "33554432"
+FORMULAR_MAX_UPLOAD_BYTES = "134217728"
 FORMULAR_MAX_OUTPUT_BYTES = "134217728"
 FORMULAR_SESSION_TTL_SECONDS = "1800"
 FORMULAR_MAX_CONCURRENT_JOBS = "1"
@@ -481,8 +481,9 @@ FORMULAR_MAX_ARCHIVE_FILES = "1000"
 FORMULAR_MAX_ARCHIVE_UNPACKED_BYTES = "134217728"
 
 [profiles.hf.projects.formular.limits]
-request_bytes = 33554432
+request_bytes = 134217728
 response_bytes = 134217728
+traffic_bytes_per_minute = 536870912
 max_concurrency = 6
 heavy_jobs = 1
 memory_mb = 5120

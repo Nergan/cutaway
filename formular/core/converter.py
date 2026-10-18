@@ -440,22 +440,18 @@ async def _direct_convert(input_path: str, output_path: str, from_fmt: str, to_f
         return
 
     DATA_FMTS = ['json', 'yaml', 'toml', 'xml']
-    if (from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']) or (from_fmt == 'txt' and to_fmt in DATA_FMTS):
+    if from_fmt in DATA_FMTS and to_fmt in DATA_FMTS + ['txt']:
         if to_fmt == 'txt':
             shutil.copy(input_path, output_path)
             return
-        if from_fmt == 'txt':
-            with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
-                data = {"root": {"text_content": f.read()}}
-        else:
-            with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-                if from_fmt == 'json': data = json.loads(content)
-                elif from_fmt == 'yaml': data = yaml.safe_load(content)
-                elif from_fmt == 'toml': data = toml.loads(content)
-                elif from_fmt == 'xml': 
-                    import xmltodict
-                    data = xmltodict.parse(content)
+        with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+            if from_fmt == 'json': data = json.loads(content)
+            elif from_fmt == 'yaml': data = yaml.safe_load(content)
+            elif from_fmt == 'toml': data = toml.loads(content)
+            elif from_fmt == 'xml':
+                import xmltodict
+                data = xmltodict.parse(content)
         with open(output_path, 'w', encoding='utf-8') as f:
             if to_fmt == 'json': json.dump(data, f, indent=4)
             elif to_fmt == 'yaml': yaml.dump(data, f, default_flow_style=False)

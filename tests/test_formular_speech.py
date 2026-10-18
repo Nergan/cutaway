@@ -133,7 +133,22 @@ def test_speech_path_prefers_a_direct_conversion_and_still_reaches_text():
     assert find_shortest_path("webm", "pdf") == ["webm", "txt", "pdf"]
     assert find_shortest_path("jpg", "mp3") is None
     assert find_shortest_path("jpg", "pdf") == ["jpg", "pdf"]
-    assert find_shortest_path("webm", "json") == ["webm", "txt", "json"]
+    assert find_shortest_path("webm", "json") is None
+    assert find_shortest_path("mp4", "yaml") is None
+    assert find_shortest_path("txt", "toml") is None
+    assert find_shortest_path("html", "xml") is None
+    assert find_shortest_path("pptx", "xml") is None
+    assert find_shortest_path("docx", "json") is None
+    assert find_shortest_path("json", "yaml") == ["json", "yaml"]
+    data_formats = {"json", "yaml", "toml", "xml"}
+    for source in set(DIRECT_EDGES) | {"txt"}:
+        offered = set(targets_for(source))
+        if source in data_formats:
+            assert data_formats - {source} <= offered
+            continue
+        assert offered.isdisjoint(data_formats)
+        for target in data_formats:
+            assert find_shortest_path(source, target) is None
     assert find_shortest_path("csv", "ogg") == ["csv", "pdf", "txt", "ogg"]
     assert find_shortest_path("zip", "txt") is None
 

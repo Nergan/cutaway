@@ -4,7 +4,7 @@
 
 ## Сейчас
 
-Префикс хаба — `/formular`. Ошибки — JSON `{"detail": "..."}`. Запись больше предела — `413`, и текст называет оба размера: `note.txt is 51.2 MiB. The maximum is 32.0 MiB.` На профиле hf предел запроса `33554432` байт (32 МиБ); один файл чуть меньше, потому что к телу multipart добавляется рамка. Точное значение для файла отдаёт `max_file_bytes`.
+Префикс хаба — `/formular`. Ошибки — JSON `{"detail": "..."}`. Запись больше предела — `413`, и текст называет оба размера: `clip.mp4 is 200.0 MiB. The maximum is 128.0 MiB.` На профиле hf предел запроса `134217728` байт (128 МиБ); один файл чуть меньше, потому что к телу multipart добавляется рамка. Точное значение для файла отдаёт `max_file_bytes`.
 
 | Метод и путь | Назначение |
 |---|---|
@@ -59,7 +59,7 @@ curl -s -X POST "$ORIGIN/formular/api/files/$ID/conversions" \
 | `POST /workspaces` | Создать рабочее пространство → `{id, expires_at}` |
 | `GET /workspaces/{id}` | Ассеты и задачи; поддерживает `ETag` / `If-None-Match` для опроса |
 | `DELETE /workspaces/{id}` | Удалить всё сразу |
-| `POST /workspaces/{id}/assets` | Загрузить файл до 32 МиБ одним запросом |
+| `POST /workspaces/{id}/assets` | Загрузить файл до 128 МиБ одним запросом |
 | `POST /workspaces/{id}/uploads` → `PUT .../uploads/{uid}/parts/{n}` → `POST .../uploads/{uid}/complete` | Загрузка больших файлов кусками по ≤ 32 МиБ, с докачкой |
 | `GET /assets/{id}/content` | Скачать; поддерживает `Range`. Файлы больше 128 МиБ — только частями |
 | `DELETE /assets/{id}` | Удалить ассет |
