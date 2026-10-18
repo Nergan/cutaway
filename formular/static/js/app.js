@@ -98,7 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const limit = document.getElementById('uploadLimit');
         if (!limit || !data.max_file_bytes) return;
         window.Formular.maxFileBytes = data.max_file_bytes;
-        limit.textContent = `Maximum file size: ${window.Formular.formatBytes(data.max_file_bytes)}`;
+        window.Formular.maxStoredBytes = data.max_stored_bytes || data.max_file_bytes;
+        window.Formular.chunkBytes = data.chunk_bytes || data.max_file_bytes;
+        limit.textContent = `Maximum file size: ${window.Formular.formatBytes(window.Formular.maxStoredBytes)}`;
     }).catch(() => {});
 
     document.getElementById('fabAdd').addEventListener('click', (e) => { 

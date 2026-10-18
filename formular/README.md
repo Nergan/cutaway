@@ -29,13 +29,16 @@ The live HTTP API is REST under `/formular/api`. `GET /formular/api` returns the
 
 | Method | Path | Role |
 |---|---|---|
+| `POST` | `/formular/api/uploads` | Open a chunked upload. JSON `{"filename","size"}` |
+| `PUT` | `/formular/api/uploads/{id}/{index}` | Write one raw piece |
+| `POST` | `/formular/api/uploads/{id}/complete` | Assemble the pieces into the same file record as `POST /files` |
 | `POST` | `/formular/api/files` | Upload one or more files (`multipart` field `files`). `201` with ids, detected format, and allowed targets |
 | `GET` | `/formular/api/files/{id}` | Metadata for an uploaded file |
 | `POST` | `/formular/api/files/{id}/conversions` | Convert. JSON body `{"to":"mp3"}`, optional `audio`, `video`, `ffmpeg`, `merge_id`, `merge_loop`. The response is the converted file |
 | `GET` | `/formular/api/voices` | Speech voices |
 | `GET` | `/formular/api/voices?sample={id}` | A short WAV of that voice, on the same voice list |
 
-On the public Space a request body cannot exceed 128 MiB. `max_file_bytes` in `GET /formular/api` is the largest single file that still fits. A `413` names both sizes, for example `clip.mp4 is 200.0 MiB. The maximum is 128.0 MiB.`
+On the public Space one request cannot exceed 128 MiB. A larger file is sent in 32 MiB pieces and assembled up to 3 GiB (`max_stored_bytes`). The converted result is still at most 128 MiB. A `413` names both sizes, for example `clip.mp4 is 200.0 MiB. The maximum is 128.0 MiB.`
 
 `POST /formular/api/upload` and `POST /formular/api/convert` are the same two operations, in the form the page already sends. The page keeps using them.
 

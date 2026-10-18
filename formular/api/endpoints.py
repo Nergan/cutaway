@@ -24,11 +24,16 @@ TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_BYTES = int(os.environ.get("FORMULAR_MAX_UPLOAD_BYTES", 256 * 1024 * 1024))
 MAX_OUTPUT_BYTES = int(os.environ.get("FORMULAR_MAX_OUTPUT_BYTES", 512 * 1024 * 1024))
+# One assembled file. The public profile sets 3 GiB: under the 4 GiB file cap,
+# with the model cache and the result still fitting in the 8 GiB temp dir.
+MAX_STORED_BYTES = int(os.environ.get("FORMULAR_MAX_STORED_BYTES", str(1024 * 1024 * 1024)))
+CHUNK_TARGET = 32 * 1024 * 1024
 SESSION_TTL_SECONDS = int(os.environ.get("FORMULAR_SESSION_TTL_SECONDS", 3600))
 CONVERSION_SLOTS = asyncio.Semaphore(
     max(1, int(os.environ.get("FORMULAR_MAX_CONCURRENT_JOBS", "2")))
 )
 UPLOAD_RATE = RateLimiter(limit=10, window_seconds=60)
+CHUNK_RATE = RateLimiter(limit=40, window_seconds=60)
 CONVERT_RATE = RateLimiter(limit=10, window_seconds=60)
 SAMPLE_RATE = RateLimiter(limit=20, window_seconds=60)
 
@@ -39,6 +44,11 @@ def session_dir(raw_id: str) -> Path:
         return TEMP_DIR / str(uuid.UUID(raw_id))
     except (ValueError, AttributeError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid session id.")
+
+
+class UploadStart(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=240)
+    size: int = Field(..., ge=0)
 
 
 class ConversionRequest(BaseModel):
@@ -56,11 +66,23 @@ def file_budget() -> int:
     return max(1, MAX_UPLOAD_BYTES - margin)
 
 
+def stored_budget() -> int:
+    """Largest file the session disk will keep, whether it arrived in one request or several."""
+    return max(file_budget(), MAX_STORED_BYTES)
+
+
+def chunk_budget() -> int:
+    """One piece stays inside the single-request cap, with room for a slow link to finish it."""
+    return max(1, min(CHUNK_TARGET, file_budget(), stored_budget()))
+
+
 def _api_index() -> dict:
     budget = file_budget()
     return {
         "max_upload_bytes": MAX_UPLOAD_BYTES,
         "max_file_bytes": budget,
+        "max_stored_bytes": stored_budget(),
+        "chunk_bytes": chunk_budget(),
         "max_output_bytes": MAX_OUTPUT_BYTES,
         "create_files": "POST /formular/api/files",
         "read_file": "GET /formular/api/files/{id}",
@@ -205,6 +227,127 @@ async def read_file(file_id: str):
 async def upload_files(files: list[UploadFile] = File(...)):
     """Same creation as POST /files. Kept so the current page does not have to change its URL."""
     return {"files": await _ingest(files)}
+
+
+def _safe_name(raw: str) -> str:
+    name = Path(raw or "").name.strip()
+    if not name or name in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Missing file name.")
+    return name
+
+
+def _upload_meta(file_id: str) -> tuple[Path, dict]:
+    folder = session_dir(file_id)
+    meta_path = folder / "meta.json"
+    if not meta_path.is_file():
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    return folder, meta
+
+
+def _touch(folder: Path):
+    try:
+        os.utime(folder, None)
+    except OSError:
+        pass
+
+
+@router.post("/uploads", status_code=201, dependencies=[Depends(UPLOAD_RATE)])
+async def open_upload(body: UploadStart):
+    """Reserve a session for a file that is larger than one request."""
+    name = _safe_name(body.filename)
+    limit = stored_budget()
+    if body.size > limit:
+        raise HTTPException(status_code=413, detail=too_large_detail(name, body.size, limit))
+    try:
+        await asyncio.to_thread(_sweep_stale_sessions)
+    except OSError:
+        pass
+    file_id = str(uuid.uuid4())
+    folder = TEMP_DIR / file_id
+    (folder / "parts").mkdir(parents=True)
+    meta = {"filename": name, "size": body.size}
+    (folder / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return {
+        "id": file_id,
+        "chunk_bytes": chunk_budget(),
+        "max_stored_bytes": limit,
+    }
+
+
+@router.put(
+    "/uploads/{file_id}/{index}",
+    dependencies=[Depends(enforce_upload_limit), Depends(CHUNK_RATE)],
+)
+async def write_chunk(file_id: str, index: int, request: Request):
+    if index < 0:
+        raise HTTPException(status_code=400, detail="Invalid piece.")
+    folder, meta = _upload_meta(file_id)
+    declared = int(meta["size"])
+    piece = chunk_budget()
+    if declared == 0 or index * piece >= declared:
+        raise HTTPException(status_code=400, detail="This piece is outside the file.")
+    room = declared - index * piece
+    expected = min(piece, room)
+    data = await request.body()
+    if len(data) != expected:
+        raise HTTPException(
+            status_code=413 if len(data) > expected else 400,
+            detail=too_large_detail("This piece", len(data), expected)
+            if len(data) > expected
+            else "This piece is the wrong size.",
+        )
+    part = folder / "parts" / f"{index:08d}"
+    part.write_bytes(data)
+    _touch(folder)
+    return {"received": index}
+
+
+@router.post("/uploads/{file_id}/complete", dependencies=[Depends(UPLOAD_RATE)])
+async def complete_upload(file_id: str):
+    folder, meta = _upload_meta(file_id)
+    name = meta["filename"]
+    declared = int(meta["size"])
+    input_dir = folder / "input"
+    existing = [path for path in input_dir.iterdir() if path.is_file()] if input_dir.exists() else []
+    if len(existing) == 1 and existing[0].stat().st_size == declared:
+        described = await asyncio.to_thread(_describe_stored, file_id, name, existing[0], declared)
+        return {"files": [described]}
+    if input_dir.exists():
+        shutil.rmtree(input_dir, ignore_errors=True)
+
+    parts = folder / "parts"
+    piece = chunk_budget()
+    count = 0 if declared == 0 else (declared + piece - 1) // piece
+    names = {path.name for path in parts.iterdir()} if parts.exists() else set()
+    expected_names = {f"{index:08d}" for index in range(count)}
+    if names != expected_names:
+        raise HTTPException(status_code=400, detail="Upload is missing a piece.")
+
+    input_dir.mkdir(parents=True, exist_ok=True)
+    target = input_dir / name
+    with open(target, "wb") as handle:
+        for index in range(count):
+            with open(parts / f"{index:08d}", "rb") as src:
+                shutil.copyfileobj(src, handle)
+    shutil.rmtree(parts, ignore_errors=True)
+    if target.stat().st_size != declared:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(status_code=400, detail="Upload size does not match.")
+    described = await asyncio.to_thread(_describe_stored, file_id, name, target, declared)
+    if "error" in described:
+        shutil.rmtree(folder, ignore_errors=True)
+    return {"files": [described]}
+
+
+@router.delete("/uploads/{file_id}", status_code=204)
+async def discard_upload(file_id: str):
+    folder = session_dir(file_id)
+    if folder.exists():
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 async def _convert(

@@ -91,31 +91,31 @@ window.Formular.initUploader = function() {
         return `Network error uploading ${file.name}.`;
     }
 
+    function sizeCeiling() {
+        return window.Formular.maxStoredBytes || window.Formular.maxFileBytes;
+    }
+
     async function prepareFile(file) {
-        const max = window.Formular.maxFileBytes;
-        if (!max || file.size <= max) return file;
-        let shrunk = null;
-        if (window.Formular.shrinkLossless) {
+        const max = sizeCeiling();
+        let candidate = file;
+        if (max && file.size > window.Formular.maxFileBytes && window.Formular.shrinkLossless) {
             try {
-                shrunk = await window.Formular.shrinkLossless(file);
-            } catch (error) {
-                shrunk = null;
+                const shrunk = await window.Formular.shrinkLossless(file);
+                if (shrunk && shrunk.size < file.size) candidate = shrunk;
+            } catch (error) {}
+        }
+        if (!max || candidate.size <= max) {
+            if (candidate !== file) {
+                window.Formular.Toast.show(
+                    `${file.name} was reduced from ${window.Formular.formatBytes(file.size)} to ${window.Formular.formatBytes(candidate.size)} without a quality change.`,
+                    'info',
+                    8000
+                );
             }
+            return candidate;
         }
-        if (shrunk && shrunk.size < file.size && shrunk.size <= max) {
-            window.Formular.Toast.show(
-                `${file.name} was reduced from ${window.Formular.formatBytes(file.size)} to ${window.Formular.formatBytes(shrunk.size)} without a quality change.`,
-                'info',
-                8000
-            );
-            return shrunk;
-        }
-        const packed = shrunk && shrunk.size < file.size;
-        const sizeText = packed
-            ? `${window.Formular.formatBytes(shrunk.size)} after a lossless pass (was ${window.Formular.formatBytes(file.size)})`
-            : window.Formular.formatBytes(file.size);
         window.Formular.Toast.show(
-            `${file.name} is ${sizeText}. The maximum is ${window.Formular.formatBytes(max)}.`,
+            `${file.name} is ${window.Formular.formatBytes(candidate.size)}. The maximum is ${window.Formular.formatBytes(max)}.`,
             'error',
             8000
         );
@@ -144,9 +144,6 @@ window.Formular.initUploader = function() {
         if (ready.length === 0) return;
 
         ready.forEach((file) => {
-            const formData = new FormData();
-            formData.append('files', file);
-
             const p = document.createElement('div');
             p.className = 'file-card';
             p.innerHTML = `
@@ -160,55 +157,119 @@ window.Formular.initUploader = function() {
                 </div>
             `;
             sortableContainer.appendChild(p);
-
-            const xhr = new XMLHttpRequest();
             const cancelBtn = p.querySelector('.btn-remove');
-            cancelBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); xhr.abort(); p.remove(); window.Formular.toggleUIState();
-            });
+            const single = window.Formular.maxFileBytes;
+            const send = single && file.size > single ? sendInPieces(file, p, cancelBtn) : sendWhole(file, p, cancelBtn);
+            send.catch(() => {});
+        });
+        window.Formular.toggleUIState();
+    }
 
-            xhr.open('POST', './api/upload', true);
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 90;
-                    p.style.setProperty('--progress', `${percent}%`);
-                }
-            };
+    function acceptStored(file, card, payload) {
+        const fileData = payload.files[0];
+        if (!fileData || fileData.error) {
+            window.Formular.Toast.show(`${file.name}: ${(fileData && fileData.error) || 'Upload failed.'}`, 'error', 8000);
+            card.remove();
+            window.Formular.toggleUIState();
+            return;
+        }
+        window.Formular.LocalFiles[fileData.id] = file;
+        window.dispatchEvent(new CustomEvent('formular:filesUpdated'));
+        card.style.setProperty('--progress', '100%');
+        setTimeout(() => {
+            card.style.setProperty('--progress', '0%');
+            card.remove();
+            window.Formular.createCard(fileData);
+        }, 400);
+        window.Formular.toggleUIState();
+    }
 
+    function sendWhole(file, card, cancelBtn) {
+        const formData = new FormData();
+        formData.append('files', file);
+        const xhr = new XMLHttpRequest();
+        cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); xhr.abort(); card.remove(); window.Formular.toggleUIState();
+        });
+        xhr.open('POST', './api/upload', true);
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) card.style.setProperty('--progress', `${(e.loaded / e.total) * 90}%`);
+        };
+        return new Promise((resolve) => {
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    const data = JSON.parse(xhr.responseText);
-                    const fileData = data.files[0];
-                    if (fileData.error) {
-                        window.Formular.Toast.show(`${fileData.filename}: ${fileData.error}`, 'error', 8000);
-                        p.remove();
-                    } else {
-                        window.Formular.LocalFiles[fileData.id] = file; // Cache the frontend file representation for thumbnails
-                        window.dispatchEvent(new CustomEvent('formular:filesUpdated')); // Sync UI drops
-                        
-                        p.style.setProperty('--progress', '100%');
-                        setTimeout(() => {
-                            p.style.setProperty('--progress', '0%');
-                            p.remove(); 
-                            window.Formular.createCard(fileData); 
-                        }, 400); 
-                    }
-                    window.Formular.toggleUIState();
+                    acceptStored(file, card, JSON.parse(xhr.responseText));
                 } else {
                     window.Formular.Toast.show(uploadFailure(xhr, file), 'error', 8000);
-                    p.remove(); window.Formular.toggleUIState();
+                    card.remove();
+                    window.Formular.toggleUIState();
                 }
+                resolve();
             };
-            xhr.onerror = () => { 
-                if (xhr.status === 0) {
-                    window.Formular.Toast.show(`Cannot read "${file.name}". The file is missing.`, 'error');
-                } else {
-                    window.Formular.Toast.show(`Network error uploading ${file.name}.`, 'error'); 
-                }
-                p.remove(); window.Formular.toggleUIState(); 
+            xhr.onerror = () => {
+                window.Formular.Toast.show(
+                    xhr.status === 0 ? `Cannot read "${file.name}". The file is missing.` : `Network error uploading ${file.name}.`,
+                    'error'
+                );
+                card.remove();
+                window.Formular.toggleUIState();
+                resolve();
             };
             xhr.send(formData);
         });
-        window.Formular.toggleUIState();
+    }
+
+    async function sendInPieces(file, card, cancelBtn) {
+        const controller = new AbortController();
+        let uploadId = null;
+        cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            controller.abort();
+            if (uploadId) fetch(`./api/uploads/${uploadId}`, { method: 'DELETE' }).catch(() => {});
+            card.remove();
+            window.Formular.toggleUIState();
+        });
+        try {
+            const opened = await fetch('./api/uploads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: file.name, size: file.size }),
+                signal: controller.signal,
+            });
+            if (!opened.ok) throw opened;
+            const info = await opened.json();
+            uploadId = info.id;
+            const piece = info.chunk_bytes;
+            let sent = 0;
+            for (let index = 0; sent < file.size; index += 1) {
+                const slice = file.slice(sent, sent + piece);
+                const written = await fetch(`./api/uploads/${uploadId}/${index}`, {
+                    method: 'PUT',
+                    body: slice,
+                    signal: controller.signal,
+                });
+                if (!written.ok) throw written;
+                sent += slice.size;
+                card.style.setProperty('--progress', `${(sent / file.size) * 90}%`);
+            }
+            const finished = await fetch(`./api/uploads/${uploadId}/complete`, {
+                method: 'POST',
+                signal: controller.signal,
+            });
+            if (!finished.ok) throw finished;
+            acceptStored(file, card, await finished.json());
+        } catch (error) {
+            if (controller.signal.aborted) return;
+            let detail = `Network error uploading ${file.name}.`;
+            if (error && typeof error.json === 'function') {
+                try {
+                    const body = await error.json();
+                    if (body && body.detail) detail = body.detail;
+                } catch (parseError) {}
+            }
+            window.Formular.Toast.show(detail, 'error', 8000);
+            card.remove();
+            window.Formular.toggleUIState();
+        }
     }
 };

@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture
 def client(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "TEMP_DIR", tmp_path)
+    api.UPLOAD_RATE._hits.clear()
+    api.CHUNK_RATE._hits.clear()
     tmp_path.mkdir(parents=True, exist_ok=True)
     app = FastAPI()
     app.include_router(router, prefix="/formular")
@@ -27,6 +29,8 @@ def test_the_index_names_the_file_budget(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["max_file_bytes"] <= body["max_upload_bytes"]
+    assert body["chunk_bytes"] <= body["max_file_bytes"]
+    assert body["max_stored_bytes"] >= body["max_file_bytes"]
     assert body["create_files"] == "POST /formular/api/files"
     assert body["create_conversion"] == "POST /formular/api/files/{id}/conversions"
 
@@ -97,6 +101,50 @@ def test_a_file_past_the_budget_names_the_file(client: TestClient, monkeypatch):
     )
     assert response.status_code == 201
     assert response.json()["files"][0]["error"] == "note.txt is 6 B. The maximum is 4 B."
+
+
+def test_a_file_past_one_request_is_assembled_from_pieces(client: TestClient, monkeypatch):
+    pytest.importorskip("magic")
+    monkeypatch.setattr(api, "MAX_UPLOAD_BYTES", 8)
+    monkeypatch.setattr(api, "MAX_STORED_BYTES", 12)
+    payload = b"abcdefghijkl"
+    opened = client.post("/formular/api/uploads", json={"filename": "note.txt", "size": len(payload)})
+    assert opened.status_code == 201
+    info = opened.json()
+    assert info["chunk_bytes"] == 8
+    file_id = info["id"]
+    for index, start in enumerate(range(0, len(payload), 8)):
+        piece = client.put(f"/formular/api/uploads/{file_id}/{index}", content=payload[start:start + 8])
+        assert piece.status_code == 200
+
+    finished = client.post(f"/formular/api/uploads/{file_id}/complete")
+    assert finished.status_code == 200
+    stored = finished.json()["files"][0]
+    assert stored["format"] == "txt"
+    assert stored["size"] == 12
+    assert (api.TEMP_DIR / stored["id"] / "input" / "note.txt").read_bytes() == payload
+    again = client.post(f"/formular/api/uploads/{file_id}/complete")
+    assert again.status_code == 200
+    assert again.json()["files"][0]["id"] == stored["id"]
+
+
+def test_a_gap_is_not_assembled(client: TestClient, monkeypatch):
+    monkeypatch.setattr(api, "MAX_UPLOAD_BYTES", 8)
+    monkeypatch.setattr(api, "MAX_STORED_BYTES", 12)
+    opened = client.post("/formular/api/uploads", json={"filename": "note.txt", "size": 12})
+    file_id = opened.json()["id"]
+    assert client.put(f"/formular/api/uploads/{file_id}/0", content=b"abcdefgh").status_code == 200
+    missing = client.post(f"/formular/api/uploads/{file_id}/complete")
+    assert missing.status_code == 400
+    assert missing.json()["detail"] == "Upload is missing a piece."
+
+
+def test_an_upload_past_the_stored_budget_is_refused(client: TestClient, monkeypatch):
+    monkeypatch.setattr(api, "MAX_UPLOAD_BYTES", 8)
+    monkeypatch.setattr(api, "MAX_STORED_BYTES", 12)
+    refused = client.post("/formular/api/uploads", json={"filename": "clip.mp4", "size": 13})
+    assert refused.status_code == 413
+    assert refused.json()["detail"] == "clip.mp4 is 13 B. The maximum is 12 B."
 
 
 def test_jpeg_and_png_drop_only_metadata():

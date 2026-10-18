@@ -39,6 +39,7 @@ def test_hf_formular_can_download_weights_inside_the_memory_budget():
     assert formular.limits.response_bytes == 134217728
     assert formular.limits.traffic_bytes_per_minute == 536870912
     assert formular.env_defaults["FORMULAR_MAX_UPLOAD_BYTES"] == "134217728"
+    assert formular.env_defaults["FORMULAR_MAX_STORED_BYTES"] == "3221225472"
     assert formular.limits.memory_mb == 5120
     assert formular.limits.temp_mb == 8192
     assert formular.limits.fsize_mb == 4096
