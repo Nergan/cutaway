@@ -358,6 +358,13 @@ class MongoProfileRepository(ProfileRepository):
             return None
         return profile
 
+    async def reassign_owner(self, old_user_id: str, new_user_id: str, session: Any = None) -> None:
+        await db_instance.profiles_collection.update_one(
+            {"user_id": old_user_id},
+            {"$set": {"user_id": new_user_id, "updated_at": datetime.now(timezone.utc)}},
+            session=session,
+        )
+
     async def upsert(self, profile: Profile, session: Any = None) -> None:
         try:
             await db_instance.profiles_collection.update_one(

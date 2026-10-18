@@ -78,12 +78,7 @@ class AuthService:
             )
             await self._user_repo.create(new_user, session=session)
 
-            old_profile = await profile_repo.get_by_user_id(old_user_id, session=session)
-            if old_profile:
-                old_profile.user_id = new_user_id
-                old_profile.updated_at = datetime.now(timezone.utc)
-                await profile_repo.upsert(old_profile, session=session)
-                await profile_repo.delete(old_user_id, session=session)
+            await profile_repo.reassign_owner(old_user_id, new_user_id, session=session)
 
             await handshake_repo.delete_for_user(old_user_id, session=session)
             await self._nonce_repo.delete_for_user(old_user_id, session=session)

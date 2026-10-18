@@ -162,6 +162,9 @@ async def test_rotate_key_transaction(auth_service, auth_deps):
     assert anchor is not None
     auth_deps["user_repo"].create.assert_called_once()
     auth_deps["user_repo"].delete.assert_called_once_with("old_user_id", session=None)
+    profile_repo.reassign_owner.assert_awaited_once_with("old_user_id", "new_user_id", session=None)
+    profile_repo.delete.assert_not_called()
+    profile_repo.upsert.assert_not_called()
 
 
 @pytest.mark.asyncio

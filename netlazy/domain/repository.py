@@ -161,6 +161,14 @@ class ProfileRepository(ABC):
     @abstractmethod
     async def upsert(self, profile: Profile, session: Any = None) -> None:
         ...
+
+    @abstractmethod
+    async def reassign_owner(self, old_user_id: str, new_user_id: str, session: Any = None) -> None:
+        """Move the same profile document to a new account id.
+
+        A second document would collide with the unique public id and form indexes.
+        """
+        ...
         
     @abstractmethod
     async def get_feed(self, viewer_id: str, exclude_ids: List[str], requires: List[str], excludes: List[str], bonus: List[str], abonus: List[str], limit: int) -> List[Profile]:
