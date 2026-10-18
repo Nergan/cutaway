@@ -1,0 +1,12 @@
+# ASCII City — инструкции для AI-агентов
+
+ASCII City — общий город от первого лица, нарисованный символами. Хаб отдаёт его на `/ascii-city`. Позиции людей принадлежат серверу. Клиент предсказывает шаг и рисует вид.
+
+Сначала прочитай корневой `AGENTS.md`. Перед нетривиальной задачей найди подходящие скиллы в https://github.com/DietrichGebert/ponytail и примени их.
+
+## Свои правила
+
+- Проход лучей по сетке — Rust-модуль `ascii_city/wasm`, собранный в `frontend/src/walk/ascii_city_walk.wasm`. Пока он не загрузился, тот же проход считает TypeScript. Картинка обоих проходов должна совпадать.
+- Python-сервер мира, комнат и чата из-за этого модуля не переписывать.
+- Числа в `frontend/src/domain/constants.ts` совпадают с `ascii_city/domain/constants.py`. Расхождение ловит `tests/test_ascii_city_client_parity.py`.
+- Подробности — в `README.md`.

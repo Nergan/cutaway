@@ -96,6 +96,8 @@ Thumbs.db
 !docs/STATUS.md
 !README.md
 !README.ru.md
+!AGENTS.md
+!**/AGENTS.md
 docs/private/
 
 # --- Сборки инсталляторов / артефакты выдачи --------------------------------
