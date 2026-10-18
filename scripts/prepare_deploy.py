@@ -35,10 +35,11 @@ def main() -> int:
         parser.error("refusing to prune a non-CI checkout without --force")
 
     config = load_runtime_config(root, profile=args.profile)
-    findings = validate_profile(config)
-    if findings:
-        print(format_report(findings), file=sys.stderr)
-        return 2
+    if args.dry_run:
+        findings = validate_profile(config)
+        if findings:
+            print(format_report(findings), file=sys.stderr)
+            return 2
 
     removed: list[str] = []
     for project in config.projects.values():

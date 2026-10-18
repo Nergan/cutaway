@@ -88,7 +88,8 @@ python -m orchestrator.hosting_policy --profile hf
 
 `scripts/prepare_deploy.py --profile hf` готовит ephemeral checkout для
 Sync to Hugging Face Space: удаляет проекты с `deploy = false`, вычищает
-локальные runtime-файлы, подменяет Space README и вырезает эти проекты из
+локальные runtime-файлы, убирает все `AGENTS.md`, затирает в оставшихся
+текстовых файлах совпадения `_rules()` и вырезает выключенные проекты из
 `orchestrator.toml`. GitHub-монорепозиторий не меняется. Без `--dry-run`
 скрипт отказывается работать вне CI, если явно не передан `--force`.
 

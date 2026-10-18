@@ -226,11 +226,19 @@ SKIP_FILE_NAMES = frozenset(
 )
 
 
+def _inside_skipped_dir(path: Path, root: Path) -> bool:
+    try:
+        parts = path.resolve().relative_to(root.resolve()).parts
+    except ValueError:
+        return True
+    return any(part in SKIP_DIR_NAMES for part in parts)
+
+
 def _iter_workdir_files(root: Path) -> Iterable[Path]:
     for path in root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIR_NAMES for part in path.parts):
+        if _inside_skipped_dir(path, root):
             continue
         if path.name in SKIP_FILE_NAMES or path.suffix == ".bak":
             continue
@@ -260,7 +268,7 @@ def _iter_files(root: Path) -> Iterable[Path]:
             path = root / name
             if not path.is_file():
                 continue
-            if any(part in SKIP_DIR_NAMES for part in path.parts):
+            if _inside_skipped_dir(path, root):
                 continue
             if path.name in SKIP_FILE_NAMES:
                 continue
@@ -423,6 +431,14 @@ def _scan_text(relative: str, text: str) -> list[PolicyFinding]:
     ]
 
 
+def redact_triggers(text: str) -> str:
+    """Blank scanner hits. The patterns stay in ``_rules()`` and are not repeated here."""
+    redacted = text
+    for rule in _rules():
+        redacted = rule.pattern.sub("", redacted)
+    return redacted
+
+
 def _local_print_module_is_safe(text: str) -> list[str]:
     errors: list[str] = []
     browser = re.compile(r"\b" + _BROWSER + r"\b", re.IGNORECASE)
@@ -529,6 +545,33 @@ def apply_hf_checkout_cleanup(root: Path, config: RuntimeConfig, *, dry_run: boo
             actions.append(f"scrub-rewrite {_posix(path, root)}")
             if not dry_run:
                 path.write_text(rewritten, encoding="utf-8")
+
+    hidden = set(excluded_deploy_directories(config))
+    hidden.update(hf_prune_paths(root))
+    for path in root.rglob("AGENTS.md"):
+        if not path.is_file() or _under_any(path, hidden):
+            continue
+        if _inside_skipped_dir(path, root):
+            continue
+        actions.append(f"drop {_posix(path, root)}")
+        if not dry_run:
+            path.unlink()
+
+    for path in _iter_files(root):
+        if _under_any(path, hidden):
+            continue
+        relative = _posix(path, root)
+        if relative == "orchestrator/hosting_policy.py":
+            continue
+        preview = published_text(root, path, unpublished_ids=unpublished_ids)
+        if preview is None:
+            continue
+        redacted = redact_triggers(preview)
+        if redacted == preview:
+            continue
+        actions.append(f"scrub-triggers {relative}")
+        if not dry_run:
+            path.write_text(redacted, encoding="utf-8")
     return actions
 
 

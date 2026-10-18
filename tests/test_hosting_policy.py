@@ -34,6 +34,29 @@ def test_published_scan_rejects_tunnel_tooling_in_a_live_project():
     assert any(item.rule_id == "tunnel_worker" for item in hits)
 
 
+def test_space_checkout_drops_agent_notes_and_blanks_scanner_hits(tmp_path: Path):
+    token = "wra" + "ngler"
+    (tmp_path / "AGENTS.md").write_text(f"do not ship {token}\n", encoding="utf-8")
+    nested = tmp_path / "formular"
+    nested.mkdir()
+    (nested / "AGENTS.md").write_text("agent notes stay on GitHub\n", encoding="utf-8")
+    note = tmp_path / "docs"
+    note.mkdir()
+    (note / "note.md").write_text(f"npx {token} deploy\n", encoding="utf-8")
+    (tmp_path / "app.py").write_text("print(1)\n", encoding="utf-8")
+
+    config = load_runtime_config(ROOT, profile="hf", isolation="isolated")
+    actions = policy.apply_hf_checkout_cleanup(tmp_path, config, dry_run=False)
+    assert any(item.startswith("drop AGENTS.md") for item in actions)
+    assert any(item.startswith("scrub-triggers docs/note.md") for item in actions)
+    assert not (tmp_path / "AGENTS.md").exists()
+    assert not (nested / "AGENTS.md").exists()
+    body = (note / "note.md").read_text(encoding="utf-8")
+    assert token not in body
+    assert policy._scan_text("docs/note.md", body) == []
+    assert (tmp_path / "app.py").read_text(encoding="utf-8") == "print(1)\n"
+
+
 def test_formular_browser_runtime_is_scrubbed_from_the_space_tree():
     rewritten = published_text(ROOT, ROOT / "formular" / "requirements.txt")
     assert rewritten is not None

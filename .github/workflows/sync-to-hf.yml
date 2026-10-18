@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 # GitHub остаётся полным монорепозиторием. Этот job копирует ephemeral
-# checkout, prepare_deploy вырезает всё с deploy=false и прочий hosting
-# policy scrub, и только очищенное дерево force-push на Space.
+# checkout. prepare_deploy вырезает проекты с deploy=false, все AGENTS.md
+# и прочие совпадения правил сканера, и только это дерево force-push на Space.
 # Срабатывает только на ветке main. Пуш в cursor/* или другую ветку Action
 # не запускает — отсюда «после пуша ничего не едет на HF».
 # Ручной запуск: Actions → Sync to Hugging Face Space → Run workflow,
@@ -35,9 +35,15 @@ jobs:
           python scripts/prepare_deploy.py --profile hf
           test ! -e another
           test ! -e yellow_mirror
+          test ! -e AGENTS.md
+          test ! -e formular/AGENTS.md
           test ! -e formular/core/html_pdf.py
           test ! -e .github
           test ! -e tests
+          if find . -name AGENTS.md -print -quit | grep -q .; then
+            echo "AGENTS.md must not remain in the Space tree"
+            exit 1
+          fi
           python -m orchestrator.hosting_policy --profile hf
           rm -rf .git
 
