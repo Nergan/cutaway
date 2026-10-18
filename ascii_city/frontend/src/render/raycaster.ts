@@ -34,6 +34,7 @@ import {
 } from './charset'
 import { CellBuffer, EFFECT_GLOW, EFFECT_NONE } from './cellBuffer'
 import { hash2, hash3 } from './hash'
+import { openWalker, type CityWalker } from './walkEngine'
 import {
   FACADE,
   FOG,
@@ -152,6 +153,9 @@ export class Raycaster {
   /** Whether the camera is standing inside a carved interior this frame. */
   private indoors = false
 
+  /** Scratch for one column of wasm hits. Eight numbers per layer. */
+  private readonly hitScratch = new Float64Array(16 * 8)
+
   constructor(public quality: RaycastQuality = { ...DEFAULT_QUALITY }) {}
 
   render(buffer: CellBuffer, grid: CollisionGrid, camera: Camera): void {
@@ -171,6 +175,7 @@ export class Raycaster {
     const planeY = -dirX * tanHalfFov
 
     buffer.depth.fill(Infinity)
+    const walker = openWalker(grid)
 
     // Standing in a shop, what is overhead is a ceiling, not the night sky.
     // One lookup per frame buys the difference between a room and a courtyard.
@@ -185,7 +190,9 @@ export class Raycaster {
       const rayX = dirX + planeX * cameraX
       const rayY = dirY + planeY * cameraX
 
-      const hitCount = this.cast(grid, camera, rayX, rayY)
+      const hitCount = walker
+        ? this.castWasm(walker, camera, rayX, rayY)
+        : this.cast(grid, camera, rayX, rayY)
       this.paintBackdrop(buffer, grid, camera, column, rayX, rayY, horizon, projRows)
 
       // Far to near, so nearer geometry overwrites the silhouettes behind it.
@@ -202,6 +209,34 @@ export class Raycaster {
         break
       }
     }
+    walker?.free()
+  }
+
+  /** Fill `HITS` from the wasm walk. Same records the TypeScript walk writes. */
+  private castWasm(walker: CityWalker, camera: Camera, rayX: number, rayY: number): number {
+    const maxCells = this.quality.viewDistance / walker.cellSize
+    const found = walker.cast(
+      camera.x,
+      camera.y,
+      rayX,
+      rayY,
+      maxCells,
+      this.quality.layers,
+      this.hitScratch,
+    )
+    for (let index = 0; index < found; index += 1) {
+      const at = index * 8
+      const hit = HITS[index]
+      hit.distance = this.hitScratch[at]
+      hit.height = this.hitScratch[at + 1]
+      hit.style = this.hitScratch[at + 2]
+      hit.side = this.hitScratch[at + 3]
+      hit.cellX = this.hitScratch[at + 4]
+      hit.cellY = this.hitScratch[at + 5]
+      hit.ledge = this.hitScratch[at + 6] !== 0
+      hit.along = this.hitScratch[at + 7]
+    }
+    return found
   }
 
   /** Walk the grid, recording up to `layers` solid cells along the ray. */

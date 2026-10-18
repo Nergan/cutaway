@@ -12,8 +12,11 @@ import { CanvasCellRenderer } from './canvasRenderer'
 import { buildGlyphAtlas, type GlyphAtlas } from './glyphAtlas'
 import { renderProps, type WorldProp } from './props'
 import { DEFAULT_QUALITY, Raycaster, type Camera, type RaycastQuality } from './raycaster'
+import { loadWalk } from './walkEngine'
 import { renderSprites, type Sprite } from './sprites'
 import { WebGLCellRenderer } from './webglRenderer'
+
+void loadWalk()
 
 export type QualityPreset = 'auto' | 'high' | 'balanced' | 'low'
 

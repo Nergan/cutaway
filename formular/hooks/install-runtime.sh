@@ -6,4 +6,5 @@ if [ -z "${CUTAWAY_PROJECT_PYTHON:-}" ]; then
     exit 1
 fi
 
+"$CUTAWAY_PROJECT_PYTHON" formular/tools/fetch_ffmpeg_wasm.py
 "$CUTAWAY_PROJECT_PYTHON" -m playwright install chromium

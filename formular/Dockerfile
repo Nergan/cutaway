@@ -19,5 +19,6 @@ RUN playwright install chromium
 RUN playwright install-deps chromium
 
 COPY . .
+RUN python tools/fetch_ffmpeg_wasm.py
 EXPOSE 8000
 CMD ["python", "main.py", "--web"]

@@ -25,7 +25,12 @@ npm-debug.log*
 dist/
 .vite/
 
+### Formular browser media core ###
+# Official ffmpeg.wasm, fetched by formular/tools/fetch_ffmpeg_wasm.py at image build.
+formular/static/vendor/ffmpeg/
+
 ### ASCII City Frontend ###
+ascii_city/wasm/target/
 # The client is built by build.sh, so the bundle is not committed.
 ascii_city/static/
 ascii_city/node_modules/

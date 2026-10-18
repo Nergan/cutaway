@@ -186,18 +186,24 @@ window.Formular.createCard = function(file) {
         if (mergeLoop) fd.append('merge_loop', mergeLoop);
 
         try {
-            const response = await fetch('./api/convert', { method: 'POST', body: fd, signal: activeController.signal });
-
-            if (!response.ok) {
-                let message = "Conversion engine failure.";
-                try {
-                    const errorJson = await response.json();
-                    if (typeof errorJson.detail === 'string') message = errorJson.detail;
-                } catch (parseError) {}
-                throw new Error(message);
+            const speech = (cardElement.aiTargets || {})[targetFormat] || '';
+            let blob = null;
+            if (!aOpts && !vOpts && !cOpts && !mergeId && !speech && localFile && window.Formular.tryFfmpegWasm) {
+                blob = await window.Formular.tryFfmpegWasm(localFile, ext, targetFormat);
             }
+            if (!blob) {
+                const response = await fetch('./api/convert', { method: 'POST', body: fd, signal: activeController.signal });
 
-            const blob = await response.blob();
+                if (!response.ok) {
+                    let message = "Conversion engine failure.";
+                    try {
+                        const errorJson = await response.json();
+                        if (typeof errorJson.detail === 'string') message = errorJson.detail;
+                    } catch (parseError) {}
+                    throw new Error(message);
+                }
+                blob = await response.blob();
+            }
             let outExt = targetFormat === 'gz' ? 'tar.gz' : targetFormat;
             let lastDotIndex = file.filename.lastIndexOf('.');
             let baseName = lastDotIndex === -1 ? file.filename : file.filename.substring(0, lastDotIndex);

@@ -93,6 +93,8 @@ server's to compute.
   leftover error away over a few frames.
 - **Rendering.** A DDA raycast per screen column, continued past the first wall
   so towers behind the street still cut their silhouette into the sky. The
+  walk itself is a small Rust module (`ascii_city/wasm`) compiled to wasm; the
+  TypeScript walk remains and is used when that module has not loaded. The
   result is a character grid uploaded to the GPU as a single instanced draw
   call; the glyph atlas carries a blurred copy of each character in its green
   channel, which becomes the neon bleed.

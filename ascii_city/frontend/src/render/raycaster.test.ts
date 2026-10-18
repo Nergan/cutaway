@@ -7,11 +7,14 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { readFile } from 'node:fs/promises'
+
 import { CELL_BUILDING, CELL_ROAD, EYE_HEIGHT_M } from '../domain/constants'
 import { CollisionGrid } from '../world/collisionGrid'
 import { CellBuffer, CELL_STRIDE } from './cellBuffer'
 import { AVATAR_FACES, CHARSET, G_SPACE } from './charset'
 import { DEFAULT_QUALITY, Raycaster, type Camera } from './raycaster'
+import { loadWalk, useWalk, walkLoaded } from './walkEngine'
 import { renderSprites, type Sprite } from './sprites'
 
 const COLUMNS = 60
@@ -313,5 +316,24 @@ describe('the glyph vocabulary', () => {
 
   it('has no duplicate entries, which would waste atlas space', () => {
     expect(new Set(CHARSET).size).toBe(CHARSET.length)
+  })
+})
+
+describe('the wasm walk', () => {
+  it('paints the same grid as the typescript walk', async () => {
+    const wasmBytes = await readFile(new URL('../walk/ascii_city_walk.wasm', import.meta.url))
+    await loadWalk(wasmBytes.buffer.slice(wasmBytes.byteOffset, wasmBytes.byteOffset + wasmBytes.byteLength))
+    expect(walkLoaded()).toBe(true)
+    const grid = district()
+    box(grid, 40, 32, 18)
+    grid.cells[32 * grid.width + 36] = CELL_ROAD
+    grid.heights[32 * grid.width + 36] = 8
+    const view = camera()
+    useWalk(false)
+    const typescript = frame(grid, view)
+    useWalk(true)
+    const wasm = frame(grid, view)
+    expect(asText(wasm)).toEqual(asText(typescript))
+    expect([...wasm.depth]).toEqual([...typescript.depth])
   })
 })
