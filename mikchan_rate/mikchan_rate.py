@@ -12,6 +12,8 @@ import logging
 import re
 import socket
 import ssl
+import threading
+import time
 from dataclasses import dataclass
 from html import escape
 from urllib.parse import urljoin
@@ -24,6 +26,8 @@ from shared.network import NetworkPolicyError, preferred_outbound_ip, validate_o
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_FETCH_LOCK = threading.Lock()
+_FETCH_ATTEMPTS = 3
 
 PREFIX = "/mikchan-rate"
 UPSTREAM = "https://mikchan-dashboard-worker.makarka7923.workers.dev"
@@ -44,7 +48,7 @@ class Upstream:
 
 
 class UpstreamError(Exception):
-    def __init__(self, message: str, status: int = 502) -> None:
+    def __init__(self, message: str, status: int = 424) -> None:
         super().__init__(message)
         self.message = message
         self.status = status
@@ -67,31 +71,41 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
 
 
 def fetch_upstream(url: str) -> Upstream:
+    last_error: Exception | None = None
+    for attempt in range(_FETCH_ATTEMPTS):
+        try:
+            with _FETCH_LOCK:
+                return _fetch_once(url)
+        except UpstreamError:
+            raise
+        except (TimeoutError, OSError, ssl.SSLError, NetworkPolicyError) as error:
+            last_error = error
+            logger.warning("mikchan rate upstream failed: %s", error)
+            if attempt + 1 < _FETCH_ATTEMPTS:
+                time.sleep(0.4 * (attempt + 1))
+    raise UpstreamError("Страница курса не отвечает.") from last_error
+
+
+def _fetch_once(url: str) -> Upstream:
     current = url
-    try:
-        for _ in range(3):
-            parsed = validate_outbound_url(current, allowed_hosts=ALLOWED_HOSTS)
-            host = parsed.hostname or ""
-            if parsed.scheme != "https" or not host:
-                break
-            port = parsed.port or 443
-            ip = preferred_outbound_ip(host, port, allow_private=False)
-            path = parsed.path or "/"
-            if parsed.query:
-                path = f"{path}?{parsed.query}"
-            status, headers, body = _exchange(ip, host, port, path)
-            if status not in {301, 302, 303, 307, 308}:
-                content_type = headers.get("content-type", "")
-                return Upstream(status, content_type, body)
-            location = headers.get("location", "")
-            if not location:
-                break
-            current = urljoin(current, location)
-    except UpstreamError:
-        raise
-    except (TimeoutError, OSError, ssl.SSLError, NetworkPolicyError) as error:
-        logger.warning("mikchan rate upstream failed: %s", error)
-        raise UpstreamError("Страница курса не отвечает.") from error
+    for _ in range(3):
+        parsed = validate_outbound_url(current, allowed_hosts=ALLOWED_HOSTS)
+        host = parsed.hostname or ""
+        if parsed.scheme != "https" or not host:
+            break
+        port = parsed.port or 443
+        ip = preferred_outbound_ip(host, port, allow_private=False)
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+        status, headers, body = _exchange(ip, host, port, path)
+        if status not in {301, 302, 303, 307, 308}:
+            content_type = headers.get("content-type", "")
+            return Upstream(status, content_type, body)
+        location = headers.get("location", "")
+        if not location:
+            break
+        current = urljoin(current, location)
     raise UpstreamError("Страница курса не отвечает.")
 
 
@@ -140,7 +154,7 @@ def _rewritten(upstream: Upstream) -> bytes:
     return rewrite(upstream.body.decode("utf-8", "replace")).encode("utf-8")
 
 
-def error_page(message: str, status: int = 502) -> HTMLResponse:
+def error_page(message: str, status: int = 424) -> HTMLResponse:
     text = escape(message)
     document = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -179,6 +193,8 @@ async def serve(path: str, query: str) -> Response:
         url = upstream_url(path, query)
         upstream = await asyncio.to_thread(fetch_upstream, url)
     except UpstreamError as error:
+        if path.strip("/"):
+            return Response(status_code=404, content=b"", media_type="text/plain")
         return error_page(error.message, error.status)
 
     document = path.strip("/") == ""
@@ -189,7 +205,9 @@ async def serve(path: str, query: str) -> Response:
     if document and "html" not in upstream.content_type.lower():
         return error_page("Страница курса пришла в неожиданном виде.")
     if not document and upstream.status >= 400:
-        return Response(status_code=upstream.status, content=b"", media_type="text/plain")
+        # 502 and above make the hub treat this worker as crashed.
+        status = 404 if upstream.status >= 502 else upstream.status
+        return Response(status_code=status, content=b"", media_type="text/plain")
 
     media = upstream.content_type or "application/octet-stream"
     return Response(

@@ -1,3 +1,4 @@
+import ssl
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI
@@ -61,14 +62,14 @@ def test_a_failed_dashboard_is_an_error_page(monkeypatch):
     client = _client()
 
     page = client.get("/mikchan-rate")
-    assert page.status_code == 502
+    assert page.status_code == 424
     assert "Не удалось показать курс" in page.text
     assert "ответила ошибкой 503" in page.text
     assert "upstream exploded" not in page.text
     assert "Traceback" not in page.text
 
     rates = client.get("/mikchan-rate/api/rates")
-    assert rates.status_code == 503
+    assert rates.status_code == 404
     assert rates.content == b""
 
 
@@ -123,6 +124,49 @@ def test_fetch_uses_ipv4_and_keeps_the_hostname(monkeypatch):
     }
 
 
+def test_fetch_retries_a_reset_handshake(monkeypatch):
+    attempts = {"n": 0}
+
+    class _Response:
+        status = 200
+
+        def getheaders(self):
+            return [("Content-Type", "text/css")]
+
+        def read(self, _amount):
+            return b"body{}"
+
+    class _Connection:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def request(self, *_args, **_kwargs):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise ssl.SSLError("EOF occurred in violation of protocol")
+
+        def getresponse(self):
+            return _Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("mikchan_rate.mikchan_rate.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.validate_outbound_url",
+        lambda url, **_kwargs: urlsplit(url),
+    )
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.preferred_outbound_ip",
+        lambda *_args, **_kwargs: "104.21.1.2",
+    )
+    monkeypatch.setattr("mikchan_rate.mikchan_rate._PinnedHTTPSConnection", _Connection)
+    result = fetch_upstream("https://mikchan-dashboard-worker.makarka7923.workers.dev/styles.css")
+    assert result.status == 200
+    assert result.body == b"body{}"
+    assert attempts["n"] == 2
+
+
 def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
     class _Connection:
         def __init__(self, *_args, **_kwargs):
@@ -134,6 +178,7 @@ def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
         def close(self):
             pass
 
+    monkeypatch.setattr("mikchan_rate.mikchan_rate.time.sleep", lambda _seconds: None)
     monkeypatch.setattr(
         "mikchan_rate.mikchan_rate.validate_outbound_url",
         lambda url, **_kwargs: urlsplit(url),
@@ -147,7 +192,7 @@ def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
         fetch_upstream("https://mikchan-dashboard-worker.makarka7923.workers.dev/")
     except UpstreamError as error:
         assert error.message == "Страница курса не отвечает."
-        assert error.status == 502
+        assert error.status == 424
     else:
         raise AssertionError("expected an error page cause")
 
@@ -156,7 +201,7 @@ def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
 
     monkeypatch.setattr("mikchan_rate.mikchan_rate.fetch_upstream", fake)
     page = _client().get("/mikchan-rate")
-    assert page.status_code == 502
+    assert page.status_code == 424
     assert "не отвечает" in page.text
     assert "timed out" not in page.text
 
