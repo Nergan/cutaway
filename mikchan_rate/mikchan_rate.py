@@ -7,24 +7,28 @@ page from the hub. A failed fetch becomes a short error page.
 from __future__ import annotations
 
 import asyncio
+import http.client
+import logging
 import re
-import urllib.error
-import urllib.request
+import socket
+import ssl
 from dataclasses import dataclass
 from html import escape
+from urllib.parse import urljoin
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 
-from shared.network import NetworkPolicyError, SafeRedirectHandler, validate_outbound_url
+from shared.network import NetworkPolicyError, preferred_outbound_ip, validate_outbound_url
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 PREFIX = "/mikchan-rate"
 UPSTREAM = "https://mikchan-dashboard-worker.makarka7923.workers.dev"
 ALLOWED_HOSTS = ("mikchan-dashboard-worker.makarka7923.workers.dev",)
-TIMEOUT_SECONDS = 15
+TIMEOUT_SECONDS = 25
 MAX_BYTES = 2_000_000
 _BROWSER = {"User-Agent": "Mozilla/5.0", "Accept": "*/*", "Accept-Encoding": "identity"}
 _SAFE_PATH = re.compile(r"[A-Za-z0-9._~/-]{1,200}\Z")
@@ -46,28 +50,68 @@ class UpstreamError(Exception):
         self.status = status
 
 
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """Connect to one checked address and keep the certificate name."""
+
+    def __init__(self, ip: str, server_hostname: str, timeout: float) -> None:
+        super().__init__(ip, timeout=timeout, context=ssl.create_default_context())
+        self._server_hostname = server_hostname
+
+    def connect(self) -> None:
+        sock = socket.create_connection((self.host, self.port), self.timeout, self.source_address)
+        try:
+            self.sock = self._context.wrap_socket(sock, server_hostname=self._server_hostname)
+        except Exception:
+            sock.close()
+            raise
+
+
 def fetch_upstream(url: str) -> Upstream:
-    validate_outbound_url(url, allowed_hosts=ALLOWED_HOSTS)
-    request = urllib.request.Request(url, headers=_BROWSER)
-    opener = urllib.request.build_opener(SafeRedirectHandler(allowed_hosts=ALLOWED_HOSTS))
+    current = url
     try:
-        with opener.open(request, timeout=TIMEOUT_SECONDS) as response:
-            body = _read_limited(response)
-            content_type = response.headers.get("Content-Type", "")
-            return Upstream(response.status, content_type, body)
-    except urllib.error.HTTPError as error:
-        body = _read_limited(error)
-        content_type = error.headers.get("Content-Type", "") if error.headers else ""
-        return Upstream(error.code, content_type, body)
-    except (urllib.error.URLError, TimeoutError, OSError, NetworkPolicyError) as error:
+        for _ in range(3):
+            parsed = validate_outbound_url(current, allowed_hosts=ALLOWED_HOSTS)
+            host = parsed.hostname or ""
+            if parsed.scheme != "https" or not host:
+                break
+            port = parsed.port or 443
+            ip = preferred_outbound_ip(host, port, allow_private=False)
+            path = parsed.path or "/"
+            if parsed.query:
+                path = f"{path}?{parsed.query}"
+            status, headers, body = _exchange(ip, host, port, path)
+            if status not in {301, 302, 303, 307, 308}:
+                content_type = headers.get("content-type", "")
+                return Upstream(status, content_type, body)
+            location = headers.get("location", "")
+            if not location:
+                break
+            current = urljoin(current, location)
+    except UpstreamError:
+        raise
+    except (TimeoutError, OSError, ssl.SSLError, NetworkPolicyError) as error:
+        logger.warning("mikchan rate upstream failed: %s", error)
         raise UpstreamError("Страница курса не отвечает.") from error
+    raise UpstreamError("Страница курса не отвечает.")
 
 
-def _read_limited(response) -> bytes:
-    body = response.read(MAX_BYTES + 1)
+def _exchange(ip: str, host: str, port: int, path: str) -> tuple[int, dict[str, str], bytes]:
+    connection = _PinnedHTTPSConnection(ip, host, TIMEOUT_SECONDS)
+    try:
+        connection.request(
+            "GET",
+            path,
+            headers={**_BROWSER, "Host": host, "Connection": "close"},
+        )
+        response = connection.getresponse()
+        body = response.read(MAX_BYTES + 1)
+        headers = {key.lower(): value for key, value in response.getheaders()}
+        status = int(response.status)
+    finally:
+        connection.close()
     if len(body) > MAX_BYTES:
         raise UpstreamError("Страница курса слишком большая.")
-    return body
+    return status, headers, body
 
 
 def upstream_url(path: str, query: str) -> str:

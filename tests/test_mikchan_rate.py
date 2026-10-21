@@ -1,4 +1,4 @@
-import urllib.error
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -72,13 +72,77 @@ def test_a_failed_dashboard_is_an_error_page(monkeypatch):
     assert rates.content == b""
 
 
-def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
-    class _Opener:
-        def open(self, *_args, **_kwargs):
-            raise urllib.error.URLError("timed out")
+def test_fetch_uses_ipv4_and_keeps_the_hostname(monkeypatch):
+    seen = {}
 
-    monkeypatch.setattr("mikchan_rate.mikchan_rate.validate_outbound_url", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("mikchan_rate.mikchan_rate.urllib.request.build_opener", lambda *_args, **_kwargs: _Opener())
+    class _Response:
+        status = 200
+
+        def getheaders(self):
+            return [("Content-Type", "text/html")]
+
+        def read(self, _amount):
+            return b"<html></html>"
+
+    class _Connection:
+        def __init__(self, ip, server_hostname, timeout):
+            seen["ip"] = ip
+            seen["sni"] = server_hostname
+            seen["timeout"] = timeout
+
+        def request(self, method, path, headers):
+            seen["method"] = method
+            seen["path"] = path
+            seen["host"] = headers["Host"]
+
+        def getresponse(self):
+            return _Response()
+
+        def close(self):
+            seen["closed"] = True
+
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.validate_outbound_url",
+        lambda url, **_kwargs: urlsplit(url),
+    )
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.preferred_outbound_ip",
+        lambda *_args, **_kwargs: "104.21.1.2",
+    )
+    monkeypatch.setattr("mikchan_rate.mikchan_rate._PinnedHTTPSConnection", _Connection)
+    result = fetch_upstream("https://mikchan-dashboard-worker.makarka7923.workers.dev/chart.js")
+    assert result.status == 200
+    assert seen == {
+        "ip": "104.21.1.2",
+        "sni": "mikchan-dashboard-worker.makarka7923.workers.dev",
+        "timeout": 25,
+        "method": "GET",
+        "path": "/chart.js",
+        "host": "mikchan-dashboard-worker.makarka7923.workers.dev",
+        "closed": True,
+    }
+
+
+def test_an_unreachable_dashboard_is_an_error_page(monkeypatch):
+    class _Connection:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def request(self, *_args, **_kwargs):
+            raise TimeoutError("timed out")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.validate_outbound_url",
+        lambda url, **_kwargs: urlsplit(url),
+    )
+    monkeypatch.setattr(
+        "mikchan_rate.mikchan_rate.preferred_outbound_ip",
+        lambda *_args, **_kwargs: "104.21.1.2",
+    )
+    monkeypatch.setattr("mikchan_rate.mikchan_rate._PinnedHTTPSConnection", _Connection)
     try:
         fetch_upstream("https://mikchan-dashboard-worker.makarka7923.workers.dev/")
     except UpstreamError as error:
