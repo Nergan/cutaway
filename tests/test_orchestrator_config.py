@@ -42,6 +42,7 @@ def test_hf_profile_disables_policy_sensitive_projects():
         "netlazy",
         "ascii_city",
         "minecraft_mods",
+        "mikchan_rate",
     }
 
 

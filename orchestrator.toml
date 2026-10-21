@@ -454,6 +454,30 @@ allowed_hosts = ["api.github.com", "raw.githubusercontent.com", "github.com", "*
 allow_private = false
 requests_per_minute = 80
 
+[projects.mikchan_rate]
+directory = "mikchan_rate"
+entrypoint = "mikchan_rate.mikchan_rate"
+prefix = "/mikchan-rate"
+requirements = "mikchan_rate/requirements.txt"
+startup = "lazy"
+
+[projects.mikchan_rate.limits]
+request_rate = 60
+request_bytes = 65536
+response_bytes = 2097152
+max_concurrency = 4
+request_timeout_seconds = 25
+memory_mb = 256
+cpu_percent = 50
+max_processes = 2
+max_connections = 8
+idle_timeout_seconds = 900
+
+[projects.mikchan_rate.network]
+allowed_hosts = ["mikchan-dashboard-worker.makarka7923.workers.dev"]
+allow_private = false
+requests_per_minute = 60
+
 [projects.another]
 directory = "another"
 entrypoint = "another.main"
