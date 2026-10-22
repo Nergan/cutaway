@@ -110,6 +110,15 @@ def test_compound_aliases_and_search_only_facets():
     assert label_hits("los angeles", "angel") is False
     femdom = names_for("femdom")
     assert "girl" in femdom and "dominant" in femdom and "soft" not in femdom
+    assert tags["krasnoyarsk"].desc["ru"] == "находится в красноярке"
+    assert tags["24 years old"].desc["ru"] == "24 года"
+    assert tags["21 years old"].desc["ru"] == "21 год"
+    assert tags["22 years old"].desc["ru"] == "22 года"
+    assert tags["25 years old"].desc["ru"] == "25 лет"
+    assert tags["3d modeling"].desc["ru"] == "интересуется 3d моделированием"
+    assert tags["authentic germanic myths"].desc["ru"] == "нравятся германские мифы"
+    assert tags["belly inflation"].desc["ru"] == "есть фетиш на наполнение живота"
+    assert tags["english (native/fluent)"].desc["ru"] == "говорит на английском"
     for tag in tags.values():
         ru = tag.desc["ru"]
         en = tag.desc["en"]
