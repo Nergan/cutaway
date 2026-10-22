@@ -106,5 +106,14 @@ def test_compound_aliases_and_search_only_facets():
     assert "cute" in princess
     assert "los angeles" not in princess
     assert label_hits("femdom", "fem")
+    assert label_hits("soft femdom", "femdom") is False
     assert label_hits("los angeles", "angel") is False
-    assert all(tag.desc.get("en") and tag.desc.get("ru") for tag in tags.values())
+    femdom = names_for("femdom")
+    assert "girl" in femdom and "dominant" in femdom and "soft" not in femdom
+    for tag in tags.values():
+        ru = tag.desc["ru"]
+        en = tag.desc["en"]
+        assert ru and en
+        assert ru == ru.lower() and en == en.lower()
+        assert not ru.endswith(".") and not en.endswith(".")
+        assert "облако" not in ru and "tag cloud" not in en

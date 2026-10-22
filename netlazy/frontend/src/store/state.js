@@ -106,8 +106,7 @@ export function profileHasContent(profile) {
 function labelHits(label, term) {
     const text = String(label || '').toLowerCase();
     if (!text || !term) return false;
-    if (text.startsWith(term)) return true;
-    return text.split(/[^\p{L}\p{N}]+/u).some(word => word === term);
+    return text.startsWith(term);
 }
 
 function tagTextMatches(tag, term) {
