@@ -696,6 +696,22 @@ body.light-theme .floating-tooltip {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
+.floating-tooltip.site-tip {
+  white-space: normal;
+  max-width: 240px;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.tag-menu-desc {
+  flex: 1 0 100%;
+  margin: 0 0 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text-muted);
+}
+
 .inbox-filter-tip {
   transform: translate(-50%, 0);
 }

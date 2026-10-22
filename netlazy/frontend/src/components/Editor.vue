@@ -11,7 +11,7 @@
             <div class="glass-menu tag-search-dropdown" v-if="profileTagQuery.trim()" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <div v-if="profileTagMatches.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
               <template v-else>
-                <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" @click="selectProfileTag(tag.name)">
+                <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" :data-tooltip="store.tagTip(tag) || null" @click="selectProfileTag(tag.name)">
                   <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
                   <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)" style="color: var(--accent-moss);"></i>
                 </div>
@@ -23,7 +23,7 @@
       <div class="tag-scroll-area" ref="profileTagScroller" @scroll="handleProfileTagScroll" @wheel="handleProfileTagWheel">
         <div class="marquee-content">
           <div class="marquee-group" v-for="copy in 3" :key="'profile-mq-'+copy" :aria-hidden="copy > 1 ? 'true' : null">
-            <span class="chip" v-for="tag in profileMarqueeTags" :key="copy + '-' + tag.name" @click.stop="selectMarqueeTag(tag.name)">
+            <span class="chip" v-for="tag in profileMarqueeTags" :key="copy + '-' + tag.name" :data-tooltip="store.tagTip(tag) || null" @click.stop="selectMarqueeTag(tag.name)">
               {{ store.getLocalizedTag(tag.name) }}
             </span>
           </div>
@@ -54,6 +54,7 @@
               :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
               v-for="tag in filteredTags.slice(0, 150)" 
               :key="'ed-tg-'+tag.name" 
+              :data-tooltip="store.tagTip(tag) || null"
               @click="toggleTag(tag.name)">
           {{ store.getLocalizedTag(tag.name) }}
           <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)"></i>
@@ -205,7 +206,7 @@
           <transition name="collapse">
             <div v-if="showActiveTags" class="mobile-collapse-content">
               <transition-group name="profile-tag" tag="div" class="chip-group" id="active-tags-zone" style="margin-bottom: 2rem; min-height: 25px;">
-                <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" @click="toggleTag(tag)">
+                <span class="chip require" v-for="tag in store.state.myProfile.tags" :key="tag" :data-tooltip="store.tagTip(tag) || null" @click="toggleTag(tag)">
                   {{ store.getLocalizedTag(tag) }}
                   <i class="bi bi-x" style="font-size: 0.85rem; margin-left: 0.15rem;"></i>
                 </span>
@@ -363,15 +364,11 @@ let dragIndex = null
 let saveTimeout = null
 
 const filteredTags = computed(() => {
-  const query = store.state.tagSearchQuery.toLowerCase().trim()
+  const query = store.state.tagSearchQuery.trim()
   if (!query) {
       return store.state.availableSearchTags.filter(t => !t.hidden)
   }
-  return store.state.availableSearchTags.filter(t => 
-      (t.name && String(t.name).toLowerCase().includes(query)) || 
-      (t.aliases && t.aliases.some(a => a && String(a).toLowerCase().includes(query))) ||
-      (t.i18n && Object.values(t.i18n).some(v => v && typeof v === 'string' && v.toLowerCase().includes(query)))
-  )
+  return tagsMatchingQuery(store.state.availableSearchTags, query)
 })
 
 const validMedia = computed(() => {

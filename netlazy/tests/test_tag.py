@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from netlazy.application.tag_service import TagService
 from netlazy.domain.models import Tag
+from netlazy.domain.tag_text import label_hits
 from netlazy.infrastructure.yaml_loader import YamlTagLoader
 
 
@@ -72,3 +73,38 @@ def test_added_tags_are_localized_and_visible():
         assert tag.i18n["ja"]
         assert tag.i18n["ko"]
         assert len(tag.aliases) >= 3
+        assert tag.desc["en"]
+        assert tag.desc["ru"]
+
+
+def test_compound_aliases_and_search_only_facets():
+    path = Path(__file__).resolve().parents[1] / "tags.yaml"
+    tags = {tag.name: tag for tag in YamlTagLoader().load_tags(str(path))}
+
+    def names_for(query):
+        found = []
+        for term in query.split():
+            for tag in tags.values():
+                labels = [tag.name, *tag.aliases, *tag.i18n.values()]
+                if any(label_hits(label, term) for label in labels) and tag.name not in found:
+                    found.append(tag.name)
+        return found
+
+    assert tags["cute"].hidden is False
+    assert tags["switch"].hidden is True
+    assert "fetish" in {alias.lower() for alias in tags["switch"].aliases}
+    assert "location" in {alias.lower() for alias in tags["moscow"].aliases}
+    assert tags["moscow"].hidden is True
+    assert tags["18 years old"].hidden is True
+    assert "femdom" in {alias.lower() for alias in tags["girl"].aliases}
+    assert "femdom" in {alias.lower() for alias in tags["dominant"].aliases}
+    assert "kitten" in {alias.lower() for alias in tags["cats"].aliases}
+    assert "angel" in {alias.lower() for alias in tags["cute"].aliases}
+    princess = names_for("princess kitten angel")
+    assert "girl" in princess
+    assert "cats" in princess
+    assert "cute" in princess
+    assert "los angeles" not in princess
+    assert label_hits("femdom", "fem")
+    assert label_hits("los angeles", "angel") is False
+    assert all(tag.desc.get("en") and tag.desc.get("ru") for tag in tags.values())

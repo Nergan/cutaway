@@ -24,7 +24,7 @@
 
           <!-- Tags & Bio -->
           <div class="chip-group" v-if="selectedChat.profile && selectedChat.profile.tags && selectedChat.profile.tags.length > 0">
-            <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in selectedChat.profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
+            <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in selectedChat.profile.tags" :key="tag" :data-tooltip="store.tagTip(tag) || null">{{ store.getLocalizedTag(tag) }}</span>
           </div>
           <div class="card-bio" v-if="selectedChat.profile && displayBio(selectedChat.profile.bio)">{{ displayBio(selectedChat.profile.bio) }}</div>
 

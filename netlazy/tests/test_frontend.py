@@ -272,6 +272,8 @@ class TestInterfaceVersions:
         state = read_text("frontend/src/store/state.js")
         assert "!contact.is_private" in state
         assert "function tagsMatchingQuery" in state
+        assert "function labelHits" in state
+        assert "split(/\\s+/)" in state
         assert "rgba(255, 255, 255, 0.78)" in styles
         assert 'name="profile-tag"' in editor
         assert "profile-media-block" in editor

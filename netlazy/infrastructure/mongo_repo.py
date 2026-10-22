@@ -8,6 +8,7 @@ from netlazy.database import db_instance
 from netlazy.config import settings
 from netlazy.domain.forms import FormSlugConflict
 from netlazy.domain.models import Contact, Handshake, MediaItem, PoWChallenge, Profile, PushPreferences, PushSubscription, Tag, User, UserAlreadyExistsError
+from netlazy.domain.tag_text import label_hits
 from netlazy.domain.repository import (
     ChainRepository,
     HandshakeRepository,
@@ -193,7 +194,7 @@ class MongoTagRepository(TagRepository):
         operations = [
             UpdateOne(
                 {"name": tag.name},
-                {"$set": {"aliases": tag.aliases, "hidden": tag.hidden, "i18n": tag.i18n}},
+                {"$set": {"aliases": tag.aliases, "hidden": tag.hidden, "i18n": tag.i18n, "desc": tag.desc}},
                 upsert=True,
             )
             for tag in tags
@@ -244,11 +245,11 @@ class MongoTagRepository(TagRepository):
         all_tags = [self._to_domain(doc) async for doc in cursor]
 
         def matches(tag: Tag, term: str) -> bool:
-            if term in tag.name.lower():
+            if label_hits(tag.name, term):
                 return True
-            if any(term in str(alias).lower() for alias in tag.aliases):
+            if any(label_hits(alias, term) for alias in tag.aliases):
                 return True
-            if tag.i18n and any(term in str(v).lower() for v in tag.i18n.values()):
+            if tag.i18n and any(label_hits(v, term) for v in tag.i18n.values()):
                 return True
             return False
 
@@ -269,7 +270,8 @@ class MongoTagRepository(TagRepository):
             name=doc["name"],
             aliases=doc.get("aliases", []),
             hidden=doc.get("hidden", False),
-            i18n=doc.get("i18n", {})
+            i18n=doc.get("i18n", {}),
+            desc=doc.get("desc", {}),
         )
 
 

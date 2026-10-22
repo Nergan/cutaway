@@ -11,6 +11,7 @@ class TagResponse(BaseModel):
     aliases: List[str] = Field(default_factory=list)
     hidden: bool = False
     i18n: dict = Field(default_factory=dict)
+    desc: dict = Field(default_factory=dict)
 
 @router.get("")
 async def tags_index():
@@ -25,4 +26,4 @@ async def search_tags(
         tags = await tag_service.browse()
     else:
         tags = await tag_service.search(q)
-    return [TagResponse(name=t.name, aliases=t.aliases, hidden=t.hidden, i18n=t.i18n) for t in tags]
+    return [TagResponse(name=t.name, aliases=t.aliases, hidden=t.hidden, i18n=t.i18n, desc=t.desc) for t in tags]

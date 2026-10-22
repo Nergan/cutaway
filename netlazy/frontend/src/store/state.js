@@ -103,14 +103,33 @@ export function profileHasContent(profile) {
     );
 }
 
+function labelHits(label, term) {
+    const text = String(label || '').toLowerCase();
+    if (!text || !term) return false;
+    if (text.startsWith(term)) return true;
+    return text.split(/[^\p{L}\p{N}]+/u).some(word => word === term);
+}
+
+function tagTextMatches(tag, term) {
+    if (labelHits(tag.name, term)) return true;
+    if (tag.aliases && tag.aliases.some(alias => labelHits(alias, term))) return true;
+    if (tag.i18n && Object.values(tag.i18n).some(value => labelHits(value, term))) return true;
+    return false;
+}
+
 export function tagsMatchingQuery(tags, query) {
-    const needle = String(query || '').toLowerCase().trim();
-    if (!needle) return [];
-    return (tags || []).filter(tag =>
-        (tag.name && String(tag.name).toLowerCase().includes(needle)) ||
-        (tag.aliases && tag.aliases.some(alias => alias && String(alias).toLowerCase().includes(needle))) ||
-        (tag.i18n && Object.values(tag.i18n).some(value => value && typeof value === 'string' && value.toLowerCase().includes(needle)))
-    );
+    const tokens = String(query || '').trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return [];
+    const positive = tokens.filter(token => !token.startsWith('-')).map(token => token.toLowerCase());
+    const negative = tokens.filter(token => token.startsWith('-') && token.length > 1).map(token => token.slice(1).toLowerCase());
+    const pool = tags || [];
+    let results = positive.length
+        ? pool.filter(tag => positive.some(term => tagTextMatches(tag, term)))
+        : pool.slice();
+    if (negative.length) {
+        results = results.filter(tag => !negative.some(term => tagTextMatches(tag, term)));
+    }
+    return results;
 }
 
 export function isInboxUnread(item) {
@@ -412,6 +431,15 @@ export function useStore() {
 
     function getLocalizedTag(tagName) {
         return tagLocalesCache.value.get(tagName) || tagName;
+    }
+
+    function tagTip(tagOrName) {
+        const tag = typeof tagOrName === 'string'
+            ? state.availableSearchTags.find(item => item.name === tagOrName)
+            : tagOrName;
+        if (!tag || !tag.desc) return '';
+        const lang = state.lang || 'en';
+        return tag.desc[lang] || tag.desc.en || '';
     }
 
     function showConfirm(title, message, onConfirm, isDanger = false, confirmText = "confirm", cancelText = "cancel") {
@@ -723,7 +751,8 @@ export function useStore() {
                     hidden: t.hidden, 
                     state: oldT ? oldT.state : 'neutral',
                     pendingState: oldT ? oldT.pendingState : undefined,
-                    i18n: t.i18n || {}
+                    i18n: t.i18n || {},
+                    desc: t.desc || {}
                 };
             });
             applyPendingUrlTags();
@@ -891,7 +920,7 @@ export function useStore() {
     loadSavedState();
 
     instance = {
-        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed, togglePushEnabled, togglePushKind, clearOutgoingMark
+        state, addToast, toggleTheme, cycleLang, t, showConfirm, createAccount, loginWithKey, logout, saveProfile, fetchTags, deleteAccount, rotateKey, fetchInbox, fetchMyProfile, getLocalizedTag, tagTip, loadDecryptedMedia, loadProfileMedia, syncUrlToView, syncViewToUrl, consumeViewHistorySuppression, applyPendingUrlTags, confirmIdentityBackup, cancelIdentityBackup, profileFormUrl, openFeed, togglePushEnabled, togglePushKind, clearOutgoingMark
     };
     return instance;
 }

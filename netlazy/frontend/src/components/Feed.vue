@@ -12,7 +12,7 @@
             <div class="glass-menu tag-search-dropdown" v-if="filterText && (visibleSearchTags.length > 0 || isV2)" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <div v-if="isV2 && visibleSearchTags.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
               <transition-group name="tag-list" tag="div" v-else>
-                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" @click="handleDropdownTagClick(tag)">
+                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" :data-tooltip="store.tagTip(tag) || null" @click="handleDropdownTagClick(tag)">
                   <span class="dropdown-tag-name"><span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span></span>
                   <div class="dropdown-tag-filters" @click.stop>
                       <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click.stop="setTagStateInline(tag, 'require')">
@@ -108,6 +108,9 @@
                gap: '0.4rem',
                padding: '0.6rem 0.8rem',
                flexDirection: 'row',
+               flexWrap: 'wrap',
+               justifyContent: 'center',
+               maxWidth: '280px',
                '--popover-translate': tagMenu.isBelow ? 'translate(-50%, 0) translateY(8px)' : 'translate(-50%, -100%) translateY(-8px)',
                transform: 'var(--popover-translate) scale(1)',
                transformOrigin: tagMenu.isBelow ? 'top center' : 'bottom center'
@@ -115,9 +118,11 @@
              @mouseleave="closeTagMenu"
              @mouseenter="keepTagMenu"
              @click.stop>
+              <div v-if="tagMenu.desc" class="tag-menu-desc">{{ tagMenu.desc }}</div>
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-require" 
                           :class="{ 'active': tagMenu.pendingState === 'require' }"
+                          :data-tooltip="store.t('tooltip_require')"
                           @click="setTagFilter('require')">
                       <i class="bi bi-plus-lg"></i>
                   </button>
@@ -126,6 +131,7 @@
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-exclude" 
                           :class="{ 'active': tagMenu.pendingState === 'exclude' }"
+                          :data-tooltip="store.t('tooltip_exclude')"
                           @click="setTagFilter('exclude')">
                       <i class="bi bi-dash-lg"></i>
                   </button>
@@ -134,6 +140,7 @@
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-bonus" 
                           :class="{ 'active': tagMenu.pendingState === 'bonus' }"
+                          :data-tooltip="store.t('tooltip_bonus')"
                           @click="setTagFilter('bonus')">
                       <i class="bi bi-chevron-up"></i>
                   </button>
@@ -142,6 +149,7 @@
               <div class="filter-col">
                   <button class="footer-action tag-filter-btn filter-abonus" 
                           :class="{ 'active': tagMenu.pendingState === 'abonus' }"
+                          :data-tooltip="store.t('tooltip_abonus')"
                           @click="setTagFilter('abonus')">
                       <i class="bi bi-chevron-down"></i>
                   </button>
@@ -226,7 +234,7 @@
           </div>
           
           <div class="chip-group" v-if="profile.tags && profile.tags.length > 0">
-            <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag">{{ store.getLocalizedTag(tag) }}</span>
+            <span class="chip require" style="padding: 0.1rem 0.4rem; font-size: 0.65rem;" v-for="tag in profile.tags" :key="tag" :data-tooltip="store.tagTip(tag) || null">{{ store.getLocalizedTag(tag) }}</span>
           </div>
           <div class="card-bio" v-if="displayBio(profile.bio)">{{ displayBio(profile.bio) }}</div>
 
@@ -475,6 +483,7 @@ async function openTagMenu(e, tag) {
     tagMenu.value = {
         visible: true,
         tagName: tag.name,
+        desc: store.tagTip(tag),
         pendingState: tag.state,
         x: x,
         y: y,

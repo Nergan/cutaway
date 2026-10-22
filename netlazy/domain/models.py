@@ -23,6 +23,7 @@ class Tag:
     aliases: List[str] = field(default_factory=list)
     hidden: bool = False
     i18n: dict = field(default_factory=dict)
+    desc: dict = field(default_factory=dict)
 
 @dataclass
 class MediaItem:
