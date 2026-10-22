@@ -291,6 +291,7 @@ env_allowlist = [
   "VAPID_PRIVATE_PEM",
   "VAPID_SUBJECT",
   "FCM_SERVICE_ACCOUNT",
+  "DAYLIGHT_THEME",
 ]
 
 [projects.netlazy.limits]

@@ -3,11 +3,125 @@
 from __future__ import annotations
 
 import re
+import subprocess
 
 import pytest
 from fastapi.testclient import TestClient
 
 from netlazy.presentation.inbox_router import InboxItemResponse
+SKY_CHECK = r"""
+import { paletteAt, localStampToUtc } from "__MODULE__";
+
+const hour = 3600000;
+function lum(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+function rgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function assert(cond, msg) {
+  if (!cond) {
+    console.error(msg);
+    process.exit(1);
+  }
+}
+
+const local = localStampToUtc("2026-10-22T22:00", 25200);
+assert(local === Date.parse("2026-10-22T15:00:00Z"), "local stamp " + local);
+
+const rise = Date.parse("2026-06-21T03:30:00Z");
+const sun = {
+  nauticalBegin: rise - 1.6 * hour,
+  civilBegin: rise - 0.7 * hour,
+  sunrise: rise,
+  solarNoon: Date.parse("2026-06-21T12:30:00Z"),
+  sunset: Date.parse("2026-06-21T21:40:00Z"),
+  civilEnd: Date.parse("2026-06-21T22:25:00Z"),
+  nauticalEnd: Date.parse("2026-06-21T23:15:00Z"),
+};
+
+const night = paletteAt(Date.parse("2026-06-21T01:30:00Z"), sun, []);
+assert(lum(night["--bg-base"]) < 0.08, "night " + night["--bg-base"]);
+const [nr, , nb] = rgb(night["--bg-base"]);
+assert(nb > nr, "night is blue-black");
+
+const morning = paletteAt(Date.parse("2026-06-21T05:00:00Z"), sun, []);
+assert(lum(morning["--bg-base"]) > 0.8, "summer 5am " + morning["--bg-base"]);
+const noon = paletteAt(Date.parse("2026-06-21T12:30:00Z"), sun, []);
+const [r, g, b] = rgb(noon["--bg-base"]);
+assert(r > 250 && g > 250 && b > 250, "noon white " + noon["--bg-base"]);
+assert(morning["--bg-base"] !== noon["--bg-base"], "morning is not flat white");
+
+const sunset = paletteAt(sun.sunset, sun, []);
+const [sr, sg, sb] = rgb(sunset["--bg-base"]);
+assert(sr > sg && sg > sb && sr > 180, "sunset " + sunset["--bg-base"]);
+
+const dusk = paletteAt(sun.civilEnd, sun, []);
+const [dr, , db] = rgb(dusk["--bg-base"]);
+assert(lum(dusk["--bg-base"]) < 0.28 && db > dr, "dusk " + dusk["--bg-base"]);
+
+const dawn = paletteAt(sun.sunrise, sun, []);
+const [ar, , ab] = rgb(dawn["--bg-base"]);
+assert(ar > ab && lum(dawn["--bg-base"]) > 0.6, "dawn " + dawn["--bg-base"]);
+
+const soon = paletteAt(sun.sunrise + 10 * 60000, sun, []);
+const later = paletteAt(sun.sunrise + 20 * 60000, sun, []);
+assert(soon["--bg-base"] !== later["--bg-base"], "palette keeps moving");
+const [soonR, soonG, soonB] = rgb(soon["--bg-base"]);
+const [laterR, laterG, laterB] = rgb(later["--bg-base"]);
+assert(Math.abs(soonR - laterR) < 30 && Math.abs(soonG - laterG) < 30 && Math.abs(soonB - laterB) < 30, "smooth");
+
+const winterRise = Date.parse("2026-12-21T08:40:00Z");
+const winter = {
+  nauticalBegin: winterRise - 1.7 * hour,
+  civilBegin: winterRise - 0.8 * hour,
+  sunrise: winterRise,
+  solarNoon: Date.parse("2026-12-21T12:10:00Z"),
+  sunset: Date.parse("2026-12-21T15:40:00Z"),
+  civilEnd: Date.parse("2026-12-21T16:25:00Z"),
+  nauticalEnd: Date.parse("2026-12-21T17:20:00Z"),
+};
+const dark = [];
+for (let h = 0; h < 8; h++) dark.push({ at: Date.parse("2026-12-21T00:00:00Z") + h * hour, watts: 0 });
+const winterMorning = paletteAt(Date.parse("2026-12-21T05:00:00Z"), winter, dark);
+assert(lum(winterMorning["--bg-base"]) < 0.08, "winter 5am " + winterMorning["--bg-base"]);
+
+const bright = [];
+for (let h = 0; h < 24; h++) {
+  const watts = h === 4 ? 40 : h === 5 ? 500 : h === 6 ? 520 : 0;
+  bright.push({ at: Date.parse("2026-12-21T00:00:00Z") + h * hour, watts });
+}
+const lit = paletteAt(Date.parse("2026-12-21T05:00:00Z"), winter, bright);
+assert(lum(lit["--bg-base"]) > 0.55, "bright service " + lit["--bg-base"]);
+
+const t0 = Date.parse("2026-10-22T00:00:00Z");
+const curve = [];
+for (let h = 0; h < 24; h++) curve.push({ at: t0 + h * hour, watts: Math.max(0, 500 - Math.abs(h - 12) * 70) });
+const evening = paletteAt(t0 + 18 * hour, null, curve);
+const [er, eg, eb] = rgb(evening["--bg-base"]);
+assert(er > eg && eg > eb, "radiation sunset " + evening["--bg-base"]);
+const midnight = paletteAt(t0 + 2 * hour, null, curve);
+assert(lum(midnight["--bg-base"]) < 0.12, "radiation night " + midnight["--bg-base"]);
+
+const polarDay = paletteAt(Date.parse("2026-06-21T00:30:00Z"), {
+  sunrise: null, sunset: null, solarNoon: Date.parse("2026-06-21T12:00:00Z"),
+  civilBegin: null, civilEnd: null, nauticalBegin: null, nauticalEnd: null,
+}, []);
+const [pr, pg, pb] = rgb(polarDay["--bg-base"]);
+assert(pr > 250 && pg > 250 && pb > 250, "midnight sun " + polarDay["--bg-base"]);
+
+const polarNoon = Date.parse("2026-12-21T12:00:00Z");
+const polarNight = paletteAt(polarNoon, {
+  sunrise: null, sunset: null, solarNoon: polarNoon,
+  civilBegin: null, civilEnd: null,
+  nauticalBegin: polarNoon - hour, nauticalEnd: polarNoon + hour,
+}, []);
+assert(lum(polarNight["--bg-base"]) < 0.15, "polar night " + polarNight["--bg-base"]);
+"""
+
 from frontend_utils import (
     INBOX_UI_KEYS,
     LOCALES,
@@ -239,9 +353,10 @@ class TestInterfaceVersions:
         from netlazy.config import settings
 
         monkeypatch.setattr(settings, "interface_version", "1")
+        monkeypatch.setattr(settings, "daylight_theme", True)
         response = app_client.get("/api/ui")
         assert response.status_code == 200
-        assert response.json() == {"interface_version": "1"}
+        assert response.json() == {"interface_version": "1", "daylight_theme": True}
 
     def test_served_html_uses_the_configured_version(self):
         from netlazy.main import apply_interface_version
@@ -251,6 +366,47 @@ class TestInterfaceVersions:
         switched = apply_interface_version(stamped, "1")
         assert 'window.__NETLAZY_UI_VERSION__="1"' in switched
         assert switched.count("window.__NETLAZY_UI_VERSION__") == 1
+
+    def test_daylight_defaults_on_and_can_be_stamped_off(self, app_client, monkeypatch):
+        from netlazy.config import Settings, settings
+        from netlazy.main import apply_daylight_theme
+
+        assert Settings.model_fields["daylight_theme"].default is True
+        monkeypatch.setenv("DAYLIGHT_THEME", "0")
+        assert Settings(_env_file=None).daylight_theme is False
+
+        monkeypatch.setattr(settings, "daylight_theme", False)
+        response = app_client.get("/api/ui")
+        assert response.json()["daylight_theme"] is False
+
+        stamped = apply_daylight_theme("<html><head></head><body></body></html>", True)
+        assert 'window.__NETLAZY_DAYLIGHT__="1"' in stamped
+        switched = apply_daylight_theme(stamped, False)
+        assert 'window.__NETLAZY_DAYLIGHT__="0"' in switched
+        assert switched.count("window.__NETLAZY_DAYLIGHT__") == 1
+
+        source = read_text("frontend/src/utils/daylight.js")
+        assert "https://api.sunrise-sunset.org/json" in source
+        assert "shortwave_radiation" in source
+        assert "https://api.open-meteo.com/v1/forecast" in source
+        assert "https://get.geojs.io/v1/ip/geo.json" in source
+        assert "startDaylight" in read_text("frontend/src/store/state.js")
+        assert "body.daylight-live" in read_text("frontend/css/v2.css")
+        assert "__NETLAZY_DAYLIGHT__" in read_text("vite.config.js")
+        allow = (NETLAZY_DIR.parent / "orchestrator.toml").read_text(encoding="utf-8")
+        assert '"DAYLIGHT_THEME"' in allow
+
+    def test_sky_palette_follows_the_light_outside(self, tmp_path):
+        module = (NETLAZY_DIR / "frontend" / "src" / "utils" / "daylight.js").resolve().as_uri()
+        runner = tmp_path / "sky-check.mjs"
+        runner.write_text(SKY_CHECK.replace("__MODULE__", module), encoding="utf-8")
+        completed = subprocess.run(
+            ["node", str(runner)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
 
     def test_version_two_keeps_version_one_markup(self):
         editor = read_text("frontend/src/components/Editor.vue")

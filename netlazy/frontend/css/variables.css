@@ -1,3 +1,15 @@
+@property --bg-base { syntax: "<color>"; inherits: true; initial-value: #000000; }
+@property --bg-surface { syntax: "<color>"; inherits: true; initial-value: #0a0a0a; }
+@property --bg-elevated { syntax: "<color>"; inherits: true; initial-value: #141414; }
+@property --border-subtle { syntax: "<color>"; inherits: true; initial-value: #222222; }
+@property --border-focus { syntax: "<color>"; inherits: true; initial-value: #555555; }
+@property --text-main { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --text-muted { syntax: "<color>"; inherits: true; initial-value: #a3a3a3; }
+@property --accent-moss { syntax: "<color>"; inherits: true; initial-value: #8da970; }
+@property --accent-danger { syntax: "<color>"; inherits: true; initial-value: #bd6a5e; }
+@property --accent-info { syntax: "<color>"; inherits: true; initial-value: #6e9dae; }
+@property --accent-earth { syntax: "<color>"; inherits: true; initial-value: #c7b38a; }
+
 :root {
   --bg-base: #000000;
   --bg-surface: #0a0a0a;

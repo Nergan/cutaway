@@ -7,6 +7,7 @@ import { normalizeBio } from '../utils/bio.js';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { syncDevicePush, removeDevicePush, noteIosPushLimit } from '../utils/push.js';
+import { startDaylight, pauseDaylight, daylightRunning } from '../utils/daylight.js';
 
 const STORAGE_KEY = 'netlazy_state';
 
@@ -147,6 +148,7 @@ export function useStore() {
 
     const state = reactive({ ...defaultState });
     let pollInterval = null;
+    let followDaylight = typeof window === 'undefined' || window.__NETLAZY_DAYLIGHT__ !== '0';
 
     function applyInterfaceVersion(value) {
         state.interfaceVersion = String(value) === '2' ? '2' : '1';
@@ -165,6 +167,7 @@ export function useStore() {
             if (response.ok) {
                 const data = await response.json();
                 applyInterfaceVersion(data.interface_version);
+                if (typeof data.daylight_theme === 'boolean') followDaylight = data.daylight_theme;
                 return;
             }
         } catch (e) {
@@ -355,6 +358,13 @@ export function useStore() {
             else document.body.classList.remove('uf-mode');
             
             state.isInitialized = true;
+            if (followDaylight) {
+                startDaylight({
+                    onLight(light) {
+                        state.theme = light ? 'light' : 'dark';
+                    },
+                });
+            }
             if (state.isRegistered && !state.isBanned) loadPushPreferences();
         }
     }
@@ -405,6 +415,13 @@ export function useStore() {
     }
 
     function toggleTheme() {
+        if (daylightRunning()) {
+            pauseDaylight();
+            const light = document.body.classList.contains('light-theme');
+            state.theme = light ? 'dark' : 'light';
+            document.body.classList.toggle('light-theme', state.theme === 'light');
+            return;
+        }
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         document.body.classList.toggle('light-theme', state.theme === 'light');
     }

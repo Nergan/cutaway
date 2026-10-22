@@ -400,3 +400,69 @@ body.ui-v2 .editor-v2 .mobile-profile-toggle {
     padding: 0.9rem 1.2rem calc(8rem + 65px + env(safe-area-inset-bottom));
   }
 }
+
+/* Sky theme: surfaces follow the animated palette instead of a fixed light or dark fill. */
+body.daylight {
+  transition-property: background-color, color, --bg-base, --bg-surface, --bg-elevated, --border-subtle, --border-focus, --text-main, --text-muted, --accent-moss, --accent-danger, --accent-info, --accent-earth;
+  transition-duration: 1.4s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.daylight-live {
+  transition-duration: 24s;
+  transition-timing-function: linear;
+}
+
+body.daylight .glass-menu,
+body.daylight .tag-search-dropdown,
+body.daylight .glass-menu.lang-dropdown,
+body.daylight .glass-menu.tag-filter-menu,
+body.daylight .floating-tooltip,
+body.daylight .bottom-sheet-box,
+body.daylight .sheet-contact-row,
+body.daylight .custom-select.is-open,
+body.daylight .feed-search-bar,
+body.daylight .feed-search-bar:hover,
+body.daylight .feed-search-bar:focus-within,
+body.ui-v2.daylight .glass-menu,
+body.ui-v2.daylight .tag-search-dropdown,
+body.ui-v2.daylight .glass-menu.lang-dropdown,
+body.ui-v2.daylight .glass-menu.tag-filter-menu,
+body.ui-v2.daylight .floating-tooltip,
+body.ui-v2.daylight .bottom-sheet-box,
+body.ui-v2.daylight .sheet-contact-row,
+body.ui-v2.daylight .custom-select.is-open,
+body.ui-v2.daylight .feed-search-bar,
+body.ui-v2.daylight .feed-search-bar:hover,
+body.ui-v2.daylight .feed-search-bar:focus-within {
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-main);
+}
+
+body.daylight .feed-search-bar:hover,
+body.daylight .feed-search-bar:focus-within,
+body.ui-v2.daylight .feed-search-bar:hover,
+body.ui-v2.daylight .feed-search-bar:focus-within {
+  border-color: var(--accent-moss) !important;
+}
+
+body.daylight .blurred-header::before,
+body.daylight .tag-library-header.blurred-header::before,
+body.ui-v2.daylight .blurred-header::before,
+body.ui-v2.daylight .tag-library-header.blurred-header::before {
+  background: color-mix(in srgb, var(--bg-base) 78%, transparent) !important;
+}
+
+body.daylight .tag-scroll-area .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.daylight #lib-tags-zone .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.daylight #active-tags-zone .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.daylight .profile-tag-header .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.ui-v2.daylight .tag-scroll-area .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.ui-v2.daylight #lib-tags-zone .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.ui-v2.daylight #active-tags-zone .chip:not(.require):not(.exclude):not(.bonus):not(.abonus),
+body.ui-v2.daylight .profile-tag-header .chip:not(.require):not(.exclude):not(.bonus):not(.abonus) {
+  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-main);
+}

@@ -233,6 +233,24 @@ def apply_interface_version(html: str, version: str) -> str:
     return snippet + html
 
 
+def apply_daylight_theme(html: str, enabled: bool) -> str:
+    """Stamp the sky-theme switch so a restart picks it up without a rebuild."""
+    flag = "1" if enabled else "0"
+    assignment = f'window.__NETLAZY_DAYLIGHT__="{flag}"'
+    updated, count = re.subn(
+        r'window\.__NETLAZY_DAYLIGHT__\s*=\s*"[01]"',
+        assignment,
+        html,
+        count=1,
+    )
+    if count:
+        return updated
+    snippet = f"<script>{assignment};</script>"
+    if "</head>" in html:
+        return html.replace("</head>", snippet + "</head>", 1)
+    return snippet + html
+
+
 @router.get("/api")
 async def api_index():
     return {
@@ -274,7 +292,10 @@ async def get_app_version():
 
 @router.get("/api/ui")
 async def ui_config():
-    return {"interface_version": normalize_interface_version(settings.interface_version)}
+    return {
+        "interface_version": normalize_interface_version(settings.interface_version),
+        "daylight_theme": bool(settings.daylight_theme),
+    }
 
 
 @router.get("/api/health")
@@ -340,6 +361,7 @@ async def serve_spa(request: Request, full_path: str = ""):
             index_file.read_text(encoding="utf-8"),
             settings.interface_version,
         )
+        html = apply_daylight_theme(html, settings.daylight_theme)
         return HTMLResponse(content=html)
 
     return HTMLResponse(
