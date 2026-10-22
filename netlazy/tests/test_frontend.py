@@ -418,6 +418,13 @@ class TestInterfaceVersions:
         app = read_text("frontend/src/App.vue")
         feed = read_text("frontend/src/components/Feed.vue")
         assert app.count("store.toggleTheme") == app.count('v-if="!store.state.daylightTheme"')
+        assert "sky-pair" in app
+        sky_pair = css_rule_block(
+            read_text("frontend/css/layout.css"),
+            ".sidebar:not(.sidebar-collapsed) .sidebar-footer.sky-pair",
+        )
+        assert "flex-direction: row" in sky_pair
+        assert "justify-content: center" in sky_pair
         assert feed.count("store.toggleTheme") == feed.count('v-if="!store.state.daylightTheme"')
         assert "state.daylightTheme" in read_text("frontend/src/store/state.js")
         assert "https://get.geojs.io/v1/ip/geo.json" in source

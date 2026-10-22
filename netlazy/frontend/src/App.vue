@@ -98,7 +98,7 @@
             </a>
           </div>
           
-          <div class="sidebar-footer">
+          <div class="sidebar-footer" :class="{ 'sky-pair': store.state.daylightTheme }">
             <div class="sidebar-controls-row">
               <button v-if="!store.state.daylightTheme" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
                 <transition name="fade" mode="out-in">

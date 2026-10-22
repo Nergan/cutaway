@@ -117,6 +117,26 @@ body:not(.uf-mode) .sidebar.non-uf:hover {
   width: 100%;
 }
 
+/* Daylight mode, expanded desktop sidebar: language sits left of the key, and the pair is centered. */
+@media (min-width: 769px) {
+  .sidebar:not(.sidebar-collapsed) .sidebar-footer.sky-pair {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .sidebar:not(.sidebar-collapsed) .sidebar-footer.sky-pair .sidebar-controls-row {
+    width: auto;
+    margin: 0;
+    gap: 0;
+  }
+  .sidebar:not(.sidebar-collapsed) .sidebar-footer.sky-pair .nav-item.vault-item {
+    width: auto;
+    margin: 0;
+    justify-content: flex-start;
+  }
+}
+
 .footer-action { 
   background: none; 
   border: none; 
