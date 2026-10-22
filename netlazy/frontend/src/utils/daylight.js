@@ -1,9 +1,10 @@
 /* Sky palette. Place and date come from the browser, then the light
    outside comes from sunrise-sunset.org and Open-Meteo's shortwave
-   radiation, so a summer 05:00 is already morning. */
+   radiation, so a summer 05:00 is already morning. Clouds and rain
+   cool that light, and each part of the world lends its own tint. */
 
 const HOUR = 60 * 60 * 1000;
-const CACHE_KEY = 'netlazy-daylight-sky';
+const CACHE_KEY = 'netlazy-daylight-sky-v2';
 const PAUSE_KEY = 'netlazy-daylight-paused';
 
 export const COLOR_KEYS = [
@@ -238,20 +239,25 @@ function sampleFrames(now, frames) {
     return SKY[last.name];
 }
 
-function valueAt(samples, now) {
+function spanAt(samples, now) {
     if (!samples || !samples.length) return null;
-    if (now <= samples[0].at) return samples[0].watts;
+    if (now <= samples[0].at) return { a: samples[0], b: samples[0], t: 0 };
     const last = samples[samples.length - 1];
-    if (now >= last.at) return last.watts;
+    if (now >= last.at) return { a: last, b: last, t: 0 };
     for (let i = 0; i < samples.length - 1; i++) {
         const a = samples[i];
         const b = samples[i + 1];
         if (now >= a.at && now <= b.at) {
-            const t = (now - a.at) / (b.at - a.at || 1);
-            return a.watts + (b.watts - a.watts) * t;
+            return { a, b, t: (now - a.at) / (b.at - a.at || 1) };
         }
     }
-    return last.watts;
+    return { a: last, b: last, t: 0 };
+}
+
+function valueAt(samples, now) {
+    const span = spanAt(samples, now);
+    if (!span) return null;
+    return span.a.watts + (span.b.watts - span.a.watts) * span.t;
 }
 
 function lightLevel(samples, now) {
@@ -283,7 +289,148 @@ function paletteFromLight(light, rising) {
     return SKY.day;
 }
 
-export function paletteAt(now, sun, samples = []) {
+// south, north, west, east, tint, amount. Earlier rows win.
+const PLACES = [
+    ['sahara', 16, 31, -17, 36, '#e4c48a', 0.2],
+    ['arabian', 12, 32, 35, 60, '#e2bc90', 0.18],
+    ['sonoran', 31, 36.5, -116, -108, '#e0b888', 0.18],
+    ['gobi', 38, 48, 90, 120, '#d2b48c', 0.16],
+    ['outback', -32, -19, 121, 145, '#e0b07a', 0.2],
+    ['kalahari', -28, -20, 17, 26, '#d7b48a', 0.16],
+    ['atacama', -30, -18, -72, -67, '#d9c4a0', 0.16],
+    ['amazon', -14, 5, -78, -48, '#6f9a5c', 0.2],
+    ['congo', -8, 6, 8, 32, '#678f58', 0.2],
+    ['indonesia', -11, 8, 95, 141, '#5f9460', 0.18],
+    ['taiga', 55, 70, 50, 165, '#6d8f62', 0.16],
+    ['boreal', 50, 64, -141, -70, '#6a8c66', 0.14],
+    ['scandinavia', 58, 71, 4, 32, '#6e9474', 0.14],
+    ['alps', 44, 48.2, 5.5, 16.5, '#9aa8b4', 0.14],
+    ['himalaya', 26, 36, 72, 98, '#8ea0b0', 0.16],
+    ['west-coast', 32, 49, -125, -117, '#7eadc4', 0.16],
+    ['east-coast', 25, 45, -82, -68, '#7eabc2', 0.14],
+    ['great-lakes', 41, 49, -93, -76, '#86b0c4', 0.14],
+    ['rockies', 35, 55, -116, -104, '#97a6b2', 0.12],
+    ['andes', -46, 10, -78, -66, '#8e9eae', 0.14],
+    ['mediterranean', 30, 45, -6, 37, '#c6b48a', 0.12],
+    ['japan', 30, 46, 129, 146, '#7eaaa8', 0.14],
+    ['british-isles', 49, 61, -11, 2, '#8eb4c6', 0.16],
+    ['caribbean', 9, 27, -90, -59, '#6eb8c0', 0.16],
+    ['hawaii', 18, 23, -161, -154, '#6ec4c2', 0.18],
+    ['new-zealand', -48, -34, 166, 179, '#7eae9a', 0.14],
+    ['plains', 31, 49, -104, -95, '#c6be8a', 0.12],
+    ['steppe', 44, 55, 46, 86, '#c8bc84', 0.12],
+    ['greenland', 60, 84, -74, -12, '#c9d8e6', 0.16],
+    ['arctic', 70, 90, -180, 180, '#c5d6e4', 0.16],
+    ['antarctica', -90, -60, -180, 180, '#d5e4f0', 0.18],
+    ['europe', 35, 72, -12, 40, '#d2c8b0', 0.1],
+    ['north-africa', 8, 37, -18, 40, '#dcc49a', 0.14],
+    ['central-africa', -12, 8, -18, 42, '#6e945c', 0.16],
+    ['southern-africa', -35, -12, 10, 42, '#c2b484', 0.12],
+    ['middle-east', 12, 42, 32, 64, '#e0c49a', 0.16],
+    ['south-asia', 5, 36, 60, 95, '#d2c09a', 0.12],
+    ['east-asia', 20, 54, 100, 146, '#b7c6a6', 0.1],
+    ['southeast-asia', -10, 23, 92, 152, '#6f9864', 0.16],
+    ['north-asia', 45, 75, 40, 180, '#8aa484', 0.12],
+    ['north-america', 24, 72, -168, -52, '#a8b89a', 0.1],
+    ['central-america', 7, 24, -110, -77, '#6e9860', 0.16],
+    ['south-america', -56, 13, -82, -34, '#7ea06a', 0.14],
+    ['australia', -44, -10, 112, 154, '#c6b48a', 0.12],
+];
+
+const WEATHER = {
+    cloud: { light: '#c3ced8', dark: '#141c28', amount: 0.32 },
+    rain: { light: '#6a84a0', dark: '#152844', amount: 0.58 },
+    storm: { light: '#4e6884', dark: '#101a2c', amount: 0.7 },
+    snow: { light: '#d5e2f0', dark: '#1c2838', amount: 0.4 },
+    fog: { light: '#c5ced6', dark: '#1a222c', amount: 0.46 },
+};
+
+function inBox(lat, lon, south, north, west, east) {
+    if (lat < south || lat > north) return false;
+    if (west <= east) return lon >= west && lon <= east;
+    return lon >= west || lon <= east;
+}
+
+export function regionFor(lat, lon) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    for (const place of PLACES) {
+        if (inBox(lat, lon, place[1], place[2], place[3], place[4])) {
+            return { id: place[0], tint: place[5], amount: place[6] };
+        }
+    }
+    return { id: 'ocean', tint: '#8eb6c8', amount: 0.14 };
+}
+
+function tintSurfaces(colors, hex, amount) {
+    if (!hex || amount <= 0) return colors;
+    const tinted = { ...colors };
+    for (const key of ['--bg-base', '--bg-surface', '--bg-elevated', '--border-subtle']) {
+        tinted[key] = mixHex(colors[key], hex, amount);
+    }
+    tinted['--accent-earth'] = mixHex(colors['--accent-earth'], hex, Math.min(0.45, amount));
+    return tinted;
+}
+
+function applyRegion(colors, lat, lon) {
+    const region = regionFor(lat, lon);
+    if (!region) return colors;
+    return tintSurfaces(colors, region.tint, region.amount);
+}
+
+function sampleWeather(samples, now) {
+    if (!samples || !samples.some(sample => Number.isFinite(sample.cloud) || Number.isFinite(sample.code))) return null;
+    const span = spanAt(samples, now);
+    if (!span) return null;
+    const num = (value, fallback) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    return {
+        cloud: num(span.a.cloud, 0) + (num(span.b.cloud, 0) - num(span.a.cloud, 0)) * span.t,
+        rain: num(span.a.rain, 0) + (num(span.b.rain, 0) - num(span.a.rain, 0)) * span.t,
+        code: span.t < 0.5 ? span.a.code : span.b.code,
+    };
+}
+
+function weatherSpec(weather) {
+    const code = Math.round(Number(weather.code) || 0);
+    const cloud = Math.max(0, Math.min(100, Number(weather.cloud) || 0));
+    const rain = Math.max(0, Number(weather.rain) || 0);
+    if (code >= 95) return WEATHER.storm;
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return WEATHER.snow;
+    if (code === 45 || code === 48) return WEATHER.fog;
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || rain >= 0.2) {
+        if (code >= 65 || code === 67 || code === 82 || rain >= 4) return WEATHER.storm;
+        return WEATHER.rain;
+    }
+    if (code === 3 || cloud >= 85) return WEATHER.cloud;
+    if (code === 2 || cloud >= 55) {
+        return { ...WEATHER.cloud, amount: WEATHER.cloud.amount * (0.45 + cloud / 220) };
+    }
+    return null;
+}
+
+function applyWeather(colors, weather) {
+    const spec = weather && weatherSpec(weather);
+    if (!spec) return colors;
+    const dark = relLuminance(colors['--bg-base']) < 0.35;
+    const amount = dark ? spec.amount * 0.55 : spec.amount;
+    return tintSurfaces(colors, dark ? spec.dark : spec.light, amount);
+}
+
+function settleText(colors) {
+    const bg = relLuminance(colors['--bg-base']);
+    const text = relLuminance(colors['--text-main']);
+    if (text < 0.45 && bg < 0.2) {
+        return { ...colors, '--text-main': '#f3efe6', '--text-muted': '#c5ced8' };
+    }
+    if (text >= 0.45 && bg > 0.72) {
+        return { ...colors, '--text-main': '#232323', '--text-muted': '#5c6570' };
+    }
+    return colors;
+}
+
+export function paletteAt(now, sun, samples = [], place = null) {
     const light = lightLevel(samples, now);
     const rising = isRising(samples, now);
     const frames = skyFrames(sun);
@@ -293,7 +440,9 @@ export function paletteAt(now, sun, samples = []) {
         const t = Math.min(1, (light - 0.22) / 0.5);
         colors = mixPalettes(colors, paletteFromLight(light, rising), t);
     }
-    return colors;
+    if (place) colors = applyRegion(colors, Number(place.lat), Number(place.lon));
+    colors = applyWeather(colors, sampleWeather(samples, now));
+    return settleText(colors);
 }
 
 function browserTz() {
@@ -405,25 +554,38 @@ async function fetchSun(place) {
     return sun;
 }
 
-function readRadiation(payload) {
-    const times = payload && payload.hourly && payload.hourly.time;
-    const watts = payload && payload.hourly && payload.hourly.shortwave_radiation;
+function readForecast(payload) {
+    const hourly = payload && payload.hourly;
+    const times = hourly && hourly.time;
+    const watts = hourly && hourly.shortwave_radiation;
     if (!Array.isArray(times) || !Array.isArray(watts)) return [];
+    const clouds = hourly.cloud_cover || [];
+    const rain = hourly.precipitation || [];
+    const codes = hourly.weather_code || [];
     const offset = Number(payload.utc_offset_seconds) || 0;
     const samples = [];
     for (let i = 0; i < times.length; i++) {
         const value = Number(watts[i]);
         const at = localStampToUtc(times[i], offset);
         if (!Number.isFinite(at) || !Number.isFinite(value)) continue;
-        samples.push({ at, watts: Math.max(0, value) });
+        const cloud = Number(clouds[i]);
+        const wet = Number(rain[i]);
+        const code = Number(codes[i]);
+        samples.push({
+            at,
+            watts: Math.max(0, value),
+            cloud: Number.isFinite(cloud) ? cloud : 0,
+            rain: Number.isFinite(wet) ? Math.max(0, wet) : 0,
+            code: Number.isFinite(code) ? code : 0,
+        });
     }
     samples.sort((a, b) => a.at - b.at);
     return samples;
 }
 
-async function fetchRadiation(place) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&hourly=shortwave_radiation&timezone=auto&forecast_days=2&past_days=1`;
-    return readRadiation(await fetchJson(url));
+async function fetchForecast(place) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&hourly=shortwave_radiation,cloud_cover,precipitation,weather_code&timezone=auto&forecast_days=2&past_days=1`;
+    return readForecast(await fetchJson(url));
 }
 
 async function loadSky() {
@@ -436,7 +598,7 @@ async function loadSky() {
     const place = await locate(tzGuess);
     const [sun, samples] = await Promise.all([
         fetchSun(place).catch(() => null),
-        fetchRadiation(place).catch(() => []),
+        fetchForecast(place).catch(() => []),
     ]);
     if (!sun && (!samples || !samples.length)) return cached;
     const sky = {
@@ -493,7 +655,7 @@ async function tick() {
     try {
         const sky = await loadSky();
         if (paused) return;
-        const colors = sky ? paletteAt(Date.now(), sky.sun, sky.samples || []) : null;
+        const colors = sky ? paletteAt(Date.now(), sky.sun, sky.samples || [], sky) : null;
         if (!colors) {
             misses += 1;
             if (misses >= 3 && !painted) stopQuietly();

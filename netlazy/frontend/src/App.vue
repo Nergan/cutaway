@@ -16,7 +16,7 @@
 
     <div v-else-if="store.state.isBanned" class="welcome-container">
       <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
-        <button class="footer-action icon-btn" @click="store.toggleTheme">
+        <button v-if="!store.state.daylightTheme" class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
@@ -40,7 +40,7 @@
 
     <div v-else-if="!store.state.isRegistered && store.state.currentView !== 'feed'" class="welcome-container">
       <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 1rem; z-index: 100;">
-        <button class="footer-action icon-btn" @click="store.toggleTheme">
+        <button v-if="!store.state.daylightTheme" class="footer-action icon-btn" @click="store.toggleTheme">
           <transition name="fade" mode="out-in">
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
           </transition>
@@ -100,7 +100,7 @@
           
           <div class="sidebar-footer">
             <div class="sidebar-controls-row">
-              <button class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+              <button v-if="!store.state.daylightTheme" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
                 <transition name="fade" mode="out-in">
                   <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                 </transition>
@@ -147,7 +147,7 @@
                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;" class="mobile-only-settings">
                    <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-main); font-weight: 600;">{{ store.t('identity_vault') }}</h2>
                    <div style="display: flex; gap: 1.5rem;">
-                       <button class="footer-action icon-btn" @click="store.toggleTheme">
+                       <button v-if="!store.state.daylightTheme" class="footer-action icon-btn" @click="store.toggleTheme">
                          <transition name="fade" mode="out-in">
                            <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'" :key="store.state.theme"></i>
                          </transition>

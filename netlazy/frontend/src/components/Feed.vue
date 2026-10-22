@@ -211,7 +211,7 @@
               <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
             </button>
             <div class="guest-mini-actions" @click.stop>
-              <button type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+              <button v-if="!store.state.daylightTheme" type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
                 <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
               </button>
               <button type="button" class="footer-action lang-btn icon-btn" @click.stop="openGuestLangMenu" :title="store.t('lang')">
@@ -326,7 +326,7 @@
           <i class="bi bi-lightning-charge"></i> {{ store.t('create_account') }}
         </button>
         <div class="guest-mini-actions">
-          <button type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
+          <button v-if="!store.state.daylightTheme" type="button" class="footer-action icon-btn" @click="store.toggleTheme" :title="store.state.theme === 'dark' ? store.t('light_mode') : store.t('dark_mode')">
             <i class="bi" :class="store.state.theme === 'dark' ? 'bi-sun' : 'bi-moon'"></i>
           </button>
           <button type="button" class="footer-action lang-btn icon-btn" @click.stop="openGuestLangMenu" :title="store.t('lang')">

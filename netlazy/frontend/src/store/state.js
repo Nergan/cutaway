@@ -148,7 +148,8 @@ export function useStore() {
 
     const state = reactive({ ...defaultState });
     let pollInterval = null;
-    let followDaylight = typeof window === 'undefined' || window.__NETLAZY_DAYLIGHT__ !== '0';
+    state.daylightTheme = typeof window === 'undefined' || window.__NETLAZY_DAYLIGHT__ !== '0';
+    let followDaylight = state.daylightTheme;
 
     function applyInterfaceVersion(value) {
         state.interfaceVersion = String(value) === '2' ? '2' : '1';
@@ -167,7 +168,10 @@ export function useStore() {
             if (response.ok) {
                 const data = await response.json();
                 applyInterfaceVersion(data.interface_version);
-                if (typeof data.daylight_theme === 'boolean') followDaylight = data.daylight_theme;
+                if (typeof data.daylight_theme === 'boolean') {
+                    followDaylight = data.daylight_theme;
+                    state.daylightTheme = data.daylight_theme;
+                }
                 return;
             }
         } catch (e) {

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from netlazy.presentation.inbox_router import InboxItemResponse
 SKY_CHECK = r"""
-import { paletteAt, localStampToUtc } from "__MODULE__";
+import { paletteAt, localStampToUtc, regionFor } from "__MODULE__";
 
 const hour = 3600000;
 function lum(hex) {
@@ -120,6 +120,32 @@ const polarNight = paletteAt(polarNoon, {
   nauticalBegin: polarNoon - hour, nauticalEnd: polarNoon + hour,
 }, []);
 assert(lum(polarNight["--bg-base"]) < 0.15, "polar night " + polarNight["--bg-base"]);
+
+const noonAt = Date.parse("2026-06-21T12:30:00Z");
+const dry = paletteAt(noonAt, sun, [], { lat: 52.5, lon: 13.4 });
+const wetSamples = [];
+for (let h = 0; h < 24; h++) {
+  wetSamples.push({ at: Date.parse("2026-06-21T00:00:00Z") + h * hour, watts: 40, cloud: 100, rain: 3, code: 63 });
+}
+const wet = paletteAt(noonAt, sun, wetSamples, { lat: 52.5, lon: 13.4 });
+const [wetR, , wetB] = rgb(wet["--bg-base"]);
+const [dryR, , dryB] = rgb(dry["--bg-base"]);
+assert(lum(wet["--bg-base"]) < lum(dry["--bg-base"]) - 0.08, "rain dims " + wet["--bg-base"]);
+assert(wetB - wetR > dryB - dryR + 8, "rain is bluer " + wet["--bg-base"]);
+
+const sand = paletteAt(noonAt, sun, [], { lat: 24, lon: 10 });
+const forest = paletteAt(noonAt, sun, [], { lat: -3, lon: -60 });
+const sea = paletteAt(noonAt, sun, [], { lat: 54, lon: -1 });
+const [sr2, sg2, sb2] = rgb(sand["--bg-base"]);
+const [fr, fg, fb] = rgb(forest["--bg-base"]);
+const [seaR, , seaB] = rgb(sea["--bg-base"]);
+assert(regionFor(24, 10).id === "sahara", "sahara");
+assert(regionFor(-3, -60).id === "amazon", "amazon");
+assert(regionFor(54, -1).id === "british-isles", "sea");
+assert(regionFor(0, -30).id === "ocean", "ocean");
+assert(sr2 - sb2 > fr - fb, "desert warmer than forest");
+assert(fg - fr > sg2 - sr2, "forest greener than desert");
+assert(seaB - seaR > sb2 - sr2, "coast bluer than desert");
 """
 
 from frontend_utils import (
@@ -387,8 +413,13 @@ class TestInterfaceVersions:
 
         source = read_text("frontend/src/utils/daylight.js")
         assert "https://api.sunrise-sunset.org/json" in source
-        assert "shortwave_radiation" in source
+        assert "shortwave_radiation,cloud_cover,precipitation,weather_code" in source
         assert "https://api.open-meteo.com/v1/forecast" in source
+        app = read_text("frontend/src/App.vue")
+        feed = read_text("frontend/src/components/Feed.vue")
+        assert app.count("store.toggleTheme") == app.count('v-if="!store.state.daylightTheme"')
+        assert feed.count("store.toggleTheme") == feed.count('v-if="!store.state.daylightTheme"')
+        assert "state.daylightTheme" in read_text("frontend/src/store/state.js")
         assert "https://get.geojs.io/v1/ip/geo.json" in source
         assert "startDaylight" in read_text("frontend/src/store/state.js")
         assert "body.daylight-live" in read_text("frontend/css/v2.css")
