@@ -13,7 +13,7 @@ COPY core/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/xhttp-origin ./cmd/xhttp-origin \
  && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/reality-origin ./cmd/reality-origin
 
-FROM python:3.12-slim
+FROM python:3.14.9-slim
 
 WORKDIR /app
 

@@ -8,7 +8,7 @@ from formular.core.graph import find_shortest_path
 
 def _pdf_tools():
     """PyMuPDF is a formular dependency. The hub test env installs it for these checks."""
-    fitz = pytest.importorskip("fitz")
+    fitz = pytest.importorskip("pymupdf")
     pytest.importorskip("PIL")
     from PIL import Image
 

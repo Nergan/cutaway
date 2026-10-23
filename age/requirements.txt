@@ -13,8 +13,8 @@
 #
 # Versions match the root requirements.txt exactly, so this project can never drag a
 # neighbour's worker environment sideways.
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-motor==3.6.0
-pymongo==4.9.2
-websockets
+fastapi==0.161.1
+uvicorn[standard]==0.54.0
+motor==3.7.1
+pymongo==4.19.0
+websockets==17.3

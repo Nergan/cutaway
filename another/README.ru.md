@@ -63,7 +63,7 @@
 │   │   ├── domain/         # Сервис challenge-response, VLESS парсер, политика банов
 │   │   └── handlers/       # Эндпоинты: /nonce, /auth, /enroll, /proxy, /xhttp
 │   └── wrangler.toml       # Конфигурация воркера и биндингов Cloudflare
-├── control-plane-admin/    # Origin API, монитор и портал выдачи (Python 3.12 / FastAPI)
+├── control-plane-admin/    # Origin API, монитор и портал выдачи (Python 3.14 / FastAPI)
 │   ├── another_admin/
 │   │   ├── adapters/       # Асинхронный Mongo store, шифрование keyfile, интеграция с CI
 │   │   ├── api/            # Подписанные команды админки, внутренний прокси воркера, веб-портал

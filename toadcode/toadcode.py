@@ -9,6 +9,7 @@ import secrets
 import urllib.request
 import uuid
 import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Request, HTTPException, Response
@@ -281,10 +282,18 @@ async def _write_files(code_id: str, files: list) -> dict:
     return doc
 
 
-@router.on_event("startup")
 async def create_indexes():
     await codes_collection.create_index("hash", unique=True, sparse=True)
     await codes_collection.create_index("code_id", unique=True)
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    await create_indexes()
+    yield
+
+
+router.lifespan_context = _lifespan
 
 @router.get('/', response_class=HTMLResponse, name='toad_root')
 async def toadpage(request: Request):

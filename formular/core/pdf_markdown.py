@@ -14,7 +14,7 @@ import io
 import re
 from dataclasses import dataclass
 
-import fitz
+import pymupdf as fitz
 from PIL import Image, ImageStat
 
 from formular.core.image_host import upload_image

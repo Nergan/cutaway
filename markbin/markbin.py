@@ -1,6 +1,7 @@
 import sys
 import uuid
 import hashlib
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from pathlib import Path
@@ -37,12 +38,20 @@ class DocRequest(BaseModel):
     content: str = Field(..., max_length=MAX_DOC_CHARS)
     ttl_seconds: Optional[int] = Field(None, ge=0, le=MAX_TTL_SECONDS)
 
-@router.on_event("startup")
 async def create_indexes():
     await codes_collection.create_index("hash", unique=True, sparse=True)
     await codes_collection.create_index("uuid", unique=True)
     # Native MongoDB TTL cleanup: automatically deletes documents when 'expires_at' is reached
     await codes_collection.create_index("expires_at", expireAfterSeconds=0)
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    await create_indexes()
+    yield
+
+
+router.lifespan_context = _lifespan
 
 def _document_href(doc_id: str) -> str:
     return f"/markbin/api/docs/{doc_id}"

@@ -1,6 +1,6 @@
 FROM node:20-bookworm-slim AS nodejs
 
-FROM python:3.11-slim
+FROM python:3.14.9-slim
 
 ARG CUTAWAY_PROFILE=hf
 ARG CUTAWAY_ISOLATION=isolated

@@ -3,7 +3,7 @@
 **EVENFEST** — сайт для сообщества. Проект выполнен на **FastAPI** с серверными шаблонами **Jinja2** и индивидуальным дизайном.
 
 ## Технологический стек
-- **Backend**: Python 3.11+, FastAPI
+- **Backend**: Python 3.14, FastAPI
 - **Шаблонизация**: Jinja2
 - **База данных**: MongoDB (через `motor`)
 - **Frontend**: Bootstrap 5 (тема Darkly), Bootstrap Icons, кастомный CSS3

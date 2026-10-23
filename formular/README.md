@@ -49,6 +49,6 @@ The Russian design notes for a later workspace API are in [`docs/05-api.md`](doc
 A conceptual redesign (shared workspace, background jobs, public API, AI operations) is documented in [`docs/`](docs/README.md) (in Russian). AI agents should start with [`AGENTS.md`](AGENTS.md). Speech to text and text to speech are already in the current interface.
 
 ## Technology Stack
-- **Backend Environment:** FastAPI, Python 3.11, Docker (Debian Slim)
+- **Backend Environment:** FastAPI, Python 3.14, Docker (Debian Slim)
 - **Conversion Engines:** LibreOffice (headless), Pandoc, PyMuPDF, FFmpeg, DjvuLibre, xmltodict.
 - **Frontend UI:** Vanilla JavaScript, CSS3. Features global lasso-selection algorithms, bulk execution limits, and multi-file drag and drop arrays. Built to run fluidly at 100vh scaling.

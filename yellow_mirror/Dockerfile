@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.14.9-slim
 
 ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99

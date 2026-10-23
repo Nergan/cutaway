@@ -6,7 +6,7 @@
 
 ## 1. Устройство
 
-### Бэкенд (FastAPI, Python 3.11)
+### Бэкенд (FastAPI, Python 3.14)
 - `formular.py` — роутер проекта: `/` отдаёт `index.html`, `/api` подключает `api/endpoints.py`, все остальные пути редиректятся на корень. Хаб монтирует роутер на `/formular`.
 - `main.py` — отдельный запуск вне экосистемы: `python main.py --web` (uvicorn) или десктопный режим через Eel.
 - `api/endpoints.py`:

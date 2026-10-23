@@ -5,7 +5,7 @@
 # CLI (cli/main.py) — ad-hoc инструмент администратора, обычно запускается
 # локально через `pip install -e .` (см. README.md), контейнер ему не нужен.
 
-FROM python:3.12-slim AS base
+FROM python:3.14.9-slim AS base
 
 WORKDIR /app
 

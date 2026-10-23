@@ -1,22 +1,21 @@
-# Ядро монолита.
+# Ядро монолита. Python 3.14: это последняя стабильная ветка, на которую
+# есть колёса всех библиотек репозитория (3.15 режут aiogram и sherpa-onnx).
+# pydantic остаётся на 2.13: aiogram 3.31 не принимает 2.14.
 #
-# build.sh ставит плагины ПОСЛЕ корня и по алфавиту, поэтому последний пин
-# побеждает. Версии ниже — это то, что реально остаётся установленным после
-# полного прогона build.sh (жёстче всех пинит netlazy). Раньше здесь стояли
-# fastapi==0.104.1 / motor==3.3.2 / pymongo==4.5.0, которые всё равно
-# затирались netlazy — сборка каждый раз ставила и сносила лишние версии.
-# Меняя что-то здесь, сверься с netlazy/requirements.txt.
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-python-dotenv==1.0.0
-motor==3.6.0
-jinja2==3.1.2
-pydantic>=2.7
-pymongo==4.9.2
-httpx
-python-multipart>=0.0.9
-websockets
-psutil
-cloudinary==1.41.0
-Pillow>=10.0.0
-cryptography>=42.0.0
+# build.sh ставит корень, затем requirements проекта. Жёсткий старый пин
+# в проекте затирает более новую версию корня, поэтому те же версии
+# повторены в каждом requirements.txt.
+fastapi==0.161.1
+uvicorn[standard]==0.54.0
+python-dotenv==1.2.4
+motor==3.7.1
+jinja2==3.1.6
+pydantic==2.13.5
+pymongo==4.19.0
+httpx==0.28.1
+python-multipart==0.0.32
+websockets==17.3
+psutil==7.2.2
+cloudinary==1.46.3
+Pillow==13.0.0
+cryptography==50.0.2

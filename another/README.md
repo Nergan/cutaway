@@ -53,7 +53,7 @@ The project is structured around a Hexagonal (Ports & Adapters) architecture acr
 │   │   ├── domain/         # Challenge-response logic, VLESS parser, Ban policy
 │   │   └── handlers/       # Endpoints: /nonce, /auth, /enroll, /proxy, /xhttp
 │   └── wrangler.toml       # Cloudflare Worker configuration & KV/DO bindings
-├── control-plane-admin/    # Origin API, Admin Monitor & Distribution Portal (Python 3.12 / FastAPI)
+├── control-plane-admin/    # Origin API, Admin Monitor & Distribution Portal (Python 3.14 / FastAPI)
 │   ├── another_admin/
 │   │   ├── adapters/       # Async Mongo store, Keyfile encryption, GitHub Dispatch
 │   │   ├── api/            # Signed admin commands, internal edge proxy, user portal

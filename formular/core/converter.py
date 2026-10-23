@@ -6,7 +6,7 @@ import pathlib
 import re
 import pandas as pd
 import pypandoc
-import fitz
+import pymupdf as fitz
 from PIL import Image
 import cairosvg
 import json
