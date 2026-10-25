@@ -79,7 +79,10 @@ def test_added_tags_are_localized_and_visible():
 
 def test_compound_aliases_and_search_only_facets():
     path = Path(__file__).resolve().parents[1] / "tags.yaml"
-    tags = {tag.name: tag for tag in YamlTagLoader().load_tags(str(path))}
+    loaded = YamlTagLoader().load_tags(str(path))
+    names = [tag.name for tag in loaded]
+    assert len(names) == len(set(names))
+    tags = {tag.name: tag for tag in loaded}
 
     def names_for(query):
         found = []
@@ -96,6 +99,16 @@ def test_compound_aliases_and_search_only_facets():
     assert "location" in {alias.lower() for alias in tags["moscow"].aliases}
     assert tags["moscow"].hidden is True
     assert tags["18 years old"].hidden is True
+    fetish = names_for("fetish")
+    assert "submissive" in fetish
+    assert "foot fetish" in fetish
+    assert "mommy fetish" in fetish
+    assert "daddy fetish" in fetish
+    assert "roleplay (fetish)" in fetish
+    assert len(fetish) <= 40
+    assert tags["foot fetish"].hidden is True
+    assert tags["foot fetish"].i18n["ru"] == "футфетиш"
+    assert "dild" not in {alias.lower() for alias in tags["daddy fetish"].aliases}
     assert "femdom" in {alias.lower() for alias in tags["girl"].aliases}
     assert "femdom" in {alias.lower() for alias in tags["dominant"].aliases}
     assert "kitten" in {alias.lower() for alias in tags["cats"].aliases}

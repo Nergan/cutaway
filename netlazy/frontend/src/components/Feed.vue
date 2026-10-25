@@ -12,7 +12,7 @@
             <div class="glass-menu tag-search-dropdown" v-if="filterText && (visibleSearchTags.length > 0 || isV2)" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <div v-if="isV2 && visibleSearchTags.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
               <transition-group name="tag-list" tag="div" v-else>
-                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 15)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" :data-tooltip="store.tagTip(tag) || null" @click="handleDropdownTagClick(tag)">
+                <div class="glass-option dropdown-tag-row" v-for="(tag, idx) in visibleSearchTags.slice(0, 40)" :key="'ac-'+tag.name" :class="{'highlighted-option': idx === highlightIndex, 'mobile-active': activeMobileTag === tag.name}" :data-tooltip="store.tagTip(tag) || null" @click="handleDropdownTagClick(tag)">
                   <span class="dropdown-tag-name"><span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span></span>
                   <div class="dropdown-tag-filters" @click.stop>
                       <button class="inline-filter-btn require" :class="{active: tag.state === 'require'}" @click.stop="setTagStateInline(tag, 'require')">
@@ -581,13 +581,13 @@ function handleResize() {
 }
 
 function navigateTags(dir) {
-    const list = visibleSearchTags.value.slice(0, 15);
+    const list = visibleSearchTags.value.slice(0, 40);
     if (!list.length) return;
     highlightIndex.value = (highlightIndex.value + dir + list.length) % list.length;
 }
 
 function selectHighlightedTag() {
-    const list = visibleSearchTags.value.slice(0, 15);
+    const list = visibleSearchTags.value.slice(0, 40);
     if (highlightIndex.value >= 0 && highlightIndex.value < list.length) {
         selectTagFromAutocomplete(list[highlightIndex.value]);
     }

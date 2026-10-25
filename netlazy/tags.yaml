@@ -838,7 +838,7 @@ tags:
       zh: "不抽電子煙"
       ja: "ベイプは吸わない"
       ko: "전자담배는 안 핌"
-    aliases: ["не вейпит", "no vape", "не вейплю", "clean", "não vaper", "не", "não", "non-vaper", "вейпит", "不抽電子菸", "電子タバコ吸わない", "전자담배 안함", "非電子菸使用者", "非ベイパー", "비베이퍼"]
+    aliases: ["не вейпит", "no vape", "не вейплю", "clean", "não vaper", "non-vaper", "вейпит", "不抽電子菸", "電子タバコ吸わない", "전자담배 안함", "非電子菸使用者", "非ベイパー", "비베이퍼"]
 - name:
     en: "drinks alcohol"
     ru: "пьет алкоголь"
@@ -868,7 +868,7 @@ tags:
       zh: "不喝酒"
       ja: "お酒は飲まない"
       ko: "술은 안 마심"
-    aliases: ["не пьет алкоголь", "пьет", "doesn't", "не", "teetotaler", "doesn't drink alcohol", "bebe", "алкоголь", "álcool", "não", "трезвенник", "no drink", "sober", "não bebe álcool", "sóbrio", "зож", "straight edge", "sxe", "непьющий", "não bebo", "不喝酒", "禁酒", "お酒飲まない", "ノンアル", "금주", "술 안마심", "무음주", "teetotal", "не пью", "不飲酒", "お酒を飲まない", "비음주"]
+    aliases: ["не пьет алкоголь", "пьет", "teetotaler", "doesn't drink alcohol", "bebe", "алкоголь", "álcool", "трезвенник", "no drink", "sober", "não bebe álcool", "sóbrio", "зож", "straight edge", "sxe", "непьющий", "não bebo", "不喝酒", "禁酒", "お酒飲まない", "ノンアル", "금주", "술 안마심", "무음주", "teetotal", "не пью", "不飲酒", "お酒を飲まない", "비음주"]
 - name:
     en: "has a dog"
     ru: "есть собака"
@@ -883,7 +883,7 @@ tags:
       zh: "養狗"
       ja: "犬を飼ってる"
       ko: "개를 키움"
-    aliases: ["cão", "есть собака", "tem um cachorro", "tem", "has a dog", "um", "пёс", "puppy", "cachorro", "есть", "собака", "cachorrinho", "собачка", "пёсель", "псина", "dogs", "養狗", "有狗", "狗狗", "犬飼い", "愛犬", "개 키움", "반려견", "강아지", "dog person", "собачник", "犬を飼っている", "강아지 키움"]
+    aliases: ["cão", "есть собака", "tem um cachorro", "has a dog", "пёс", "puppy", "cachorro", "собака", "cachorrinho", "собачка", "пёсель", "псина", "dogs", "養狗", "有狗", "狗狗", "犬飼い", "愛犬", "개 키움", "반려견", "강아지", "dog person", "собачник", "犬を飼っている", "강아지 키움"]
 - name:
     en: "dislikes dogs but loves animals"
     ru: "не любит собак, но любит животных"
@@ -898,7 +898,7 @@ tags:
       zh: "不喜歡狗, 喜歡別的動物"
       ja: "犬は苦手, 他の動物は好き"
       ko: "개는 싫고 다른 동물은 좋아함"
-    aliases: ["любит", "dislikes dogs but loves animals", "de", "gosta", "не любит собак, но любит животных", "ama", "собак", "не", "mas", "cães", "животные", "но", "animais", "não gosta de cães, mas ama animais", "cats", "животных", "não", "кошки", "討厭狗但愛動物", "犬嫌いだけど動物好き", "개는 싫지만 동물은 좋음", "不喜歡狗但喜歡動物", "犬は苦手だけど動物好き", "개는 안 좋아하지만 동물은 좋아함"]
+    aliases: ["dislikes dogs but loves animals", "не любит собак, но любит животных", "собак", "cães", "животные", "animais", "não gosta de cães, mas ama animais", "животных", "討厭狗但愛動物", "犬嫌いだけど動物好き", "개는 싫지만 동물은 좋음", "不喜歡狗但喜歡動物", "犬は苦手だけど動物好き", "개는 안 좋아하지만 동물은 좋아함"]
 - name:
     en: "loves caring for animals"
     ru: "любит ухаживать за животными"
@@ -958,7 +958,7 @@ tags:
       zh: "只是性, 不談戀愛"
       ja: "恋愛なしでセックスだけ"
       ko: "연애 없이 섹스만"
-    aliases: ["foda", "отношения только для секса", "relacionamento", "fwb", "sex-only relationship", "ons", "секстрога", "секс", "секса", "отношения", "sexual", "только", "apenas relacionamento sexual", "для", "apenas", "セフレ", "파트너", "섹파", "hookup", "one night stand", "friends with benefits", "секс на одну ночь", "純性關係", "セフレ関係", "육체적인 관계"]
+    aliases: ["foda", "отношения только для секса", "relacionamento", "fwb", "sex-only relationship", "ons", "секстрога", "секс", "секса", "отношения", "sexual", "apenas relacionamento sexual", "セフレ", "파트너", "섹파", "hookup", "one night stand", "friends with benefits", "секс на одну ночь", "純性關係", "セフレ関係", "육체적인 관계"]
 - name:
     en: "one-off chat"
     ru: "одноразовый чат"
@@ -1186,7 +1186,7 @@ tags:
     aliases: ["sit", "facesitting", "facesit", "fetish", "顏面騎乘", "顏騎", "顔乗せ", "フェイスシッティング", "얼굴 깔고앉기", "페이스시팅"]
 - name:
     en: "foot fetish"
-    ru: "foor fetish"
+    ru: "футфетиш"
     pt: "fetiche por pés"
     zh: "戀足癖"
     ja: "足フェチ"
@@ -1198,7 +1198,7 @@ tags:
       zh: "有戀足癖"
       ja: "足フェチ"
       ko: "발 페티시"
-    aliases: ["feet", "toes", "foot fetish", "戀足癖", "戀足", "足控", "足フェチ", "足裏フェチ", "발 페티시", "풋페티시", "발성애자", "ноги", "ступни", "foor fetish", "fetiche por pés"]
+    aliases: ["feet", "toes", "foot fetish", "fetish", "футфетиш", "戀足癖", "戀足", "足控", "足フェチ", "足裏フェチ", "발 페티시", "풋페티시", "발성애자", "ноги", "ступни", "fetiche por pés"]
 - name:
     en: "chubby"
     ru: "chubby"
@@ -1258,7 +1258,7 @@ tags:
       zh: "喜歡媽媽型"
       ja: "ママフェチ"
       ko: "마미 페티시"
-    aliases: ["milf", "age", "mommy fetish", "母性情結", "媽咪控", "バブみ", "ママフェチ", "마미 페티시", "바부미", "mommy dom", "mommy domme", "cougar", "милфа", "fetiche de mamãe", "バブみ / ママフェチ"]
+    aliases: ["milf", "age", "fetish", "mommy fetish", "母性情結", "媽咪控", "バブみ", "ママフェチ", "마미 페티시", "바부미", "mommy dom", "mommy domme", "cougar", "милфа", "fetiche de mamãe", "バブみ / ママフェチ"]
 - name:
     en: "daddy fetish"
     ru: "daddy fetish"
@@ -1273,7 +1273,7 @@ tags:
       zh: "喜歡爸爸型"
       ja: "パパフェチ"
       ko: "대디 페티시"
-    aliases: ["daddy fetish", "dild", "age", "父親情結", "大叔控", "おじさんフェチ", "ダディフェチ", "대디 페티시", "daddy dom", "dilf", "дилф", "fetiche de papai", "父性情結"]
+    aliases: ["daddy fetish", "age", "fetish", "父親情結", "大叔控", "おじさんフェチ", "ダディフェチ", "대디 페티시", "daddy dom", "dilf", "дилф", "fetiche de papai", "父性情結"]
 - name:
     en: "spitting"
     ru: "spitting"
@@ -1396,7 +1396,7 @@ tags:
     aliases: ["fetish", "east", "asian", "亞洲人", "亞裔", "アジア系", "アジア人", "아시아인", "아시아계", "asiático"]
 - name:
     en: "latin"
-    ru: "lation"
+    ru: "латино"
     pt: "latino"
     zh: "拉丁裔"
     ja: "ラテン系"
@@ -1408,10 +1408,10 @@ tags:
       zh: "喜歡拉丁外表"
       ja: "ラテン系の見た目が好き"
       ko: "라틴 외모를 좋아함"
-    aliases: ["latin", "latina", "latino", "fetish", "拉丁裔", "ラテン系", "라틴계", "라티노", "lation"]
+    aliases: ["latin", "latina", "latino", "латино", "fetish", "拉丁裔", "ラテン系", "라틴계", "라티노", "lation"]
 - name:
     en: "belly inflation"
-    ru: "belly inflation"
+    ru: "раздувание живота"
     pt: "inflação de barriga"
     zh: "膨腹"
     ja: "お腹膨張"
@@ -1423,7 +1423,7 @@ tags:
       zh: "有肚子充氣的癖好"
       ja: "お腹を膨らませるフェチ"
       ko: "배를 채우는 페티시"
-    aliases: ["fetish", "stomach", "tummy", "guts", "腹膨張", "복부 팽창", "belly inflation", "inflação de barriga", "膨腹", "お腹膨張"]
+    aliases: ["fetish", "stomach", "tummy", "guts", "腹膨張", "膨腹癖", "복부 팽창", "belly inflation", "раздувание живота", "inflação de barriga", "膨腹", "お腹膨張"]
 - name:
     en: "art (creative partner)"
     ru: "искусство (творческий поиск)"
@@ -7665,51 +7665,6 @@ tags:
       ko: "프스코프에 살아"
     aliases: ["pskov", "псков", "rússia", "россия", "russia", "location", "普斯科夫", "プスコフ", "프스코프"]
 - name:
-    en: "belly inflation"
-    ru: "раздувание живота"
-    pt: "inflação de barriga"
-    zh: "膨腹"
-    ja: "お腹膨張"
-    ko: "복부 팽창"
-    desc:
-      en: "has a belly inflation fetish"
-      ru: "есть фетиш на наполнение живота"
-      pt: "tem fetiche de encher a barriga"
-      zh: "有肚子充氣的癖好"
-      ja: "お腹を膨らませるフェチ"
-      ko: "배를 채우는 페티시"
-    aliases: ["fetish", "stomach", "tummy", "guts", "膨腹癖", "お腹膨張", "복부 팽창", "belly inflation", "раздувание живота", "inflação de barriga", "膨腹"]
-- name:
-    en: "asexual"
-    ru: "асексуал"
-    pt: "assexual"
-    zh: "無性戀"
-    ja: "アセクシャル"
-    ko: "무성애자"
-    desc:
-      en: "sex barely registers"
-      ru: "секс почти не интересует"
-      pt: "sexo quase não pega"
-      zh: "對性沒什麼興趣"
-      ja: "性にはほぼ興味がない"
-      ko: "섹스에는 거의 관심 없음"
-    aliases: ["dating", "отношения", "relacionamento", "sex", "пол", "ориентация", "sexo", "gender", "asexual", "асексуал", "assexual", "無性戀", "アセクシャル", "무성애자"]
-- name:
-    en: "cats"
-    ru: "котики"
-    pt: "cat"
-    zh: "養貓"
-    ja: "猫を飼っている"
-    ko: "고양이 키움"
-    desc:
-      en: "likes cats"
-      ru: "любит кошек"
-      pt: "gosta de gatos"
-      zh: "喜歡貓"
-      ja: "猫が好き"
-      ko: "고양이를 좋아함"
-    aliases: ["gato", "есть кошка", "tem um gato", "cat", "tem", "has a cat", "кошка", "кот", "котенок", "gatinho", "has", "a", "коты", "gatos", "養貓", "猫飼い", "고양이", "kitten", "kitty", "kittens", "котёнок", "котик", "kitten play", "catgirl", "cat girl", "neko", "неко", "cats", "котики", "猫を飼っている", "고양이 키움"]
-- name:
     en: "cat person"
     ru: "кошатник"
     pt: "louco dos gatos"
@@ -7918,7 +7873,7 @@ tags:
       zh: "有角色扮演癖"
       ja: "役を演じるフェチ"
       ko: "역할극 페티시"
-    aliases: ["cosplay", "ролевые игры", "rp", "отыгрыш", "制服扮演", "역할극", "ролевая", "roleplay (fetish)", "roleplay (fetiche)", "角色扮演（戀物癖）", "ロールプレイ（フェティッシュ）", "역할극 (페티시)"]
+    aliases: ["cosplay", "ролевые игры", "rp", "отыгрыш", "fetish", "制服扮演", "역할극", "ролевая", "roleplay (fetish)", "roleplay (fetiche)", "角色扮演（戀物癖）", "ロールプレイ（フェティッシュ）", "역할극 (페티시)"]
 - name:
     en: "tomboy"
     ru: "томбой"
@@ -9328,7 +9283,7 @@ tags:
       zh: "喜歡貓"
       ja: "猫が好き"
       ko: "고양이를 좋아함"
-    aliases: ["cats", "кошки", "коты", "кот", "кошка", "cat", "gatos", "gato", "貓", "猫", "고양이", "kitten", "kitty", "kittens", "котёнок", "котенок", "котик", "kitten play", "catgirl", "cat girl", "neko", "неко"]
+    aliases: ["cats", "кошки", "коты", "кот", "кошка", "котики", "есть кошка", "cat", "gatos", "gato", "gatinho", "tem um gato", "貓", "猫", "養貓", "猫飼い", "고양이", "고양이 키움", "kitten", "kitty", "kittens", "котёнок", "котенок", "котик", "kitten play", "catgirl", "cat girl", "neko", "неко"]
 - name:
     en: "dogs"
     ru: "собаки"

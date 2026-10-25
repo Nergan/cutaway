@@ -557,7 +557,7 @@ def prune_name_fragments(name, aliases):
     kept = []
     for alias in aliases:
         words = _LABEL_WORD.findall(alias.lower())
-        if len(words) == 1 and words[0] in pieces:
+        if len(words) == 1 and words[0] in pieces and words[0] not in SENTINELS:
             continue
         kept.append(alias)
     return kept

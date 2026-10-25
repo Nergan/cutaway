@@ -283,7 +283,7 @@ const profileTagHighlight = ref(0)
 const profileTagScroller = ref(null)
 
 const profileTagMatches = computed(() =>
-  tagsMatchingQuery(store.state.availableSearchTags, profileTagQuery.value).slice(0, 15)
+  tagsMatchingQuery(store.state.availableSearchTags, profileTagQuery.value).slice(0, 40)
 )
 
 const profileMarqueeTags = computed(() =>
