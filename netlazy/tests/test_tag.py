@@ -105,7 +105,6 @@ def test_compound_aliases_and_search_only_facets():
     assert "mommy fetish" in fetish
     assert "daddy fetish" in fetish
     assert "roleplay (fetish)" in fetish
-    assert len(fetish) <= 40
     assert tags["foot fetish"].hidden is True
     assert tags["foot fetish"].i18n["ru"] == "футфетиш"
     assert "dild" not in {alias.lower() for alias in tags["daddy fetish"].aliases}

@@ -52,7 +52,7 @@
         </div>
         <span class="chip" 
               :class="{require: store.state.myProfile.tags.includes(tag.name)}" 
-              v-for="tag in filteredTags.slice(0, 150)" 
+              v-for="tag in filteredTags" 
               :key="'ed-tg-'+tag.name" 
               :data-tooltip="store.tagTip(tag) || null"
               @click="toggleTag(tag.name)">
@@ -283,7 +283,7 @@ const profileTagHighlight = ref(0)
 const profileTagScroller = ref(null)
 
 const profileTagMatches = computed(() =>
-  tagsMatchingQuery(store.state.availableSearchTags, profileTagQuery.value).slice(0, 40)
+  tagsMatchingQuery(store.state.availableSearchTags, profileTagQuery.value)
 )
 
 const profileMarqueeTags = computed(() =>

@@ -455,8 +455,11 @@ class TestInterfaceVersions:
         assert 'class="tag-library-pane" v-if="!isV2"' in editor
         assert "select_profile_tags" in editor
         assert '@click.stop="selectProfileTag(tag.name)"' in editor
-        assert ".slice(0, 40)" in editor
-        assert ".slice(0, 40)" in feed
+        matches = editor.split("const profileTagMatches", 1)[1].split("const profileMarqueeTags", 1)[0]
+        assert "slice(" not in matches
+        assert "filteredTags.slice" not in editor
+        assert "visibleSearchTags.slice" not in feed
+        assert "visibleSearchTags.value.slice" not in feed
         chosen = editor.split("function selectProfileTag", 1)[1].split("function selectMarqueeTag", 1)[0]
         assert "toggleTag(name)" in chosen
         assert "profileTagQuery" not in chosen
