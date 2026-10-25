@@ -393,11 +393,13 @@ class TestInterfaceVersions:
         assert 'window.__NETLAZY_UI_VERSION__="1"' in switched
         assert switched.count("window.__NETLAZY_UI_VERSION__") == 1
 
-    def test_daylight_defaults_on_and_can_be_stamped_off(self, app_client, monkeypatch):
+    def test_daylight_defaults_off_and_can_be_stamped_on(self, app_client, monkeypatch):
         from netlazy.config import Settings, settings
         from netlazy.main import apply_daylight_theme
 
-        assert Settings.model_fields["daylight_theme"].default is True
+        assert Settings.model_fields["daylight_theme"].default is False
+        monkeypatch.setenv("DAYLIGHT_THEME", "1")
+        assert Settings(_env_file=None).daylight_theme is True
         monkeypatch.setenv("DAYLIGHT_THEME", "0")
         assert Settings(_env_file=None).daylight_theme is False
 
@@ -452,6 +454,13 @@ class TestInterfaceVersions:
         styles = read_text("frontend/css/v2.css")
         assert 'class="tag-library-pane" v-if="!isV2"' in editor
         assert "select_profile_tags" in editor
+        assert '@click.stop="selectProfileTag(tag.name)"' in editor
+        chosen = editor.split("function selectProfileTag", 1)[1].split("function selectMarqueeTag", 1)[0]
+        assert "toggleTag(name)" in chosen
+        assert "profileTagQuery" not in chosen
+        outside = editor.split("function closeProfileTagSuggestions", 1)[1].split("function handleProfileTagScroll", 1)[0]
+        assert "profileTagQuery.value = ''" in outside
+        assert ".profile-tag-header .feed-search-bar" in outside
         assert "not_in_feed" in editor
         assert "profile-tag-header" in editor
         assert "card-self" in feed

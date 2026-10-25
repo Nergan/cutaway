@@ -42,9 +42,9 @@ class Settings(BaseSettings):
     interface_version: Literal["1", "2"] = "2"
 
     # Sky-colored interface. Follows the light outside from the visitor's
-    # approximate place and the time of year. Set this to False, or
-    # DAYLIGHT_THEME=0, to keep the manual light and dark switch.
-    daylight_theme: bool = True
+    # approximate place and the time of year. Off, so the manual light and
+    # dark switch stays. Set this to True, or DAYLIGHT_THEME=1, to turn it on.
+    daylight_theme: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

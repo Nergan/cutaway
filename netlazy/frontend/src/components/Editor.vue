@@ -11,7 +11,7 @@
             <div class="glass-menu tag-search-dropdown" v-if="profileTagQuery.trim()" :style="{ top: isMobile ? 'auto' : '100%', bottom: isMobile ? '100%' : 'auto', left: '0', right: '0', maxHeight: '250px', width: '100%' }">
               <div v-if="profileTagMatches.length === 0" class="glass-option dropdown-empty">{{ store.t('no_tags_found') }}</div>
               <template v-else>
-                <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" :data-tooltip="store.tagTip(tag) || null" @click="selectProfileTag(tag.name)">
+                <div class="glass-option" v-for="(tag, idx) in profileTagMatches" :key="'pf-'+tag.name" :class="{'highlighted-option': idx === profileTagHighlight}" :data-tooltip="store.tagTip(tag) || null" @click.stop="selectProfileTag(tag.name)">
                   <span class="animated-underline">{{ store.getLocalizedTag(tag.name) }}</span>
                   <i class="bi bi-check2" v-if="store.state.myProfile.tags.includes(tag.name)" style="color: var(--accent-moss);"></i>
                 </div>
@@ -300,7 +300,6 @@ function moveProfileTag(dir) {
 
 function selectProfileTag(name) {
   toggleTag(name)
-  profileTagQuery.value = ''
 }
 
 function selectMarqueeTag(name) {
