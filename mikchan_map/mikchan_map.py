@@ -303,6 +303,13 @@ async def map_access(request: Request, body: dict = Body()):
     return response
 
 
+@router.post("/api/logout")
+async def map_logout():
+    response = JSONResponse({"ok": True})
+    response.delete_cookie("mikchan_map", path="/mikchan-map")
+    return response
+
+
 @router.get("/api/map", dependencies=[Depends(require_gate)])
 async def map_catalog():
     try:

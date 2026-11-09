@@ -260,6 +260,8 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert "res.cloudinary.com" not in page.text
     assert "api/tiles/" in page.text
     assert "Координаты скопированы" in page.text
+    assert "api/logout" in page.text
+    assert "const parts = [String(marker.x)]" in page.text
     assert client.get("/mikchan-map/api/map").status_code == 401
     client.cookies.set("mikchan_map", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.9999999999.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", path="/mikchan-map")
     assert client.get("/mikchan-map/api/map").status_code == 401

@@ -20,10 +20,26 @@
     *::-webkit-scrollbar-thumb:hover { background: #b5b5b5; }
     *::-webkit-scrollbar-corner { background: #1a1a1a; }
     body { font: 16px/1.35 "Pixelify Sans", "Courier New", monospace; overflow: hidden; image-rendering: pixelated; }
-    #view { position: absolute; inset: 0; z-index: 1; overflow: hidden; cursor: grab; touch-action: none; isolation: isolate; }
+    #view { position: absolute; inset: 0; z-index: 1; overflow: hidden; cursor: grab; touch-action: none; isolation: isolate; background: #111; }
     #view.drag { cursor: grabbing; }
     #camera { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
-    .tile { position: absolute; image-rendering: pixelated; pointer-events: none; }
+    .tile {
+      position: absolute; pointer-events: none; overflow: hidden;
+      background: #243024;
+      background-image: linear-gradient(110deg, #1b2a1b 0%, #4d6b3a 42%, #1b2a1b 78%);
+      background-size: 220% 100%;
+      animation: tile-shimmer 1.1s linear infinite;
+    }
+    .tile.ready { animation: none; background: #111; }
+    .tile img {
+      position: absolute; left: 0; top: 0; width: calc(100% + 1px); height: calc(100% + 1px);
+      image-rendering: pixelated; opacity: 0;
+    }
+    .tile.ready img { opacity: 1; }
+    @keyframes tile-shimmer {
+      from { background-position: 100% 0; }
+      to { background-position: -100% 0; }
+    }
     .pin {
       position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 20;
       pointer-events: none; background: none; border: 0; padding: 0;
@@ -388,24 +404,36 @@
       for (const tile of visibleTiles()) {
         const key = tile.level + ":" + tile.x + ":" + tile.z;
         wanted.add(key);
-        if (tiles.has(key)) continue;
+        const existing = tiles.get(key);
+        if (existing) {
+          placeTile(tile, existing);
+          continue;
+        }
+        const frame = document.createElement("div");
         const image = document.createElement("img");
-        image.className = "tile";
+        frame.className = "tile";
         image.alt = "";
         image.draggable = false;
         image.src = tileUrl(tile.level, tile.x, tile.z);
-        image.style.left = tile.worldX + "px";
-        image.style.top = tile.worldZ + "px";
-        image.style.width = tile.blocks + "px";
-        image.style.height = tile.blocks + "px";
-        image.style.zIndex = String(8 - tile.level);
-        image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
-        camera.appendChild(image);
-        tiles.set(key, image);
+        placeTile(tile, frame);
+        image.addEventListener("load", () => frame.classList.add("ready"));
+        image.addEventListener("error", () => { frame.remove(); tiles.delete(key); });
+        frame.appendChild(image);
+        camera.appendChild(frame);
+        tiles.set(key, frame);
       }
-      for (const [key, image] of tiles) {
-        if (!wanted.has(key)) { image.remove(); tiles.delete(key); }
+      for (const [key, frame] of tiles) {
+        if (!wanted.has(key)) { frame.remove(); tiles.delete(key); }
       }
+    }
+
+    function placeTile(tile, frame) {
+      const overlap = 2 / Math.max(view.scale, 0.01);
+      frame.style.left = tile.worldX + "px";
+      frame.style.top = tile.worldZ + "px";
+      frame.style.width = (tile.blocks + overlap) + "px";
+      frame.style.height = (tile.blocks + overlap) + "px";
+      frame.style.zIndex = String(8 - tile.level);
     }
 
     function pinImage(color, letter) {
@@ -423,17 +451,44 @@
         }
       });
       const wide = [...letter].length > 1;
-      ctx.font = (wide ? "700 9px " : "700 13px ") + '"Pixelify Sans", monospace';
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#000000";
-      ctx.strokeText(letter, 15, 15);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(letter, 15, 15);
+      drawCenteredGlyph(ctx, letter, (wide ? "700 9px " : "700 13px ") + '"Pixelify Sans", monospace', 15, 12);
       const url = canvas.toDataURL();
       pinImages.set(key, url);
       return url;
+    }
+
+    function drawCenteredGlyph(ctx, letter, font, cx, cy) {
+      const scratch = document.createElement("canvas");
+      scratch.width = 48;
+      scratch.height = 48;
+      const pen = scratch.getContext("2d");
+      pen.font = font;
+      pen.textAlign = "left";
+      pen.textBaseline = "top";
+      pen.lineWidth = 3;
+      pen.lineJoin = "round";
+      pen.strokeStyle = "#000000";
+      pen.strokeText(letter, 8, 8);
+      pen.fillStyle = "#ffffff";
+      pen.fillText(letter, 8, 8);
+      const pixels = pen.getImageData(0, 0, 48, 48).data;
+      let minX = 48;
+      let minY = 48;
+      let maxX = 0;
+      let maxY = 0;
+      let any = false;
+      for (let y = 0; y < 48; y += 1) {
+        for (let x = 0; x < 48; x += 1) {
+          if (pixels[(y * 48 + x) * 4 + 3] < 24) continue;
+          any = true;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (!any) return;
+      ctx.drawImage(scratch, Math.round(cx - (minX + maxX) / 2), Math.round(cy - (minY + maxY) / 2));
     }
 
     function biomeLabel(id) {
@@ -919,9 +974,9 @@
     }
 
     function copyCoords(marker) {
-      const parts = ["X " + marker.x];
-      if (marker.y !== null && marker.y !== undefined) parts.push("Y " + marker.y);
-      parts.push("Z " + marker.z);
+      const parts = [String(marker.x)];
+      if (marker.y !== null && marker.y !== undefined) parts.push(String(marker.y));
+      parts.push(String(marker.z));
       const value = parts.join(" ");
       const done = () => say(text("Coordinates copied", "Координаты скопированы"));
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -944,21 +999,14 @@
     }
 
     let started = false;
-
-    async function unlock() {
-      const session = await fetch(api("api/session"), { credentials: "same-origin" }).catch(() => null);
-      if (session && session.ok) {
-        document.body.classList.remove("locked");
-        document.getElementById("gate").hidden = true;
-        boot();
-      }
-    }
+    const loggedOut = fetch(api("api/logout"), { method: "POST", credentials: "same-origin" }).catch(() => null);
 
     document.getElementById("gate").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
       const input = document.getElementById("key");
       const error = document.getElementById("gate-error");
+      await loggedOut;
       const response = await fetch(api("api/access"), {
         method: "POST",
         credentials: "same-origin",
@@ -981,7 +1029,6 @@
       pinImages.clear();
       if (dimension) mountPins();
     });
-    unlock();
   </script>
 </body>
 </html>
