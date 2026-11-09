@@ -484,6 +484,11 @@ max_processes = 2
 max_connections = 32
 idle_timeout_seconds = 900
 
+[projects.mikchan_map.network]
+allowed_hosts = ["res.cloudinary.com", "*.cloudinary.com"]
+allow_private = false
+requests_per_minute = 600
+
 [projects.mikchan_rate]
 directory = "mikchan_rate"
 entrypoint = "mikchan_rate.mikchan_rate"

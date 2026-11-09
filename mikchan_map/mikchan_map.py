@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import secrets
-import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +38,7 @@ from mikchan_map.gate import (
     too_many_attempts,
 )
 from mikchan_map.markers import check_suggestion, filter_markers
+from shared.network import safe_urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -401,19 +401,14 @@ async def add_suggestion(body: dict = Body()):
     return JSONResponse({"ok": True}, status_code=201)
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
-
-
 def _fetch_tile(url: str) -> bytes:
-    opener = urllib.request.build_opener(_NoRedirect)
     request = urllib.request.Request(url, headers={"User-Agent": "mikchan-map"})
-    with opener.open(request, timeout=12) as response:
-        body = response.read(2_000_001)
-    if len(body) > 2_000_000:
-        raise ValueError("tile")
-    return body
+    return safe_urlopen(
+        request,
+        timeout=12,
+        allowed_hosts=("res.cloudinary.com",),
+        max_bytes=2_000_000,
+    )
 
 
 @router.get("/api/tiles/{dimension}/{level}/{x}/{z}", dependencies=[Depends(require_gate)])
