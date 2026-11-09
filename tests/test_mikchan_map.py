@@ -82,6 +82,7 @@ def test_the_map_card_is_fifth_and_uses_the_server_icon():
     assert card["id"] == "mikchan_map"
     assert card["href"] == "/mikchan-map"
     assert card["icon"] == "https://mikchan.net/favicon.ico"
+    assert card["title"] == {"en": "mikchan map", "ru": "карта mikchan"}
     assert card["category"] == {"en": "Game", "ru": "игры"}
 
 
@@ -127,6 +128,8 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     page = client.get("/mikchan-map/")
     assert page.status_code == 200
     assert "Предложить метку" in page.text
+    assert "donate-widget.js" in page.text
+    assert 'href="https://mikchan.net"' in page.text
     catalog = client.get("/mikchan-map/api/map").json()
     assert [item["id"] for item in catalog["dimensions"]] == ["overworld", "nether"]
     assert catalog["cloud"] == "gndf3nby"

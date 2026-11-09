@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Карта MikChan</title>
   <link rel="icon" href="https://mikchan.net/favicon.ico">
+  <script src="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/donate-widget.js" data-position="bottom-right" defer></script>
   <style>
     html, body { margin: 0; height: 100%; background: #10110e; color: #e8e2d6; }
     body { font: 14px/1.3 Segoe UI, sans-serif; overflow: hidden; }
@@ -34,7 +35,7 @@
     }
     #view.far .pin span { display: none; }
     #readout {
-      left: 10px; bottom: 10px; background: rgba(12, 12, 12, 0.82);
+      left: 12px; bottom: 40px; background: rgba(12, 12, 12, 0.82);
       border: 1px solid #8a7340; padding: 6px 8px; min-width: 9rem;
     }
     #readout b { display: block; color: #f0e2bc; font-weight: 500; }
@@ -47,7 +48,22 @@
     #menu button, #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; }
     #menu [hidden] { display: none; }
     #menu input { background: #0e0e0e; color: #fff; border: 1px solid #5c5138; padding: 6px; }
-    #note { right: 10px; bottom: 10px; color: #c8b48a; }
+    #note { right: 16px; bottom: 72px; color: #c8b48a; }
+    #server {
+      position: absolute; left: 12px; bottom: 12px; z-index: 4;
+      color: #a89878; font-size: 13px; text-decoration: none; z-index: 7;
+    }
+    #server:hover { color: #f0e2bc; }
+    #loading {
+      position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
+      background: #10110e; text-align: center;
+    }
+    #loading[hidden] { display: none; }
+    #loading p { margin: 0 0 12px; color: #f0e2bc; }
+    #loading .track {
+      width: min(280px, 70vw); height: 8px; border: 1px solid #8a7340; background: #1b1b1b;
+    }
+    #loading .bar { height: 100%; width: 0; background: #c8b48a; }
     #empty {
       position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 2rem;
     }
@@ -57,7 +73,9 @@
 <body>
   <div id="view"></div>
   <div id="bar"></div>
-  <div id="readout"><b></b><span></span></div>
+  <div id="readout" hidden><b></b><span></span></div>
+  <a id="server" href="https://mikchan.net">mikchan.net</a>
+  <div id="loading"><p></p><div class="track"><div class="bar"></div></div></div>
   <form id="menu" hidden></form>
   <div id="note" hidden></div>
   <div id="empty" hidden></div>
@@ -70,6 +88,10 @@
     const menu = document.getElementById("menu");
     const note = document.getElementById("note");
     const empty = document.getElementById("empty");
+    const loading = document.getElementById("loading");
+    const loadingLabel = loading.querySelector("p");
+    const loadingBar = loading.querySelector(".bar");
+    loadingLabel.textContent = text("Loading the map", "Карта загружается");
     const tiles = new Map();
     const pins = new Map();
     const view = { x: 0, z: 0, scale: 0.25, min: 0.01, max: 6 };
@@ -127,40 +149,48 @@
       return levels.slice(index, index + 2);
     }
 
-    function redraw() {
-      frame = 0;
-      if (!dimension) return;
+    function visibleTiles() {
       const rect = viewEl.getBoundingClientRect();
-      viewEl.classList.toggle("far", view.scale < 0.18);
-      const wanted = new Set();
+      const found = [];
+      const pad = 48;
       for (const level of chosenLevels()) {
-        const margin = level.blocks;
-        const [x0, z0] = blockOf(rect.left - margin, rect.top - margin);
-        const [x1, z1] = blockOf(rect.right + margin, rect.bottom + margin);
+        const [x0, z0] = blockOf(rect.left - pad, rect.top - pad);
+        const [x1, z1] = blockOf(rect.right + pad, rect.bottom + pad);
         for (const pair of level.tiles) {
           const worldX = pair[0] * level.blocks;
           const worldZ = pair[1] * level.blocks;
           if (worldX > x1 || worldZ > z1 || worldX + level.blocks < x0 || worldZ + level.blocks < z0) continue;
-          const key = level.level + ":" + pair[0] + ":" + pair[1];
-          wanted.add(key);
-          let image = tiles.get(key);
-          if (!image) {
-            image = document.createElement("img");
-            image.className = "tile";
-            image.alt = "";
-            image.draggable = false;
-            image.src = tileUrl(level.level, pair[0], pair[1]);
-            image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
-            viewEl.appendChild(image);
-            tiles.set(key, image);
-          }
-          const [left, top] = screenOf(worldX, worldZ);
-          const size = level.blocks * view.scale;
-          image.style.transform = "translate(" + left + "px," + top + "px)";
-          image.style.width = size + "px";
-          image.style.height = size + "px";
-          image.style.zIndex = String(8 - level.level);
+          found.push({ level: level.level, blocks: level.blocks, x: pair[0], z: pair[1], worldX, worldZ });
         }
+      }
+      return found;
+    }
+
+    function redraw() {
+      frame = 0;
+      if (!dimension) return;
+      viewEl.classList.toggle("far", view.scale < 0.18);
+      const wanted = new Set();
+      for (const tile of visibleTiles()) {
+        const key = tile.level + ":" + tile.x + ":" + tile.z;
+        wanted.add(key);
+        let image = tiles.get(key);
+        if (!image) {
+          image = document.createElement("img");
+          image.className = "tile";
+          image.alt = "";
+          image.draggable = false;
+          image.src = tileUrl(tile.level, tile.x, tile.z);
+          image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
+          viewEl.appendChild(image);
+          tiles.set(key, image);
+        }
+        const [left, top] = screenOf(tile.worldX, tile.worldZ);
+        const size = tile.blocks * view.scale;
+        image.style.transform = "translate(" + left + "px," + top + "px)";
+        image.style.width = size + "px";
+        image.style.height = size + "px";
+        image.style.zIndex = String(8 - tile.level);
       }
       for (const [key, image] of tiles) {
         if (!wanted.has(key)) { image.remove(); tiles.delete(key); }
@@ -261,6 +291,40 @@
       requestDraw();
     }
 
+    let warmToken = 0;
+
+    function preload(url) {
+      return new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+        image.src = url;
+      });
+    }
+
+    async function warm() {
+      const token = ++warmToken;
+      const opening = visibleTiles();
+      loading.hidden = false;
+      readout.hidden = true;
+      if (!opening.length) {
+        loading.hidden = true;
+        readout.hidden = false;
+        return;
+      }
+      let finished = 0;
+      await Promise.all(opening.map((tile) => preload(tileUrl(tile.level, tile.x, tile.z)).then(() => {
+        finished += 1;
+        if (token !== warmToken) return;
+        const label = text("Tiles " + finished + " / " + opening.length, "Тайлы " + finished + " / " + opening.length);
+        loadingLabel.textContent = label;
+        loadingBar.style.width = (12 + 88 * finished / opening.length) + "%";
+      })));
+      if (token !== warmToken) return;
+      loading.hidden = true;
+      readout.hidden = false;
+    }
+
     function showDimension(id) {
       dimension = catalog.dimensions.find((item) => item.id === id) || catalog.dimensions[0];
       tiles.forEach((image) => image.remove());
@@ -272,6 +336,7 @@
       }
       menu.hidden = true;
       fit(true);
+      warm();
     }
 
     function markerAt(clientX, clientY) {
@@ -397,9 +462,18 @@
     }
 
     async function boot() {
-      const response = await fetch(api("api/map"));
-      catalog = await response.json();
+      loadingLabel.textContent = text("Reading the catalog", "Читаю каталог");
+      loadingBar.style.width = "8%";
+      let response;
+      try {
+        response = await fetch(api("api/map"));
+        catalog = await response.json();
+      } catch (error) {
+        catalog = {};
+        response = { ok: false };
+      }
       if (!response.ok || !catalog.cloud || !catalog.dimensions || !catalog.dimensions.length) {
+        loading.hidden = true;
         empty.hidden = false;
         empty.textContent = text("The map is not published yet.", "Карта ещё не опубликована.");
         return;
