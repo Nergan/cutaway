@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from mikchan_map.convert import load_done, should_upload
 from mikchan_map.markers import check_suggestion, color_hex, parse_waypoints
 from mikchan_map.mikchan_map import cloud_name, router
 from mikchan_map.xaero_cache import parse_cache
@@ -39,6 +40,18 @@ def test_cache_keeps_lit_pixels_and_drops_the_empty_red_marker():
     assert image.rgba[0:4] == bytes((20, 140, 40, 255))
     assert image.rgba[4:8] == bytes(4)
     assert image.opaque_pixels() == 1
+
+
+def test_upload_notes_keep_an_unstamped_tile_until_the_cache_changes(tmp_path):
+    notes = tmp_path / "uploaded.txt"
+    notes.write_text("overworld 0 1 2\noverworld 0 3 4 50\n", encoding="utf-8")
+    done = load_done(notes)
+    assert done["overworld 0 1 2"] == 0
+    assert done["overworld 0 3 4"] == 50
+    assert should_upload(0, 80, True) is False
+    assert should_upload(0, 80, False) is True
+    assert should_upload(50, 40, False) is False
+    assert should_upload(None, 80, False) is True
 
 
 def test_waypoint_lines_keep_color_and_colons_and_skip_disabled():

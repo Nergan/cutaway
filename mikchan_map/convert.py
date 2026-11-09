@@ -93,7 +93,8 @@ def region_files(folder: Path) -> list[tuple[int, int, Path]]:
 
 
 def encode_tile(source: Path, dest: Path, *, leaf: bool, level: int) -> bool:
-    if dest.exists() and dest.stat().st_size > 0:
+    source_stamp = source.stat().st_mtime_ns
+    if dest.exists() and dest.stat().st_size > 0 and dest.stat().st_mtime_ns >= source_stamp:
         return True
     try:
         image = parse_xwmc(source.read_bytes(), leaf=leaf, level=level)
@@ -141,10 +142,26 @@ def upload_tile(path: Path, public_id: str) -> None:
             delay *= 2
 
 
-def load_done(path: Path) -> set[str]:
+def should_upload(recorded: int | None, source_stamp: int, dest_fresh: bool) -> bool:
+    # A note without a timestamp is the first publication. Keep it until the
+    # cache file is newer than the picture already written beside it.
+    if recorded == 0 and dest_fresh:
+        return False
+    return recorded is None or recorded < source_stamp
+
+
+def load_done(path: Path) -> dict[str, int]:
+    found: dict[str, int] = {}
     if not path.exists():
-        return set()
-    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+        return found
+    for line in path.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        key = " ".join(parts[:4])
+        stamp = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 0
+        found[key] = max(found.get(key, 0), stamp)
+    return found
 
 
 def main() -> None:
@@ -186,9 +203,15 @@ def main() -> None:
         dimension, level, leaf, x, z, source = job
         key = f"{dimension} {level} {x} {z}"
         dest = args.out / dimension / str(level) / f"{x}_{z}.webp"
+        source_stamp = source.stat().st_mtime_ns
+        recorded = done.get(key)
+        dest_fresh = dest.exists() and dest.stat().st_mtime_ns >= source_stamp
+        # Lines written before timestamps exist mean the tile was uploaded, but
+        # only while the local picture is still newer than the cache file.
+        upload_needed = should_upload(recorded, source_stamp, dest_fresh)
         if not encode_tile(source, dest, leaf=leaf, level=level):
             return
-        if key not in done:
+        if upload_needed:
             try:
                 upload_tile(dest, f"mikchan-map/{dimension}/{level}/{x}_{z}")
             except Exception:
@@ -197,8 +220,8 @@ def main() -> None:
                 return
             with lock:
                 with done_path.open("a", encoding="utf-8") as handle:
-                    handle.write(key + "\n")
-                done.add(key)
+                    handle.write(f"{key} {source_stamp}\n")
+                done[key] = source_stamp
         with lock:
             catalog.setdefault(dimension, {}).setdefault(level, []).append([x, z])
 
