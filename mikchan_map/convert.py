@@ -25,6 +25,7 @@ script_dir = Path(__file__).resolve().parent
 sys.path = [entry for entry in sys.path if Path(entry).resolve() != script_dir]
 sys.path.insert(0, str(ROOT))
 
+from mikchan_map.biomes import spread_spots
 from mikchan_map.markers import parse_waypoints
 from mikchan_map.xaero_cache import CacheFormatError, parse_xwmc
 
@@ -164,16 +165,118 @@ def load_done(path: Path) -> dict[str, int]:
     return found
 
 
+def _read_biome_region(job: tuple) -> dict | None:
+    dimension, x, z, source = job
+    try:
+        image = parse_xwmc(Path(source).read_bytes(), leaf=True, level=0)
+    except (CacheFormatError, OSError):
+        return {"failed": True}
+    if not image.biomes or not any(image.biomes):
+        return None
+    import zlib
+
+    spots = []
+    seen: set[int] = set()
+    for index, value in enumerate(image.biomes):
+        if not value or value in seen or value > len(image.biome_names):
+            continue
+        name = image.biome_names[value - 1]
+        if not name:
+            continue
+        seen.add(value)
+        spots.append(
+            {
+                "id": name,
+                "x": x * 512 + (index % 256) * 2 + 1,
+                "z": z * 512 + (index // 256) * 2 + 1,
+            }
+        )
+    return {
+        "dimension": dimension,
+        "x": x,
+        "z": z,
+        "names": list(image.biome_names),
+        "grid": zlib.compress(image.biomes, 6),
+        "spots": spots,
+    }
+
+
+def publish_biomes(world: Path, workers: int) -> None:
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    from pymongo import MongoClient
+
+    jobs = []
+    for folder_name, dimension, _minimap in DIMENSIONS:
+        folder = world / folder_name / "mw$default" / "cache_1"
+        for x, z, source in region_files(folder):
+            jobs.append((dimension, x, z, str(source)))
+    print(f"biome regions {len(jobs)}", flush=True)
+    grouped: dict[str, dict[str, list[dict]]] = {}
+    seen: dict[str, list[str]] = {}
+    failed = 0
+    written = 0
+    client = MongoClient(mongo_uri(), serverSelectionTimeoutMS=15000)
+    regions = client[DATABASE].biome_regions
+    with ProcessPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = [pool.submit(_read_biome_region, job) for job in jobs]
+        finished = 0
+        for future in as_completed(futures):
+            finished += 1
+            result = future.result()
+            if result and result.get("failed"):
+                failed += 1
+            elif result:
+                dimension = result["dimension"]
+                key = f"{dimension}:{result['x']}:{result['z']}"
+                regions.replace_one(
+                    {"_id": key},
+                    {
+                        "_id": key,
+                        "dimension": dimension,
+                        "rx": result["x"],
+                        "rz": result["z"],
+                        "names": result["names"],
+                        "grid": result["grid"],
+                    },
+                    upsert=True,
+                )
+                written += 1
+                seen.setdefault(dimension, []).append(key)
+                for spot in result["spots"]:
+                    grouped.setdefault(dimension, {}).setdefault(spot["id"], []).append(spot)
+            if finished % 200 == 0:
+                print(f"biomes {finished}/{len(jobs)} failed {failed}", flush=True)
+    index = client[DATABASE].biome_index
+    for _folder_name, dimension, _minimap in DIMENSIONS:
+        keys = seen.get(dimension) or []
+        spots = []
+        for biome_id, points in sorted((grouped.get(dimension) or {}).items()):
+            spots.extend(spread_spots(points))
+        if keys:
+            regions.delete_many({"dimension": dimension, "_id": {"$nin": keys}})
+        else:
+            regions.delete_many({"dimension": dimension})
+        index.replace_one({"_id": dimension}, {"_id": dimension, "spots": spots}, upsert=True)
+        print(f"biome index {dimension} spots {len(spots)} regions {len(keys)}", flush=True)
+    print(f"biomes {len(jobs)}/{len(jobs)} written {written} failed {failed}", flush=True)
+    client.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--xaero", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--biomes-only", action="store_true")
     args = parser.parse_args()
     world = args.xaero / "world-map" / "Multiplayer_play.mikchan.net"
     minimap = args.xaero / "minimap" / "Multiplayer_play.mikchan.net"
     if not world.is_dir():
         raise SystemExit("No Xaero world-map folder.")
+    if args.biomes_only:
+        publish_biomes(world, args.workers)
+        return
     configure_cloudinary()
     import cloudinary.api
 

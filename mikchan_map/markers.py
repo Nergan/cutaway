@@ -75,6 +75,33 @@ def _block(value: object) -> int | None:
     return value
 
 
+def filter_markers(dimensions: list[dict], *, dimension: str, query: str, limit: int) -> list[dict]:
+    needle = query.casefold()
+    found = []
+    for item in dimensions:
+        if dimension and item.get("id") != dimension:
+            continue
+        for marker in item.get("waypoints") or []:
+            name = str(marker.get("name") or "")
+            initials = str(marker.get("initials") or "")
+            if needle and needle not in name.casefold() and needle not in initials.casefold():
+                continue
+            found.append(
+                {
+                    "dimension": item.get("id") or "",
+                    "name": name,
+                    "initials": initials,
+                    "x": marker["x"],
+                    "y": marker["y"],
+                    "z": marker["z"],
+                    "color": marker.get("color") or "#FFFFFF",
+                }
+            )
+            if len(found) >= limit:
+                return found
+    return found
+
+
 def check_suggestion(body: object) -> dict | str:
     if not isinstance(body, dict):
         return "body"

@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Карта MikChan</title>
   <link rel="icon" href="https://mikchan.net/favicon.ico">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap">
   <script src="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/donate-widget.js" data-position="bottom-right" defer></script>
   <style>
-    html, body { margin: 0; height: 100%; background: #10110e; color: #e8e2d6; }
-    * { scrollbar-width: thin; scrollbar-color: #8a7340 #16140f; }
-    *::-webkit-scrollbar { width: 10px; height: 10px; }
-    *::-webkit-scrollbar-track { background: #16140f; }
-    *::-webkit-scrollbar-thumb { background: #8a7340; border: 2px solid #16140f; }
-    *::-webkit-scrollbar-thumb:hover { background: #c8b48a; }
-    *::-webkit-scrollbar-corner { background: #16140f; }
-    body { font: 14px/1.3 Segoe UI, sans-serif; overflow: hidden; }
+    html, body { margin: 0; height: 100%; background: #1a1a1a; color: #ffffff; }
+    * { scrollbar-width: thin; scrollbar-color: #8b8b8b #1a1a1a; }
+    *::-webkit-scrollbar { width: 12px; height: 12px; }
+    *::-webkit-scrollbar-track { background: #1a1a1a; }
+    *::-webkit-scrollbar-thumb {
+      background: #8b8b8b;
+      border: 2px solid #1a1a1a;
+      box-shadow: inset -2px -2px 0 #373737, inset 2px 2px 0 #c6c6c6;
+    }
+    *::-webkit-scrollbar-thumb:hover { background: #b5b5b5; }
+    *::-webkit-scrollbar-corner { background: #1a1a1a; }
+    body { font: 16px/1.35 "Pixelify Sans", "Courier New", monospace; overflow: hidden; image-rendering: pixelated; }
     #view { position: absolute; inset: 0; z-index: 1; overflow: hidden; cursor: grab; touch-action: none; isolation: isolate; }
     #view.drag { cursor: grabbing; }
     #camera { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
@@ -24,69 +29,92 @@
       pointer-events: none; background: none; border: 0; padding: 0;
       transform: translate(var(--x), var(--z)) scale(var(--inv)); transform-origin: 0 0;
     }
-    .pin i {
-      position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
-      background: currentColor; transform: rotate(45deg);
-      box-shadow: 0 0 0 2px #14120c, 0 0 0 4px #f4f1e8;
+    .pin img {
+      position: absolute; left: -15px; top: -30px; width: 30px; height: 30px;
+      image-rendering: pixelated; pointer-events: none;
     }
     .pin b {
-      position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
-      display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700;
-      line-height: 1; font-style: normal;
-      text-shadow: 0 0 2px #000, 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
+      position: absolute; left: -15px; top: -24px; width: 30px; height: 14px;
+      display: grid; place-items: center; color: #fff; font: 700 14px/1 "Pixelify Sans", monospace;
+      text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
     }
     #view.far .pin b { display: none; }
-    #bar, #readout, #menu, #note, #hover, #search .list { background: #16140f; }
     #bar {
-      position: absolute; z-index: 8; top: 10px; left: 10px;
-      display: flex; gap: 6px; align-items: flex-start;
-      border: 1px solid #8a7340; padding: 6px;
+      position: absolute; z-index: 8; top: 0; left: 0;
+      display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-start;
+      max-width: calc(100% - 180px); padding: 0; background: transparent; border: 0;
     }
-    button, .dim, #search input {
-      background: #221e16; color: #f0e2bc; border: 1px solid #8a7340;
-      padding: 6px 10px; cursor: pointer; opacity: 1;
+    button, .dim, #search input, #server, #readout, #hover, #menu, #search .list {
+      font: 16px/1.35 "Pixelify Sans", "Courier New", monospace;
+      color: #ffffff;
+      text-shadow: 2px 2px 0 #3f3f3f;
+      background: #8b8b8b;
+      border: 2px solid #000;
+      box-shadow: inset -2px -2px 0 #373737, inset 2px 2px 0 #ffffff;
+      border-radius: 0;
     }
-    button[aria-pressed="true"], .dim[aria-pressed="true"] { background: #3a3220; }
+    button, .dim, #search input, #server {
+      padding: 4px 8px; cursor: pointer; opacity: 1;
+    }
+    button:hover, .dim:hover, #server:hover {
+      background: #a0a0a0; color: #ffffa0; text-shadow: 2px 2px 0 #3f3f00;
+    }
+    button.pin, button.pin:hover {
+      background: none; border: 0; box-shadow: none; padding: 0;
+      text-shadow: none; cursor: default;
+    }
+    button[aria-pressed="true"], .dim[aria-pressed="true"] {
+      background: #707070; color: #ffffa0;
+      box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #ffffff;
+    }
     #search { position: relative; }
-    #search input { width: 11rem; cursor: text; }
+    #search input { width: 14rem; cursor: text; color: #ffffff; text-shadow: 2px 2px 0 #3f3f3f; }
     #search .list {
-      position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%;
-      max-height: 240px; overflow: auto; border: 1px solid #8a7340; z-index: 9;
+      position: absolute; top: 100%; left: 0; min-width: 100%;
+      max-height: 280px; overflow: auto; z-index: 9; padding: 0;
     }
     #search .list[hidden] { display: none; }
-    #search .list button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #3a3220; }
-    #search .list button.on, #search .list button:hover { background: #3a3220; }
+    #search .list button {
+      display: block; width: 100%; text-align: left;
+      border-width: 0 0 2px; box-shadow: none; background: #8b8b8b;
+    }
+    #search .list button.on, #search .list button:hover { background: #b6b6b6; color: #ffffa0; }
     #readout {
-      position: absolute; z-index: 8; top: 10px; right: 12px;
-      border: 1px solid #8a7340; padding: 6px 8px; min-width: 8rem;
+      position: absolute; z-index: 8; top: 0; right: 0;
+      padding: 4px 8px; display: flex; gap: 10px; align-items: center;
     }
-    #hover, #menu {
-      position: absolute; z-index: 30; border: 1px solid #8a7340;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); padding: 8px;
-    }
+    #readout[hidden] { display: none; }
+    #biome { color: #55ff55; text-shadow: 2px 2px 0 #1d3b1d; }
+    #biome:empty { display: none; }
+    #hover, #menu { position: absolute; z-index: 30; padding: 8px; }
     #hover { pointer-events: none; }
-    #hover strong, #menu strong { display: block; color: #e6c36a; margin-bottom: 4px; }
-    #menu { z-index: 31; min-width: 220px; }
+    #hover strong, #menu strong { display: block; color: #ffff55; margin-bottom: 4px; text-shadow: 2px 2px 0 #3f3f00; }
+    #menu { z-index: 31; min-width: 240px; }
     #menu[hidden], #note[hidden], #hover[hidden] { display: none; }
     #menu button, #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; }
     #menu [hidden] { display: none; }
-    #menu input { background: #221e16; color: #fff; border: 1px solid #8a7340; padding: 6px; }
-    #note { position: absolute; z-index: 32; right: 16px; bottom: 72px; color: #c8b48a; background: transparent; }
-    #server {
-      position: absolute; left: 12px; bottom: 12px; z-index: 8;
-      color: #a89878; font-size: 13px; text-decoration: none;
+    #menu input { color: #ffffff; }
+    #note {
+      position: absolute; z-index: 32; right: 0; bottom: 52px;
+      color: #ffff55; background: transparent; border: 0; box-shadow: none;
+      text-shadow: 2px 2px 0 #3f3f00; padding: 4px 8px;
     }
-    #server:hover { color: #f0e2bc; }
+    #server {
+      position: absolute; left: 0; bottom: 0; z-index: 8;
+      font-size: 22px; padding: 6px 10px; text-decoration: none;
+      color: #ffff55; text-shadow: 2px 2px 0 #3f3f00;
+    }
     #loading {
       position: absolute; inset: 0; z-index: 40; display: grid; place-items: center;
-      background: #10110e; text-align: center;
+      background: #1a1a1a; text-align: center;
     }
     #loading[hidden] { display: none; }
-    #loading p { margin: 0 0 12px; color: #f0e2bc; }
+    #loading p { margin: 0 0 12px; color: #ffffff; text-shadow: 2px 2px 0 #3f3f3f; }
     #loading .track {
-      width: min(280px, 70vw); height: 8px; border: 1px solid #8a7340; background: #221e16;
+      width: min(280px, 70vw); height: 10px; border: 2px solid #000; background: #373737;
+      box-shadow: inset -2px -2px 0 #555, inset 2px 2px 0 #111;
     }
-    #loading .bar { height: 100%; width: 0; background: #c8b48a; }
+    #loading .bar { height: 100%; width: 0; background: #54c430; }
     #empty {
       position: absolute; inset: 0; z-index: 7; display: grid; place-items: center; text-align: center; padding: 2rem;
     }
@@ -101,7 +129,7 @@
       <div class="list" hidden></div>
     </div>
   </div>
-  <div id="readout" hidden><span></span></div>
+  <div id="readout" hidden><span id="coords"></span><span id="biome"></span></div>
   <div id="hover" hidden><strong></strong><span></span></div>
   <a id="server" href="https://mikchan.net">mikchan.net</a>
   <div id="loading"><p></p><div class="track"><div class="bar"></div></div></div>
@@ -124,7 +152,95 @@
     const searchList = document.querySelector("#search .list");
     const loadingLabel = loading.querySelector("p");
     const loadingBar = loading.querySelector(".bar");
-    searchInput.placeholder = text("Marker", "Метка");
+    const coordsEl = document.getElementById("coords");
+    const biomeEl = document.getElementById("biome");
+    const biomeRegions = new Map();
+    const BIOMES = {
+      "minecraft:plains": ["Plains", "Равнины"],
+      "minecraft:sunflower_plains": ["Sunflower Plains", "Подсолнуховая равнина"],
+      "minecraft:snowy_plains": ["Snowy Plains", "Заснеженные равнины"],
+      "minecraft:ice_spikes": ["Ice Spikes", "Ледяные шипы"],
+      "minecraft:desert": ["Desert", "Пустыня"],
+      "minecraft:swamp": ["Swamp", "Болото"],
+      "minecraft:mangrove_swamp": ["Mangrove Swamp", "Мангровое болото"],
+      "minecraft:forest": ["Forest", "Лес"],
+      "minecraft:flower_forest": ["Flower Forest", "Цветочный лес"],
+      "minecraft:birch_forest": ["Birch Forest", "Берёзовый лес"],
+      "minecraft:dark_forest": ["Dark Forest", "Тёмный лес"],
+      "minecraft:old_growth_birch_forest": ["Old Growth Birch Forest", "Старовозрастный берёзовый лес"],
+      "minecraft:old_growth_pine_taiga": ["Old Growth Pine Taiga", "Старовозрастная сосновая тайга"],
+      "minecraft:old_growth_spruce_taiga": ["Old Growth Spruce Taiga", "Старовозрастная еловая тайга"],
+      "minecraft:taiga": ["Taiga", "Тайга"],
+      "minecraft:snowy_taiga": ["Snowy Taiga", "Заснеженная тайга"],
+      "minecraft:savanna": ["Savanna", "Саванна"],
+      "minecraft:savanna_plateau": ["Savanna Plateau", "Плато саванны"],
+      "minecraft:windswept_hills": ["Windswept Hills", "Выветренные холмы"],
+      "minecraft:windswept_gravelly_hills": ["Windswept Gravelly Hills", "Выветренные гравийные холмы"],
+      "minecraft:windswept_forest": ["Windswept Forest", "Выветренный лес"],
+      "minecraft:windswept_savanna": ["Windswept Savanna", "Выветренная саванна"],
+      "minecraft:jungle": ["Jungle", "Джунгли"],
+      "minecraft:sparse_jungle": ["Sparse Jungle", "Разреженные джунгли"],
+      "minecraft:bamboo_jungle": ["Bamboo Jungle", "Бамбуковые джунгли"],
+      "minecraft:badlands": ["Badlands", "Пустошь"],
+      "minecraft:eroded_badlands": ["Eroded Badlands", "Выветренная пустошь"],
+      "minecraft:wooded_badlands": ["Wooded Badlands", "Лесистая пустошь"],
+      "minecraft:meadow": ["Meadow", "Луг"],
+      "minecraft:cherry_grove": ["Cherry Grove", "Вишнёвая роща"],
+      "minecraft:grove": ["Grove", "Роща"],
+      "minecraft:snowy_slopes": ["Snowy Slopes", "Заснеженные склоны"],
+      "minecraft:frozen_peaks": ["Frozen Peaks", "Замёрзшие пики"],
+      "minecraft:jagged_peaks": ["Jagged Peaks", "Острые пики"],
+      "minecraft:stony_peaks": ["Stony Peaks", "Каменистые пики"],
+      "minecraft:river": ["River", "Река"],
+      "minecraft:frozen_river": ["Frozen River", "Замёрзшая река"],
+      "minecraft:beach": ["Beach", "Пляж"],
+      "minecraft:snowy_beach": ["Snowy Beach", "Снежный пляж"],
+      "minecraft:stony_shore": ["Stony Shore", "Каменистый берег"],
+      "minecraft:ocean": ["Ocean", "Океан"],
+      "minecraft:deep_ocean": ["Deep Ocean", "Глубокий океан"],
+      "minecraft:warm_ocean": ["Warm Ocean", "Тёплый океан"],
+      "minecraft:lukewarm_ocean": ["Lukewarm Ocean", "Тепловатый океан"],
+      "minecraft:deep_lukewarm_ocean": ["Deep Lukewarm Ocean", "Глубокий тепловатый океан"],
+      "minecraft:cold_ocean": ["Cold Ocean", "Холодный океан"],
+      "minecraft:deep_cold_ocean": ["Deep Cold Ocean", "Глубокий холодный океан"],
+      "minecraft:frozen_ocean": ["Frozen Ocean", "Замёрзший океан"],
+      "minecraft:deep_frozen_ocean": ["Deep Frozen Ocean", "Глубокий замёрзший океан"],
+      "minecraft:mushroom_fields": ["Mushroom Fields", "Грибные поля"],
+      "minecraft:dripstone_caves": ["Dripstone Caves", "Пещеры капельника"],
+      "minecraft:lush_caves": ["Lush Caves", "Пышные пещеры"],
+      "minecraft:deep_dark": ["Deep Dark", "Древние недра"],
+      "minecraft:pale_garden": ["Pale Garden", "Бледный сад"],
+      "minecraft:nether_wastes": ["Nether Wastes", "Пустоши Незера"],
+      "minecraft:soul_sand_valley": ["Soul Sand Valley", "Долина песка душ"],
+      "minecraft:crimson_forest": ["Crimson Forest", "Багровый лес"],
+      "minecraft:warped_forest": ["Warped Forest", "Искажённый лес"],
+      "minecraft:basalt_deltas": ["Basalt Deltas", "Базальтовые дельты"],
+      "minecraft:the_end": ["The End", "Край"],
+      "minecraft:end_highlands": ["End Highlands", "Высоты Края"],
+      "minecraft:end_midlands": ["End Midlands", "Средние земли Края"],
+      "minecraft:end_barrens": ["End Barrens", "Пустоши Края"],
+      "minecraft:small_end_islands": ["Small End Islands", "Малые острова Края"],
+      "minecraft:the_void": ["The Void", "Пустота"]
+    };
+    const PIN_ROWS = [
+      "000000222000000",
+      "000002111120000",
+      "000021111112000",
+      "000211111111200",
+      "002111111111120",
+      "021111111111112",
+      "021111111111112",
+      "002111111111120",
+      "000211111111200",
+      "000021111112000",
+      "000002111120000",
+      "000000222000000",
+      "000000121000000",
+      "000000020000000",
+      "000000010000000"
+    ];
+    const pinImages = new Map();
+    searchInput.placeholder = text("Marker or biome", "Метка или биом");
     loadingLabel.textContent = text("Loading the map", "Карта загружается");
     const tiles = new Map();
     const pins = new Map();
@@ -244,6 +360,31 @@
       }
     }
 
+    function pinImage(color) {
+      if (pinImages.has(color)) return pinImages.get(color);
+      const canvas = document.createElement("canvas");
+      canvas.width = 30;
+      canvas.height = 30;
+      const ctx = canvas.getContext("2d");
+      PIN_ROWS.forEach((row, y) => {
+        for (let x = 0; x < row.length; x += 1) {
+          if (row[x] === "0") continue;
+          ctx.fillStyle = row[x] === "2" ? "#1b140c" : color;
+          ctx.fillRect(x * 2, y * 2, 2, 2);
+        }
+      });
+      const url = canvas.toDataURL();
+      pinImages.set(color, url);
+      return url;
+    }
+
+    function biomeLabel(id) {
+      if (!id) return "";
+      const pair = BIOMES[id];
+      if (pair) return text(pair[0], pair[1]);
+      return id.split(":").pop().replaceAll("_", " ");
+    }
+
     function mountPins() {
       pins.forEach((pin) => pin.remove());
       pins.clear();
@@ -251,10 +392,10 @@
         const pin = document.createElement("button");
         pin.type = "button";
         pin.className = "pin";
-        pin.innerHTML = "<i></i><b></b>";
-        pin.style.color = marker.color;
+        pin.innerHTML = "<img alt='' draggable='false'><b></b>";
         pin.style.setProperty("--x", marker.x + "px");
         pin.style.setProperty("--z", marker.z + "px");
+        pin.querySelector("img").src = pinImage(marker.color);
         const letter = pin.querySelector("b");
         letter.textContent = marker.initials;
         if ([...marker.initials].length > 1) letter.style.fontSize = "9px";
@@ -355,7 +496,20 @@
     function matchingMarkers() {
       const needle = searchInput.value.trim().toLowerCase();
       if (!needle || !dimension) return [];
-      return dimension.waypoints.filter((marker) => marker.name.toLowerCase().includes(needle)).slice(0, 12);
+      const markers = dimension.waypoints.filter((marker) => marker.name.toLowerCase().includes(needle)).slice(0, 8);
+      const biomes = (dimension.biomes || []).filter((spot) => {
+        const pair = BIOMES[spot.id] || [];
+        const haystack = (spot.id + " " + pair.join(" ") + " " + biomeLabel(spot.id)).toLowerCase();
+        return haystack.includes(needle);
+      }).slice(0, 8);
+      return markers.map((marker) => ({ kind: "marker", name: marker.name, x: marker.x, z: marker.z }))
+        .concat(biomes.map((spot) => ({
+          kind: "biome",
+          name: biomeLabel(spot.id),
+          x: spot.x,
+          z: spot.z
+        })))
+        .slice(0, 12);
     }
 
     function renderSearch() {
@@ -368,7 +522,8 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = index === searchPick ? "on" : "";
-        button.textContent = marker.name;
+        const place = "  X " + marker.x + "  Z " + marker.z;
+        button.textContent = marker.kind === "biome" ? marker.name + place : marker.name;
         button.addEventListener("mousedown", (event) => event.preventDefault());
         button.addEventListener("click", () => goTo(marker));
         searchList.appendChild(button);
@@ -419,6 +574,8 @@
       hover.hidden = true;
       searchList.hidden = true;
       searchInput.value = "";
+      biomeRegions.clear();
+      biomeEl.textContent = "";
       mountPins();
       fit(true);
       warm();
@@ -426,7 +583,7 @@
 
     function markerAt(clientX, clientY) {
       const [x, z] = blockOf(clientX, clientY);
-      const reach = 16 / view.scale;
+      const reach = 22 / view.scale;
       let best = reach * reach;
       let found = null;
       for (const marker of dimension.waypoints) {
@@ -472,7 +629,8 @@
       title.textContent = point ? point.name : text("Empty place", "Пустое место");
       menu.appendChild(title);
       const place = document.createElement("div");
-      place.textContent = "X " + x + (y === null ? "" : "  Y " + y) + "  Z " + z;
+      const ground = biomeNow(x, z);
+      place.textContent = "X " + x + (y === null ? "" : "  Y " + y) + "  Z " + z + (ground ? "  " + ground : "");
       menu.appendChild(place);
       if (!point) field(text("Suggest a marker", "Предложить метку"), "add", x, y, z, "");
       else {
@@ -522,10 +680,76 @@
       say(text("Saved. It is only a suggestion.", "Записано. Это только предложение."));
     }
 
+    function regionKey(x, z) {
+      return dimension.id + ":" + Math.floor(x / 512) + ":" + Math.floor(z / 512);
+    }
+
+    async function inflateCells(cells) {
+      if (!cells) return new Uint8Array(0);
+      const raw = Uint8Array.from(atob(cells), (char) => char.charCodeAt(0));
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    function loadRegion(x, z) {
+      const key = regionKey(x, z);
+      const existing = biomeRegions.get(key);
+      if (existing) return Promise.resolve(existing);
+      const rx = Math.floor(x / 512);
+      const rz = Math.floor(z / 512);
+      const pending = fetch(api("api/biomes/region?dimension=" + encodeURIComponent(dimension.id) + "&x=" + (rx * 512) + "&z=" + (rz * 512)))
+        .then((response) => response.ok ? response.json() : null)
+        .then(async (payload) => {
+          const grid = {
+            names: payload && payload.names || [],
+            cells: payload && payload.cells ? await inflateCells(payload.cells) : new Uint8Array(0)
+          };
+          biomeRegions.set(key, grid);
+          return grid;
+        })
+        .catch(() => {
+          const grid = { names: [], cells: new Uint8Array(0) };
+          biomeRegions.set(key, grid);
+          return grid;
+        });
+      biomeRegions.set(key, pending);
+      return pending;
+    }
+
+    function sampleBiome(grid, x, z) {
+      if (!grid || !grid.cells || grid.cells.length !== 65536) return "";
+      const rx = Math.floor(x / 512);
+      const rz = Math.floor(z / 512);
+      const localX = Math.floor(x) - rx * 512;
+      const localZ = Math.floor(z) - rz * 512;
+      if (localX < 0 || localX > 511 || localZ < 0 || localZ > 511) return "";
+      const value = grid.cells[(localZ >> 1) * 256 + (localX >> 1)];
+      if (!value || value > grid.names.length) return "";
+      return biomeLabel(grid.names[value - 1] || "");
+    }
+
+    function biomeNow(x, z) {
+      const value = biomeRegions.get(regionKey(x, z));
+      if (!value || typeof value.then === "function") return "";
+      return sampleBiome(value, x, z);
+    }
+
+    let readoutSeq = 0;
+
     function pointerReadout(event) {
       if (!dimension) return;
       const [x, z] = blockOf(event.clientX, event.clientY);
-      readout.querySelector("span").textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
+      const seq = ++readoutSeq;
+      coordsEl.textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
+      const ready = biomeRegions.get(regionKey(x, z));
+      if (ready && typeof ready.then !== "function") biomeEl.textContent = sampleBiome(ready, x, z);
+      else {
+        biomeEl.textContent = "";
+        loadRegion(x, z).then((grid) => {
+          if (seq !== readoutSeq) return;
+          biomeEl.textContent = sampleBiome(grid, x, z);
+        });
+      }
       showHover(event, markerAt(event.clientX, event.clientY));
     }
 

@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from mikchan_map.biomes import filter_biomes, sample_grid
 from mikchan_map.convert import load_done, should_upload
-from mikchan_map.markers import check_suggestion, color_hex, parse_waypoints
+from mikchan_map.markers import check_suggestion, color_hex, filter_markers, parse_waypoints
 from mikchan_map.mikchan_map import cloud_name, router
 from mikchan_map.xaero_cache import parse_cache
 from orchestrator.home import home_payload
@@ -37,6 +38,81 @@ def _region(version: int, raw: bytes) -> bytes:
             bytes((0xFF,)),
         )
     )
+
+
+def _utf(text: str) -> bytes:
+    raw = text.encode()
+    return len(raw).to_bytes(2, "big") + raw
+
+
+def _biome_cell(local: int) -> bytes:
+    step = local + 1
+    shorts = (0, 128 * step, 1024 * step, 8192 * step + 1)
+    return b"".join(item.to_bytes(2, "big") for item in shorts)
+
+
+def test_cache_reads_a_biome_palette_and_a_two_block_grid():
+    blob = bytearray(8192)
+    blob[0:8] = _biome_cell(0)
+    blob[8:16] = _biome_cell(1)
+    data = b"".join(
+        (
+            _i32(0x00030018),
+            b"\x00" * 20,
+            bytes((0,)),
+            _i32(1),
+            bytes((0xFF,)),
+            _i32(2),
+            bytes((0,)),
+            _utf("minecraft:plains"),
+            bytes((0,)),
+            _utf("minecraft:forest"),
+            bytes((0,)),
+            b"\x00" * 16384,
+            bytes((0,)),
+            b"\x00" * (1024 * 8 * 2),
+            _i32(2),
+            _i32(0),
+            b"\x00\x00",
+            _i32(1),
+            b"\x00\x00",
+            bytes((1,)),
+            bytes(blob),
+            bytes((0xFF,)),
+        )
+    )
+    image = parse_cache(data, leaf=True, level=0)
+    assert image.biome_names[:2] == ("minecraft:plains", "minecraft:forest")
+    assert image.biomes[0] == 1
+    assert image.biomes[1] == 2
+    assert sample_grid(list(image.biome_names), image.biomes, 1, 0, 0, 0) == "minecraft:plains"
+    assert sample_grid(list(image.biome_names), image.biomes, 3, 0, 0, 0) == "minecraft:forest"
+    single = b"".join(
+        (
+            _i32(0x00030018),
+            b"\x00" * 20,
+            bytes((0,)),
+            _i32(1),
+            bytes((0xFF,)),
+            _i32(1),
+            bytes((0,)),
+            _utf("minecraft:river"),
+            bytes((0,)),
+            b"\x00" * 16384,
+            bytes((0,)),
+            b"\x00" * (1024 * 8 * 2),
+            _i32(1),
+            _i32(0),
+            b"\x00\x00",
+            bytes((0,)),
+            bytes((0xFF,)),
+        )
+    )
+    filled = parse_cache(single, leaf=True, level=0)
+    assert filled.biomes[0] == 1
+    assert filled.biomes[31] == 1
+    assert filled.biomes[32] == 0
+    assert filled.biomes[256] == 1
 
 
 def test_cache_keeps_dark_surface_pixels_and_drops_the_red_hole():
@@ -127,8 +203,29 @@ class _Store:
                 "bounds": {"minX": 0, "maxX": 1, "minZ": 0, "maxZ": 1},
                 "levels": [],
                 "waypoints": [{"name": "дом", "initials": "д", "x": 1, "y": 2, "z": 3, "color": "#AA0000"}],
+                "biomes": [{"id": "minecraft:plains", "x": 12, "z": 20}, {"id": "minecraft:forest", "x": 80, "z": 90}],
             },
         ]
+
+    async def biome_at(self, dimension, x, z):
+        if dimension == "overworld" and x == 1 and z == 0:
+            return {"dimension": dimension, "id": "minecraft:plains", "en": "Plains", "ru": "Равнины", "x": x, "z": z}
+        return None
+
+    async def biome_region(self, dimension, x, z):
+        if dimension != "overworld":
+            return None
+        import base64
+        import zlib
+
+        grid = bytearray(256 * 256)
+        grid[0] = 1
+        return {
+            "names": ["minecraft:plains"],
+            "cells": base64.b64encode(zlib.compress(bytes(grid), 6)).decode("ascii"),
+            "rx": x // 512,
+            "rz": z // 512,
+        }
 
     async def add_suggestion(self, suggestion):
         self.saved.append(suggestion)
@@ -148,9 +245,10 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert 'href="https://mikchan.net"' in page.text
     assert 'id="search"' in page.text
     assert 'id="hover"' in page.text
-    assert "top: 10px; right: 12px" in page.text
-    assert "background: #221e16" in page.text
-    assert "scrollbar-color: #8a7340 #16140f" in page.text
+    assert 'id="biome"' in page.text
+    assert "Pixelify Sans" in page.text
+    assert "api/biomes/region" in page.text
+    assert "scrollbar-color: #8b8b8b #1a1a1a" in page.text
     catalog = client.get("/mikchan-map/api/map").json()
     assert [item["id"] for item in catalog["dimensions"]] == ["overworld", "nether"]
     assert catalog["cloud"] == "gndf3nby"
@@ -166,3 +264,15 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     )
     assert rejected.status_code == 400
     assert rejected.json()["error"] == "name"
+    markers = client.get("/mikchan-map/api/markers", params={"q": "дом"}).json()
+    assert markers["markers"][0]["z"] == 3
+    assert client.get("/mikchan-map/api/markers", params={"q": "нет"}).json()["markers"] == []
+    biomes = client.get("/mikchan-map/api/biomes", params={"q": "равнины"}).json()
+    assert biomes["biomes"][0]["id"] == "minecraft:plains"
+    assert biomes["biomes"][0]["ru"] == "Равнины"
+    assert client.get("/mikchan-map/api/biomes/at", params={"dimension": "overworld", "x": 1, "z": 0}).json()["biome"]["en"] == "Plains"
+    region = client.get("/mikchan-map/api/biomes/region", params={"dimension": "overworld", "x": 1, "z": 2}).json()
+    assert region["names"] == ["minecraft:plains"]
+    assert region["cells"]
+    assert filter_markers([{"id": "overworld", "waypoints": [{"name": "дом", "initials": "д", "x": 1, "y": 2, "z": 3, "color": "#fff"}]}], dimension="", query="Д", limit=5)[0]["name"] == "дом"
+    assert filter_biomes([{"id": "overworld", "biomes": [{"id": "minecraft:river", "x": 4, "z": 5}]}], dimension="overworld", query="река", limit=5)[0]["ru"] == "Река"
