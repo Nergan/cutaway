@@ -12,6 +12,7 @@ import asyncio
 import logging
 import os
 import re
+import secrets
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -27,10 +28,10 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from mikchan_map.biomes import biome_labels, filter_biomes, sample_grid
 from mikchan_map.gate import (
     SEED_KEYS,
+    active_secret,
     clear_gate_cache,
     client_host,
     gate_open,
-    gate_secret,
     issue_cookie,
     normalize_key,
     note_failure,
@@ -119,6 +120,17 @@ class MongoStore:
         doc = await collection.find_one({"_id": "gate"}, {"keys": 1})
         raw = doc.get("keys") if doc else []
         return [item for item in raw if isinstance(item, str)]
+
+    async def gate_seal(self) -> bytes:
+        from shared.mongo import get_client
+
+        collection = get_client()[DATABASE].access
+        doc = await collection.find_one({"_id": "gate"}, {"seal": 1})
+        seal = doc.get("seal") if doc else ""
+        if not isinstance(seal, str) or len(seal) < 32:
+            seal = secrets.token_hex(32)
+            await collection.update_one({"_id": "gate"}, {"$set": {"seal": seal}}, upsert=True)
+        return seal.encode()
 
     async def tile_prefix(self) -> str:
         from shared.mongo import get_client
@@ -238,7 +250,12 @@ async def map_page():
 
 @router.get("/api/session")
 async def map_session(request: Request):
-    if not gate_secret():
+    try:
+        secret = await active_secret()
+    except Exception as exc:
+        logger.error("map gate failed: %s", type(exc).__name__)
+        return JSONResponse({"ok": False}, status_code=503)
+    if not secret:
         return JSONResponse({"ok": False}, status_code=503)
     if not await gate_open(request):
         return JSONResponse({"ok": False}, status_code=401)
@@ -247,7 +264,12 @@ async def map_session(request: Request):
 
 @router.post("/api/access")
 async def map_access(request: Request, body: dict = Body()):
-    if not gate_secret():
+    try:
+        secret = await active_secret()
+    except Exception as exc:
+        logger.error("map gate failed: %s", type(exc).__name__)
+        return JSONResponse({"error": "gate"}, status_code=503)
+    if not secret:
         return JSONResponse({"error": "gate"}, status_code=503)
     host = client_host(request)
     if too_many_attempts(host):
@@ -271,7 +293,7 @@ async def map_access(request: Request, body: dict = Body()):
     response = JSONResponse({"ok": True})
     response.set_cookie(
         "mikchan_map",
-        issue_cookie(key),
+        issue_cookie(key, secret=secret),
         max_age=30 * 24 * 3600,
         httponly=True,
         samesite="lax",

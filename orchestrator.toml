@@ -467,7 +467,9 @@ env_allowlist = [
   "MONGO_TLS",
   "MONGO_TLS_ALLOW_INVALID_CERTS",
   "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_SECRET",
   "CLOUDINARY_URL",
+  "MAP_GATE_SECRET",
 ]
 
 [projects.mikchan_map.limits]

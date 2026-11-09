@@ -27,16 +27,35 @@ SEED_KEYS = ("3301", "rei", "muda muda")
 def gate_secret() -> bytes:
     raw = (os.getenv("MAP_GATE_SECRET") or os.getenv("CLOUDINARY_API_SECRET") or "").strip()
     if len(raw) < 16:
-        return b""
-    return raw.encode()
+        url = os.getenv("CLOUDINARY_URL", "")
+        if "://" in url and "@" in url:
+            creds = url.split("://", 1)[1].split("@", 1)[0]
+            raw = creds.split(":", 1)[1].strip() if ":" in creds else ""
+    return raw.encode() if len(raw) >= 16 else b""
+
+
+_seal_cache = b""
+
+
+async def active_secret() -> bytes:
+    global _seal_cache
+    env_secret = gate_secret()
+    if env_secret:
+        return env_secret
+    if _seal_cache:
+        return _seal_cache
+    from mikchan_map.mikchan_map import get_store
+
+    _seal_cache = await get_store().gate_seal()
+    return _seal_cache
 
 
 def normalize_key(value: str) -> str:
     return value.strip()
 
 
-def issue_cookie(key: str, now: float | None = None) -> str:
-    secret = gate_secret()
+def issue_cookie(key: str, now: float | None = None, secret: bytes | None = None) -> str:
+    secret = gate_secret() if secret is None else secret
     if not secret:
         raise RuntimeError("gate secret is missing")
     expiry = int((now if now is not None else time.time()) + 30 * 24 * 3600)
@@ -45,8 +64,8 @@ def issue_cookie(key: str, now: float | None = None) -> str:
     return f"{body}.{signature}"
 
 
-def cookie_hash(token: str, now: float | None = None) -> str | None:
-    secret = gate_secret()
+def cookie_hash(token: str, now: float | None = None, secret: bytes | None = None) -> str | None:
+    secret = gate_secret() if secret is None else secret
     if not secret or token.count(".") != 2:
         return None
     digest, expiry, signature = token.split(".")
@@ -103,7 +122,10 @@ async def current_keys() -> list[str]:
 
 
 async def gate_open(request: Request) -> bool:
-    digest = cookie_hash(request.cookies.get(_COOKIE, ""))
+    secret = await active_secret()
+    if not secret:
+        return False
+    digest = cookie_hash(request.cookies.get(_COOKIE, ""), secret=secret)
     if not digest:
         return False
     for key in await current_keys():
@@ -113,7 +135,9 @@ async def gate_open(request: Request) -> bool:
 
 
 async def require_gate(request: Request) -> None:
-    if not gate_secret():
-        raise HTTPException(status_code=503, detail="gate")
-    if not await gate_open(request):
-        raise HTTPException(status_code=401, detail="key")
+    try:
+        secret = await active_secret()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="gate") from exc
+    if not secret or not await gate_open(request):
+        raise HTTPException(status_code=503 if not secret else 401, detail="gate" if not secret else "key")
