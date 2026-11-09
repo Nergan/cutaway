@@ -38,18 +38,19 @@ def test_home_document_names_the_projects_and_the_contacts():
     assert "пет-проектов" in payload["welcome"]["ru"]
     ids = [project["id"] for project in payload["projects"]]
     remote = "yellow" + "_mirror"
-    assert ids[:9] == [
+    assert ids[:10] == [
         "netlazy",
         "formular",
         "toadcode",
         "markbin",
+        "mikchan_map",
         "minecraft_mods",
         "dnd",
         "ascii_city",
         "kanban",
         "soon",
     ]
-    assert ids[9:] == ["evenfest", "snake", remote]
+    assert ids[10:] == ["evenfest", "snake", remote]
     assert "age" not in ids
     hidden = home_payload(9, only=frozenset())
     assert hidden["projects"] == []

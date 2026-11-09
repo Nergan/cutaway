@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Карта MikChan</title>
+  <link rel="icon" href="https://mikchan.net/favicon.ico">
+  <style>
+    html, body { margin: 0; height: 100%; background: #10110e; color: #e8e2d6; }
+    body { font: 14px/1.3 Segoe UI, sans-serif; overflow: hidden; }
+    #bar, #readout, #menu, #note {
+      position: absolute; z-index: 3;
+    }
+    #bar { top: 10px; left: 10px; display: flex; gap: 6px; }
+    button, .dim {
+      background: #1b1b1b; color: #f0e2bc; border: 1px solid #8a7340;
+      padding: 6px 10px; cursor: pointer;
+    }
+    button[aria-pressed="true"], .dim[aria-pressed="true"] { background: #3a3220; }
+    #view { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
+    #view.drag { cursor: grabbing; }
+    .tile, .pin { position: absolute; top: 0; left: 0; }
+    .tile { image-rendering: pixelated; pointer-events: none; }
+    .pin {
+      width: 0; height: 0; z-index: 20; pointer-events: auto; background: none; border: 0; padding: 0;
+    }
+    .pin i {
+      position: absolute; left: -5px; top: -5px; width: 8px; height: 8px;
+      background: currentColor; transform: rotate(45deg); box-shadow: 0 0 0 1px #f4f1e8;
+    }
+    .pin span {
+      position: absolute; left: 8px; top: -8px; color: #fff; text-shadow: 0 1px 0 #000, 0 0 2px #000;
+      white-space: nowrap; font-size: 12px; pointer-events: none;
+    }
+    #view.far .pin span { display: none; }
+    #readout {
+      left: 10px; bottom: 10px; background: rgba(12, 12, 12, 0.82);
+      border: 1px solid #8a7340; padding: 6px 8px; min-width: 9rem;
+    }
+    #readout b { display: block; color: #f0e2bc; font-weight: 500; }
+    #menu {
+      min-width: 220px; background: #161616; border: 1px solid #8a7340;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); padding: 8px;
+    }
+    #menu[hidden], #note[hidden] { display: none; }
+    #menu strong { display: block; color: #e6c36a; margin-bottom: 6px; }
+    #menu button, #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; }
+    #menu [hidden] { display: none; }
+    #menu input { background: #0e0e0e; color: #fff; border: 1px solid #5c5138; padding: 6px; }
+    #note { right: 10px; bottom: 10px; color: #c8b48a; }
+    #empty {
+      position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 2rem;
+    }
+    #empty[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="view"></div>
+  <div id="bar"></div>
+  <div id="readout"><b></b><span></span></div>
+  <form id="menu" hidden></form>
+  <div id="note" hidden></div>
+  <div id="empty" hidden></div>
+  <script>
+    const ru = (navigator.language || "").toLowerCase().startsWith("ru");
+    const text = (en, rus) => ru ? rus : en;
+    const viewEl = document.getElementById("view");
+    const bar = document.getElementById("bar");
+    const readout = document.getElementById("readout");
+    const menu = document.getElementById("menu");
+    const note = document.getElementById("note");
+    const empty = document.getElementById("empty");
+    const tiles = new Map();
+    const pins = new Map();
+    const view = { x: 0, z: 0, scale: 0.25, min: 0.01, max: 6 };
+    let catalog = null;
+    let dimension = null;
+    let drag = null;
+    let frame = 0;
+    const errors = {
+      name: text("Give the marker a name.", "Нужно имя метки."),
+      place: text("Those coordinates are not on the map.", "Таких координат на карте нет."),
+      kind: text("This suggestion is not supported.", "Такое предложение не поддерживается."),
+      dimension: text("Unknown dimension.", "Неизвестное измерение."),
+      body: text("The suggestion could not be read.", "Предложение не прочиталось."),
+      store: text("The suggestion was not saved.", "Предложение не записалось.")
+    };
+
+    function say(message) {
+      note.hidden = false;
+      note.textContent = message;
+      clearTimeout(say.timer);
+      say.timer = setTimeout(() => { note.hidden = true; }, 3200);
+    }
+
+    function api(path) {
+      const url = new URL(location.href);
+      if (!url.pathname.endsWith("/")) url.pathname += "/";
+      return new URL(path, url).href;
+    }
+
+    function tileUrl(level, x, z) {
+      return "https://res.cloudinary.com/" + catalog.cloud + "/image/upload/mikchan-map/"
+        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp";
+    }
+
+    function screenOf(blockX, blockZ) {
+      const rect = viewEl.getBoundingClientRect();
+      return [
+        (blockX - view.x) * view.scale + rect.width / 2,
+        (blockZ - view.z) * view.scale + rect.height / 2
+      ];
+    }
+
+    function blockOf(clientX, clientY) {
+      const rect = viewEl.getBoundingClientRect();
+      return [
+        view.x + (clientX - rect.left - rect.width / 2) / view.scale,
+        view.z + (clientY - rect.top - rect.height / 2) / view.scale
+      ];
+    }
+
+    function chosenLevels() {
+      const levels = dimension.levels.slice().sort((a, b) => a.blocks - b.blocks);
+      let index = 0;
+      while (index < levels.length - 1 && levels[index].blocks * view.scale < 220) index += 1;
+      return levels.slice(index, index + 2);
+    }
+
+    function redraw() {
+      frame = 0;
+      if (!dimension) return;
+      const rect = viewEl.getBoundingClientRect();
+      viewEl.classList.toggle("far", view.scale < 0.18);
+      const wanted = new Set();
+      for (const level of chosenLevels()) {
+        const margin = level.blocks;
+        const [x0, z0] = blockOf(rect.left - margin, rect.top - margin);
+        const [x1, z1] = blockOf(rect.right + margin, rect.bottom + margin);
+        for (const pair of level.tiles) {
+          const worldX = pair[0] * level.blocks;
+          const worldZ = pair[1] * level.blocks;
+          if (worldX > x1 || worldZ > z1 || worldX + level.blocks < x0 || worldZ + level.blocks < z0) continue;
+          const key = level.level + ":" + pair[0] + ":" + pair[1];
+          wanted.add(key);
+          let image = tiles.get(key);
+          if (!image) {
+            image = document.createElement("img");
+            image.className = "tile";
+            image.alt = "";
+            image.draggable = false;
+            image.src = tileUrl(level.level, pair[0], pair[1]);
+            image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
+            viewEl.appendChild(image);
+            tiles.set(key, image);
+          }
+          const [left, top] = screenOf(worldX, worldZ);
+          const size = level.blocks * view.scale;
+          image.style.transform = "translate(" + left + "px," + top + "px)";
+          image.style.width = size + "px";
+          image.style.height = size + "px";
+          image.style.zIndex = String(8 - level.level);
+        }
+      }
+      for (const [key, image] of tiles) {
+        if (!wanted.has(key)) { image.remove(); tiles.delete(key); }
+      }
+      const seen = new Set();
+      dimension.waypoints.forEach((marker, index) => {
+        seen.add(index);
+        let pin = pins.get(index);
+        if (!pin) {
+          pin = document.createElement("button");
+          pin.type = "button";
+          pin.className = "pin";
+          pin.innerHTML = "<i></i><span></span>";
+          pin.addEventListener("pointerdown", (event) => event.stopPropagation());
+          pin.addEventListener("contextmenu", (event) => openMenu(event, marker));
+          pin.addEventListener("click", (event) => openMenu(event, marker));
+          viewEl.appendChild(pin);
+          pins.set(index, pin);
+        }
+        pin.style.color = marker.color;
+        pin.title = marker.name;
+        pin.querySelector("span").textContent = marker.initials;
+        const [left, top] = screenOf(marker.x, marker.z);
+        pin.style.transform = "translate(" + left + "px," + top + "px)";
+      });
+      for (const [index, pin] of pins) {
+        if (!seen.has(index)) { pin.remove(); pins.delete(index); }
+      }
+    }
+
+    function requestDraw() {
+      if (!frame) frame = requestAnimationFrame(redraw);
+    }
+
+    function tightRange(values) {
+      let ordered = values.slice().sort((a, b) => a - b);
+      while (ordered.length > 4) {
+        let best = 0;
+        let split = 0;
+        for (let i = 1; i < ordered.length; i += 1) {
+          const gap = ordered[i] - ordered[i - 1];
+          if (gap > best) { best = gap; split = i; }
+        }
+        if (best < 64) break;
+        const left = split;
+        const right = ordered.length - split;
+        ordered = left >= right ? ordered.slice(0, split) : ordered.slice(split);
+      }
+      return [ordered[0], ordered[ordered.length - 1]];
+    }
+
+    function focusBounds() {
+      const finest = dimension.levels.slice().sort((a, b) => a.blocks - b.blocks)[0];
+      if (!finest || !finest.tiles.length) return dimension.bounds;
+      const [x0, x1] = tightRange(finest.tiles.map((pair) => pair[0]));
+      const [z0, z1] = tightRange(finest.tiles.map((pair) => pair[1]));
+      return {
+        minX: x0 * finest.blocks,
+        maxX: (x1 + 1) * finest.blocks,
+        minZ: z0 * finest.blocks,
+        maxZ: (z1 + 1) * finest.blocks
+      };
+    }
+
+    function fit(closer) {
+      const bounds = focusBounds();
+      const width = Math.max(1, bounds.maxX - bounds.minX);
+      const height = Math.max(1, bounds.maxZ - bounds.minZ);
+      const rect = viewEl.getBoundingClientRect();
+      const fitted = Math.min((rect.width - 48) / width, (rect.height - 48) / height);
+      view.min = Math.max(fitted * 0.85, 0.0005);
+      if (!closer) {
+        view.x = (bounds.minX + bounds.maxX) / 2;
+        view.z = (bounds.minZ + bounds.maxZ) / 2;
+        view.scale = Math.max(view.min, fitted);
+        requestDraw();
+        return;
+      }
+      const inside = dimension.waypoints.filter((marker) =>
+        marker.x >= bounds.minX && marker.x <= bounds.maxX && marker.z >= bounds.minZ && marker.z <= bounds.maxZ
+      );
+      const source = inside.length ? inside : [{ x: (bounds.minX + bounds.maxX) / 2, z: (bounds.minZ + bounds.maxZ) / 2 }];
+      const xs = source.map((marker) => marker.x).sort((a, b) => a - b);
+      const zs = source.map((marker) => marker.z).sort((a, b) => a - b);
+      const mid = (xs.length - 1) >> 1;
+      view.x = xs[mid];
+      view.z = zs[mid];
+      view.scale = Math.min(view.max, Math.max(view.min, 0.5));
+      requestDraw();
+    }
+
+    function zoomAt(clientX, clientY, factor) {
+      const [worldX, worldZ] = blockOf(clientX, clientY);
+      view.scale = Math.min(view.max, Math.max(view.min, view.scale * factor));
+      const rect = viewEl.getBoundingClientRect();
+      view.x = worldX - (clientX - rect.left - rect.width / 2) / view.scale;
+      view.z = worldZ - (clientY - rect.top - rect.height / 2) / view.scale;
+      requestDraw();
+    }
+
+    function showDimension(id) {
+      dimension = catalog.dimensions.find((item) => item.id === id) || catalog.dimensions[0];
+      tiles.forEach((image) => image.remove());
+      tiles.clear();
+      pins.forEach((pin) => pin.remove());
+      pins.clear();
+      for (const button of bar.querySelectorAll(".dim")) {
+        button.setAttribute("aria-pressed", button.dataset.id === dimension.id ? "true" : "false");
+      }
+      menu.hidden = true;
+      fit(true);
+    }
+
+    function markerAt(clientX, clientY) {
+      let found = null;
+      let best = 14 * 14;
+      for (const marker of dimension.waypoints) {
+        const [left, top] = screenOf(marker.x, marker.z);
+        const rect = viewEl.getBoundingClientRect();
+        const dx = clientX - rect.left - left;
+        const dy = clientY - rect.top - top;
+        const distance = dx * dx + dy * dy;
+        if (distance < best) { best = distance; found = marker; }
+      }
+      return found;
+    }
+
+    function openMenu(event, marker) {
+      event.preventDefault();
+      event.stopPropagation();
+      const point = marker || null;
+      const [x, z] = point ? [point.x, point.z] : blockOf(event.clientX, event.clientY).map(Math.round);
+      const y = point ? point.y : null;
+      menu.innerHTML = "";
+      const title = document.createElement("strong");
+      title.textContent = point ? point.name : text("Empty place", "Пустое место");
+      menu.appendChild(title);
+      const place = document.createElement("div");
+      place.textContent = "X " + x + (y === null ? "" : "  Y " + y) + "  Z " + z;
+      menu.appendChild(place);
+      if (!point) field(text("Suggest a marker", "Предложить метку"), "add", x, y, z, "");
+      else {
+        field(text("Suggest a rename", "Предложить переименовать"), "rename", x, y, z, point.name);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = text("Suggest removal", "Предложить удалить");
+        remove.addEventListener("click", () => send({ kind: "delete", dimension: dimension.id, x, y, z, name: "", waypoint: point.name }));
+        menu.appendChild(remove);
+      }
+      menu.hidden = false;
+      const rect = viewEl.getBoundingClientRect();
+      const left = Math.min(event.clientX, rect.right - menu.offsetWidth - 8);
+      const top = Math.min(event.clientY, rect.bottom - menu.offsetHeight - 8);
+      menu.style.left = Math.max(8, left) + "px";
+      menu.style.top = Math.max(8, top) + "px";
+    }
+
+    function field(label, kind, x, y, z, waypoint) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      const input = document.createElement("input");
+      input.maxLength = 80;
+      input.placeholder = text("Name", "Имя");
+      input.value = kind === "rename" ? waypoint : "";
+      const save = document.createElement("button");
+      save.type = "submit";
+      save.textContent = text("Save", "Записать");
+      button.addEventListener("click", () => { input.hidden = false; save.hidden = false; input.focus(); });
+      save.addEventListener("click", (event) => {
+        event.preventDefault();
+        send({ kind, dimension: dimension.id, x, y, z, name: input.value, waypoint });
+      });
+      input.hidden = true;
+      save.hidden = true;
+      menu.append(button, input, save);
+    }
+
+    async function send(body) {
+      const response = await fetch(api("api/suggestions"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        say(errors[payload.error] || errors.store);
+        return;
+      }
+      menu.hidden = true;
+      say(text("Saved. It is only a suggestion.", "Записано. Это только предложение."));
+    }
+
+    function pointerReadout(event) {
+      if (!dimension) return;
+      const marker = markerAt(event.clientX, event.clientY);
+      const [x, z] = blockOf(event.clientX, event.clientY);
+      readout.querySelector("b").textContent = marker ? marker.name : text("Map", "Карта");
+      readout.querySelector("span").textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
+    }
+
+    viewEl.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      menu.hidden = true;
+      drag = { id: event.pointerId, x: event.clientX, z: event.clientY, vx: view.x, vz: view.z };
+      viewEl.classList.add("drag");
+      viewEl.setPointerCapture(event.pointerId);
+    });
+    viewEl.addEventListener("pointermove", (event) => {
+      pointerReadout(event);
+      if (!drag || drag.id !== event.pointerId) return;
+      view.x = drag.vx - (event.clientX - drag.x) / view.scale;
+      view.z = drag.vz - (event.clientY - drag.z) / view.scale;
+      requestDraw();
+    });
+    viewEl.addEventListener("pointerup", () => { drag = null; viewEl.classList.remove("drag"); });
+    viewEl.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
+    viewEl.addEventListener("contextmenu", (event) => openMenu(event, markerAt(event.clientX, event.clientY)));
+    viewEl.addEventListener("dblclick", (event) => zoomAt(event.clientX, event.clientY, 2));
+    window.addEventListener("resize", requestDraw);
+    window.addEventListener("keydown", (event) => { if (event.key === "Escape") menu.hidden = true; });
+    menu.addEventListener("submit", (event) => event.preventDefault());
+
+    function tool(label, action) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", action);
+      bar.appendChild(button);
+      return button;
+    }
+
+    async function boot() {
+      const response = await fetch(api("api/map"));
+      catalog = await response.json();
+      if (!response.ok || !catalog.cloud || !catalog.dimensions || !catalog.dimensions.length) {
+        empty.hidden = false;
+        empty.textContent = text("The map is not published yet.", "Карта ещё не опубликована.");
+        return;
+      }
+      const names = {
+        overworld: text("Overworld", "Верхний мир"),
+        nether: text("Nether", "Незер"),
+        end: text("End", "Край")
+      };
+      for (const item of catalog.dimensions) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dim";
+        button.dataset.id = item.id;
+        button.textContent = names[item.id] || item.id;
+        button.addEventListener("click", () => showDimension(item.id));
+        bar.appendChild(button);
+      }
+      tool("+", () => zoomAt(innerWidth / 2, innerHeight / 2, 1.25));
+      tool("−", () => zoomAt(innerWidth / 2, innerHeight / 2, 0.8));
+      tool(text("Whole map", "Вся карта"), () => fit(false));
+      showDimension(catalog.dimensions[0].id);
+    }
+    boot();
+  </script>
+</body>
+</html>

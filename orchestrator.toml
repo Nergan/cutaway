@@ -455,6 +455,33 @@ allowed_hosts = ["api.github.com", "raw.githubusercontent.com", "github.com", "*
 allow_private = false
 requests_per_minute = 80
 
+[projects.mikchan_map]
+directory = "mikchan_map"
+entrypoint = "mikchan_map.mikchan_map"
+prefix = "/mikchan-map"
+requirements = "mikchan_map/requirements.txt"
+startup = "lazy"
+env_allowlist = [
+  "MONGODB_URI",
+  "MONGO_MAX_POOL_SIZE",
+  "MONGO_TLS",
+  "MONGO_TLS_ALLOW_INVALID_CERTS",
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_URL",
+]
+
+[projects.mikchan_map.limits]
+request_rate = 60
+request_bytes = 65536
+response_bytes = 4194304
+max_concurrency = 8
+request_timeout_seconds = 30
+memory_mb = 384
+cpu_percent = 80
+max_processes = 2
+max_connections = 32
+idle_timeout_seconds = 900
+
 [projects.mikchan_rate]
 directory = "mikchan_rate"
 entrypoint = "mikchan_rate.mikchan_rate"
