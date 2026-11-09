@@ -16,6 +16,7 @@ def _leaf() -> bytes:
     raw = bytearray(16384)
     raw[0:4] = bytes((20, 140, 40, 200))
     raw[4:8] = bytes((255, 0, 0, 0))
+    raw[8:12] = bytes((90, 121, 60, 0))
     return b"".join(
         (
             _i32(0x00020018),
@@ -34,12 +35,13 @@ def _leaf() -> bytes:
     )
 
 
-def test_cache_keeps_lit_pixels_and_drops_the_empty_red_marker():
+def test_cache_keeps_dark_surface_pixels_and_drops_the_red_hole():
     image = parse_cache(_leaf(), leaf=True, level=0)
     assert image.major == 2 and image.minor == 24
     assert image.rgba[0:4] == bytes((20, 140, 40, 255))
     assert image.rgba[4:8] == bytes(4)
-    assert image.opaque_pixels() == 1
+    assert image.rgba[8:12] == bytes((90, 121, 60, 255))
+    assert image.opaque_pixels() == 2
 
 
 def test_upload_notes_keep_an_unstamped_tile_until_the_cache_changes(tmp_path):
@@ -130,6 +132,10 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert "Предложить метку" in page.text
     assert "donate-widget.js" in page.text
     assert 'href="https://mikchan.net"' in page.text
+    assert 'id="search"' in page.text
+    assert 'id="hover"' in page.text
+    assert "top: 10px; right: 12px" in page.text
+    assert "background: #221e16" in page.text
     catalog = client.get("/mikchan-map/api/map").json()
     assert [item["id"] for item in catalog["dimensions"]] == ["overworld", "nether"]
     assert catalog["cloud"] == "gndf3nby"

@@ -3,7 +3,9 @@
 The layout matches the cache written by Xaero's World Map (major 1–3, minor
 13–25): a zip with one ``cache.xaero``. Level 0 (``cache_1``) is 512 blocks
 per file, one pixel per block. Each next ``cache/<level>`` doubles the blocks
-a file covers. Unexplored pixels stay transparent.
+a file covers. From major 2 the last byte of a pixel is light, so a dark
+explored block is still drawn. A black pixel is unexplored. The branch caches
+mark a missing child as pure red with zero light, and that marker stays blank.
 """
 
 from __future__ import annotations
@@ -111,11 +113,15 @@ def _paste(canvas: bytearray, x: int, y: int, raw: bytes, *, rgb_last: bool) -> 
         for col in range(_CHUNK):
             pixel = raw[src + col * 4 : src + col * 4 + 4]
             if rgb_last:
-                red, green, blue, alpha = pixel
+                # The last byte is light, not coverage. A dark explored block is
+                # still the surface. (255, 0, 0, 0) is only the branch-cache hole.
+                red, green, blue, light = pixel
+                if (red, green, blue) == (0, 0, 0) or (red, green, blue, light) == (255, 0, 0, 0):
+                    continue
             else:
                 alpha, red, green, blue = pixel
-            if alpha == 0:
-                continue
+                if alpha == 0:
+                    continue
             canvas[dst + col * 4 : dst + col * 4 + 4] = bytes((red, green, blue, 255))
 
 

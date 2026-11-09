@@ -9,71 +9,91 @@
   <style>
     html, body { margin: 0; height: 100%; background: #10110e; color: #e8e2d6; }
     body { font: 14px/1.3 Segoe UI, sans-serif; overflow: hidden; }
-    #bar, #readout, #menu, #note {
-      position: absolute; z-index: 3;
-    }
-    #bar { top: 10px; left: 10px; display: flex; gap: 6px; }
-    button, .dim {
-      background: #1b1b1b; color: #f0e2bc; border: 1px solid #8a7340;
-      padding: 6px 10px; cursor: pointer;
-    }
-    button[aria-pressed="true"], .dim[aria-pressed="true"] { background: #3a3220; }
-    #view { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
+    #view { position: absolute; inset: 0; z-index: 1; overflow: hidden; cursor: grab; touch-action: none; isolation: isolate; }
     #view.drag { cursor: grabbing; }
-    .tile, .pin { position: absolute; top: 0; left: 0; }
-    .tile { image-rendering: pixelated; pointer-events: none; }
+    #camera { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    .tile { position: absolute; image-rendering: pixelated; pointer-events: none; }
     .pin {
-      width: 0; height: 0; z-index: 20; pointer-events: auto; background: none; border: 0; padding: 0;
+      position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 20;
+      pointer-events: none; background: none; border: 0; padding: 0;
+      transform: translate(var(--x), var(--z)) scale(var(--inv)); transform-origin: 0 0;
     }
     .pin i {
-      position: absolute; left: -5px; top: -5px; width: 8px; height: 8px;
+      position: absolute; left: -5px; top: -5px; width: 10px; height: 10px;
       background: currentColor; transform: rotate(45deg); box-shadow: 0 0 0 1px #f4f1e8;
     }
     .pin span {
       position: absolute; left: 8px; top: -8px; color: #fff; text-shadow: 0 1px 0 #000, 0 0 2px #000;
-      white-space: nowrap; font-size: 12px; pointer-events: none;
+      white-space: nowrap; font-size: 12px;
     }
     #view.far .pin span { display: none; }
-    #readout {
-      left: 12px; bottom: 40px; background: rgba(12, 12, 12, 0.82);
-      border: 1px solid #8a7340; padding: 6px 8px; min-width: 9rem;
+    #bar, #readout, #menu, #note, #hover, #search .list { background: #16140f; }
+    #bar {
+      position: absolute; z-index: 8; top: 10px; left: 10px;
+      display: flex; gap: 6px; align-items: flex-start;
+      border: 1px solid #8a7340; padding: 6px;
     }
-    #readout b { display: block; color: #f0e2bc; font-weight: 500; }
-    #menu {
-      min-width: 220px; background: #161616; border: 1px solid #8a7340;
+    button, .dim, #search input {
+      background: #221e16; color: #f0e2bc; border: 1px solid #8a7340;
+      padding: 6px 10px; cursor: pointer; opacity: 1;
+    }
+    button[aria-pressed="true"], .dim[aria-pressed="true"] { background: #3a3220; }
+    #search { position: relative; }
+    #search input { width: 11rem; cursor: text; }
+    #search .list {
+      position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%;
+      max-height: 240px; overflow: auto; border: 1px solid #8a7340; z-index: 9;
+    }
+    #search .list[hidden] { display: none; }
+    #search .list button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #3a3220; }
+    #search .list button.on, #search .list button:hover { background: #3a3220; }
+    #readout {
+      position: absolute; z-index: 8; top: 10px; right: 12px;
+      border: 1px solid #8a7340; padding: 6px 8px; min-width: 8rem;
+    }
+    #hover, #menu {
+      position: absolute; z-index: 30; border: 1px solid #8a7340;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); padding: 8px;
     }
-    #menu[hidden], #note[hidden] { display: none; }
-    #menu strong { display: block; color: #e6c36a; margin-bottom: 6px; }
+    #hover { pointer-events: none; }
+    #hover strong, #menu strong { display: block; color: #e6c36a; margin-bottom: 4px; }
+    #menu { z-index: 31; min-width: 220px; }
+    #menu[hidden], #note[hidden], #hover[hidden] { display: none; }
     #menu button, #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; }
     #menu [hidden] { display: none; }
-    #menu input { background: #0e0e0e; color: #fff; border: 1px solid #5c5138; padding: 6px; }
-    #note { right: 16px; bottom: 72px; color: #c8b48a; }
+    #menu input { background: #221e16; color: #fff; border: 1px solid #8a7340; padding: 6px; }
+    #note { position: absolute; z-index: 32; right: 16px; bottom: 72px; color: #c8b48a; background: transparent; }
     #server {
-      position: absolute; left: 12px; bottom: 12px; z-index: 4;
-      color: #a89878; font-size: 13px; text-decoration: none; z-index: 7;
+      position: absolute; left: 12px; bottom: 12px; z-index: 8;
+      color: #a89878; font-size: 13px; text-decoration: none;
     }
     #server:hover { color: #f0e2bc; }
     #loading {
-      position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
+      position: absolute; inset: 0; z-index: 40; display: grid; place-items: center;
       background: #10110e; text-align: center;
     }
     #loading[hidden] { display: none; }
     #loading p { margin: 0 0 12px; color: #f0e2bc; }
     #loading .track {
-      width: min(280px, 70vw); height: 8px; border: 1px solid #8a7340; background: #1b1b1b;
+      width: min(280px, 70vw); height: 8px; border: 1px solid #8a7340; background: #221e16;
     }
     #loading .bar { height: 100%; width: 0; background: #c8b48a; }
     #empty {
-      position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 2rem;
+      position: absolute; inset: 0; z-index: 7; display: grid; place-items: center; text-align: center; padding: 2rem;
     }
     #empty[hidden] { display: none; }
   </style>
 </head>
 <body>
-  <div id="view"></div>
-  <div id="bar"></div>
-  <div id="readout" hidden><b></b><span></span></div>
+  <div id="view"><div id="camera"></div></div>
+  <div id="bar">
+    <div id="search">
+      <input type="search" autocomplete="off" spellcheck="false">
+      <div class="list" hidden></div>
+    </div>
+  </div>
+  <div id="readout" hidden><span></span></div>
+  <div id="hover" hidden><strong></strong><span></span></div>
   <a id="server" href="https://mikchan.net">mikchan.net</a>
   <div id="loading"><p></p><div class="track"><div class="bar"></div></div></div>
   <form id="menu" hidden></form>
@@ -83,14 +103,19 @@
     const ru = (navigator.language || "").toLowerCase().startsWith("ru");
     const text = (en, rus) => ru ? rus : en;
     const viewEl = document.getElementById("view");
+    const camera = document.getElementById("camera");
     const bar = document.getElementById("bar");
     const readout = document.getElementById("readout");
+    const hover = document.getElementById("hover");
     const menu = document.getElementById("menu");
     const note = document.getElementById("note");
     const empty = document.getElementById("empty");
     const loading = document.getElementById("loading");
+    const searchInput = document.querySelector("#search input");
+    const searchList = document.querySelector("#search .list");
     const loadingLabel = loading.querySelector("p");
     const loadingBar = loading.querySelector(".bar");
+    searchInput.placeholder = text("Marker", "Метка");
     loadingLabel.textContent = text("Loading the map", "Карта загружается");
     const tiles = new Map();
     const pins = new Map();
@@ -99,6 +124,7 @@
     let dimension = null;
     let drag = null;
     let frame = 0;
+    let searchPick = 0;
     const errors = {
       name: text("Give the marker a name.", "Нужно имя метки."),
       place: text("Those coordinates are not on the map.", "Таких координат на карте нет."),
@@ -123,15 +149,7 @@
 
     function tileUrl(level, x, z) {
       return "https://res.cloudinary.com/" + catalog.cloud + "/image/upload/mikchan-map/"
-        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp";
-    }
-
-    function screenOf(blockX, blockZ) {
-      const rect = viewEl.getBoundingClientRect();
-      return [
-        (blockX - view.x) * view.scale + rect.width / 2,
-        (blockZ - view.z) * view.scale + rect.height / 2
-      ];
+        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp?v=2";
     }
 
     function blockOf(clientX, clientY) {
@@ -142,83 +160,104 @@
       ];
     }
 
-    function chosenLevels() {
+    function chosenLevel() {
       const levels = dimension.levels.slice().sort((a, b) => a.blocks - b.blocks);
       let index = 0;
-      while (index < levels.length - 1 && levels[index].blocks * view.scale < 220) index += 1;
-      return levels.slice(index, index + 2);
+      while (index < levels.length - 1 && levels[index].blocks * view.scale < 180) index += 1;
+      const level = levels[index];
+      if (!level.lookup) level.lookup = new Set(level.tiles.map((pair) => pair[0] + ":" + pair[1]));
+      return level;
     }
 
     function visibleTiles() {
+      const level = chosenLevel();
       const rect = viewEl.getBoundingClientRect();
+      const pad = 64;
+      const [x0, z0] = blockOf(rect.left - pad, rect.top - pad);
+      const [x1, z1] = blockOf(rect.right + pad, rect.bottom + pad);
+      const minX = Math.floor(x0 / level.blocks);
+      const maxX = Math.floor(x1 / level.blocks);
+      const minZ = Math.floor(z0 / level.blocks);
+      const maxZ = Math.floor(z1 / level.blocks);
       const found = [];
-      const pad = 48;
-      for (const level of chosenLevels()) {
-        const [x0, z0] = blockOf(rect.left - pad, rect.top - pad);
-        const [x1, z1] = blockOf(rect.right + pad, rect.bottom + pad);
-        for (const pair of level.tiles) {
-          const worldX = pair[0] * level.blocks;
-          const worldZ = pair[1] * level.blocks;
-          if (worldX > x1 || worldZ > z1 || worldX + level.blocks < x0 || worldZ + level.blocks < z0) continue;
-          found.push({ level: level.level, blocks: level.blocks, x: pair[0], z: pair[1], worldX, worldZ });
+      const push = (x, z) => found.push({
+        level: level.level, blocks: level.blocks, x, z,
+        worldX: x * level.blocks, worldZ: z * level.blocks
+      });
+      const cells = (maxX - minX + 1) * (maxZ - minZ + 1);
+      if (cells > level.lookup.size) {
+        for (const key of level.lookup) {
+          const [x, z] = key.split(":").map(Number);
+          if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
+          push(x, z);
+        }
+        return found;
+      }
+      for (let x = minX; x <= maxX; x += 1) {
+        for (let z = minZ; z <= maxZ; z += 1) {
+          if (level.lookup.has(x + ":" + z)) push(x, z);
         }
       }
       return found;
     }
 
-    function redraw() {
-      frame = 0;
-      if (!dimension) return;
+    function applyCamera() {
+      const rect = viewEl.getBoundingClientRect();
+      const ox = rect.width / 2 - view.x * view.scale;
+      const oy = rect.height / 2 - view.z * view.scale;
+      camera.style.transform = "translate(" + ox + "px," + oy + "px) scale(" + view.scale + ")";
+      camera.style.setProperty("--inv", String(1 / view.scale));
       viewEl.classList.toggle("far", view.scale < 0.18);
+    }
+
+    function syncTiles() {
       const wanted = new Set();
       for (const tile of visibleTiles()) {
         const key = tile.level + ":" + tile.x + ":" + tile.z;
         wanted.add(key);
-        let image = tiles.get(key);
-        if (!image) {
-          image = document.createElement("img");
-          image.className = "tile";
-          image.alt = "";
-          image.draggable = false;
-          image.src = tileUrl(tile.level, tile.x, tile.z);
-          image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
-          viewEl.appendChild(image);
-          tiles.set(key, image);
-        }
-        const [left, top] = screenOf(tile.worldX, tile.worldZ);
-        const size = tile.blocks * view.scale;
-        image.style.transform = "translate(" + left + "px," + top + "px)";
-        image.style.width = size + "px";
-        image.style.height = size + "px";
+        if (tiles.has(key)) continue;
+        const image = document.createElement("img");
+        image.className = "tile";
+        image.alt = "";
+        image.draggable = false;
+        image.src = tileUrl(tile.level, tile.x, tile.z);
+        image.style.left = tile.worldX + "px";
+        image.style.top = tile.worldZ + "px";
+        image.style.width = tile.blocks + "px";
+        image.style.height = tile.blocks + "px";
         image.style.zIndex = String(8 - tile.level);
+        image.addEventListener("error", () => { image.remove(); tiles.delete(key); });
+        camera.appendChild(image);
+        tiles.set(key, image);
       }
       for (const [key, image] of tiles) {
         if (!wanted.has(key)) { image.remove(); tiles.delete(key); }
       }
-      const seen = new Set();
+    }
+
+    function mountPins() {
+      pins.forEach((pin) => pin.remove());
+      pins.clear();
       dimension.waypoints.forEach((marker, index) => {
-        seen.add(index);
-        let pin = pins.get(index);
-        if (!pin) {
-          pin = document.createElement("button");
-          pin.type = "button";
-          pin.className = "pin";
-          pin.innerHTML = "<i></i><span></span>";
-          pin.addEventListener("pointerdown", (event) => event.stopPropagation());
-          pin.addEventListener("contextmenu", (event) => openMenu(event, marker));
-          pin.addEventListener("click", (event) => openMenu(event, marker));
-          viewEl.appendChild(pin);
-          pins.set(index, pin);
-        }
+        const pin = document.createElement("button");
+        pin.type = "button";
+        pin.className = "pin";
+        pin.innerHTML = "<i></i><span></span>";
         pin.style.color = marker.color;
-        pin.title = marker.name;
+        pin.style.setProperty("--x", marker.x + "px");
+        pin.style.setProperty("--z", marker.z + "px");
         pin.querySelector("span").textContent = marker.initials;
-        const [left, top] = screenOf(marker.x, marker.z);
-        pin.style.transform = "translate(" + left + "px," + top + "px)";
+        pin.addEventListener("contextmenu", (event) => openMenu(event, marker));
+        camera.appendChild(pin);
+        pins.set(index, pin);
       });
-      for (const [index, pin] of pins) {
-        if (!seen.has(index)) { pin.remove(); pins.delete(index); }
-      }
+    }
+
+    function redraw() {
+      frame = 0;
+      if (!dimension) return;
+      applyCamera();
+      syncTiles();
     }
 
     function requestDraw() {
@@ -291,6 +330,40 @@
       requestDraw();
     }
 
+    function goTo(marker) {
+      view.x = marker.x;
+      view.z = marker.z;
+      view.scale = Math.min(view.max, Math.max(view.min, 1));
+      searchList.hidden = true;
+      searchInput.value = marker.name;
+      menu.hidden = true;
+      hover.hidden = true;
+      requestDraw();
+    }
+
+    function matchingMarkers() {
+      const needle = searchInput.value.trim().toLowerCase();
+      if (!needle || !dimension) return [];
+      return dimension.waypoints.filter((marker) => marker.name.toLowerCase().includes(needle)).slice(0, 12);
+    }
+
+    function renderSearch() {
+      const found = matchingMarkers();
+      searchList.replaceChildren();
+      if (!found.length) { searchList.hidden = true; return; }
+      if (searchPick >= found.length) searchPick = found.length - 1;
+      searchList.hidden = false;
+      found.forEach((marker, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = index === searchPick ? "on" : "";
+        button.textContent = marker.name;
+        button.addEventListener("mousedown", (event) => event.preventDefault());
+        button.addEventListener("click", () => goTo(marker));
+        searchList.appendChild(button);
+      });
+    }
+
     let warmToken = 0;
 
     function preload(url) {
@@ -316,8 +389,7 @@
       await Promise.all(opening.map((tile) => preload(tileUrl(tile.level, tile.x, tile.z)).then(() => {
         finished += 1;
         if (token !== warmToken) return;
-        const label = text("Tiles " + finished + " / " + opening.length, "Тайлы " + finished + " / " + opening.length);
-        loadingLabel.textContent = label;
+        loadingLabel.textContent = text("Tiles " + finished + " / " + opening.length, "Тайлы " + finished + " / " + opening.length);
         loadingBar.style.width = (12 + 88 * finished / opening.length) + "%";
       })));
       if (token !== warmToken) return;
@@ -329,33 +401,58 @@
       dimension = catalog.dimensions.find((item) => item.id === id) || catalog.dimensions[0];
       tiles.forEach((image) => image.remove());
       tiles.clear();
-      pins.forEach((pin) => pin.remove());
-      pins.clear();
       for (const button of bar.querySelectorAll(".dim")) {
         button.setAttribute("aria-pressed", button.dataset.id === dimension.id ? "true" : "false");
       }
       menu.hidden = true;
+      hover.hidden = true;
+      searchList.hidden = true;
+      searchInput.value = "";
+      mountPins();
       fit(true);
       warm();
     }
 
     function markerAt(clientX, clientY) {
+      const [x, z] = blockOf(clientX, clientY);
+      const reach = 16 / view.scale;
+      let best = reach * reach;
       let found = null;
-      let best = 14 * 14;
       for (const marker of dimension.waypoints) {
-        const [left, top] = screenOf(marker.x, marker.z);
-        const rect = viewEl.getBoundingClientRect();
-        const dx = clientX - rect.left - left;
-        const dy = clientY - rect.top - top;
-        const distance = dx * dx + dy * dy;
+        const dx = marker.x - x;
+        const dz = marker.z - z;
+        const distance = dx * dx + dz * dz;
         if (distance < best) { best = distance; found = marker; }
       }
       return found;
     }
 
+    function placePopup(node, clientX, clientY) {
+      node.hidden = false;
+      node.style.left = "0px";
+      node.style.top = "0px";
+      const box = node.getBoundingClientRect();
+      const rect = viewEl.getBoundingClientRect();
+      let left = clientX + 14;
+      let top = clientY + 14;
+      if (left + box.width > rect.right - 8) left = clientX - box.width - 14;
+      if (top + box.height > rect.bottom - 8) top = clientY - box.height - 14;
+      node.style.left = Math.max(8, left) + "px";
+      node.style.top = Math.max(8, top) + "px";
+    }
+
+    function showHover(event, marker) {
+      if (!marker || drag) { hover.hidden = true; return; }
+      hover.querySelector("strong").textContent = marker.name;
+      const height = marker.y == null ? "" : "  Y " + marker.y;
+      hover.querySelector("span").textContent = "X " + marker.x + height + "  Z " + marker.z;
+      placePopup(hover, event.clientX, event.clientY);
+    }
+
     function openMenu(event, marker) {
       event.preventDefault();
       event.stopPropagation();
+      hover.hidden = true;
       const point = marker || null;
       const [x, z] = point ? [point.x, point.z] : blockOf(event.clientX, event.clientY).map(Math.round);
       const y = point ? point.y : null;
@@ -375,12 +472,7 @@
         remove.addEventListener("click", () => send({ kind: "delete", dimension: dimension.id, x, y, z, name: "", waypoint: point.name }));
         menu.appendChild(remove);
       }
-      menu.hidden = false;
-      const rect = viewEl.getBoundingClientRect();
-      const left = Math.min(event.clientX, rect.right - menu.offsetWidth - 8);
-      const top = Math.min(event.clientY, rect.bottom - menu.offsetHeight - 8);
-      menu.style.left = Math.max(8, left) + "px";
-      menu.style.top = Math.max(8, top) + "px";
+      placePopup(menu, event.clientX, event.clientY);
     }
 
     function field(label, kind, x, y, z, waypoint) {
@@ -421,10 +513,9 @@
 
     function pointerReadout(event) {
       if (!dimension) return;
-      const marker = markerAt(event.clientX, event.clientY);
       const [x, z] = blockOf(event.clientX, event.clientY);
-      readout.querySelector("b").textContent = marker ? marker.name : text("Map", "Карта");
       readout.querySelector("span").textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
+      showHover(event, markerAt(event.clientX, event.clientY));
     }
 
     viewEl.addEventListener("pointerdown", (event) => {
@@ -432,6 +523,7 @@
       menu.hidden = true;
       drag = { id: event.pointerId, x: event.clientX, z: event.clientY, vx: view.x, vz: view.z };
       viewEl.classList.add("drag");
+      hover.hidden = true;
       viewEl.setPointerCapture(event.pointerId);
     });
     viewEl.addEventListener("pointermove", (event) => {
@@ -442,6 +534,7 @@
       requestDraw();
     });
     viewEl.addEventListener("pointerup", () => { drag = null; viewEl.classList.remove("drag"); });
+    viewEl.addEventListener("pointerleave", () => { hover.hidden = true; });
     viewEl.addEventListener("wheel", (event) => {
       event.preventDefault();
       zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.15 : 1 / 1.15);
@@ -449,8 +542,29 @@
     viewEl.addEventListener("contextmenu", (event) => openMenu(event, markerAt(event.clientX, event.clientY)));
     viewEl.addEventListener("dblclick", (event) => zoomAt(event.clientX, event.clientY, 2));
     window.addEventListener("resize", requestDraw);
-    window.addEventListener("keydown", (event) => { if (event.key === "Escape") menu.hidden = true; });
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      menu.hidden = true;
+      searchList.hidden = true;
+    });
     menu.addEventListener("submit", (event) => event.preventDefault());
+    searchInput.addEventListener("input", () => { searchPick = 0; renderSearch(); });
+    searchInput.addEventListener("keydown", (event) => {
+      const found = matchingMarkers();
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        searchPick = Math.min(found.length - 1, searchPick + 1);
+        renderSearch();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        searchPick = Math.max(0, searchPick - 1);
+        renderSearch();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const marker = found[searchPick] || found[0];
+        if (marker) goTo(marker);
+      }
+    });
 
     function tool(label, action) {
       const button = document.createElement("button");
@@ -490,7 +604,7 @@
         button.dataset.id = item.id;
         button.textContent = names[item.id] || item.id;
         button.addEventListener("click", () => showDimension(item.id));
-        bar.appendChild(button);
+        bar.insertBefore(button, document.getElementById("search"));
       }
       tool("+", () => zoomAt(innerWidth / 2, innerHeight / 2, 1.25));
       tool("−", () => zoomAt(innerWidth / 2, innerHeight / 2, 0.8));
