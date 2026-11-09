@@ -230,11 +230,18 @@ class _Store:
     async def add_suggestion(self, suggestion):
         self.saved.append(suggestion)
 
+    async def access_keys(self):
+        return ["3301", "rei", "muda muda"]
+
+    async def tile_prefix(self):
+        return "mikchan-map"
+
 
 def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     store = _Store()
     monkeypatch.setattr("mikchan_map.mikchan_map.get_store", lambda: store)
     monkeypatch.setenv("CLOUDINARY_CLOUD_NAME", "gndf3nby")
+    monkeypatch.setenv("MAP_GATE_SECRET", "test-gate-secret-value")
     app = FastAPI()
     app.include_router(router, prefix="/mikchan-map")
     client = TestClient(app)
@@ -249,9 +256,19 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert "Pixelify Sans" in page.text
     assert "api/biomes/region" in page.text
     assert "scrollbar-color: #8b8b8b #1a1a1a" in page.text
+    assert 'placeholder="введите ключ доступа"' in page.text
+    assert "res.cloudinary.com" not in page.text
+    assert "api/tiles/" in page.text
+    assert "Координаты скопированы" in page.text
+    assert client.get("/mikchan-map/api/map").status_code == 401
+    client.cookies.set("mikchan_map", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.9999999999.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", path="/mikchan-map")
+    assert client.get("/mikchan-map/api/map").status_code == 401
+    client.cookies.clear()
+    assert client.post("/mikchan-map/api/access", json={"key": "wrong"}).status_code == 401
+    assert client.post("/mikchan-map/api/access", json={"key": "muda muda"}).status_code == 200
     catalog = client.get("/mikchan-map/api/map").json()
     assert [item["id"] for item in catalog["dimensions"]] == ["overworld", "nether"]
-    assert catalog["cloud"] == "gndf3nby"
+    assert "cloud" not in catalog
     saved = client.post(
         "/mikchan-map/api/suggestions",
         json={"kind": "add", "dimension": "overworld", "x": 3, "z": 4, "name": "маяк"},

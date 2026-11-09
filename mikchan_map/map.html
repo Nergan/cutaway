@@ -33,18 +33,12 @@
       position: absolute; left: -15px; top: -30px; width: 30px; height: 30px;
       image-rendering: pixelated; pointer-events: none;
     }
-    .pin b {
-      position: absolute; left: -15px; top: -24px; width: 30px; height: 14px;
-      display: grid; place-items: center; color: #fff; font: 700 14px/1 "Pixelify Sans", monospace;
-      text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
-    }
-    #view.far .pin b { display: none; }
     #bar {
       position: absolute; z-index: 8; top: 0; left: 0;
       display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-start;
       max-width: calc(100% - 180px); padding: 0; background: transparent; border: 0;
     }
-    button, .dim, #search input, #server, #readout, #hover, #menu, #search .list {
+    button, .dim, #search input, #menu input, #gate input, #server, #readout, #hover, #menu, #search .list {
       font: 16px/1.35 "Pixelify Sans", "Courier New", monospace;
       color: #ffffff;
       text-shadow: 2px 2px 0 #3f3f3f;
@@ -53,7 +47,7 @@
       box-shadow: inset -2px -2px 0 #373737, inset 2px 2px 0 #ffffff;
       border-radius: 0;
     }
-    button, .dim, #search input, #server {
+    button, .dim, #search input, #menu input, #gate input, #server {
       padding: 4px 8px; cursor: pointer; opacity: 1;
     }
     button:hover, .dim:hover, #server:hover {
@@ -93,7 +87,20 @@
     #menu[hidden], #note[hidden], #hover[hidden] { display: none; }
     #menu button, #menu input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; }
     #menu [hidden] { display: none; }
-    #menu input { color: #ffffff; }
+    #menu input, #gate input { color: #ffffff; cursor: text; }
+    #menu input::placeholder, #gate input::placeholder { color: #e8e8e8; }
+    body.locked > :not(#gate) { display: none !important; }
+    #gate {
+      position: absolute; inset: 0; z-index: 60; margin: 0;
+      display: grid; place-items: center; background: #0c0c0c;
+    }
+    #gate[hidden] { display: none; }
+    #gate div { width: min(22rem, 86vw); }
+    #gate input { width: 100%; box-sizing: border-box; }
+    #gate p {
+      min-height: 1.2em; margin: 8px 0 0; color: #ff5555;
+      text-shadow: 2px 2px 0 #3f0000;
+    }
     #note {
       position: absolute; z-index: 32; right: 0; bottom: 52px;
       color: #ffff55; background: transparent; border: 0; box-shadow: none;
@@ -121,7 +128,13 @@
     #empty[hidden] { display: none; }
   </style>
 </head>
-<body>
+<body class="locked">
+  <form id="gate">
+    <div>
+      <input id="key" maxlength="80" autocomplete="off" spellcheck="false" placeholder="введите ключ доступа">
+      <p id="gate-error"></p>
+    </div>
+  </form>
   <div id="view"><div id="camera"></div></div>
   <div id="bar">
     <div id="search">
@@ -273,8 +286,7 @@
     }
 
     function tileUrl(level, x, z) {
-      return "https://res.cloudinary.com/" + catalog.cloud + "/image/upload/mikchan-map/"
-        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp?v=3";
+      return api("api/tiles/" + dimension.id + "/" + level + "/" + x + "/" + z);
     }
 
     function blockOf(clientX, clientY) {
@@ -285,42 +297,79 @@
       ];
     }
 
-    function chosenLevel() {
+    function levelsReady() {
       const levels = dimension.levels.slice().sort((a, b) => a.blocks - b.blocks);
+      for (const level of levels) {
+        if (!level.lookup) level.lookup = new Set(level.tiles.map((pair) => pair[0] + ":" + pair[1]));
+      }
+      return levels;
+    }
+
+    function chosenLevel() {
+      const levels = levelsReady();
       let index = 0;
       while (index < levels.length - 1 && levels[index].blocks * view.scale < 180) index += 1;
-      const level = levels[index];
-      if (!level.lookup) level.lookup = new Set(level.tiles.map((pair) => pair[0] + ":" + pair[1]));
-      return level;
+      return levels[index];
     }
 
     function visibleTiles() {
-      const level = chosenLevel();
+      const levels = levelsReady();
+      const preferred = chosenLevel();
+      if (!preferred) return [];
       const rect = viewEl.getBoundingClientRect();
       const pad = 64;
       const [x0, z0] = blockOf(rect.left - pad, rect.top - pad);
       const [x1, z1] = blockOf(rect.right + pad, rect.bottom + pad);
-      const minX = Math.floor(x0 / level.blocks);
-      const maxX = Math.floor(x1 / level.blocks);
-      const minZ = Math.floor(z0 / level.blocks);
-      const maxZ = Math.floor(z1 / level.blocks);
       const found = [];
-      const push = (x, z) => found.push({
-        level: level.level, blocks: level.blocks, x, z,
-        worldX: x * level.blocks, worldZ: z * level.blocks
-      });
-      const cells = (maxX - minX + 1) * (maxZ - minZ + 1);
-      if (cells > level.lookup.size) {
+      const seen = new Set();
+      const covered = [];
+      const push = (level, x, z) => {
+        const id = level.level + ":" + x + ":" + z;
+        if (seen.has(id)) return;
+        seen.add(id);
+        found.push({
+          level: level.level, blocks: level.blocks, x, z,
+          worldX: x * level.blocks, worldZ: z * level.blocks
+        });
+      };
+      const hits = (level, x, z) => {
+        const wx = x * level.blocks;
+        const wz = z * level.blocks;
+        return wx < x1 && wx + level.blocks > x0 && wz < z1 && wz + level.blocks > z0;
+      };
+      const inside = (box, level, x, z) => {
+        const wx = x * level.blocks;
+        const wz = z * level.blocks;
+        return box.x <= wx && box.z <= wz && box.x2 >= wx + level.blocks && box.z2 >= wz + level.blocks;
+      };
+      for (const key of preferred.lookup) {
+        const [x, z] = key.split(":").map(Number);
+        if (!hits(preferred, x, z)) continue;
+        push(preferred, x, z);
+        covered.push({
+          x: x * preferred.blocks, z: z * preferred.blocks,
+          x2: (x + 1) * preferred.blocks, z2: (z + 1) * preferred.blocks
+        });
+      }
+      for (const level of levels.filter((item) => item.blocks < preferred.blocks).sort((a, b) => b.blocks - a.blocks)) {
+        let added = 0;
         for (const key of level.lookup) {
           const [x, z] = key.split(":").map(Number);
-          if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-          push(x, z);
+          if (!hits(level, x, z) || covered.some((box) => inside(box, level, x, z))) continue;
+          push(level, x, z);
+          covered.push({ x: x * level.blocks, z: z * level.blocks, x2: (x + 1) * level.blocks, z2: (z + 1) * level.blocks });
+          added += 1;
+          if (added >= 256) break;
         }
-        return found;
       }
-      for (let x = minX; x <= maxX; x += 1) {
-        for (let z = minZ; z <= maxZ; z += 1) {
-          if (level.lookup.has(x + ":" + z)) push(x, z);
+      for (const level of levels.filter((item) => item.blocks > preferred.blocks)) {
+        for (const key of level.lookup) {
+          const [x, z] = key.split(":").map(Number);
+          if (!hits(level, x, z)) continue;
+          const wx = x * level.blocks;
+          const wz = z * level.blocks;
+          if (covered.some((box) => box.x <= wx && box.z <= wz && box.x2 >= wx + level.blocks && box.z2 >= wz + level.blocks)) continue;
+          push(level, x, z);
         }
       }
       return found;
@@ -332,7 +381,6 @@
       const oy = rect.height / 2 - view.z * view.scale;
       camera.style.transform = "translate(" + ox + "px," + oy + "px) scale(" + view.scale + ")";
       camera.style.setProperty("--inv", String(1 / view.scale));
-      viewEl.classList.toggle("far", view.scale < 0.05);
     }
 
     function syncTiles() {
@@ -360,8 +408,9 @@
       }
     }
 
-    function pinImage(color) {
-      if (pinImages.has(color)) return pinImages.get(color);
+    function pinImage(color, letter) {
+      const key = color + "|" + letter;
+      if (pinImages.has(key)) return pinImages.get(key);
       const canvas = document.createElement("canvas");
       canvas.width = 30;
       canvas.height = 30;
@@ -373,8 +422,17 @@
           ctx.fillRect(x * 2, y * 2, 2, 2);
         }
       });
+      const wide = [...letter].length > 1;
+      ctx.font = (wide ? "700 9px " : "700 13px ") + '"Pixelify Sans", monospace';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#000000";
+      ctx.strokeText(letter, 15, 15);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(letter, 15, 15);
       const url = canvas.toDataURL();
-      pinImages.set(color, url);
+      pinImages.set(key, url);
       return url;
     }
 
@@ -392,13 +450,10 @@
         const pin = document.createElement("button");
         pin.type = "button";
         pin.className = "pin";
-        pin.innerHTML = "<img alt='' draggable='false'><b></b>";
+        pin.innerHTML = "<img alt='' draggable='false'>";
         pin.style.setProperty("--x", marker.x + "px");
         pin.style.setProperty("--z", marker.z + "px");
-        pin.querySelector("img").src = pinImage(marker.color);
-        const letter = pin.querySelector("b");
-        letter.textContent = marker.initials;
-        if ([...marker.initials].length > 1) letter.style.fontSize = "9px";
+        pin.querySelector("img").src = pinImage(marker.color, marker.initials || "?");
         pin.addEventListener("contextmenu", (event) => openMenu(event, marker));
         camera.appendChild(pin);
         pins.set(index, pin);
@@ -768,7 +823,14 @@
       view.z = drag.vz - (event.clientY - drag.z) / view.scale;
       requestDraw();
     });
-    viewEl.addEventListener("pointerup", () => { drag = null; viewEl.classList.remove("drag"); });
+    viewEl.addEventListener("pointerup", (event) => {
+      const moved = drag && (Math.abs(event.clientX - drag.x) > 4 || Math.abs(event.clientY - drag.z) > 4);
+      drag = null;
+      viewEl.classList.remove("drag");
+      if (moved || event.button !== 0) return;
+      const marker = markerAt(event.clientX, event.clientY);
+      if (marker) copyCoords(marker);
+    });
     viewEl.addEventListener("pointerleave", () => { hover.hidden = true; });
     viewEl.addEventListener("wheel", (event) => {
       event.preventDefault();
@@ -811,6 +873,8 @@
     }
 
     async function boot() {
+      if (started) return;
+      started = true;
       loadingLabel.textContent = text("Reading the catalog", "Читаю каталог");
       loadingBar.style.width = "8%";
       let response;
@@ -821,7 +885,14 @@
         catalog = {};
         response = { ok: false };
       }
-      if (!response.ok || !catalog.cloud || !catalog.dimensions || !catalog.dimensions.length) {
+      if (response.status === 401) {
+        started = false;
+        document.body.classList.add("locked");
+        document.getElementById("gate").hidden = false;
+        loading.hidden = true;
+        return;
+      }
+      if (!response.ok || !catalog.dimensions || !catalog.dimensions.length) {
         loading.hidden = true;
         empty.hidden = false;
         empty.textContent = text("The map is not published yet.", "Карта ещё не опубликована.");
@@ -846,7 +917,71 @@
       tool(text("Whole map", "Вся карта"), () => fit(false));
       showDimension(catalog.dimensions[0].id);
     }
-    boot();
+
+    function copyCoords(marker) {
+      const parts = ["X " + marker.x];
+      if (marker.y !== null && marker.y !== undefined) parts.push("Y " + marker.y);
+      parts.push("Z " + marker.z);
+      const value = parts.join(" ");
+      const done = () => say(text("Coordinates copied", "Координаты скопированы"));
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done).catch(() => fallbackCopy(value, done));
+        return;
+      }
+      fallbackCopy(value, done);
+    }
+
+    function fallbackCopy(value, done) {
+      const area = document.createElement("textarea");
+      area.value = value;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-999px";
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand("copy"); done(); } catch (error) { /* the notice stays quiet if the browser blocks it */ }
+      area.remove();
+    }
+
+    let started = false;
+
+    async function unlock() {
+      const session = await fetch(api("api/session"), { credentials: "same-origin" }).catch(() => null);
+      if (session && session.ok) {
+        document.body.classList.remove("locked");
+        document.getElementById("gate").hidden = true;
+        boot();
+      }
+    }
+
+    document.getElementById("gate").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const input = document.getElementById("key");
+      const error = document.getElementById("gate-error");
+      const response = await fetch(api("api/access"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key: input.value })
+      }).catch(() => null);
+      if (!response || !response.ok) {
+        error.textContent = response && response.status === 429
+          ? text("Too many tries. Wait a little.", "Слишком много попыток. Подождите.")
+          : text("Wrong key.", "Неверный ключ.");
+        return;
+      }
+      error.textContent = "";
+      document.body.classList.remove("locked");
+      form.hidden = true;
+      boot();
+    });
+
+    document.fonts.ready.then(() => {
+      pinImages.clear();
+      if (dimension) mountPins();
+    });
+    unlock();
   </script>
 </body>
 </html>

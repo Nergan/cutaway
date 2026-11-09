@@ -1,14 +1,19 @@
 """World map of MikChan no Sekai at /mikchan-map.
 
-Tiles are public images. This process only reads the catalog and stores
-suggestions. It does not upload, and it does not open the mikchan database.
+The page is public. Catalog, biomes, suggestions and tiles are not: the
+browser gets tiles only through this process, after a key from the access
+list checks out. This process does not upload, and it does not open the
+mikchan database.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,10 +21,22 @@ from typing import Any
 import base64
 import zlib
 
-from fastapi import APIRouter, Body, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from mikchan_map.biomes import biome_labels, filter_biomes, sample_grid
+from mikchan_map.gate import (
+    SEED_KEYS,
+    clear_gate_cache,
+    client_host,
+    gate_open,
+    gate_secret,
+    issue_cookie,
+    normalize_key,
+    note_failure,
+    require_gate,
+    too_many_attempts,
+)
 from mikchan_map.markers import check_suggestion, filter_markers
 
 logger = logging.getLogger(__name__)
@@ -28,6 +45,7 @@ router = APIRouter()
 BASE_DIR = Path(__file__).parent
 DATABASE = "mikchan_map"
 _CLOUD = re.compile(r"^[a-z0-9]+$")
+_PREFIX = re.compile(r"^mikchan-map(?:-[a-z0-9]{8,32})?$")
 _store: Any = None
 
 
@@ -87,6 +105,29 @@ class MongoStore:
             return None
         english, russian = biome_labels(biome_id)
         return {"dimension": dimension, "id": biome_id, "en": english, "ru": russian, "x": x, "z": z}
+
+    async def access_keys(self) -> list[str]:
+        from shared.mongo import get_client
+
+        collection = get_client()[DATABASE].access
+        await collection.update_one(
+            {"_id": "gate"},
+            {"$setOnInsert": {"keys": list(SEED_KEYS)}},
+            upsert=True,
+        )
+        clear_gate_cache()
+        doc = await collection.find_one({"_id": "gate"}, {"keys": 1})
+        raw = doc.get("keys") if doc else []
+        return [item for item in raw if isinstance(item, str)]
+
+    async def tile_prefix(self) -> str:
+        from shared.mongo import get_client
+
+        doc = await get_client()[DATABASE].access.find_one({"_id": "gate"}, {"prefix": 1})
+        prefix = doc.get("prefix") if doc else ""
+        if isinstance(prefix, str) and _PREFIX.fullmatch(prefix):
+            return prefix
+        return "mikchan-map"
 
     async def add_suggestion(self, suggestion: dict) -> None:
         from shared.mongo import get_client
@@ -195,7 +236,52 @@ async def map_page():
     return FileResponse(BASE_DIR / "map.html")
 
 
-@router.get("/api/map")
+@router.get("/api/session")
+async def map_session(request: Request):
+    if not gate_secret():
+        return JSONResponse({"ok": False}, status_code=503)
+    if not await gate_open(request):
+        return JSONResponse({"ok": False}, status_code=401)
+    return {"ok": True}
+
+
+@router.post("/api/access")
+async def map_access(request: Request, body: dict = Body()):
+    if not gate_secret():
+        return JSONResponse({"error": "gate"}, status_code=503)
+    host = client_host(request)
+    if too_many_attempts(host):
+        return JSONResponse({"error": "slow"}, status_code=429)
+    raw = body.get("key") if isinstance(body, dict) else None
+    key = normalize_key(raw) if isinstance(raw, str) else ""
+    if not key or len(key) > 80 or any(ord(char) < 32 for char in key):
+        note_failure(host)
+        return JSONResponse({"error": "key"}, status_code=401)
+    try:
+        from mikchan_map.gate import current_keys
+
+        clear_gate_cache()
+        keys = await current_keys()
+    except Exception as exc:
+        logger.error("map gate failed: %s", type(exc).__name__)
+        return JSONResponse({"error": "store"}, status_code=503)
+    if key not in keys:
+        note_failure(host)
+        return JSONResponse({"error": "key"}, status_code=401)
+    response = JSONResponse({"ok": True})
+    response.set_cookie(
+        "mikchan_map",
+        issue_cookie(key),
+        max_age=30 * 24 * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        path="/mikchan-map",
+    )
+    return response
+
+
+@router.get("/api/map", dependencies=[Depends(require_gate)])
 async def map_catalog():
     try:
         dimensions = await get_store().read_catalog()
@@ -204,7 +290,7 @@ async def map_catalog():
         return JSONResponse({"error": "store"}, status_code=503)
     order = {"overworld": 0, "nether": 1, "end": 2}
     dimensions.sort(key=lambda item: (order.get(item["id"], 9), item["id"]))
-    return {"cloud": cloud_name(), "dimensions": dimensions}
+    return {"dimensions": dimensions}
 
 
 def _query_dimension(value: str) -> str | None:
@@ -216,7 +302,7 @@ def _query_dimension(value: str) -> str | None:
     return cleaned[:32]
 
 
-@router.get("/api/markers")
+@router.get("/api/markers", dependencies=[Depends(require_gate)])
 async def map_markers(
     dimension: str = "",
     q: str = "",
@@ -233,7 +319,7 @@ async def map_markers(
     return {"markers": filter_markers(dimensions, dimension=chosen, query=q.strip()[:80], limit=_limit(limit))}
 
 
-@router.get("/api/biomes")
+@router.get("/api/biomes", dependencies=[Depends(require_gate)])
 async def map_biomes(
     dimension: str = "",
     q: str = "",
@@ -254,7 +340,7 @@ def _block_query(value: int) -> bool:
     return abs(value) <= 30_000_000
 
 
-@router.get("/api/biomes/at")
+@router.get("/api/biomes/at", dependencies=[Depends(require_gate)])
 async def map_biome_at(dimension: str, x: int, z: int):
     chosen = _query_dimension(dimension)
     if not chosen or not _block_query(x) or not _block_query(z):
@@ -267,7 +353,7 @@ async def map_biome_at(dimension: str, x: int, z: int):
     return {"biome": biome}
 
 
-@router.get("/api/biomes/region")
+@router.get("/api/biomes/region", dependencies=[Depends(require_gate)])
 async def map_biome_region(dimension: str, x: int, z: int):
     chosen = _query_dimension(dimension)
     if not chosen or not _block_query(x) or not _block_query(z):
@@ -280,7 +366,7 @@ async def map_biome_region(dimension: str, x: int, z: int):
     return region or {"names": [], "cells": "", "rx": x // 512, "rz": z // 512}
 
 
-@router.post("/api/suggestions")
+@router.post("/api/suggestions", dependencies=[Depends(require_gate)])
 async def add_suggestion(body: dict = Body()):
     suggestion = check_suggestion(body)
     if isinstance(suggestion, str):
@@ -291,3 +377,41 @@ async def add_suggestion(body: dict = Body()):
         logger.error("map suggestion failed: %s", type(exc).__name__)
         return JSONResponse({"error": "store"}, status_code=503)
     return JSONResponse({"ok": True}, status_code=201)
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
+
+
+def _fetch_tile(url: str) -> bytes:
+    opener = urllib.request.build_opener(_NoRedirect)
+    request = urllib.request.Request(url, headers={"User-Agent": "mikchan-map"})
+    with opener.open(request, timeout=12) as response:
+        body = response.read(2_000_001)
+    if len(body) > 2_000_000:
+        raise ValueError("tile")
+    return body
+
+
+@router.get("/api/tiles/{dimension}/{level}/{x}/{z}", dependencies=[Depends(require_gate)])
+async def map_tile(dimension: str, level: int, x: int, z: int):
+    if dimension not in {"overworld", "nether", "end"} or level not in range(4):
+        return JSONResponse({"error": "tile"}, status_code=400)
+    if abs(x) > 20_000 or abs(z) > 20_000:
+        return JSONResponse({"error": "tile"}, status_code=400)
+    cloud = cloud_name()
+    try:
+        prefix = await get_store().tile_prefix()
+    except Exception as exc:
+        logger.error("map tile prefix failed: %s", type(exc).__name__)
+        return JSONResponse({"error": "store"}, status_code=503)
+    if not cloud or not _PREFIX.fullmatch(prefix):
+        return JSONResponse({"error": "store"}, status_code=503)
+    url = f"https://res.cloudinary.com/{cloud}/image/upload/{prefix}/{dimension}/{level}/{x}_{z}.webp"
+    try:
+        body = await asyncio.to_thread(_fetch_tile, url)
+    except Exception as exc:
+        logger.error("map tile failed: %s", type(exc).__name__)
+        return JSONResponse({"error": "tile"}, status_code=404)
+    return Response(content=body, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
