@@ -3,9 +3,10 @@
 The layout matches the cache written by Xaero's World Map (major 1–3, minor
 13–25): a zip with one ``cache.xaero``. Level 0 (``cache_1``) is 512 blocks
 per file, one pixel per block. Each next ``cache/<level>`` doubles the blocks
-a file covers. From major 2 the last byte of a pixel is light, so a dark
-explored block is still drawn. A black pixel is unexplored. The branch caches
-mark a missing child as pure red with zero light, and that marker stays blank.
+a file covers. Major 3 stores color then light. Major 1 and 2 store light
+then color; reading them in the major-3 order paints the tile blue and red.
+A black color is unexplored. A pure red pixel with zero light is the branch
+hole and stays blank. Dark explored blocks are still drawn.
 """
 
 from __future__ import annotations
@@ -106,22 +107,18 @@ def _skip_palette(reader: _Reader, minor: int) -> None:
             reader.skip(2)
 
 
-def _paste(canvas: bytearray, x: int, y: int, raw: bytes, *, rgb_last: bool) -> None:
+def _paste(canvas: bytearray, x: int, y: int, raw: bytes, *, major: int) -> None:
     for row in range(_CHUNK):
         src = row * _CHUNK * 4
         dst = ((y + row) * _REGION + x) * 4
         for col in range(_CHUNK):
             pixel = raw[src + col * 4 : src + col * 4 + 4]
-            if rgb_last:
-                # The last byte is light, not coverage. A dark explored block is
-                # still the surface. (255, 0, 0, 0) is only the branch-cache hole.
+            if major >= 3:
                 red, green, blue, light = pixel
-                if (red, green, blue) == (0, 0, 0) or (red, green, blue, light) == (255, 0, 0, 0):
-                    continue
             else:
-                alpha, red, green, blue = pixel
-                if alpha == 0:
-                    continue
+                light, red, green, blue = pixel
+            if (red, green, blue) == (0, 0, 0) or (red, green, blue, light) == (255, 0, 0, 0):
+                continue
             canvas[dst + col * 4 : dst + col * 4 + 4] = bytes((red, green, blue, 255))
 
 
@@ -144,7 +141,6 @@ def parse_cache(data: bytes, *, leaf: bool, level: int) -> MapImage:
         reader.i32()
     _skip_palette(reader, minor)
     canvas = bytearray(_REGION * _REGION * 4)
-    rgb_last = major >= 2
     for _cx, _cy in coords:
         coord = reader.u8()
         chunk_x, chunk_y = coord >> 4, coord & 0xF
@@ -185,7 +181,7 @@ def parse_cache(data: bytes, *, leaf: bool, level: int) -> MapImage:
         if level > 0 and minor >= 15:
             reader.skip(16)
         if fmt == _GL_RGBA and len(raw) == 16384:
-            _paste(canvas, chunk_x * _CHUNK, chunk_y * _CHUNK, raw, rgb_last=rgb_last)
+            _paste(canvas, chunk_x * _CHUNK, chunk_y * _CHUNK, raw, major=major)
     if reader.peek() != 0xFF:
         raise CacheFormatError("missing end marker")
     return MapImage(bytes(canvas), major, minor)

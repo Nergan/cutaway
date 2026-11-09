@@ -8,6 +8,12 @@
   <script src="https://cdn.jsdelivr.net/gh/Nergan/cdn@main/donate-widget.js" data-position="bottom-right" defer></script>
   <style>
     html, body { margin: 0; height: 100%; background: #10110e; color: #e8e2d6; }
+    * { scrollbar-width: thin; scrollbar-color: #8a7340 #16140f; }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: #16140f; }
+    *::-webkit-scrollbar-thumb { background: #8a7340; border: 2px solid #16140f; }
+    *::-webkit-scrollbar-thumb:hover { background: #c8b48a; }
+    *::-webkit-scrollbar-corner { background: #16140f; }
     body { font: 14px/1.3 Segoe UI, sans-serif; overflow: hidden; }
     #view { position: absolute; inset: 0; z-index: 1; overflow: hidden; cursor: grab; touch-action: none; isolation: isolate; }
     #view.drag { cursor: grabbing; }
@@ -19,14 +25,17 @@
       transform: translate(var(--x), var(--z)) scale(var(--inv)); transform-origin: 0 0;
     }
     .pin i {
-      position: absolute; left: -5px; top: -5px; width: 10px; height: 10px;
-      background: currentColor; transform: rotate(45deg); box-shadow: 0 0 0 1px #f4f1e8;
+      position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
+      background: currentColor; transform: rotate(45deg);
+      box-shadow: 0 0 0 2px #14120c, 0 0 0 4px #f4f1e8;
     }
-    .pin span {
-      position: absolute; left: 8px; top: -8px; color: #fff; text-shadow: 0 1px 0 #000, 0 0 2px #000;
-      white-space: nowrap; font-size: 12px;
+    .pin b {
+      position: absolute; left: -12px; top: -12px; width: 24px; height: 24px;
+      display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700;
+      line-height: 1; font-style: normal;
+      text-shadow: 0 0 2px #000, 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
     }
-    #view.far .pin span { display: none; }
+    #view.far .pin b { display: none; }
     #bar, #readout, #menu, #note, #hover, #search .list { background: #16140f; }
     #bar {
       position: absolute; z-index: 8; top: 10px; left: 10px;
@@ -149,7 +158,7 @@
 
     function tileUrl(level, x, z) {
       return "https://res.cloudinary.com/" + catalog.cloud + "/image/upload/mikchan-map/"
-        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp?v=2";
+        + dimension.id + "/" + level + "/" + x + "_" + z + ".webp?v=3";
     }
 
     function blockOf(clientX, clientY) {
@@ -207,7 +216,7 @@
       const oy = rect.height / 2 - view.z * view.scale;
       camera.style.transform = "translate(" + ox + "px," + oy + "px) scale(" + view.scale + ")";
       camera.style.setProperty("--inv", String(1 / view.scale));
-      viewEl.classList.toggle("far", view.scale < 0.18);
+      viewEl.classList.toggle("far", view.scale < 0.05);
     }
 
     function syncTiles() {
@@ -242,11 +251,13 @@
         const pin = document.createElement("button");
         pin.type = "button";
         pin.className = "pin";
-        pin.innerHTML = "<i></i><span></span>";
+        pin.innerHTML = "<i></i><b></b>";
         pin.style.color = marker.color;
         pin.style.setProperty("--x", marker.x + "px");
         pin.style.setProperty("--z", marker.z + "px");
-        pin.querySelector("span").textContent = marker.initials;
+        const letter = pin.querySelector("b");
+        letter.textContent = marker.initials;
+        if ([...marker.initials].length > 1) letter.style.fontSize = "9px";
         pin.addEventListener("contextmenu", (event) => openMenu(event, marker));
         camera.appendChild(pin);
         pins.set(index, pin);

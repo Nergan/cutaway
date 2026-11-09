@@ -17,9 +17,13 @@ def _leaf() -> bytes:
     raw[0:4] = bytes((20, 140, 40, 200))
     raw[4:8] = bytes((255, 0, 0, 0))
     raw[8:12] = bytes((90, 121, 60, 0))
+    return _region(0x00030018, raw)
+
+
+def _region(version: int, raw: bytes) -> bytes:
     return b"".join(
         (
-            _i32(0x00020018),
+            _i32(version),
             b"\x00" * 20,
             bytes((0,)),
             _i32(1),
@@ -37,7 +41,17 @@ def _leaf() -> bytes:
 
 def test_cache_keeps_dark_surface_pixels_and_drops_the_red_hole():
     image = parse_cache(_leaf(), leaf=True, level=0)
-    assert image.major == 2 and image.minor == 24
+    assert image.major == 3 and image.minor == 24
+    assert image.rgba[0:4] == bytes((20, 140, 40, 255))
+    assert image.rgba[4:8] == bytes(4)
+    assert image.rgba[8:12] == bytes((90, 121, 60, 255))
+    assert image.opaque_pixels() == 2
+    older = bytearray(16384)
+    older[0:4] = bytes((200, 20, 140, 40))
+    older[4:8] = bytes((0, 255, 0, 0))
+    older[8:12] = bytes((0, 90, 121, 60))
+    image = parse_cache(_region(0x00020018, bytes(older)), leaf=True, level=0)
+    assert image.major == 2
     assert image.rgba[0:4] == bytes((20, 140, 40, 255))
     assert image.rgba[4:8] == bytes(4)
     assert image.rgba[8:12] == bytes((90, 121, 60, 255))
@@ -136,6 +150,7 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert 'id="hover"' in page.text
     assert "top: 10px; right: 12px" in page.text
     assert "background: #221e16" in page.text
+    assert "scrollbar-color: #8a7340 #16140f" in page.text
     catalog = client.get("/mikchan-map/api/map").json()
     assert [item["id"] for item in catalog["dimensions"]] == ["overworld", "nether"]
     assert catalog["cloud"] == "gndf3nby"
