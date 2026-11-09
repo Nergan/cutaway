@@ -169,13 +169,10 @@ def test_suggestion_checks_reject_a_nameless_marker_and_a_far_coordinate():
     assert check_suggestion({"kind": "add", "dimension": "overworld", "x": 99_000_000, "z": 1, "name": "дом"}) == "place"
 
 
-def test_the_map_card_is_fifth_and_uses_the_server_icon():
-    card = home_payload(0)["projects"][4]
-    assert card["id"] == "mikchan_map"
-    assert card["href"] == "/mikchan-map"
-    assert card["icon"] == "https://mikchan.net/favicon.ico"
-    assert card["title"] == {"en": "mikchan map", "ru": "карта mikchan"}
-    assert card["category"] == {"en": "Game", "ru": "игры"}
+def test_the_map_stays_off_the_home_cards():
+    projects = home_payload(0)["projects"]
+    assert "mikchan_map" not in [project["id"] for project in projects]
+    assert "/mikchan-map" not in [project["href"] for project in projects]
 
 
 def test_cloud_name_comes_from_the_host_and_ignores_a_secret(monkeypatch):

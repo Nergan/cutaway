@@ -109,17 +109,6 @@ PROJECTS = (
         "документы",
     ),
     _project(
-        "mikchan_map",
-        "/mikchan-map",
-        "https://mikchan.net/favicon.ico",
-        "mikchan map",
-        "карта mikchan",
-        "server world map",
-        "карта мира сервера",
-        "Game",
-        "игры",
-    ),
-    _project(
         "minecraft_mods",
         "/mods",
         "https://cdn.jsdelivr.net/gh/Nergan/cdn@main/mods/favicon.jpg",
