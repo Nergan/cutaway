@@ -276,6 +276,12 @@
     searchInput.placeholder = text("Marker or biome", "Метка или биом");
     loadingLabel.textContent = text("Loading the map", "Карта загружается");
     const tiles = new Map();
+    const tileCool = new Map();
+    const tileTries = new Map();
+    let tileWake = 0;
+    let tilesFlying = 0;
+    let paceUntil = 0;
+    let biomeTimer = 0;
     const pins = new Map();
     const view = { x: 0, z: 0, scale: 0.25, min: 0.01, max: 6 };
     let catalog = null;
@@ -404,29 +410,62 @@
     }
 
     function syncTiles() {
-      const wanted = new Set();
-      for (const tile of visibleTiles()) {
+      const found = visibleTiles();
+      const wanted = new Set(found.map((tile) => tile.level + ":" + tile.x + ":" + tile.z));
+      for (const tile of found) {
         const key = tile.level + ":" + tile.x + ":" + tile.z;
-        wanted.add(key);
         const existing = tiles.get(key);
         if (existing) {
           placeTile(tile, existing);
           continue;
         }
+        if ((tileCool.get(key) || 0) > Date.now() || tilesFlying >= 6) continue;
+        const wait = reserveRequest();
+        if (wait) {
+          clearTimeout(tileWake);
+          tileWake = setTimeout(requestDraw, wait);
+          break;
+        }
         const frame = document.createElement("div");
         const image = document.createElement("img");
         frame.className = "tile";
+        frame.dataset.flying = "1";
         image.alt = "";
         image.draggable = false;
+        tilesFlying += 1;
+        const finish = () => {
+          if (frame.dataset.flying !== "1") return;
+          frame.dataset.flying = "";
+          tilesFlying = Math.max(0, tilesFlying - 1);
+        };
+        image.addEventListener("load", () => { finish(); tileTries.delete(key); requestDraw(); });
+        image.addEventListener("error", () => {
+          if (frame.dataset.flying !== "1") return;
+          finish();
+          const tries = (tileTries.get(key) || 0) + 1;
+          const wait = Math.min(20000, 1000 * 2 ** (tries - 1));
+          tileTries.set(key, tries);
+          tileCool.set(key, Date.now() + wait);
+          paceUntil = Math.max(paceUntil, Date.now() + Math.min(wait, 15000));
+          frame.remove();
+          tiles.delete(key);
+          clearTimeout(tileWake);
+          tileWake = setTimeout(requestDraw, Math.max(0, paceUntil - Date.now()));
+        });
         image.src = tileUrl(tile.level, tile.x, tile.z);
         placeTile(tile, frame);
-        image.addEventListener("error", () => { frame.remove(); tiles.delete(key); });
         frame.appendChild(image);
         camera.appendChild(frame);
         tiles.set(key, frame);
       }
       for (const [key, frame] of tiles) {
-        if (!wanted.has(key)) { frame.remove(); tiles.delete(key); }
+        if (wanted.has(key)) continue;
+        if (frame.dataset.flying === "1") {
+          frame.dataset.flying = "";
+          tilesFlying = Math.max(0, tilesFlying - 1);
+        }
+        frame.remove();
+        tiles.delete(key);
       }
     }
 
@@ -645,15 +684,6 @@
 
     let warmToken = 0;
 
-    function preload(url) {
-      return new Promise((resolve) => {
-        const image = new Image();
-        image.onload = () => resolve();
-        image.onerror = () => resolve();
-        image.src = url;
-      });
-    }
-
     async function warm() {
       const token = ++warmToken;
       const opening = visibleTiles();
@@ -663,15 +693,20 @@
         loading.hidden = true;
         return;
       }
-      let finished = 0;
-      await Promise.all(opening.map((tile) => preload(tileUrl(tile.level, tile.x, tile.z)).then(() => {
-        finished += 1;
-        if (token !== warmToken) return;
-        loadingLabel.textContent = text("Tiles " + finished + " / " + opening.length, "Тайлы " + finished + " / " + opening.length);
-        loadingBar.style.width = (12 + 88 * finished / opening.length) + "%";
-      })));
-      if (token !== warmToken) return;
-      loading.hidden = true;
+      const goal = Math.min(opening.length, 12);
+      const started = Date.now();
+      while (token === warmToken && Date.now() - started < 12000) {
+        let ready = 0;
+        for (const tile of opening) {
+          const frame = tiles.get(tile.level + ":" + tile.x + ":" + tile.z);
+          if (frame && frame.dataset.flying !== "1") ready += 1;
+        }
+        loadingLabel.textContent = text("Tiles " + ready + " / " + opening.length, "Тайлы " + ready + " / " + opening.length);
+        loadingBar.style.width = (12 + 88 * Math.min(ready, goal) / goal) + "%";
+        if (ready >= goal) break;
+        await new Promise((resolve) => setTimeout(resolve, 160));
+      }
+      if (token === warmToken) loading.hidden = true;
     }
 
     function showDimension(id) {
@@ -686,6 +721,9 @@
       searchList.hidden = true;
       searchInput.value = "";
       biomeRegions.clear();
+      tileCool.clear();
+      tileTries.clear();
+      clearTimeout(biomeTimer);
       biomeEl.textContent = "";
       mountPins();
       fit(true);
@@ -802,15 +840,54 @@
       return new Uint8Array(await new Response(stream).arrayBuffer());
     }
 
+    const sentAt = [];
+
+    function reserveRequest() {
+      const now = Date.now();
+      while (sentAt.length && sentAt[0] <= now - 60000) sentAt.shift();
+      if (now < paceUntil) return paceUntil - now;
+      if (sentAt.length >= 36) return Math.max(250, sentAt[0] + 60000 - now);
+      if (sentAt.length >= 12) {
+        const since = now - sentAt[sentAt.length - 1];
+        if (since < 1100) return 1100 - since;
+      }
+      sentAt.push(now);
+      return 0;
+    }
+
+    function holdPace(response) {
+      const wait = Number(response.headers.get("Retry-After"));
+      const seconds = Number.isFinite(wait) && wait > 0 ? wait : 15;
+      paceUntil = Math.max(paceUntil, Date.now() + seconds * 1000);
+      clearTimeout(tileWake);
+      tileWake = setTimeout(requestDraw, Math.max(0, paceUntil - Date.now()));
+    }
+
     function loadRegion(x, z) {
       const key = regionKey(x, z);
       const existing = biomeRegions.get(key);
       if (existing) return Promise.resolve(existing);
+      if (Date.now() < paceUntil) return Promise.resolve("later");
+      const wait = reserveRequest();
+      if (wait) {
+        clearTimeout(tileWake);
+        tileWake = setTimeout(requestDraw, wait);
+        return Promise.resolve("later");
+      }
       const rx = Math.floor(x / 512);
       const rz = Math.floor(z / 512);
       const pending = fetch(api("api/biomes/region?dimension=" + encodeURIComponent(dimension.id) + "&x=" + (rx * 512) + "&z=" + (rz * 512)))
-        .then((response) => response.ok ? response.json() : null)
-        .then(async (payload) => {
+        .then(async (response) => {
+          if (response.status === 429) {
+            holdPace(response);
+            biomeRegions.delete(key);
+            return "later";
+          }
+          if (!response.ok) {
+            biomeRegions.delete(key);
+            return null;
+          }
+          const payload = await response.json();
           const grid = {
             names: payload && payload.names || [],
             cells: payload && payload.cells ? await inflateCells(payload.cells) : new Uint8Array(0)
@@ -819,9 +896,8 @@
           return grid;
         })
         .catch(() => {
-          const grid = { names: [], cells: new Uint8Array(0) };
-          biomeRegions.set(key, grid);
-          return grid;
+          biomeRegions.delete(key);
+          return null;
         });
       biomeRegions.set(key, pending);
       return pending;
@@ -839,6 +915,27 @@
       return biomeLabel(grid.names[value - 1] || "");
     }
 
+    function scheduleBiome(x, z, seq) {
+      clearTimeout(biomeTimer);
+      const delay = Math.max(280, paceUntil - Date.now() + 50);
+      biomeTimer = setTimeout(() => {
+        if (seq !== readoutSeq) return;
+        if (Date.now() < paceUntil) {
+          scheduleBiome(x, z, seq);
+          return;
+        }
+        loadRegion(x, z).then((grid) => {
+          if (seq !== readoutSeq) return;
+          if (grid === "later") {
+            scheduleBiome(x, z, seq);
+            return;
+          }
+          if (!grid) return;
+          biomeEl.textContent = sampleBiome(grid, x, z);
+        });
+      }, delay);
+    }
+
     function biomeNow(x, z) {
       const value = biomeRegions.get(regionKey(x, z));
       if (!value || typeof value.then === "function") return "";
@@ -854,13 +951,12 @@
       coordsEl.textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
       readout.hidden = false;
       const ready = biomeRegions.get(regionKey(x, z));
-      if (ready && typeof ready.then !== "function") biomeEl.textContent = sampleBiome(ready, x, z);
-      else {
+      if (ready && typeof ready.then !== "function") {
+        clearTimeout(biomeTimer);
+        biomeEl.textContent = sampleBiome(ready, x, z);
+      } else {
         biomeEl.textContent = "";
-        loadRegion(x, z).then((grid) => {
-          if (seq !== readoutSeq) return;
-          biomeEl.textContent = sampleBiome(grid, x, z);
-        });
+        scheduleBiome(x, z, seq);
       }
       showHover(event, markerAt(event.clientX, event.clientY));
     }

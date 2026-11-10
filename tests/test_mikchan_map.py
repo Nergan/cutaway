@@ -252,6 +252,9 @@ def test_map_api_orders_dimensions_and_stores_a_suggestion(monkeypatch):
     assert 'id="biome"' in page.text
     assert "Pixelify Sans" in page.text
     assert "api/biomes/region" in page.text
+    assert "scheduleBiome" in page.text
+    assert "reserveRequest" in page.text
+    assert "Retry-After" in page.text
     assert "scrollbar-color: #8b8b8b #1a1a1a" in page.text
     assert 'placeholder="введите ключ доступа"' in page.text
     assert "res.cloudinary.com" not in page.text
