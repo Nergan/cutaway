@@ -661,7 +661,6 @@
       readout.hidden = true;
       if (!opening.length) {
         loading.hidden = true;
-        readout.hidden = false;
         return;
       }
       let finished = 0;
@@ -673,7 +672,6 @@
       })));
       if (token !== warmToken) return;
       loading.hidden = true;
-      readout.hidden = false;
     }
 
     function showDimension(id) {
@@ -854,6 +852,7 @@
       const [x, z] = blockOf(event.clientX, event.clientY);
       const seq = ++readoutSeq;
       coordsEl.textContent = "X " + Math.round(x) + "  Z " + Math.round(z);
+      readout.hidden = false;
       const ready = biomeRegions.get(regionKey(x, z));
       if (ready && typeof ready.then !== "function") biomeEl.textContent = sampleBiome(ready, x, z);
       else {
