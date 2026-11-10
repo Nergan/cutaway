@@ -16,7 +16,8 @@ permissions:
 
 jobs:
   sync:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # Paused: this Gitea account cannot hold every repository.
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

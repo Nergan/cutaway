@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.server_url == 'https://github.com' }}
     runs-on: ubuntu-latest
     # "production" — GitHub Environment. Секреты можно держать либо на нём (тогда
     # доступны required reviewers и прочие protection rules), либо репозиторными
