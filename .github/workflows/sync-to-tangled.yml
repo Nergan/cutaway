@@ -104,8 +104,17 @@ jobs:
           PY
 
           mkdir -p ~/.ssh
-          umask 077
-          printf '%s\n' "$TANGLED_SSH_KEY" > /tmp/tangled_mirror
+          python3 - << 'PY'
+          import os
+          key = os.environ["TANGLED_SSH_KEY"].replace("\r\n", "\n").replace("\r", "\n")
+          if "-----BEGIN " not in key or "PRIVATE KEY-----" not in key:
+              print("The Tangled SSH key secret is not a private key.")
+              raise SystemExit(1)
+          if not key.endswith("\n"):
+              key += "\n"
+          with open("/tmp/tangled_mirror", "w", encoding="utf-8", newline="\n") as handle:
+              handle.write(key)
+          PY
           chmod 600 /tmp/tangled_mirror
           ssh-keyscan -H tangled.org >> ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i /tmp/tangled_mirror -o IdentitiesOnly=yes -o BatchMode=yes"
