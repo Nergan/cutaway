@@ -1,0 +1,116 @@
+name: Sync to Tangled
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: tangled-sync-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: ${{ github.server_url == 'https://github.com' && github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror repository to Tangled
+        env:
+          TANGLED_APP_PASSWORD: ${{ secrets.TANGLED_APP_PASSWORD }}
+          TANGLED_SSH_KEY: ${{ secrets.TANGLED_SSH_KEY }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANGLED_APP_PASSWORD}" ] || [ -z "${TANGLED_SSH_KEY}" ]; then
+            echo "Secrets TANGLED_APP_PASSWORD and TANGLED_SSH_KEY are required."
+            exit 1
+          fi
+
+          python3 - << 'PY'
+          import json, os, urllib.error, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+
+          handle = "nargan.tngl.sh"
+          owner = "did:plc:qaz3ya4dlwyo52nmufliaygy"
+          pds = "https://tngl.sh"
+          knot = "https://knot1.tangled.sh"
+          name = os.environ["REPO_NAME"]
+          password = os.environ["TANGLED_APP_PASSWORD"]
+
+          def call(method, url, body=None, token=None):
+              data = None if body is None else json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, method=method)
+              req.add_header("Content-Type", "application/json")
+              req.add_header("User-Agent", "github-mirror")
+              if token:
+                  req.add_header("Authorization", "Bearer " + token)
+              try:
+                  with urllib.request.urlopen(req, timeout=90) as response:
+                      raw = response.read().decode()
+                      return response.status, json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as error:
+                  raw = error.read().decode("utf-8", "replace")
+                  try:
+                      parsed = json.loads(raw) if raw else {}
+                  except json.JSONDecodeError:
+                      parsed = {"message": raw[:300]}
+                  return error.code, parsed
+
+          status, session = call("POST", pds + "/xrpc/com.atproto.server.createSession", {"identifier": handle, "password": password})
+          if status != 200:
+              print(f"Tangled session failed with HTTP {status}.")
+              print(session.get("error", ""), session.get("message", ""))
+              raise SystemExit(1)
+          access = session["accessJwt"]
+          query = urllib.parse.urlencode({"repo": owner, "collection": "org.tangled.repo.declaration", "rkey": name})
+          status, row = call("GET", pds + "/xrpc/com.atproto.repo.getRecord?" + query, token=access)
+          if status == 200:
+              print(f"Tangled project {handle}/{name} already exists.")
+          else:
+              exp = int(datetime.now(timezone.utc).timestamp()) + 60
+              service_query = urllib.parse.urlencode({"aud": "did:web:knot1.tangled.sh", "lxm": "org.tangled.repo.createRepo", "exp": exp})
+              status, service = call("GET", pds + "/xrpc/com.atproto.server.getServiceAuth?" + service_query, token=access)
+              if status != 200:
+                  print(f"Tangled service auth failed with HTTP {status}.")
+                  print(service.get("error", ""), service.get("message", ""))
+                  raise SystemExit(1)
+              branch = os.environ.get("DEFAULT_BRANCH") or "main"
+              status, created = call("POST", knot + "/xrpc/org.tangled.repo.createRepo", {"name": name, "defaultBranch": branch}, token=service["token"])
+              repo_did = created.get("did", "")
+              if status != 200 or not repo_did:
+                  print(f"Tangled project create failed with HTTP {status}.")
+                  print(created.get("error", ""), created.get("message", ""))
+                  raise SystemExit(1)
+              now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+              status, declared = call("POST", pds + "/xrpc/com.atproto.repo.createRecord", {
+                  "repo": owner,
+                  "collection": "org.tangled.repo.declaration",
+                  "rkey": name,
+                  "record": {"$type": "org.tangled.repo.declaration", "repo": repo_did, "createdAt": now},
+              }, token=access)
+              if status not in (200, 201):
+                  print(f"Tangled declaration failed with HTTP {status}.")
+                  print(declared.get("error", ""), declared.get("message", ""))
+                  raise SystemExit(1)
+              print(f"Created Tangled project {handle}/{name}.")
+          PY
+
+          mkdir -p ~/.ssh
+          umask 077
+          printf '%s\n' "$TANGLED_SSH_KEY" > /tmp/tangled_mirror
+          chmod 600 /tmp/tangled_mirror
+          ssh-keyscan -H tangled.org >> ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i /tmp/tangled_mirror -o IdentitiesOnly=yes -o BatchMode=yes"
+          git remote remove tangled 2>/dev/null || true
+          git remote add tangled "nargan.tngl.sh@tangled.org:nargan.tngl.sh/${REPO_NAME}"
+          git push --prune tangled "+refs/heads/*:refs/heads/*" "+refs/tags/*:refs/tags/*"
+          rm -f /tmp/tangled_mirror
+          echo "Mirrored nargan.tngl.sh/${REPO_NAME}."
