@@ -1,0 +1,141 @@
+name: Sync to Codeberg
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: codeberg-sync-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: ${{ github.server_url == 'https://github.com' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror repository to Codeberg
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CODEBERG_TOKEN}" ]; then
+            echo "Secret CODEBERG_TOKEN is missing on this repository."
+            exit 1
+          fi
+
+          if ! getent hosts codeberg.org >/dev/null 2>&1; then
+            ip="$(python3 - << 'PY'
+          import json, urllib.request
+
+          urls = (
+              "https://dns.google/resolve?name=codeberg.org&type=A",
+              "https://cloudflare-dns.com/dns-query?name=codeberg.org&type=A",
+          )
+          for url in urls:
+              req = urllib.request.Request(url, headers={"Accept": "application/dns-json", "User-Agent": "github-mirror"})
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      payload = json.load(response)
+              except OSError:
+                  continue
+              for answer in payload.get("Answer", []):
+                  if answer.get("type") == 1 and answer.get("data"):
+                      print(answer["data"])
+                      raise SystemExit(0)
+          PY
+            )"
+            if [ -z "${ip}" ]; then
+              echo "Could not resolve codeberg.org."
+              exit 1
+            fi
+            echo "${ip} codeberg.org" | sudo tee -a /etc/hosts >/dev/null
+            echo "Pinned codeberg.org because the runner DNS did not answer."
+          fi
+
+          python3 - << 'PY'
+          import json, os, urllib.error, urllib.parse, urllib.request
+
+          token = os.environ["CODEBERG_TOKEN"]
+          name = os.environ["REPO_NAME"]
+          private = os.environ["REPO_PRIVATE"] == "true"
+          default_branch = os.environ.get("DEFAULT_BRANCH") or "main"
+
+          def call(method, url, body=None):
+              data = None if body is None else json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, method=method)
+              req.add_header("Authorization", "token " + token)
+              req.add_header("Content-Type", "application/json")
+              req.add_header("User-Agent", "github-mirror")
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      raw = response.read().decode()
+                      return response.status, json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as error:
+                  raw = error.read().decode("utf-8", "replace")
+                  try:
+                      parsed = json.loads(raw) if raw else {}
+                  except json.JSONDecodeError:
+                      parsed = {"message": raw[:500]}
+                  return error.code, parsed
+
+          encoded = urllib.parse.quote(name, safe="")
+          status, row = call("GET", f"https://codeberg.org/api/v1/repos/nargan/{encoded}")
+          if status == 404:
+              status, row = call("POST", "https://codeberg.org/api/v1/user/repos", {
+                  "name": name,
+                  "private": private,
+                  "auto_init": False,
+                  "default_branch": default_branch,
+              })
+              if status not in (201, 409):
+                  print(f"Codeberg project create failed with HTTP {status}.")
+                  print(json.dumps(row)[:2000])
+                  raise SystemExit(1)
+              print(f"Created Codeberg project nargan/{name}.")
+          elif status != 200:
+              print(f"Codeberg project lookup failed with HTTP {status}.")
+              print(json.dumps(row)[:2000])
+              raise SystemExit(1)
+          else:
+              print(f"Codeberg project nargan/{name} already exists.")
+          PY
+
+          python3 -c 'open("/tmp/git-askpass.sh","w",encoding="utf-8").write("#!/bin/sh\ncase \"$1\" in\n  *Username*) printf \"%s\\n\" \"nargan\" ;;\n  *) printf \"%s\\n\" \"$CODEBERG_TOKEN\" ;;\nesac\n")'
+          chmod 700 /tmp/git-askpass.sh
+          trap 'rm -f /tmp/git-askpass.sh' EXIT
+          export GIT_ASKPASS=/tmp/git-askpass.sh
+          export GIT_TERMINAL_PROMPT=0
+          git remote remove codeberg 2>/dev/null || true
+          git remote add codeberg "https://codeberg.org/nargan/${REPO_NAME}.git"
+          git push --prune codeberg "+refs/heads/*:refs/heads/*" "+refs/tags/*:refs/tags/*"
+          python3 - << 'PY'
+          import json, os, urllib.error, urllib.parse, urllib.request
+          token = os.environ["CODEBERG_TOKEN"]
+          name = urllib.parse.quote(os.environ["REPO_NAME"], safe="")
+          branch = os.environ.get("DEFAULT_BRANCH") or "main"
+          req = urllib.request.Request(
+              f"https://codeberg.org/api/v1/repos/nargan/{name}",
+              data=json.dumps({"default_branch": branch}).encode(),
+              method="PATCH",
+          )
+          req.add_header("Authorization", "token " + token)
+          req.add_header("Content-Type", "application/json")
+          req.add_header("User-Agent", "github-mirror")
+          try:
+              with urllib.request.urlopen(req, timeout=60):
+                  pass
+          except urllib.error.HTTPError:
+              print("Could not set the default branch. The repository was still mirrored.")
+          PY
+          echo "Mirrored nargan/${REPO_NAME}."
